@@ -341,6 +341,32 @@ class OFChannelHandler extends IdleStateAwareChannelHandler {
 			setState(new CompleteState());
 
 		}
+		
+		@Override
+		void processOFHello(OFHello m) throws IOException {
+			/*
+			 * Brocade switches send a second hello after
+			 * the controller responds with its hello. This
+			 * might be to confirm the protocol version used,
+			 * but isn't defined in the OF specification.
+			 * 
+			 * We will ignore such hello messages assuming
+			 * the version of the hello is correct according
+			 * to the algorithm in the spec (pick lowest).
+			 * 
+			 * TODO Brocade also sets the XID of this second
+			 * hello as the same XID the controller used.
+			 * Checking for this might help to assure we're
+			 * really dealing with the situation we think
+			 * we are.
+			 */
+			if (m.getVersion().equals(factory.getVersion())) {
+				log.warn("Ignoring second hello in state {}. Might be a Brocade.", state.toString());
+			} else {
+				super.processOFHello(m); /* Versions don't match as they should; abort */
+			}
+		}
+		
 		@Override
 		void enterState() throws IOException {
 			sendFeaturesRequest();
