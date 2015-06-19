@@ -226,9 +226,15 @@ public class LoadBalancer implements IFloodlightModule,
                     }
                     
                     LBVip vip = vips.get(vipIpToId.get(destIpAddress));
+                    if (vip == null)			// fix deference violations           
+                    	return Command.CONTINUE;
                     LBPool pool = pools.get(vip.pickPool(client));
+                    if (pool == null)			// fix deference violations
+                    	return Command.CONTINUE;
                     LBMember member = members.get(pool.pickMember(client));
-
+                    if(member == null)			//fix deference violations
+                    	return Command.CONTINUE;
+                    
                     // for chosen member, check device manager and find and push routes, in both directions                    
                     pushBidirectionalVipRoutes(sw, pi, cntx, client, member);
                    
@@ -662,6 +668,8 @@ public class LoadBalancer implements IFloodlightModule,
         LBPool pool;
         if (pools != null) {
             pool = pools.get(poolId);
+            if (pool == null)	// fix deference violations
+            	return -1;
             if (pool.vipId != null)
                 vips.get(pool.vipId).pools.remove(poolId);
             pools.remove(poolId);
