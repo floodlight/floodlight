@@ -25,6 +25,7 @@ import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFPort;
 
+import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.routing.Link;
 import net.floodlightcontroller.topology.NodePortTuple;
