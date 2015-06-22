@@ -19,6 +19,7 @@ package net.floodlightcontroller.core.internal;
 
 import java.io.FileInputStream;
 import java.security.KeyStore;
+import java.util.List;
 
 import javax.annotation.Nonnull;
 import javax.net.ssl.KeyManager;
@@ -36,6 +37,8 @@ import org.jboss.netty.handler.timeout.IdleStateHandler;
 import org.jboss.netty.handler.timeout.ReadTimeoutHandler;
 import org.jboss.netty.util.ExternalResourceReleasable;
 import org.jboss.netty.util.Timer;
+import org.projectfloodlight.openflow.protocol.OFFactory;
+import org.projectfloodlight.openflow.types.U32;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -56,14 +59,20 @@ implements ChannelPipelineFactory, ExternalResourceReleasable {
 	protected IDebugCounterService debugCounters;
 	private String keyStore;
 	private String keyStorePassword;
+	private OFFactory defaultFactory;
+	private List<U32> ofBitmaps;
 
 	private void init(IOFSwitchManager switchManager, Timer timer,
 			INewOFConnectionListener connectionListener,
-			IDebugCounterService debugCounters) {
+			IDebugCounterService debugCounters,
+			@Nonnull List<U32> ofBitmaps,
+			@Nonnull OFFactory defaultFactory) {
 		this.switchManager = switchManager;
 		this.connectionListener = connectionListener;
 		this.timer = timer;
 		this.debugCounters = debugCounters;
+		this.defaultFactory = defaultFactory;
+		this.ofBitmaps = ofBitmaps;
 		this.idleHandler = new IdleStateHandler(
 				timer,
 				PipelineIdleReadTimeout.MAIN,
@@ -74,9 +83,11 @@ implements ChannelPipelineFactory, ExternalResourceReleasable {
 
 	public OpenflowPipelineFactory(IOFSwitchManager switchManager, Timer timer,
 			INewOFConnectionListener connectionListener,
-			IDebugCounterService debugCounters) {
+			IDebugCounterService debugCounters,
+			@Nonnull List<U32> ofBitmaps,
+			@Nonnull OFFactory defaultFactory) {
 		super();
-		init(switchManager,timer, connectionListener, debugCounters);
+		init(switchManager,timer, connectionListener, debugCounters, ofBitmaps, defaultFactory);
 		this.keyStore = null;
 		this.keyStorePassword = null;
 	}
@@ -84,9 +95,11 @@ implements ChannelPipelineFactory, ExternalResourceReleasable {
 	public OpenflowPipelineFactory(IOFSwitchManager switchManager, Timer timer,
 			INewOFConnectionListener connectionListener,
 			IDebugCounterService debugCounters,
+			@Nonnull List<U32> ofBitmaps,
+			@Nonnull OFFactory defaultFactory,
 			@Nonnull String keyStore, @Nonnull String keyStorePassword) {
 		super();
-		init(switchManager,timer, connectionListener, debugCounters);   
+		init(switchManager,timer, connectionListener, debugCounters, ofBitmaps, defaultFactory);   
 		this.keyStore = keyStore;
 		this.keyStorePassword = keyStorePassword;
 	}
@@ -98,7 +111,9 @@ implements ChannelPipelineFactory, ExternalResourceReleasable {
 				connectionListener,
 				pipeline,
 				debugCounters,
-				timer);
+				timer,
+				ofBitmaps,
+				defaultFactory);
 
 		if (keyStore != null && keyStorePassword != null) {
 			try {

@@ -47,8 +47,6 @@ import org.projectfloodlight.openflow.protocol.OFMeterFeatures;
 import org.projectfloodlight.openflow.protocol.OFMeterFeaturesStatsReply;
 import org.projectfloodlight.openflow.protocol.OFMeterStats;
 import org.projectfloodlight.openflow.protocol.OFMeterStatsReply;
-import org.projectfloodlight.openflow.protocol.OFOxmClass;
-import org.projectfloodlight.openflow.protocol.OFOxmList;
 import org.projectfloodlight.openflow.protocol.OFPortStatsReply;
 import org.projectfloodlight.openflow.protocol.OFPortStatsEntry;
 import org.projectfloodlight.openflow.protocol.OFPortDescStatsReply;
@@ -80,11 +78,9 @@ import org.projectfloodlight.openflow.protocol.meterband.OFMeterBand;
 import org.projectfloodlight.openflow.protocol.meterband.OFMeterBandDrop;
 import org.projectfloodlight.openflow.protocol.meterband.OFMeterBandDscpRemark;
 import org.projectfloodlight.openflow.protocol.meterband.OFMeterBandExperimenter;
-import org.projectfloodlight.openflow.protocol.oxm.OFOxm;
 import org.projectfloodlight.openflow.protocol.ver13.OFFlowModFlagsSerializerVer13;
 import org.projectfloodlight.openflow.protocol.ver13.OFMeterBandTypeSerializerVer13;
 import org.projectfloodlight.openflow.protocol.ver13.OFOxmClassSerializerVer13;
-import org.projectfloodlight.openflow.protocol.ver13.OFOxmsVer13;
 // Use Loxigen's serializer
 import org.projectfloodlight.openflow.protocol.ver13.OFPortFeaturesSerializerVer13;
 import org.projectfloodlight.openflow.protocol.ver13.OFStatsReplyFlagsSerializerVer13;
@@ -111,7 +107,6 @@ import org.projectfloodlight.openflow.protocol.OFAggregateStatsReply;
 import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.types.U32;
 import org.projectfloodlight.openflow.types.U8;
-import org.python.antlr.PythonParser.or_test_return;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
