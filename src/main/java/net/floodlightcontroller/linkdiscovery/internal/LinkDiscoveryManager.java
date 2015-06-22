@@ -288,10 +288,9 @@ IFloodlightModule, IInfoProvider {
 	//*********************
 
 	@Override
-	public OFPacketOut generateLLDPMessage(DatapathId sw, OFPort port,
+	public OFPacketOut generateLLDPMessage(IOFSwitch iofSwitch, OFPort port,
 			boolean isStandard, boolean isReverse) {
 
-		IOFSwitch iofSwitch = switchService.getSwitch(sw);
 		OFPortDesc ofpPort = iofSwitch.getPort(port);
 
 		if (log.isTraceEnabled()) {
@@ -1160,6 +1159,8 @@ IFloodlightModule, IInfoProvider {
 			return;
 
 		IOFSwitch iofSwitch = switchService.getSwitch(sw);
+		if (iofSwitch == null)             //fix dereference violations in case race conditions
+			return;
 		OFPortDesc ofpPort = iofSwitch.getPort(port);
 
 		if (log.isTraceEnabled()) {
@@ -1687,6 +1688,8 @@ IFloodlightModule, IInfoProvider {
 	@Override
 	public void switchActivated(DatapathId switchId) {
 		IOFSwitch sw = switchService.getSwitch(switchId);
+		if (sw == null)       //fix dereference violation in case race conditions
+			return;
 		if (sw.getEnabledPortNumbers() != null) {
 			for (OFPort p : sw.getEnabledPortNumbers()) {
 				processNewPort(sw.getId(), p);
