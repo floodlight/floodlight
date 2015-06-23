@@ -46,6 +46,7 @@ import org.projectfloodlight.openflow.protocol.OFHello;
 import org.projectfloodlight.openflow.protocol.OFHelloElem;
 import org.projectfloodlight.openflow.protocol.OFHelloElemVersionbitmap;
 import org.projectfloodlight.openflow.protocol.OFMessage;
+import org.projectfloodlight.openflow.protocol.OFPortStatus;
 import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.protocol.ver13.OFHelloElemTypeSerializerVer13;
 import org.projectfloodlight.openflow.protocol.ver14.OFHelloElemTypeSerializerVer14;
@@ -120,6 +121,10 @@ class OFChannelHandler extends IdleStateAwareChannelHandler {
 				throws IOException {
 			// we only expect features reply in the WAIT_FEATURES_REPLY state
 			illegalMessageReceived(m);
+		}
+		
+		void processOFPortStatus(OFPortStatus m) {
+			unhandledMessageReceived(m);
 		}
 
 		private final boolean channelHandshakeComplete;
@@ -270,6 +275,9 @@ class OFChannelHandler extends IdleStateAwareChannelHandler {
 				case ECHO_REQUEST:
 					processOFEchoRequest((OFEchoRequest)m);
 					break;
+				case PORT_STATUS:
+					processOFPortStatus((OFPortStatus)m);
+					break;
 				default:
 					illegalMessageReceived(m);
 					break;
@@ -317,7 +325,7 @@ class OFChannelHandler extends IdleStateAwareChannelHandler {
 		void processOFHello(OFHello m) throws IOException {
 			OFVersion theirVersion = m.getVersion();
 			OFVersion commonVersion = null;
-			/* First, check if there's a version bitmap supplied. WE WILL ALWAYS HAVE a version bitmap . */
+			/* First, check if there's a version bitmap supplied. WE WILL ALWAYS HAVE a controller-provided version bitmap. */
 			if (theirVersion.compareTo(OFVersion.OF_13) >= 0 && !m.getElements().isEmpty()) {
 				List<U32> bitmaps = new ArrayList<U32>();
 				List<OFHelloElem> elements = m.getElements();
@@ -334,11 +342,11 @@ class OFChannelHandler extends IdleStateAwareChannelHandler {
 				/* Lookup highest, common supported OpenFlow version */
 				commonVersion = computeOFVersionFromBitmap(bitmaps);
 				if (commonVersion == null) {
-					log.error("Could not negotiate OpenFlow version via version bitmap algorithm.");
+					log.error("Could not negotiate common OpenFlow version for {} with greatest version bitmap algorithm.", channel.getRemoteAddress());
 					channel.disconnect();
 					return;
 				} else {
-					log.info("Negotiated OpenFlow version of {} with version bitmap algorithm.", commonVersion.toString());
+					log.info("Negotiated OpenFlow version of {} for {} with greatest version bitmap algorithm.", commonVersion.toString(), channel.getRemoteAddress());
 					factory = OFFactories.getFactory(commonVersion);
 					OFMessageDecoder decoder = pipeline.get(OFMessageDecoder.class);
 					decoder.setVersion(commonVersion);
@@ -346,16 +354,16 @@ class OFChannelHandler extends IdleStateAwareChannelHandler {
 			}
 			/* If there's not a bitmap present, choose the lower of the two supported versions. */
 			else if (theirVersion.compareTo(factory.getVersion()) < 0) {
-				log.info("Negotiated down to switch OpenFlow version of {} using lesser hello header algorithm.", theirVersion.toString());
+				log.info("Negotiated down to switch OpenFlow version of {} for {} using lesser hello header algorithm.", theirVersion.toString(), channel.getRemoteAddress());
 				factory = OFFactories.getFactory(theirVersion);
 				OFMessageDecoder decoder = pipeline.get(OFMessageDecoder.class);
 				decoder.setVersion(theirVersion);
 			} /* else The controller's version is < or = the switch's, so keep original controller factory. */
 			else if (theirVersion.equals(factory.getVersion())) {
-				log.info("Negotiated equal OpenFlow versions to version {} using lesser hello header algorithm.");
+				log.info("Negotiated equal OpenFlow version of {} for {} using lesser hello header algorithm.", factory.getVersion().toString(), channel.getRemoteAddress());
 			}
 			else {
-				log.info("Negotiated down to controller OpenFlow version of {} using lesser hello header algorithm.", factory.getVersion().toString());
+				log.info("Negotiated down to controller OpenFlow version of {} for {} using lesser hello header algorithm.", factory.getVersion().toString(), channel.getRemoteAddress());
 			}
 
 			setState(new WaitFeaturesReplyState());
@@ -406,10 +414,15 @@ class OFChannelHandler extends IdleStateAwareChannelHandler {
 			 * we are.
 			 */
 			if (m.getVersion().equals(factory.getVersion())) {
-				log.warn("Ignoring second hello in state {}. Might be a Brocade.", state.toString());
+				log.warn("Ignoring second hello from {} in state {}. Might be a Brocade.", channel.getRemoteAddress(), state.toString());
 			} else {
 				super.processOFHello(m); /* Versions don't match as they should; abort */
 			}
+		}
+		
+		@Override
+		void processOFPortStatus(OFPortStatus m) {
+			log.warn("Ignoring PORT_STATUS message from {} during OpenFlow channel establishment. Ports will be explicitly queried in a later state.", channel.getRemoteAddress());
 		}
 
 		@Override
