@@ -608,11 +608,7 @@ public class StatsReplySerializer extends JsonSerializer<StatsReply> {
 						jGen.writeFieldName("match");
 						jGen.writeStartArray();
 						for (U32 id : propMatch.getOxmIds()) {
-							try {
-								jGen.writeString(OFOxmClassSerializerVer13.ofWireValue((short) id.getValue()).toString());
-							} catch (IllegalArgumentException e) {
-								jGen.writeNumber(id.getValue());
-							}
+							jGen.writeString(OXMSerializer.oxmIdToString(id));
 						}
 						jGen.writeEndArray();
 						break;
@@ -621,11 +617,7 @@ public class StatsReplySerializer extends JsonSerializer<StatsReply> {
 						jGen.writeFieldName("wildcards");
 						jGen.writeStartArray();
 						for (U32 id : propWildcards.getOxmIds()) {
-							try {
-								jGen.writeString(OFOxmClassSerializerVer13.ofWireValue((short) id.getValue()).toString());
-							} catch (IllegalArgumentException e) {
-								jGen.writeNumber(id.getValue());
-							}
+							jGen.writeString(OXMSerializer.oxmIdToString(id));
 						}
 						jGen.writeEndArray();
 						break;
@@ -634,11 +626,7 @@ public class StatsReplySerializer extends JsonSerializer<StatsReply> {
 						jGen.writeFieldName("writeSetfield");
 						jGen.writeStartArray();
 						for (U32 id : propWrSetfield.getOxmIds()) {
-							try {
-								jGen.writeString(OFOxmClassSerializerVer13.ofWireValue((short) id.getValue()).toString());
-							} catch (IllegalArgumentException e) {
-								jGen.writeNumber(id.getValue());
-							}
+							jGen.writeString(OXMSerializer.oxmIdToString(id));
 						}
 						jGen.writeEndArray();
 						break;
@@ -647,11 +635,7 @@ public class StatsReplySerializer extends JsonSerializer<StatsReply> {
 						jGen.writeFieldName("writeSetfieldMiss");
 						jGen.writeStartArray();
 						for (U32 id : propWrSetfieldMiss.getOxmIds()) {
-							try {
-								jGen.writeString(OFOxmClassSerializerVer13.ofWireValue((short) id.getValue()).toString());
-							} catch (IllegalArgumentException e) {
-								jGen.writeNumber(id.getValue());
-							}
+							jGen.writeString(OXMSerializer.oxmIdToString(id));
 						}
 						jGen.writeEndArray();
 						break;
@@ -660,11 +644,7 @@ public class StatsReplySerializer extends JsonSerializer<StatsReply> {
 						jGen.writeFieldName("applySetfield");
 						jGen.writeStartArray();
 						for (U32 id : propAppSetfield.getOxmIds()) {
-							try {
-								jGen.writeString(OFOxmClassSerializerVer13.ofWireValue((short) id.getValue()).toString());
-							} catch (IllegalArgumentException e) {
-								jGen.writeNumber(id.getValue());
-							}
+							jGen.writeString(OXMSerializer.oxmIdToString(id));
 						}
 						jGen.writeEndArray();
 						break;
@@ -673,11 +653,7 @@ public class StatsReplySerializer extends JsonSerializer<StatsReply> {
 						jGen.writeFieldName("applySetfieldMiss");
 						jGen.writeStartArray();
 						for (U32 id : propAppSetfieldMiss.getOxmIds()) {
-							try {
-								jGen.writeString(OFOxmClassSerializerVer13.ofWireValue((short) id.getValue()).toString());
-							} catch (IllegalArgumentException e) {
-								jGen.writeNumber(id.getValue());
-							}
+							jGen.writeString(OXMSerializer.oxmIdToString(id));
 						}
 						jGen.writeEndArray();
 						break;
