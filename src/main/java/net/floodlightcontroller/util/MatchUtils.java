@@ -11,6 +11,7 @@ import org.projectfloodlight.openflow.types.ArpOpcode;
 import org.projectfloodlight.openflow.types.EthType;
 import org.projectfloodlight.openflow.types.ICMPv4Code;
 import org.projectfloodlight.openflow.types.ICMPv4Type;
+import org.projectfloodlight.openflow.types.IPv4Address;
 import org.projectfloodlight.openflow.types.IPv4AddressWithMask;
 import org.projectfloodlight.openflow.types.IPv6AddressWithMask;
 import org.projectfloodlight.openflow.types.IPv6FlowLabel;
@@ -104,6 +105,8 @@ public class MatchUtils {
 
 	public static final String STR_METADATA = "metadata";
 	public static final String STR_TUNNEL_ID = "tunnel_id";
+	public static final String STR_TUNNEL_IPV4_SRC = "tunnel_ipv4_src";
+	public static final String STR_TUNNEL_IPV4_DST = "tunnel_ipv4_dst";
 
 	public static final String STR_PBB_ISID = "pbb_isid";	
 
@@ -746,6 +749,20 @@ public class MatchUtils {
 				} else {
 					mb.setMasked(MatchField.TUNNEL_ID, dataMask[0].contains("0x") ? U64.of(Long.valueOf(dataMask[0].replaceFirst("0x", ""), 16)) : U64.of(Long.valueOf(dataMask[0])), 
 							dataMask[1].contains("0x") ? U64.of(Long.valueOf(dataMask[1].replaceFirst("0x", ""), 16)) : U64.of(Long.valueOf(dataMask[1])));
+				}
+				break;
+			case STR_TUNNEL_IPV4_SRC:
+				if (dataMask.length == 1) {
+					mb.setExact(MatchField.TUNNEL_IPV4_SRC, IPv4Address.of(key_value[1]));
+				} else {
+					mb.setMasked(MatchField.TUNNEL_IPV4_SRC, IPv4AddressWithMask.of(key_value[1]));
+				}
+				break;
+			case STR_TUNNEL_IPV4_DST:
+				if (dataMask.length == 1) {
+					mb.setExact(MatchField.TUNNEL_IPV4_DST, IPv4Address.of(key_value[1]));
+				} else {
+					mb.setMasked(MatchField.TUNNEL_IPV4_DST, IPv4AddressWithMask.of(key_value[1]));
 				}
 				break;
 			case STR_PBB_ISID:

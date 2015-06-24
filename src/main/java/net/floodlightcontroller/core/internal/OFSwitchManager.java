@@ -3,8 +3,11 @@ package net.floodlightcontroller.core.internal;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -52,6 +55,7 @@ import net.floodlightcontroller.debugevent.IEventCategory;
 import net.floodlightcontroller.debugevent.MockDebugEventService;
 
 import org.projectfloodlight.openflow.protocol.OFControllerRole;
+import org.projectfloodlight.openflow.protocol.OFFactories;
 import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFFeaturesReply;
 import org.projectfloodlight.openflow.protocol.OFMessage;
@@ -60,6 +64,7 @@ import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFAuxId;
 import org.projectfloodlight.openflow.types.TableId;
+import org.projectfloodlight.openflow.types.U32;
 import org.sdnplatform.sync.IStoreClient;
 import org.sdnplatform.sync.IStoreListener;
 import org.sdnplatform.sync.ISyncService;
@@ -107,6 +112,9 @@ public class OFSwitchManager implements IOFSwitchManager, INewOFConnectionListen
 	protected static Map<DatapathId, TableId> forwardToControllerFlowsUpToTableByDpid;
 	protected static TableId forwardToControllerFlowsUpToTable = TableId.of(4); /* this should cover most HW switches that have a couple SW-based flow tables */
 
+	protected static List<U32> ofBitmaps;
+	protected static OFFactory defaultFactory;
+	
 	private ConcurrentHashMap<DatapathId, OFSwitchHandshakeHandler> switchHandlers;
 	private ConcurrentHashMap<DatapathId, IOFSwitchBackend> switches;
 	private ConcurrentHashMap<DatapathId, IOFSwitch> syncedSwitches;
@@ -770,6 +778,127 @@ public class OFSwitchManager implements IOFSwitchManager, INewOFConnectionListen
 		 * By default, 
 		 */
 		forwardToControllerFlowsUpToTableByDpid = jsonToSwitchTableIdMap(configParams.get("maxTableToReceiveTableMissFlowPerDpid"));
+	
+		/*
+		 * Get config to determine what versions of OpenFlow we will
+		 * support. The versions will determine the hello's header
+		 * version as well as the OF1.3.1 version bitmap contents.
+		 */
+		String protocols = configParams.get("supportedOpenFlowVersions");
+		Set<OFVersion> ofVersions = new HashSet<OFVersion>();
+		if (protocols != null && !protocols.isEmpty()) {
+			protocols = protocols.toLowerCase();
+			/* 
+			 * Brute-force check for all known versions. 
+			 */
+			if (protocols.contains("1.0") || protocols.contains("10")) {
+				ofVersions.add(OFVersion.OF_10);
+			}
+			if (protocols.contains("1.1") || protocols.contains("11")) {
+				ofVersions.add(OFVersion.OF_11);
+			}
+			if (protocols.contains("1.2") || protocols.contains("12")) {
+				ofVersions.add(OFVersion.OF_12);
+			}
+			if (protocols.contains("1.3") || protocols.contains("13")) {
+				ofVersions.add(OFVersion.OF_13);
+			}
+			if (protocols.contains("1.4") || protocols.contains("14")) {
+				ofVersions.add(OFVersion.OF_14);
+			}
+			/*
+			 * TODO This will need to be updated if/when 
+			 * Loxi is updated to support > 1.4.
+			 * 
+			 * if (protocols.contains("1.5") || protocols.contains("15")) {
+			 *     ofVersions.add(OFVersion.OF_15);
+			 * }
+			 */
+		} else {
+			log.warn("Supported OpenFlow versions not specified. Using Loxi-defined {}", OFVersion.values());
+			ofVersions.addAll(Arrays.asList(OFVersion.values()));
+		}
+		/* Sanity check */
+		if (ofVersions.isEmpty()) {
+			throw new IllegalStateException("OpenFlow version list should never be empty at this point. Make sure it's being populated in OFSwitchManager's init function.");
+		}
+		defaultFactory = computeInitialFactory(ofVersions);
+		ofBitmaps = computeOurVersionBitmaps(ofVersions);
+	}
+	
+	/**
+	 * Find the max version supplied in the supported
+	 * versions list and use it as the default, which
+	 * will subsequently be used in our hello message
+	 * header's version field.
+	 * 
+	 * The factory can be later "downgraded" to a lower
+	 * version depending on what's computed during the
+	 * version-negotiation part of the handshake.
+	 * 
+	 * Assumption: The Set of OFVersion ofVersions
+	 * variable has been set already and is NOT EMPTY.
+	 * 
+	 * @return the highest-version OFFactory we support
+	 */
+	private OFFactory computeInitialFactory(Set<OFVersion> ofVersions) {
+		/* This should NEVER happen. Double-checking. */
+		if (ofVersions == null || ofVersions.isEmpty()) {
+			throw new IllegalStateException("OpenFlow version list should never be null or empty at this point. Make sure it's set in the OFSwitchManager.");
+		}
+		OFVersion highest = null;
+		for (OFVersion v : ofVersions) {
+			if (highest == null) {
+				highest = v;
+			} else if (v.compareTo(highest) > 0) {
+				highest = v;
+			}
+		}
+		/* 
+		 * This assumes highest != null, which
+		 * it won't be if the list of versions
+		 * is not empty.
+		 */
+		return OFFactories.getFactory(highest);
+	}
+	
+	/**
+	 * Based on the list of OFVersions provided as input (or from Loxi),
+	 * create a list of bitmaps for use in version negotiation during a
+	 * cross-version OpenFlow handshake where both parties support 
+	 * OpenFlow versions >= 1.3.1.
+	 * 
+	 * Type Set is used as input to guarantee all unique versions.
+	 * 
+	 * @param ofVersions, the list of bitmaps. Supply to an OFHello message.
+	 * @return list of bitmaps for the versions of OpenFlow we support
+	 */
+	private List<U32> computeOurVersionBitmaps(Set<OFVersion> ofVersions) {
+		/* This should NEVER happen. Double-checking. */
+		if (ofVersions == null || ofVersions.isEmpty()) {
+			throw new IllegalStateException("OpenFlow version list should never be null or empty at this point. Make sure it's set in the OFSwitchManager.");
+		}
+		
+		int pos = 1; /* initial bitmap in list */
+		int size = 32; /* size of a U32 */
+		int tempBitmap = 0; /* maintain the current bitmap we're working on */
+		List<U32> bitmaps = new ArrayList<U32>();
+		ArrayList<OFVersion> sortedVersions = new ArrayList<OFVersion>(ofVersions);
+		Collections.sort(sortedVersions);
+		for (OFVersion v : sortedVersions) {
+			/* Move on to another bitmap */
+			if (v.getWireVersion() > pos * size - 1 ) {
+				bitmaps.add(U32.ofRaw(tempBitmap));
+				tempBitmap = 0;
+				pos++;
+			}
+			tempBitmap = tempBitmap | (1 << (v.getWireVersion() % size));
+		}
+		if (tempBitmap != 0) {
+			bitmaps.add(U32.ofRaw(tempBitmap));
+		}
+		log.info("Computed OpenFlow version bitmap as {}", Arrays.asList(tempBitmap));
+		return bitmaps;
 	}
 
 	private static Map<DatapathId, TableId> jsonToSwitchTableIdMap(String json) {
@@ -871,9 +1000,9 @@ public class OFSwitchManager implements IOFSwitchManager, INewOFConnectionListen
 			bootstrap.setOption("child.keepAlive", true);
 			bootstrap.setOption("child.tcpNoDelay", true);
 			bootstrap.setOption("child.sendBufferSize", Controller.SEND_BUFFER_SIZE);
-
-			ChannelPipelineFactory pfact = useSsl ? new OpenflowPipelineFactory(this, floodlightProvider.getTimer(), this, debugCounterService, keyStore, keyStorePassword) :
-				new OpenflowPipelineFactory(this, floodlightProvider.getTimer(), this, debugCounterService);
+			
+			ChannelPipelineFactory pfact = useSsl ? new OpenflowPipelineFactory(this, floodlightProvider.getTimer(), this, debugCounterService, ofBitmaps, defaultFactory, keyStore, keyStorePassword) :
+				new OpenflowPipelineFactory(this, floodlightProvider.getTimer(), this, debugCounterService, ofBitmaps, defaultFactory);
 
 			bootstrap.setPipelineFactory(pfact);
 			InetSocketAddress sa = new InetSocketAddress(floodlightProvider.getOFPort());
