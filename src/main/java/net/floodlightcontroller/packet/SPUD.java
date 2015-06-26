@@ -1,12 +1,14 @@
 package net.floodlightcontroller.packet;
 
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 
 /**
  * @author Jacob Chappell (jacob.chappell@uky.edu)
  */
 public class SPUD extends BasePacket {
-    public static final int MAGIC_CONSTANT = 0xd80000d8;
+    public static final byte[] MAGIC_CONSTANT =
+        { (byte) 0xd8, 0x00, 0x00, (byte) 0xd8 };
     public static final int HEADER_LENGTH = 13;
     public static final byte COMMAND_DATA = 0x0;
     public static final byte COMMAND_OPEN = 0x1;
@@ -74,7 +76,7 @@ public class SPUD extends BasePacket {
         int length = HEADER_LENGTH + ((payloadData == null) ? 0 : payloadData.length);
         byte[] data = new byte[length];
         ByteBuffer bb = ByteBuffer.wrap(data);
-        bb.putInt(MAGIC_CONSTANT);
+        bb.put(MAGIC_CONSTANT);
         bb.putLong(tubeID);
         byte adecBit = (byte) ((adec) ? 1 : 0);
         byte pdecBit = (byte) ((pdec) ? 1 : 0);
@@ -91,8 +93,9 @@ public class SPUD extends BasePacket {
     public IPacket deserialize(byte[] data, int offset, int length)
             throws PacketParsingException {
         ByteBuffer bb = ByteBuffer.wrap(data, offset, length);
-        int magicConstant = bb.getInt();
-        if (magicConstant != MAGIC_CONSTANT) {
+        byte[] magicConstant = new byte[MAGIC_CONSTANT.length];
+        bb.get(magicConstant, 0, MAGIC_CONSTANT.length);
+        if (!Arrays.equals(magicConstant, MAGIC_CONSTANT)) {
             throw new PacketParsingException("Magic constant is incorrect.");
         }
         tubeID = bb.getLong();
