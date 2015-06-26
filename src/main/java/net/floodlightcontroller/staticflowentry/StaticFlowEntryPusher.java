@@ -741,11 +741,11 @@ implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService, 
 					Map<String, OFFlowMod> flowsByName = getFlows(sw.getId());
 					for (Map.Entry<String, OFFlowMod> entry : flowsByName.entrySet()) {
 						if (msg.getCookie().equals(entry.getValue().getCookie()) &&
-								msg.getHardTimeout() == entry.getValue().getHardTimeout() &&
+								(msg.getVersion().compareTo(OFVersion.OF_12) < 0 ? true : msg.getHardTimeout() == entry.getValue().getHardTimeout()) &&
 								msg.getIdleTimeout() == entry.getValue().getIdleTimeout() &&
 								msg.getMatch().equals(entry.getValue().getMatch()) &&
 								msg.getPriority() == entry.getValue().getPriority() &&
-								msg.getTableId().equals(entry.getValue().getTableId())
+								(msg.getVersion().compareTo(OFVersion.OF_10) == 0 ? true : msg.getTableId().equals(entry.getValue().getTableId()))
 								) {
 							flowToRemove = entry.getKey();
 							break;

@@ -390,6 +390,10 @@ public class OXMSerializer {
 		
 		map.put(U32.ofRaw(NXM_1 | (36 << SHIFT_FIELD) | 4), STR_NXM + "internal_recirc_id");
 		map.put(U32.ofRaw(NXM_1 | (36 << SHIFT_FIELD) | 4 * 2 | MASKED), STR_NXM + "internal_recirc_id" + STR_MASKED);
+		
+		map.put(U32.ofRaw(NXM_1 | (37 << SHIFT_FIELD) | 4), STR_NXM + MatchUtils.STR_PBB_ISID);
+		map.put(U32.ofRaw(NXM_1 | (37 << SHIFT_FIELD) | 4 * 2 | MASKED), STR_NXM + MatchUtils.STR_PBB_ISID + STR_MASKED);
+		
 	}
 	
 	/**
