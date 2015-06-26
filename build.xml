@@ -60,6 +60,7 @@
         <include name="jackson-dataformat-xml-2.1.4.jar"/>
         <include name="jackson-dataformat-yaml-2.1.4.jar"/>
         <include name="jackson-dataformat-csv-2.1.4.jar"/>
+        <include name="jackson-dataformat-cbor-2.5.4.jar"/>
         <include name="slf4j-api-1.6.4.jar"/>
         <include name="org.restlet.jar"/>
         <include name="org.restlet.ext.jackson.jar"/>
