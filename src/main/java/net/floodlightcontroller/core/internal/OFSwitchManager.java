@@ -753,20 +753,24 @@ public class OFSwitchManager implements IOFSwitchManager, INewOFConnectionListen
 		 * Get default max table for forward to controller flows. 
 		 * Internal default set as class variable at top of OFSwitchManager.
 		 */
-		String defaultFlowsUpToTable = configParams.get("defaultMaxTableToReceiveTableMissFlow");
+		String defaultFlowsUpToTable = configParams.get("defaultMaxTablesToReceiveTableMissFlow");
+		/* Backward compatibility */
+		if (defaultFlowsUpToTable == null || defaultFlowsUpToTable.isEmpty()) {
+			defaultFlowsUpToTable = configParams.get("defaultMaxTableToReceiveTableMissFlow");
+		}
 		if (defaultFlowsUpToTable != null && !defaultFlowsUpToTable.isEmpty()) {
 			defaultFlowsUpToTable = defaultFlowsUpToTable.toLowerCase().trim();
 			try {
 				forwardToControllerFlowsUpToTable = TableId.of(defaultFlowsUpToTable.startsWith("0x") 
 						? Integer.parseInt(defaultFlowsUpToTable.replaceFirst("0x", ""), 16) 
 								: Integer.parseInt(defaultFlowsUpToTable));
-				log.info("Setting {} as the default max table to receive table-miss flow", forwardToControllerFlowsUpToTable.toString());
+				log.info("Setting {} as the default max tables to receive table-miss flow", forwardToControllerFlowsUpToTable.toString());
 			} catch (IllegalArgumentException e) {
-				log.error("Invalid table ID {} for default max table to receive table-miss flow. Using pre-set of {}", 
+				log.error("Invalid table ID {} for default max tables to receive table-miss flow. Using pre-set of {}", 
 						defaultFlowsUpToTable, forwardToControllerFlowsUpToTable.toString());
 			}
 		} else {
-			log.info("Default max table to receive table-miss flow not configured. Using {}", forwardToControllerFlowsUpToTable.toString());
+			log.info("Default max tables to receive table-miss flow not configured. Using {}", forwardToControllerFlowsUpToTable.toString());
 		}
 
 		/*
@@ -774,10 +778,13 @@ public class OFSwitchManager implements IOFSwitchManager, INewOFConnectionListen
 		 * default forward-to-controller flow. This can be used to
 		 * reduce the number of such flows if only a reduced set of
 		 * tables are being used.
-		 * 
-		 * By default, 
 		 */
-		forwardToControllerFlowsUpToTableByDpid = jsonToSwitchTableIdMap(configParams.get("maxTableToReceiveTableMissFlowPerDpid"));
+		String maxPerDpid = configParams.get("maxTablesToReceiveTableMissFlowPerDpid");
+		/* Backward compatibility */
+		if (maxPerDpid == null || maxPerDpid.isEmpty()) {
+			maxPerDpid = configParams.get("maxTableToReceiveTableMissFlowPerDpid");
+		}
+		forwardToControllerFlowsUpToTableByDpid = jsonToSwitchTableIdMap(maxPerDpid);
 	
 		/*
 		 * Get config to determine what versions of OpenFlow we will
@@ -949,18 +956,18 @@ public class OFSwitchManager implements IOFSwitchManager, INewOFConnectionListen
 											: Integer.parseInt(value)
 									); /* will throw exception if outside valid TableId number range */
 							retValue.put(dpid, tablesToGetDefaultFlow);
-							log.info("Setting max table to receive table-miss flow to {} for DPID {}", 
+							log.info("Setting max tables to receive table-miss flow to {} for DPID {}", 
 									tablesToGetDefaultFlow.toString(), dpid.toString());
 						} catch (IllegalArgumentException e) { /* catches both IllegalArgumentExcpt. and NumberFormatExcpt. */
-							log.error("Invalid value of {} for max table to receive table-miss flow for DPID {}. Using default of {}.", value, dpid.toString());
+							log.error("Invalid value of {} for max tables to receive table-miss flow for DPID {}. Using default of {}.", value, dpid.toString());
 						}
 					}
 				} catch (NumberFormatException e) {
-					log.error("Invalid DPID format {} for max table to receive table-miss flow for specific DPID. Using default for the intended DPID.", n);
+					log.error("Invalid DPID format {} for max tables to receive table-miss flow for specific DPID. Using default for the intended DPID.", n);
 				}
 			}
 		} catch (IOException e) {
-			log.error("Using default for remaining DPIDs. JSON formatting error in max table to receive table-miss flow for DPID input String: {}", e);
+			log.error("Using default for remaining DPIDs. JSON formatting error in max tables to receive table-miss flow for DPID input String: {}", e);
 		}
 		return retValue;
 	}
