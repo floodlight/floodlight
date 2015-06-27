@@ -529,7 +529,8 @@ public abstract class OFSwitchHandlerTestBase {
 		expectLastCall().anyTimes();
 		if (SwitchStatus.MASTER == newStatus) {
 			if (factory.getVersion().compareTo(OFVersion.OF_13) >= 0) {
-				expect(sw.getMaxTableForTableMissFlow()).andReturn(TableId.ZERO).times(2);
+				expect(sw.getMaxTableForTableMissFlow()).andReturn(TableId.ZERO).times(1);
+				expect(sw.getTableFeatures(TableId.ZERO)).andReturn(TableFeatures.of(createTableFeaturesStatsReply().getEntries().get(0))).anyTimes();
 			}
 		}
 
@@ -605,7 +606,8 @@ public abstract class OFSwitchHandlerTestBase {
 		sw.setStatus(SwitchStatus.MASTER);
 		expectLastCall().once();
 		if (factory.getVersion().compareTo(OFVersion.OF_13) >= 0) {
-			expect(sw.getMaxTableForTableMissFlow()).andReturn(TableId.ZERO).times(2);
+			expect(sw.getMaxTableForTableMissFlow()).andReturn(TableId.ZERO).times(1);
+			expect(sw.getTableFeatures(TableId.ZERO)).andReturn(TableFeatures.of(createTableFeaturesStatsReply().getEntries().get(0))).anyTimes();
 		}
 		replay(sw);
 
@@ -698,7 +700,8 @@ public abstract class OFSwitchHandlerTestBase {
 		sw.setStatus(SwitchStatus.MASTER);
 		expectLastCall().once();
 		if (factory.getVersion().compareTo(OFVersion.OF_13) >= 0) {
-			expect(sw.getMaxTableForTableMissFlow()).andReturn(TableId.ZERO).times(2);
+			expect(sw.getMaxTableForTableMissFlow()).andReturn(TableId.ZERO).times(1);
+			expect(sw.getTableFeatures(TableId.ZERO)).andReturn(TableFeatures.of(createTableFeaturesStatsReply().getEntries().get(0))).anyTimes();
 		}
 		replay(sw);
 
@@ -759,7 +762,8 @@ public abstract class OFSwitchHandlerTestBase {
 		sw.setStatus(SwitchStatus.MASTER);
 		expectLastCall().once();
 		if (factory.getVersion().compareTo(OFVersion.OF_13) >= 0) {
-			expect(sw.getMaxTableForTableMissFlow()).andReturn(TableId.ZERO).times(2);
+			expect(sw.getMaxTableForTableMissFlow()).andReturn(TableId.ZERO).times(1);
+			expect(sw.getTableFeatures(TableId.ZERO)).andReturn(TableFeatures.of(createTableFeaturesStatsReply().getEntries().get(0))).anyTimes();
 		}
 		replay(sw);
 
