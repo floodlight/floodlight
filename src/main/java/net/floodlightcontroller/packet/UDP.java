@@ -249,7 +249,8 @@ public class UDP extends BasePacket {
             } catch (Exception e) {
                 throw new RuntimeException("Failure instantiating class", e);
             }
-        } else if (Arrays.equals(maybe_spud_bytes, SPUD.MAGIC_CONSTANT)) {
+        } else if (Arrays.equals(maybe_spud_bytes, SPUD.MAGIC_CONSTANT)
+                && bb.remaining() >= SPUD.HEADER_LENGTH) {
             this.payload = new SPUD();
         } else {
             this.payload = new Data();
