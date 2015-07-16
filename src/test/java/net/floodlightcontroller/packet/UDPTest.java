@@ -1,7 +1,7 @@
 /**
-*    Copyright 2011, Big Switch Networks, Inc. 
+*    Copyright 2011, Big Switch Networks, Inc.
 *    Originally created by David Erickson, Stanford University
-* 
+*
 *    Licensed under the Apache License, Version 2.0 (the "License"); you may
 *    not use this file except in compliance with the License. You may obtain
 *    a copy of the License at
@@ -16,10 +16,11 @@
 **/
 
 /**
- * 
+ *
  */
 package net.floodlightcontroller.packet;
 
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.util.Arrays;
@@ -51,5 +52,41 @@ public class UDPTest {
                        );
         byte[] actual = packet.serialize();
         assertTrue(Arrays.equals(expected, actual));
+    }
+
+    @Test
+    public void testDeserializeNotSPUD() throws PacketParsingException {
+        byte[] data = new byte[] {
+                0x04, (byte) 0x89, 0x00, 0x35, 0x00, 0x2C,
+                (byte) 0xAB, (byte) 0xB4, 0x00, 0x01, 0x01,
+                0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00,
+                0x00, 0x00, 0x04, 0x70, 0x6F, 0x70, 0x64,
+                0x02, 0x69, 0x78, 0x06, 0x6E, 0x65, 0x74,
+                0x63, 0x6F, 0x6D, 0x03, 0x63, 0x6F, 0x6D,
+                0x00, 0x00, 0x01, 0x00, 0x01
+        };
+        UDP packet = new UDP();
+        packet.deserialize(data, 0, data.length);
+        IPacket thePayload = packet.getPayload();
+        assertFalse(thePayload instanceof SPUD);
+        byte[] packetSerialized = packet.serialize();
+        assertTrue(Arrays.equals(data, packetSerialized));
+    }
+
+    @Test
+    public void testDeserializeSPUD() throws PacketParsingException {
+        byte[] data = new byte[] {
+                (byte) 0xd5, (byte) 0xdf, (byte) 0x98, 0x27,
+                0x00, 0x15, (byte) 0xfe, 0x28, (byte) 0xd8,
+                0x00, 0x00, (byte) 0xd8, (byte) 0xc2, 0x6f,
+                0x7a, 0x7d, 0x56, (byte) 0xa2, (byte) 0xe5,
+                (byte) 0xa8, 0x40
+        };
+        UDP packet = new UDP();
+        packet.deserialize(data, 0, data.length);
+        IPacket thePayload = packet.getPayload();
+        assertTrue(thePayload instanceof SPUD);
+        byte[] packetSerialized = packet.serialize();
+        assertTrue(Arrays.equals(data, packetSerialized));
     }
 }
