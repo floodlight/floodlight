@@ -24,19 +24,33 @@ import java.util.List;
 
 import net.floodlightcontroller.core.module.IFloodlightService;
 
+/**
+ * Service interface exported by ACL module
+ */
 public interface IACLService extends IFloodlightService {
 	
+    /**
+     * Gets a list containing all ACL rules.
+     * @return a list containing all ACL rules
+     */
     public List<ACLRule> getRules();
     
     /**
-     * add a new ACL rule
-     * @param rule
-     * @return whether the rule is added successfully
+     * Add a new ACL rule.
+     * @param rule ACL rule
+     * @return true if successfully added, otherwise false
      */
     public boolean addRule(ACLRule rule);
 
+    /**
+     * Removes an existing ACL rule by rule id.
+     * @param ruleId ACL rule identifier
+     */
     public void removeRule(int ruleid);
     
+    /**
+     * Clears ACL and resets all.
+     */
     public void removeAllRules();
 
 }
