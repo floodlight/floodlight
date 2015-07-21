@@ -118,7 +118,7 @@ public class OFSwitchManager implements IOFSwitchManager, INewOFConnectionListen
 	private ConcurrentHashMap<DatapathId, OFSwitchHandshakeHandler> switchHandlers;
 	private ConcurrentHashMap<DatapathId, IOFSwitchBackend> switches;
 	private ConcurrentHashMap<DatapathId, IOFSwitch> syncedSwitches;
-
+	private Set<DatapathId> pastSwitches;
 
 	private ISwitchDriverRegistry driverRegistry;
 
@@ -676,6 +676,8 @@ public class OFSwitchManager implements IOFSwitchManager, INewOFConnectionListen
 		driverRegistry = new NaiveSwitchDriverRegistry(this);
 
 		this.switchListeners = new CopyOnWriteArraySet<IOFSwitchListener>();
+		
+		this.pastSwitches = new HashSet<DatapathId>();
 
 		/* TODO @Ryan
 		try {
@@ -1010,7 +1012,7 @@ public class OFSwitchManager implements IOFSwitchManager, INewOFConnectionListen
 			
 			ChannelPipelineFactory pfact = useSsl ? new OpenflowPipelineFactory(this, floodlightProvider.getTimer(), this, debugCounterService, ofBitmaps, defaultFactory, keyStore, keyStorePassword) :
 				new OpenflowPipelineFactory(this, floodlightProvider.getTimer(), this, debugCounterService, ofBitmaps, defaultFactory);
-
+			
 			bootstrap.setPipelineFactory(pfact);
 			InetSocketAddress sa = new InetSocketAddress(floodlightProvider.getOFPort());
 			final ChannelGroup cg = new DefaultChannelGroup();
