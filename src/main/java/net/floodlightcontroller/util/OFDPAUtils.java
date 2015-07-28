@@ -6,15 +6,20 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 
+import javax.annotation.Nonnull;
+
 import net.floodlightcontroller.core.IOFSwitch;
 
+import org.projectfloodlight.openflow.protocol.OFBucket;
 import org.projectfloodlight.openflow.protocol.OFFlowAdd;
+import org.projectfloodlight.openflow.protocol.OFGroupAdd;
+import org.projectfloodlight.openflow.protocol.OFGroupType;
+import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstruction;
 import org.projectfloodlight.openflow.protocol.match.Match;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.protocol.match.MatchFields;
-import org.projectfloodlight.openflow.types.EthType;
 import org.projectfloodlight.openflow.types.OFBufferId;
 import org.projectfloodlight.openflow.types.OFGroup;
 import org.projectfloodlight.openflow.types.OFPort;
@@ -58,10 +63,18 @@ import org.slf4j.LoggerFactory;
 public class OFDPAUtils {
 
 	private OFDPAUtils() {}
-	
+
 	private static final Logger log = LoggerFactory.getLogger(OFDPAUtils.class);
 
-	private static class OFDPAGroupType { // TODO change these enums to static classes so that we don't rely on the ordering...
+	/* These cannot be changed, since they're final (public == okay for the ones we want to inform about) */
+	public static final int PRIORITY = 1000;
+	public static final int DLF_PRIORITY = 0;
+	public static final int HARD_TIMEOUT = 0;
+	public static final int IDLE_TIMEOUT = 0;
+	private static final long APP_COOKIE = 1000;
+	public static final U64 COOKIE = U64.of(APP_COOKIE);
+
+	private static class OFDPAGroupType {
 		static final int L2_INTERFACE = 0;			/* 0 */
 		static final int L2_REWRITE = 1; 			/* 1 */
 		static final int L3_UNICAST = 2;				/* 2 */
@@ -90,7 +103,7 @@ public class OFDPAUtils {
 		static final int MPLS_L3_VPN_LABEL = 2;
 		static final int MPLS_TUNNEL_LABEL_1 = 3;
 		static final int MPLS_TUNNEL_LABEL_2 = 4;
-	    static final int MPLS_SWAP_LABEL = 5;
+		static final int MPLS_SWAP_LABEL = 5;
 		static final int MPLS_FAST_FAILOVER = 6;
 		static final int MPLS_ECMP = 8;
 		static final int MPLS_L2_TAG = 10;
@@ -124,20 +137,19 @@ public class OFDPAUtils {
 							MatchFields.ARP_SPA,
 							MatchFields.ICMPV4_CODE,
 							MatchFields.ICMPV4_TYPE,
-							
+
 							MatchFields.IPV6_SRC,
 							MatchFields.IPV6_DST,
 							MatchFields.IPV6_FLABEL,
 							MatchFields.ICMPV6_CODE,
 							MatchFields.ICMPV6_TYPE,
-							
+
 							MatchFields.TCP_SRC,
 							MatchFields.TCP_DST,
 							MatchFields.UDP_SRC,
 							MatchFields.UDP_DST,
 							MatchFields.SCTP_SRC,
 							MatchFields.SCTP_DST
-							// TODO fill in rest of ARP and IPV6 stuff here 
 							)
 					);
 
@@ -171,7 +183,7 @@ public class OFDPAUtils {
 	public static List<MatchFields> getSupportedMatchFields() {
 		return ALLOWED_MATCHES;
 	}
-	
+
 	/**
 	 * Examine all the MatchFields in a Match object and pick out
 	 * the MatchFields that are not supported by OF-DPA.
@@ -182,7 +194,7 @@ public class OFDPAUtils {
 	public static List<MatchFields> checkMatchFields(Match m) {
 		List<MatchFields> unsupported = null;
 		Iterator<MatchField<?>> mfi = m.getMatchFields().iterator();
-		
+
 		while (mfi.hasNext()) {
 			MatchField<?> mf = mfi.next();
 			if (!getSupportedMatchFields().contains(mf.id)) {
@@ -192,11 +204,233 @@ public class OFDPAUtils {
 				unsupported.add(mf.id);
 			}
 		}
-		
+
 		return unsupported;
 	}
 
 	/**
+	 * Add the OFDPA groups and flows necessary to facilitate future forwarding/learning 
+	 * switch flows. The switch provided must be an OFDPA 2.0 compliant switch.
+	 * Use VLAN tag of null or VlanVid.ZERO for untagged. VLAN tag 1 may not be used; it is 
+	 * reserved as an internal VLAN.
+	 * 
+	 * This function will add the flows that permit all packets in the VLAN specified and
+	 * on the ports specified to reach the policy ACL table. The policy ACL table (60) of
+	 * the OF-DPA switch will contain a DLF, zero-priority flow to forward all packets to
+	 * the controller for processing. A packet forwarded to the controller from the policy
+	 * ACL table can be either handled manually or have a flow inserted for it via 
+	 * {@link OFDPAUtils#addBridgingFlow(IOFSwitch, U64, int, int, int, Match, VlanVid, OFPort) this function}.
+	 * 
+	 * @param sw
+	 * @param vlan
+	 * @param ports
+	 * @return
+	 */
+	public static boolean addLearningSwitchPrereqs(@Nonnull IOFSwitch sw, VlanVid vlan, @Nonnull List<OFPortModeTuple> ports) {
+		/*
+		 * Both of these must complete. If the first fails, the second will not be executed. (AND short-circuit)
+		 */
+		return addLearningSwitchPrereqGroups(sw, vlan, ports) && addLearningSwitchPrereqFlows(sw, vlan, ports);
+	}
+
+	/**
+	 * Note: Prefer {@link OFDPAUtils#addLearningSwitchPrereqs(IOFSwitch, VlanVid, List) this function}
+	 * over this function unless you know what you are doing.
+	 * 
+	 * Add the OFDPA groups necessary to facilitate future forwarding/learning 
+	 * switch flows. The switch provided must be an OFDPA 2.0 compliant switch.
+	 * If a VLAN tag is provided, it will be expected that all ports in the 
+	 * accompanying list of ports are tagged and not access. Use VLAN tag of 
+	 * null or VlanVid.ZERO for untagged. VLAN tag 1 may not be used; it is 
+	 * reserved as an internal VLAN.
+	 * 
+	 * @param sw
+	 * @param vlan
+	 * @param ports
+	 * @return
+	 */
+	public static boolean addLearningSwitchPrereqGroups(@Nonnull IOFSwitch sw, VlanVid vlan, @Nonnull List<OFPortModeTuple> ports) {
+		if (sw == null) {
+			throw new NullPointerException("Switch cannot be null.");
+		}
+		if (vlan == null) {
+			vlan = VlanVid.ZERO; /* set untagged */
+		} else if (vlan.equals(VlanVid.ofVlan(1))) {
+			throw new IllegalArgumentException("VLAN cannot be 1. VLAN 1 is an reserved VLAN for internal use inside the OFDPA switch.");
+		}
+		if (ports == null) {
+			throw new NullPointerException("List of ports cannot be null. Must specify at least 2 valid switch ports.");
+		} else if (ports.size() < 2) {
+			throw new IllegalArgumentException("List of ports must contain at least 2 valid switch ports.");
+		} else {
+			/* verify ports are valid switch ports */
+			for (OFPortModeTuple p : ports) {
+				if (sw.getOFFactory().getVersion().equals(OFVersion.OF_10) && (sw.getPort(p.getPort()) == null || p.getPort().getShortPortNumber() > 0xFF00)) {
+					throw new IllegalArgumentException("Port " + p.getPort().getPortNumber() + " is not a valid port on switch " + sw.getId().toString());
+				} else if (!sw.getOFFactory().getVersion().equals(OFVersion.OF_10) && (sw.getPort(p.getPort()) == null || p.getPort().getPortNumber() > 0xffFFff00)) {
+					throw new IllegalArgumentException("Port " + p.getPort().getPortNumber() + " is not a valid port on switch " + sw.getId().toString());
+				}
+			}
+		}
+
+		/*
+		 * For each output port, add an L2 interface group.
+		 */		
+		for (OFPortModeTuple p : ports) {
+			List<OFAction> actions = new ArrayList<OFAction>();
+			if (vlan.equals(VlanVid.ZERO) || p.getMode() == OFPortMode.ACCESS) { /* if it's untagged (internal=1) or access, pop the tag */
+				actions.add(sw.getOFFactory().actions().popVlan());
+			}
+			actions.add(sw.getOFFactory().actions().output(p.getPort(), 0xffFFffFF));
+
+			OFGroupAdd ga = sw.getOFFactory().buildGroupAdd()
+					.setGroup(GroupIds.createL2Interface(p.getPort(), (vlan.equals(VlanVid.ZERO) ? VlanVid.ofVlan(1) : vlan)))
+					.setGroupType(OFGroupType.INDIRECT)
+					.setBuckets(Collections.singletonList(
+							sw.getOFFactory().buildBucket()
+							.setActions(actions)
+							.build()))
+							.build();
+			sw.write(ga);
+		}
+
+		/*
+		 * For the VLAN provided (or internal VLAN 1 if untagged),
+		 * add an L2 flood group.
+		 */
+		List<OFBucket> bucketList = new ArrayList<OFBucket>(ports.size());
+		for (OFPortModeTuple p : ports) {
+			List<OFAction> actions = new ArrayList<OFAction>();
+			if (vlan.equals(VlanVid.ZERO) || p.getMode() == OFPortMode.ACCESS) { /* ditto */
+				actions.add(sw.getOFFactory().actions().popVlan());
+			}
+			actions.add(sw.getOFFactory().actions().output(p.getPort(), 0xffFFffFF));
+			bucketList.add(sw.getOFFactory().buildBucket().setActions(actions).build());
+		}
+		OFGroupAdd ga = sw.getOFFactory().buildGroupAdd() /* use the VLAN ID as the group ID */
+				.setGroup(GroupIds.createL2Flood(U16.of(vlan.getVlan()), vlan.equals(VlanVid.ZERO) ? VlanVid.ofVlan(1) : vlan))
+				.setGroupType(OFGroupType.INDIRECT)
+				.setBuckets(bucketList)
+				.build();
+		sw.write(ga);
+
+		return true;
+	}
+
+	/**
+	 * Note: Prefer {@link OFDPAUtils#addLearningSwitchPrereqs(IOFSwitch, VlanVid, List) this function}
+	 * over this function unless you know what you are doing.
+	 * 
+	 * Add the OFDPA flows necessary to facilitate future forwarding/learning 
+	 * switch flows. The switch provided must be an OFDPA 2.0 compliant switch.
+	 * If a VLAN tag is provided, it will be expected that all ports in the 
+	 * accompanying list of ports are tagged and not access. Use VLAN tag of 
+	 * null or VlanVid.ZERO for untagged. VLAN tag 1 may not be used; it is 
+	 * reserved as an internal VLAN.
+	 * 
+	 * @param sw
+	 * @param vlan
+	 * @param ports
+	 * @return
+	 */
+	public static boolean addLearningSwitchPrereqFlows(@Nonnull IOFSwitch sw, VlanVid vlan, @Nonnull List<OFPortModeTuple> ports) {
+		if (sw == null) {
+			throw new NullPointerException("Switch cannot be null.");
+		}
+		if (vlan == null) {
+			vlan = VlanVid.ZERO; /* set untagged */
+		} else if (vlan.equals(VlanVid.ofVlan(1))) {
+			throw new IllegalArgumentException("VLAN cannot be 1. VLAN 1 is an reserved VLAN for internal use inside the OFDPA switch.");
+		}
+		if (ports == null) {
+			throw new NullPointerException("List of ports cannot be null. Must specify at least 2 valid switch ports.");
+		} else if (ports.size() < 2) {
+			throw new IllegalArgumentException("List of ports must contain at least 2 valid switch ports.");
+		} else {
+			/* verify ports are valid switch ports */
+			for (OFPortModeTuple p : ports) {
+				if (sw.getOFFactory().getVersion().equals(OFVersion.OF_10) && (sw.getPort(p.getPort()) == null || p.getPort().getShortPortNumber() > 0xFF00)) {
+					throw new IllegalArgumentException("Port " + p.getPort().getPortNumber() + " is not a valid port on switch " + sw.getId().toString());
+				} else if (!sw.getOFFactory().getVersion().equals(OFVersion.OF_10) && (sw.getPort(p.getPort()) == null || p.getPort().getPortNumber() > 0xffFFff00)) {
+					throw new IllegalArgumentException("Port " + p.getPort().getPortNumber() + " is not a valid port on switch " + sw.getId().toString());
+				}
+			}
+		}
+
+		/*
+		 * VLAN flow table (10) will drop by default, so we need to
+		 * add a flow that will always direct the packet to the next
+		 * flow table, the termination MAC table (20). If a VLAN tag
+		 * is not present, then we need to append a tag. The tag to
+		 * append will either be the tag specified in outVlan or the
+		 * default tag of 1. Only VLANs are handled in this table.
+		 */
+		ArrayList<OFInstruction> instructions = new ArrayList<OFInstruction>();
+		ArrayList<OFAction> actions = new ArrayList<OFAction>();
+		Match.Builder mb = sw.getOFFactory().buildMatch();
+		OFFlowAdd.Builder fab = sw.getOFFactory().buildFlowAdd();
+		
+		/* These are common to all flows for VLAN flow table. */
+		fab.setBufferId(OFBufferId.NO_BUFFER)
+			.setCookie(COOKIE)
+			.setHardTimeout(HARD_TIMEOUT)
+			.setIdleTimeout(IDLE_TIMEOUT)
+			.setPriority(PRIORITY)
+			.setTableId(Tables.VLAN);
+
+		for (OFPortModeTuple p : ports) {
+			/* If VLAN tag not present add a tag (internal=1 or defined) */
+			if (vlan.equals(VlanVid.ZERO) || p.getMode() == OFPortMode.ACCESS) { /* push tag if access or untagged entirely */
+				mb.setExact(MatchField.VLAN_VID, OFVlanVidMatch.UNTAGGED);
+				// happens automatically actions.add(sw.getOFFactory().actions().buildPushVlan().setEthertype(EthType.VLAN_FRAME).build());
+				actions.add(sw.getOFFactory().actions().setField(sw.getOFFactory().oxms().vlanVid(OFVlanVidMatch.ofVlanVid((vlan.equals(VlanVid.ZERO) ? VlanVid.ofVlan(1) : vlan)))));
+				instructions.add(sw.getOFFactory().instructions().applyActions(actions));
+			} else {
+				mb.setExact(MatchField.VLAN_VID, OFVlanVidMatch.ofVlanVid((vlan.equals(VlanVid.ZERO) ? VlanVid.ofVlan(1) : vlan)));
+			}
+
+			/* No matter what, we need to match on the ingress port */
+			mb.setExact(MatchField.IN_PORT, p.getPort());
+
+			/* No matter what, output to the next table */
+			instructions.add(sw.getOFFactory().instructions().gotoTable(Tables.TERMINATION_MAC));
+
+			/* Set the new stuff. */
+			fab.setInstructions(instructions)
+				.setMatch(mb.build())
+				.build();
+			sw.write(fab.build());
+			log.debug("Writing prereq flow to VLAN flow table {}", fab.build().toString());
+
+			/* Don't forget to empty out our containers for the next iteration (or below). */
+			instructions.clear();
+			actions.clear();
+			mb = sw.getOFFactory().buildMatch();
+		}
+
+		/*
+		 * We will insert a DLF flow to send to controller in the Policy ACL table (60).
+		 * TODO Maybe this isn't the best choice, since we assume bypass of bridging and unicast/mulicast routing tables.
+		 */
+		actions.add(sw.getOFFactory().actions().output(OFPort.CONTROLLER, 0xffFFffFF));
+		instructions.add(sw.getOFFactory().instructions().applyActions(actions));
+		fab = fab.setMatch(sw.getOFFactory().buildMatch().build()) /* clear match */
+				.setInstructions(instructions)
+				.setPriority(DLF_PRIORITY) /* different zero priority and table ID here */
+				.setTableId(Tables.POLICY_ACL);
+		sw.write(fab.build());
+		log.debug("Writing DLF flow to policy ACL table {}", fab.build().toString());
+
+		return true;
+	}
+
+	/**
+	 * Note: Must have individually added {@link OFDPAUtils#addLearningSwitchPrereqGroups(IOFSwitch, VlanVid, List) groups} 
+	 * and then {@link OFDPAUtils#addLearningSwitchPrereqFlows(IOFSwitch, VlanVid, List) flows},
+	 * or must have done {@link OFDPAUtils#addLearningSwitchPrereqs(IOFSwitch, VlanVid, List) both} prior to calling 
+	 * this function. It is assumed you have done the aforementioned with the same VLAN and ports, otherwise you will likely
+	 * get a very grumpy OF-DPA switch.
+	 * 
 	 * Based on an intent described by a Match and an output OFPort,
 	 * add a flow to an OF-DPA switch, conforming to the pipeline it
 	 * exposes. The provided Match must contain at least the destination
@@ -246,7 +480,7 @@ public class OFDPAUtils {
 				return false;
 			}
 		}
-		outVlan = (outVlan == null ? VlanVid.ofVlan(0) : outVlan);
+		outVlan = (outVlan == null ? VlanVid.ZERO : outVlan);
 		outPort = (outPort == null ? OFPort.ZERO : outPort);
 
 		/*
@@ -255,82 +489,37 @@ public class OFDPAUtils {
 		 */
 
 		/*
-		 * VLAN flow table (10) will drop by default, so we need to
-		 * add a flow that will always direct the packet to the next
-		 * flow table, the termination MAC table (20). If a VLAN tag
-		 * is not present, then we need to append a tag. The tag to
-		 * append will either be the tag specified in outVlan or the
-		 * default tag of 1. Only VLANs are handled in this table.
+		 * VLAN flow table (10) is handled by prereq flows.
 		 */
-		ArrayList<OFInstruction> instructions = new ArrayList<OFInstruction>();
-		ArrayList<OFAction> actions = new ArrayList<OFAction>();
-		Match.Builder mb = sw.getOFFactory().buildMatch();
-
-		/* If VLAN tag not present, add the internal tag of 1 */
-		if (!match.isExact(MatchField.VLAN_VID)) {
-			mb.setExact(MatchField.VLAN_VID, OFVlanVidMatch.UNTAGGED);
-			actions.add(sw.getOFFactory().actions().buildPushVlan().setEthertype(EthType.VLAN_FRAME).build());
-			actions.add(sw.getOFFactory().actions().setField(sw.getOFFactory().oxms().vlanVid(OFVlanVidMatch.ofVlan(1))));
-			instructions.add(sw.getOFFactory().instructions().applyActions(actions));
-		} else {
-			mb.setExact(MatchField.VLAN_VID, match.get(MatchField.VLAN_VID));
-		}
-
-		/* No matter what, output to the next table */
-		instructions.add(sw.getOFFactory().instructions().gotoTable(Tables.TERMINATION_MAC));
-
-		OFFlowAdd fa = sw.getOFFactory().buildFlowAdd()
-				.setBufferId(OFBufferId.NO_BUFFER)
-				.setCookie(cookie)
-				.setHardTimeout(hardTimeout)
-				.setIdleTimeout(idleTimeout)
-				.setPriority(priority)
-				.setInstructions(instructions)
-				.setTableId(Tables.VLAN)
-				.setMatch(mb.build())
-				.build();
-		sw.write(fa);
 
 		/*
 		 * Termination MAC table (20) will automatically send to the
 		 * bridging flow table (50), so also insert nothing here.
+		 * 
+		 * Can send to controller.
 		 */
 
 		/*
 		 * Unicast routing (30) and multicast routing (40) flow tables
 		 * are special use-case tables the application should program 
 		 * directly. As such, we won't consider them here.
+		 * 
+		 * Can send to controller.
 		 */
 
 		/*
 		 * Bridging table (50) should assign a write-action goto-group 
 		 * depending on the desired output action (single-port or 
-		 * flood). This can also be done in the next table, policy ACL,
+		 * flood). But, the default on miss is to go to the policy ACL
+		 * table (60), which we will do. Policy ACL can also assign the group.
 		 * which we will do. Bridging must match on the VLAN VID and the
 		 * dest MAC address of the packet. It must have a priority greater
 		 * than all less-specific flows in the table (i.e. wildcarded
 		 * flows). We will reserve priority 0 for a DLF (destination
 		 * lookup failure) flow, which would have all fields wildcarded.
-		 * The default on miss is to send to the policy ACL table (60),
-		 * but this will not occur if our flow is matched, so we need to
-		 * do this specifically in each flow we insert.
+		 * 
+		 * Can send to controller.
 		 */
-
-		instructions.clear();
-		actions.clear();
-		
-		/* No matter what, output to the next table */
-		instructions.add(sw.getOFFactory().instructions().gotoTable(Tables.POLICY_ACL));
-
-		fa = fa.createBuilder()
-				.setTableId(Tables.BRIDGING)
-				.setMatch(sw.getOFFactory().buildMatch()
-						.setExact(MatchField.VLAN_VID, fa.getMatch().get(MatchField.VLAN_VID)) /* might have been set to 1, so grab it here */
-						.setExact(MatchField.ETH_DST, match.get(MatchField.ETH_DST))
-						.build())
-						.setInstructions(instructions)
-						.build();
-		sw.write(fa);
 
 		/*
 		 * Policy ACL table (60) allows for more detailed matches. This
@@ -341,19 +530,22 @@ public class OFDPAUtils {
 		 * drop a packet for not matching, then no output group will be
 		 * assigned to the packet, thus dropping it.
 		 * 
-		 * A DLF (desintation lookup failure) flow can also be inserted
+		 * A DLF (destination lookup failure) flow can also be inserted
 		 * here to forward packets to the controller.
+		 * 
+		 * Can send to controller.
 		 */
-		
+
+		ArrayList<OFInstruction> instructions = new ArrayList<OFInstruction>();
+		ArrayList<OFAction> actions = new ArrayList<OFAction>();
+
 		/* Set the group to which we want to output. This might be a L2 flood or interface. */
-		instructions.clear();
-		actions.clear();
 		if (outPort.equals(OFPort.ZERO)) {
 			/* Don't add a group at all --> DROP */
 		} else if (outPort.equals(OFPort.FLOOD) || outPort.equals(OFPort.ALL)) { // TODO how to distinguish in OF-DPA?
 			actions.add(
 					sw.getOFFactory().actions().group( // TODO Assume there is only one flood group per VLAN
-							GroupIds.createL2Flood(U16.ZERO, fa.getMatch().get(MatchField.VLAN_VID).getVlanVid())
+							GroupIds.createL2Flood(U16.ZERO, (outVlan.equals(VlanVid.ZERO) ? VlanVid.ofVlan(1) : outVlan))
 							)
 					);
 			instructions.add(sw.getOFFactory().instructions().writeActions(actions));
@@ -363,14 +555,19 @@ public class OFDPAUtils {
 		} else { /* assume port is a number valid on the switch */
 			actions.add(
 					sw.getOFFactory().actions().group(
-							GroupIds.createL2Interface(outPort, fa.getMatch().get(MatchField.VLAN_VID).getVlanVid())
+							GroupIds.createL2Interface(outPort, (outVlan.equals(VlanVid.ZERO) ? VlanVid.ofVlan(1) : outVlan))
 							)
 					);
 			instructions.add(sw.getOFFactory().instructions().writeActions(actions));
 		}
-		
-		/* We're allowed to match on anything in the Match at this point. */
-		fa = fa.createBuilder()
+
+		/* We're allowed to match on anything in the Match (supplied as an argument to this function) at this point. */
+		OFFlowAdd fa = sw.getOFFactory().buildFlowAdd()
+				.setBufferId(OFBufferId.NO_BUFFER)
+				.setCookie(cookie)
+				.setHardTimeout(hardTimeout)
+				.setIdleTimeout(idleTimeout)
+				.setPriority(priority)
 				.setTableId(Tables.POLICY_ACL)
 				.setMatch(match)
 				.setInstructions(instructions)
@@ -508,7 +705,7 @@ public class OFDPAUtils {
 		 */
 		public static OFGroup createMPLSL3VPNLabel(U32 index) { //9
 			return OFGroup.of(0 | (index.getRaw() & 0x00ffFFff) 
-					| (MPLSSubType.MPLS_INTERFACE << 24)
+					| (MPLSSubType.MPLS_L3_VPN_LABEL << 24)
 					| (OFDPAGroupType.MPLS_LABEL << 28));
 		}
 		/**
