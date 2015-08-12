@@ -865,14 +865,21 @@ class OFChannelHandler extends IdleStateAwareChannelHandler {
 	 */
 	private void sendHelloMessage() throws IOException {
 		// Send initial hello message
-		List<OFHelloElem> he = new ArrayList<OFHelloElem>();
-		he.add(factory.buildHelloElemVersionbitmap()
-				.setBitmaps(ofBitmaps)
-				.build());
-		OFHello.Builder builder = factory.buildHello()
-				.setXid(handshakeTransactionIds--)
-				.setElements(he);
-		OFHello m = builder.build();
+
+		OFHello.Builder builder = factory.buildHello();
+
+		/* Our highest-configured OFVersion does support version bitmaps, so include it */
+		if (factory.getVersion().compareTo(OFVersion.OF_13) >= 0) {
+			List<OFHelloElem> he = new ArrayList<OFHelloElem>();
+			he.add(factory.buildHelloElemVersionbitmap()
+					.setBitmaps(ofBitmaps)
+					.build());
+			builder.setElements(he);
+		}
+
+		OFHello m = builder.setXid(handshakeTransactionIds--)
+				.build();
+		
 		channel.write(Collections.singletonList(m));
 		log.debug("Send hello: {}", m);
 	}

@@ -411,6 +411,4 @@ public class OFConnection implements IOFConnection, IOFConnectionBackend{
 		}
 
     }
-
-
 }
