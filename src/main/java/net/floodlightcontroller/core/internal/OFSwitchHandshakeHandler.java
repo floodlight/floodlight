@@ -527,7 +527,7 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 			for (int tableId = 0; tableId < this.sw.getMaxTableForTableMissFlow().getValue(); tableId++) {
 				/* Only add the flow if the table exists and if it supports sending to the controller */
 				TableFeatures tf = this.sw.getTableFeatures(TableId.of(tableId));
-				if (tf != null /* TODO && tf.supportsSendingToController() -- we need something like this, but how? */) {
+				if (/* TODO tf != null*/ true /* TODO && tf.supportsSendingToController() -- we need something like this, but how? */) {
 					OFFlowAdd defaultFlow = this.factory.buildFlowAdd()
 							.setTableId(TableId.of(tableId))
 							.setPriority(0)
