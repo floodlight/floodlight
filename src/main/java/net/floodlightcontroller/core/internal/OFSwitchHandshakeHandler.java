@@ -482,6 +482,14 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 			.setGroupType(OFGroupType.SELECT)
 			.build();
 			this.sw.write(delgroup);
+			
+			/*
+			 * Make sure we allow these operations to complete before proceeding.
+			 */
+			OFBarrierRequest barrier = factory.buildBarrierRequest()
+					.setXid(handshakeTransactionIds--)
+					.build();
+			sw.write(barrier);
 		}
 	}
 
@@ -639,11 +647,11 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 												.setMaxLen(0xffFFffFF)
 												.setPort(p)
 												.build()))
-								.build()))
-						.setGroup(OFDPAUtils.GroupIds.createL2Interface(p, VlanVid.ofVlan(100)))
-						.build();
+												.build()))
+												.setGroup(OFDPAUtils.GroupIds.createL2Interface(p, VlanVid.ofVlan(100)))
+												.build();
 				sw.write(ga);
-				
+
 				/*
 				 * Add the port+bucket for creating the FLOOD group below.
 				 * All L2_INTERFACE groups in a VLAN should be within a
@@ -652,14 +660,14 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 				buckets.add(factory.buildBucket().setActions(
 						Collections.singletonList(
 								(OFAction) factory.actions().buildOutput()
-										.setMaxLen(0xffFFffFF)
-										.setPort(p)
-										.build()
-						)
-				).build());
+								.setMaxLen(0xffFFffFF)
+								.setPort(p)
+								.build()
+								)
+						).build());
 			}
 		}
-		
+
 		OFGroupAdd ga = factory.buildGroupAdd()
 				.setGroupType(OFGroupType.ALL)
 				.setBuckets(buckets)
@@ -667,7 +675,7 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 				.build();
 		sw.write(ga);
 	}
-	
+
 	/**
 	 * Default implementation for message handlers in any state.
 	 *
@@ -1471,23 +1479,42 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 	 * SLAVE.
 	 */
 	public class MasterState extends OFSwitchHandshakeState {
-
+		
 		MasterState() {
 			super(true);
+		}
+		
+		private long sendBarrier() {
+			long xid = handshakeTransactionIds--;
+			OFBarrierRequest barrier = factory.buildBarrierRequest()
+					.setXid(xid)
+					.build();
+			sw.write(barrier); /* don't use ListenableFuture here; we receive via barrier reply OR error (barrier unsupported) */
+			return xid;
 		}
 
 		@Override
 		void enterState() {
-			setSwitchStatus(SwitchStatus.MASTER);
 			if (OFSwitchManager.clearTablesOnEachTransitionToMaster) {
-				log.info("Clearing flow tables of {} on recent transition to MASTER.", sw.getId().toString());
+				log.info("Clearing flow tables of {} on upcoming transition to MASTER.", sw.getId().toString());
 				clearAllTables();
 			} else if (OFSwitchManager.clearTablesOnInitialConnectAsMaster && initialRole == null) { /* don't do it if we were slave first */
 				initialRole = OFControllerRole.ROLE_MASTER;
-				log.info("Clearing flow tables of {} on initial role as MASTER.", sw.getId().toString());
+				log.info("Clearing flow tables of {} on upcoming initial role as MASTER.", sw.getId().toString());
 				clearAllTables();
 			}
+			
+			sendBarrier(); /* Need to make sure the tables are clear before adding default flows */
 			addDefaultFlows();
+
+			/*
+			 * We also need a barrier between adding flows and notifying modules of the
+			 * transition to master. Some modules might modify the flow tables and expect 
+			 * the clear/default flow operations above to have completed.
+			 */
+			sendBarrier();
+			
+			setSwitchStatus(SwitchStatus.MASTER);
 		}
 
 		@LogMessageDoc(level="WARN",
