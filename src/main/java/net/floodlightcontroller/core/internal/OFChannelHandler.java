@@ -46,7 +46,9 @@ import org.projectfloodlight.openflow.protocol.OFHello;
 import org.projectfloodlight.openflow.protocol.OFHelloElem;
 import org.projectfloodlight.openflow.protocol.OFHelloElemVersionbitmap;
 import org.projectfloodlight.openflow.protocol.OFMessage;
+import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.OFPortStatus;
+import org.projectfloodlight.openflow.protocol.OFType;
 import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.protocol.ver13.OFHelloElemTypeSerializerVer13;
 import org.projectfloodlight.openflow.protocol.ver14.OFHelloElemTypeSerializerVer14;
@@ -122,7 +124,7 @@ class OFChannelHandler extends IdleStateAwareChannelHandler {
 			// we only expect features reply in the WAIT_FEATURES_REPLY state
 			illegalMessageReceived(m);
 		}
-		
+
 		void processOFPortStatus(OFPortStatus m) {
 			unhandledMessageReceived(m);
 		}
@@ -419,7 +421,7 @@ class OFChannelHandler extends IdleStateAwareChannelHandler {
 				super.processOFHello(m); /* Versions don't match as they should; abort */
 			}
 		}
-		
+
 		@Override
 		void processOFPortStatus(OFPortStatus m) {
 			log.warn("Ignoring PORT_STATUS message from {} during OpenFlow channel establishment. Ports will be explicitly queried in a later state.", channel.getRemoteAddress());
@@ -428,6 +430,15 @@ class OFChannelHandler extends IdleStateAwareChannelHandler {
 		@Override
 		void enterState() throws IOException {
 			sendFeaturesRequest();
+		}
+
+		@Override
+		void processOFMessage(OFMessage m) throws IOException {
+			if (m.getType().equals(OFType.PACKET_IN)) {
+				log.warn("Ignoring PACKET_IN message from {} during OpenFlow channel establishment.", channel.getRemoteAddress());
+			} else {
+				super.processOFMessage(m);
+			}
 		}
 	};
 
@@ -854,14 +865,21 @@ class OFChannelHandler extends IdleStateAwareChannelHandler {
 	 */
 	private void sendHelloMessage() throws IOException {
 		// Send initial hello message
-		List<OFHelloElem> he = new ArrayList<OFHelloElem>();
-		he.add(factory.buildHelloElemVersionbitmap()
-						.setBitmaps(ofBitmaps)
-						.build());
-		OFHello.Builder builder = factory.buildHello()
-				.setXid(handshakeTransactionIds--)
-				.setElements(he);
-		OFHello m = builder.build();
+
+		OFHello.Builder builder = factory.buildHello();
+
+		/* Our highest-configured OFVersion does support version bitmaps, so include it */
+		if (factory.getVersion().compareTo(OFVersion.OF_13) >= 0) {
+			List<OFHelloElem> he = new ArrayList<OFHelloElem>();
+			he.add(factory.buildHelloElemVersionbitmap()
+					.setBitmaps(ofBitmaps)
+					.build());
+			builder.setElements(he);
+		}
+
+		OFHello m = builder.setXid(handshakeTransactionIds--)
+				.build();
+		
 		channel.write(Collections.singletonList(m));
 		log.debug("Send hello: {}", m);
 	}
