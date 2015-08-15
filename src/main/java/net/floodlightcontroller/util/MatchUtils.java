@@ -155,6 +155,53 @@ public class MatchUtils {
 		}
 		return mb.build();
 	}
+	
+	
+	/**
+	 * Retains all fields in the Match parent. Converts the parent to an
+	 * equivalent Match of OFVersion version. No polite check is done to verify 
+	 * if MatchFields in parent are supported in a Match of OFVersion
+	 * version. An exception will be thrown if there are any unsupported
+	 * fields during the conversion process.
+	 * 
+	 * Note that a Match.Builder is returned. This is a convenience for cases
+	 * where MatchFields might be modified, added, or removed prior to being
+	 * built (e.g. in Forwarding/Routing between switches of different OFVersions).
+	 * Simply build the returned Match.Builder if you would like to treat this
+	 * function as a strict copy-to-version.
+	 * 
+	 * @param parent, the Match to convert
+	 * @param version, the OFVersion to convert parent to
+	 * @return a Match.Builder of the newly-converted Match
+	 */
+	@SuppressWarnings("unchecked")
+	public static Match.Builder convertToVersion(Match parent, OFVersion version) {
+		/* Builder retains a parent MatchField list, but list will not be used to  
+		 * build the new match if the builder's set methods have been invoked; only 
+		 * additions will be built, and all parent MatchFields will be ignored,  
+		 * even if they were not modified by the new builder. Create a builder, and
+		 * walk through m's list of non-wildcarded MatchFields. Set them all in the
+		 * new builder by invoking a set method for each. This will make them persist
+		 * in the Match built from this builder if the user decides to add or subtract
+		 * from the MatchField list.
+		 */
+		Match.Builder mb = OFFactories.getFactory(version).buildMatch(); 
+		Iterator<MatchField<?>> itr = parent.getMatchFields().iterator(); // only get exact or masked fields (not fully wildcarded)
+		while(itr.hasNext()) {
+			@SuppressWarnings("rawtypes")
+			MatchField mf = itr.next();
+			if (parent.isExact(mf)) {
+				mb.setExact(mf, parent.get(mf));
+			} else if (parent.isPartiallyMasked(mf)) {
+				mb.setMasked(mf, parent.getMasked(mf));
+			} else {
+				// it's either exact, masked, or wildcarded
+				// itr only contains exact and masked MatchFields
+				// we should never get here
+			}
+		}
+		return mb;
+	}
 
 	/**
 	 * 
@@ -174,32 +221,8 @@ public class MatchUtils {
 	 * @return Match.Builder; the builder that can be modified, and when built,
 	 * will retain all of m's MatchFields, unless you explicitly overwrite them.
 	 */
-	@SuppressWarnings({ "unchecked", "rawtypes" })
 	public static Match.Builder createRetentiveBuilder(Match m) {
-		/* Builder retains a parent MatchField list, but list will not be used to  
-		 * build the new match if the builder's set methods have been invoked; only 
-		 * additions will be built, and all parent MatchFields will be ignored,  
-		 * even if they were not modified by the new builder. Create a builder, and
-		 * walk through m's list of non-wildcarded MatchFields. Set them all in the
-		 * new builder by invoking a set method for each. This will make them persist
-		 * in the Match built from this builder if the user decides to add or subtract
-		 * from the MatchField list.
-		 */
-		Match.Builder mb = m.createBuilder(); 
-		Iterator<MatchField<?>> itr = m.getMatchFields().iterator(); // only get exact or masked fields (not fully wildcarded)
-		while(itr.hasNext()) {
-			MatchField mf = itr.next();
-			if (m.isExact(mf)) {
-				mb.setExact(mf, m.get(mf));
-			} else if (m.isPartiallyMasked(mf)) {
-				mb.setMasked(mf, m.getMasked(mf));
-			} else {
-				// it's either exact, masked, or wildcarded
-				// itr only contains exact and masked MatchFields
-				// we should never get here
-			}
-		}
-		return mb;
+		return convertToVersion(m, m.getVersion());
 	}
 
 	/**

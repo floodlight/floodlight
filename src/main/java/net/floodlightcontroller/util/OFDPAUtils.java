@@ -229,8 +229,10 @@ public class OFDPAUtils {
 	public static boolean addLearningSwitchPrereqs(@Nonnull IOFSwitch sw, VlanVid vlan, @Nonnull List<OFPortModeTuple> ports) {
 		/*
 		 * Both of these must complete. If the first fails, the second will not be executed. (AND short-circuit)
+		 * 
+		 * Groups must be added last, since they require the VLANs to be added first.
 		 */
-		return addLearningSwitchPrereqGroups(sw, vlan, ports) && addLearningSwitchPrereqFlows(sw, vlan, ports);
+		return addLearningSwitchPrereqFlows(sw, vlan, ports) && addLearningSwitchPrereqGroups(sw, vlan, ports) ;
 	}
 
 	/**
@@ -369,14 +371,14 @@ public class OFDPAUtils {
 		ArrayList<OFAction> actions = new ArrayList<OFAction>();
 		Match.Builder mb = sw.getOFFactory().buildMatch();
 		OFFlowAdd.Builder fab = sw.getOFFactory().buildFlowAdd();
-		
+
 		/* These are common to all flows for VLAN flow table. */
 		fab.setBufferId(OFBufferId.NO_BUFFER)
-			.setCookie(COOKIE)
-			.setHardTimeout(HARD_TIMEOUT)
-			.setIdleTimeout(IDLE_TIMEOUT)
-			.setPriority(PRIORITY)
-			.setTableId(Tables.VLAN);
+		.setCookie(COOKIE)
+		.setHardTimeout(HARD_TIMEOUT)
+		.setIdleTimeout(IDLE_TIMEOUT)
+		.setPriority(PRIORITY)
+		.setTableId(Tables.VLAN);
 
 		for (OFPortModeTuple p : ports) {
 			/* If VLAN tag not present add a tag (internal=1 or defined) */
@@ -392,13 +394,17 @@ public class OFDPAUtils {
 			/* No matter what, we need to match on the ingress port */
 			mb.setExact(MatchField.IN_PORT, p.getPort());
 
+			/* We have to do this for OF-DPA. It's like adding the VLAN to the switch on that port. */
+			instructions.add(sw.getOFFactory().instructions().applyActions(Collections.singletonList((OFAction) 
+					sw.getOFFactory().actions().setField(sw.getOFFactory().oxms().vlanVid(OFVlanVidMatch.ofVlanVid((vlan.equals(VlanVid.ZERO) ? VlanVid.ofVlan(1) : vlan))))
+					)));
 			/* No matter what, output to the next table */
 			instructions.add(sw.getOFFactory().instructions().gotoTable(Tables.TERMINATION_MAC));
 
 			/* Set the new stuff. */
 			fab.setInstructions(instructions)
-				.setMatch(mb.build())
-				.build();
+			.setMatch(mb.build())
+			.build();
 			sw.write(fab.build());
 			log.debug("Writing prereq flow to VLAN flow table {}", fab.build().toString());
 
@@ -410,7 +416,7 @@ public class OFDPAUtils {
 
 		/*
 		 * We will insert a DLF flow to send to controller in the Policy ACL table (60).
-		 * TODO Maybe this isn't the best choice, since we assume bypass of bridging and unicast/mulicast routing tables.
+		 * TODO Maybe this isn't the best choice, since we assume bypass/auto-forwarding of bridging and unicast/mulicast routing tables.
 		 */
 		actions.add(sw.getOFFactory().actions().output(OFPort.CONTROLLER, 0xffFFffFF));
 		instructions.add(sw.getOFFactory().instructions().applyActions(actions));

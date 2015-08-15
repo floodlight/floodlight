@@ -136,7 +136,7 @@ public class SwitchSyncRepresentation {
     public SwitchSyncRepresentation(IOFSwitch sw) {
         this.dpid = sw.getId();
         this.buffers = sw.getBuffers();
-        this.tables = sw.getTables();
+        this.tables = (short) sw.getNumTables();
         this.capabilities = sw.getCapabilities();
         this.actions = sw.getActions();
         this.ports = toSyncedPortList(sw.getPorts());

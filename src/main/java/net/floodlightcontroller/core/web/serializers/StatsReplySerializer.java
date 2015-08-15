@@ -80,7 +80,6 @@ import org.projectfloodlight.openflow.protocol.meterband.OFMeterBandDscpRemark;
 import org.projectfloodlight.openflow.protocol.meterband.OFMeterBandExperimenter;
 import org.projectfloodlight.openflow.protocol.ver13.OFFlowModFlagsSerializerVer13;
 import org.projectfloodlight.openflow.protocol.ver13.OFMeterBandTypeSerializerVer13;
-import org.projectfloodlight.openflow.protocol.ver13.OFOxmClassSerializerVer13;
 // Use Loxigen's serializer
 import org.projectfloodlight.openflow.protocol.ver13.OFPortFeaturesSerializerVer13;
 import org.projectfloodlight.openflow.protocol.ver13.OFStatsReplyFlagsSerializerVer13;
