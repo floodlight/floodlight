@@ -259,8 +259,8 @@ public abstract class ForwardingBase implements IOFMessageListener {
 			
 			OFActionOutput.Builder aob = sw.getOFFactory().actions().buildOutput();
 			List<OFAction> actions = new ArrayList<OFAction>();	
-			Match.Builder mb = MatchUtils.createRetentiveBuilder(match);
-
+ 			Match.Builder mb = MatchUtils.convertToVersion(match, sw.getOFFactory().getVersion());
+ 			
 			// set input and output ports on the switch
 			OFPort outPort = switchPortList.get(indx).getPortId();
 			OFPort inPort = switchPortList.get(indx - 1).getPortId();

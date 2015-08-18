@@ -184,9 +184,9 @@ public class OFSwitchManager implements IOFSwitchManager, INewOFConnectionListen
 			addUpdateToQueue(new SwitchUpdate(dpid, SwitchUpdateType.REMOVED));
 			oldSw.disconnect();
 		}
-
+		
 		/*
-		 * Set other config options for this switch.
+		 * Set some other config options for this switch.
 		 */
 		if (sw.getOFFactory().getVersion().compareTo(OFVersion.OF_13) >= 0) {
 			if (forwardToControllerFlowsUpToTableByDpid.containsKey(sw.getId())) {
@@ -504,6 +504,7 @@ public class OFSwitchManager implements IOFSwitchManager, INewOFConnectionListen
 	public IOFSwitchBackend getOFSwitchInstance(IOFConnectionBackend connection,
 			SwitchDescription description,
 			OFFactory factory, DatapathId datapathId) {
+		
 		return this.driverRegistry.getOFSwitchInstance(connection, description, factory, datapathId);
 	}
 

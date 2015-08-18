@@ -27,6 +27,7 @@ import net.floodlightcontroller.core.annotations.LogMessageDocs;
 import net.floodlightcontroller.core.internal.OFSwitchAppHandshakePlugin.PluginResultType;
 import net.floodlightcontroller.util.OFDPAUtils;
 
+import org.projectfloodlight.openflow.protocol.OFActionType;
 import org.projectfloodlight.openflow.protocol.OFBadRequestCode;
 import org.projectfloodlight.openflow.protocol.OFBarrierReply;
 import org.projectfloodlight.openflow.protocol.OFBarrierRequest;
@@ -71,6 +72,8 @@ import org.projectfloodlight.openflow.protocol.OFTableFeaturesStatsRequest;
 import org.projectfloodlight.openflow.protocol.OFType;
 import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
+import org.projectfloodlight.openflow.protocol.actionid.OFActionId;
+import org.projectfloodlight.openflow.protocol.actionid.OFActionIdOutput;
 import org.projectfloodlight.openflow.protocol.errormsg.OFBadRequestErrorMsg;
 import org.projectfloodlight.openflow.protocol.errormsg.OFFlowModFailedErrorMsg;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstruction;
@@ -482,7 +485,7 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 			.setGroupType(OFGroupType.SELECT)
 			.build();
 			this.sw.write(delgroup);
-			
+
 			/*
 			 * Make sure we allow these operations to complete before proceeding.
 			 */
@@ -523,17 +526,39 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 			ArrayList<OFAction> actions = new ArrayList<OFAction>(1);
 			actions.add(factory.actions().output(OFPort.CONTROLLER, 0xffFFffFF));
 			ArrayList<OFMessage> flows = new ArrayList<OFMessage>();
-			/* Use <, not <=, since we want to allow for zero table miss flows */
-			for (int tableId = 0; tableId < this.sw.getMaxTableForTableMissFlow().getValue(); tableId++) {
-				/* Only add the flow if the table exists and if it supports sending to the controller */
-				TableFeatures tf = this.sw.getTableFeatures(TableId.of(tableId));
-				if (/* TODO tf != null*/ true /* TODO && tf.supportsSendingToController() -- we need something like this, but how? */) {
-					OFFlowAdd defaultFlow = this.factory.buildFlowAdd()
-							.setTableId(TableId.of(tableId))
-							.setPriority(0)
-							.setActions(actions)
-							.build();
-					flows.add(defaultFlow);
+
+			/* If we received a table features reply, iterate over the tables */
+			if (!this.sw.getTables().isEmpty()) {
+				short missCount = 0;
+				for (TableId tid : this.sw.getTables()) {
+					/* Only add the flow if the table exists and if it supports sending to the controller */
+					TableFeatures tf = this.sw.getTableFeatures(tid);
+					if (tf != null && (missCount < this.sw.getMaxTableForTableMissFlow().getValue())) {
+						for (OFActionId aid : tf.getPropApplyActionsMiss().getActionIds()) {
+							if (aid.getType() == OFActionType.OUTPUT) { /* The assumption here is that OUTPUT includes the special port CONTROLLER... */
+								OFFlowAdd defaultFlow = this.factory.buildFlowAdd()
+										.setTableId(tid)
+										.setPriority(0)
+										.setActions(actions)
+										.build();
+								flows.add(defaultFlow);
+								break; /* Stop searching for actions and go to the next table in the list */
+							}
+						}
+					}
+					missCount++;
+				}
+			} else { /* Otherwise, use the number of tables starting at TableId=0 as indicated in the features reply */
+				short missCount = 0;
+				for (short tid = 0; tid < this.sw.getNumTables(); tid++, missCount++) {
+					if (missCount < this.sw.getMaxTableForTableMissFlow().getValue()) { /* Only insert if we want it */
+						OFFlowAdd defaultFlow = this.factory.buildFlowAdd()
+								.setTableId(TableId.of(tid))
+								.setPriority(0)
+								.setActions(actions)
+								.build();
+						flows.add(defaultFlow);
+					}
 				}
 			}
 			this.sw.write(flows);
@@ -1175,6 +1200,7 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 			OFDescStatsReply descStatsReply = (OFDescStatsReply) m;
 			SwitchDescription description = new SwitchDescription(descStatsReply);
 			sw = switchManager.getOFSwitchInstance(mainConnection, description, factory, featuresReply.getDatapathId());
+			
 			// set switch information
 			// set features reply and channel first so we a DPID and
 			// channel info.
@@ -1479,11 +1505,11 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 	 * SLAVE.
 	 */
 	public class MasterState extends OFSwitchHandshakeState {
-		
+
 		MasterState() {
 			super(true);
 		}
-		
+
 		private long sendBarrier() {
 			long xid = handshakeTransactionIds--;
 			OFBarrierRequest barrier = factory.buildBarrierRequest()
@@ -1503,7 +1529,7 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 				log.info("Clearing flow tables of {} on upcoming initial role as MASTER.", sw.getId().toString());
 				clearAllTables();
 			}
-			
+
 			sendBarrier(); /* Need to make sure the tables are clear before adding default flows */
 			addDefaultFlows();
 
@@ -1513,7 +1539,7 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 			 * the clear/default flow operations above to have completed.
 			 */
 			sendBarrier();
-			
+
 			setSwitchStatus(SwitchStatus.MASTER);
 		}
 

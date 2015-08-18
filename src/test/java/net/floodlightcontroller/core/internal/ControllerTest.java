@@ -244,7 +244,7 @@ public class ControllerTest extends FloodlightTestCase {
         expect(sw.getSwitchDescription()).andReturn(description).atLeastOnce();
         expect(sw.getBuffers())
                 .andReturn(featuresReply.getNBuffers()).atLeastOnce();
-        expect(sw.getTables())
+        expect(sw.getNumTables())
                 .andReturn(featuresReply.getNTables()).atLeastOnce();
         expect(sw.getCapabilities())
                 .andReturn(featuresReply.getCapabilities()).atLeastOnce();

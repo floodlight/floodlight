@@ -198,7 +198,7 @@ public class OFSwitchManagerTest{
         expect(sw.getSwitchDescription()).andReturn(description).anyTimes();
         expect(sw.getBuffers())
                 .andReturn(featuresReply.getNBuffers()).anyTimes();
-        expect(sw.getTables())
+        expect(sw.getNumTables())
                 .andReturn(featuresReply.getNTables()).anyTimes();
         expect(sw.getCapabilities())
                 .andReturn(featuresReply.getCapabilities()).anyTimes();

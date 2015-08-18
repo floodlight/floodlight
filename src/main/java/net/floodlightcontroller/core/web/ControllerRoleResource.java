@@ -16,16 +16,13 @@
 
 package net.floodlightcontroller.core.web;
 
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.restlet.data.Status;
 import org.restlet.resource.ServerResource;
 
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.RoleInfo;
-import net.floodlightcontroller.core.HARole;
 import net.floodlightcontroller.core.annotations.LogMessageDoc;
 
 import org.restlet.resource.Get;
@@ -34,7 +31,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.databind.MappingJsonFactory;
 
 public class ControllerRoleResource extends ServerResource {

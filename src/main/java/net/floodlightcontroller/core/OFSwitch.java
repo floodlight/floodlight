@@ -97,7 +97,8 @@ public class OFSwitch implements IOFSwitchBackend {
 	protected Set<OFCapabilities> capabilities;
 	protected long buffers;
 	protected Set<OFActionType> actions;
-	protected short tables;
+	protected Collection<TableId> tables;
+	protected short nTables;
 	protected final DatapathId datapathId;
 
 	private Map<TableId, TableFeatures> tableFeaturesByTableId;
@@ -164,6 +165,7 @@ public class OFSwitch implements IOFSwitchBackend {
 		this.setAttribute(PROP_SUPPORTS_OFPP_TABLE, Boolean.TRUE);
 
 		this.tableFeaturesByTableId = new HashMap<TableId, TableFeatures>();
+		this.tables = new ArrayList<TableId>();
 	}
 
 	private static int ident(int i) {
@@ -829,7 +831,8 @@ public class OFSwitch implements IOFSwitchBackend {
 			/* OF1.3+ Per-table actions are set later in the OFTableFeaturesRequest/Reply */
 			this.actions = featuresReply.getActions();
 		}
-		this.tables = featuresReply.getNTables();
+		
+		this.nTables = featuresReply.getNTables();
 	}
 
 	@Override
@@ -879,6 +882,7 @@ public class OFSwitch implements IOFSwitchBackend {
 			List<OFTableFeatures> tfs = reply.getEntries();
 			for (OFTableFeatures tf : tfs) {
 				tableFeaturesByTableId.put(tf.getTableId(), TableFeatures.of(tf));
+				tables.add(tf.getTableId());
 				log.trace("Received TableFeatures for TableId {}, TableName {}", tf.getTableId().toString(), tf.getName());
 			}
 		}
@@ -1085,9 +1089,18 @@ public class OFSwitch implements IOFSwitchBackend {
 	}
 
 
+	/**
+	 * This performs a copy on each 'get'.
+	 * Use sparingly for good performance.
+	 */
 	@Override
-	public short getTables() {
-		return tables;
+	public Collection<TableId> getTables() {
+		return new ArrayList<TableId>(tables);
+	}
+	
+	@Override
+	public short getNumTables() {
+		return this.nTables;
 	}
 
 	@Override
@@ -1226,8 +1239,8 @@ public class OFSwitch implements IOFSwitchBackend {
 	
 	@Override
 	public TableId setMaxTableForTableMissFlow(TableId max) {
-		if (max.getValue() >= tables) {
-			maxTableToGetTableMissFlow = TableId.of(tables - 1 < 0 ? 0 : tables - 1);
+		if (max.getValue() >= nTables) {
+			maxTableToGetTableMissFlow = TableId.of(nTables - 1 < 0 ? 0 : nTables - 1);
 		} else {
 			maxTableToGetTableMissFlow = max;
 		}

@@ -183,9 +183,15 @@ public class OFMessageDamperMockSwitch implements IOFSwitch {
     }
 
     @Override
-    public short getTables() {
+    public short getNumTables() {
         fail("Unexpected method call");
         return 0;
+    }
+    
+    @Override
+    public Collection<TableId> getTables() {
+    	fail("Unexpected method call");
+    	return null;
     }
 
     @Override

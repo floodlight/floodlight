@@ -60,7 +60,7 @@ public class IOFSwitchSerializer extends JsonSerializer<IOFSwitch> {
         serializePorts(sw.getPorts(),jGen);
         jGen.writeNumberField("buffers",sw.getBuffers());
         jGen.writeStringField("inetAddress",sw.getInetAddress().toString());
-        jGen.writeNumberField("tables",sw.getTables());
+        jGen.writeNumberField("tables",sw.getNumTables());
         jGen.writeNumberField("connectedSince",sw.getConnectedSince().getTime());
         jGen.writeEndObject();
     }
