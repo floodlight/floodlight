@@ -358,7 +358,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
 				 * since it's a prerequisite for transport ports.
 				 */
 				if (!FLOWMOD_DEFAULT_MATCH_IP_ADDR) {
-					mb.setExact(MatchField.ETH_TYPE, EthType.IPv4);
+					mb.setExact(MatchField.ETH_TYPE, EthType.IPv6);
 				}
 				
 				if (ip.getNextHeader().equals(IpProtocol.TCP)) {

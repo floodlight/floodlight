@@ -32,9 +32,11 @@ import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.EthType;
 import org.projectfloodlight.openflow.types.IPv4Address;
+import org.projectfloodlight.openflow.types.IPv6Address;
 import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFBufferId;
 import org.projectfloodlight.openflow.types.OFPort;
+import org.projectfloodlight.openflow.types.VlanVid;
 import org.sdnplatform.sync.ISyncService;
 import org.sdnplatform.sync.test.MockSyncService;
 
@@ -357,8 +359,8 @@ public class VirtualNetworkFilterTest extends FloodlightTestCase {
         IFloodlightProviderService.bcStore.put(cntx,
                            IFloodlightProviderService.CONTEXT_PI_PAYLOAD,
                                (Ethernet)mac1ToGwPacketIntestPacket);
-        deviceService.learnEntity(((Ethernet)mac1ToGwPacketIntestPacket).getDestinationMACAddress().getLong(),
-        		null, IPv4.toIPv4Address(gw1), null, null);
+        deviceService.learnEntity(((Ethernet)mac1ToGwPacketIntestPacket).getDestinationMACAddress(),
+        		VlanVid.ZERO, IPv4Address.of(gw1), IPv6Address.NONE, DatapathId.NONE, OFPort.ZERO);
         Command ret = listener.receive(sw1, mac1ToGwPacketIn, cntx);
         assertTrue(ret == Command.CONTINUE);
     }

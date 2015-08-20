@@ -32,7 +32,7 @@ public interface IDebugEventService extends IFloodlightService {
      * Describes the type of field obtained from reflection
      */
     enum EventFieldType {
-        DPID, IPv4, MAC, STRING, OBJECT, PRIMITIVE, COLLECTION_IPV4,
+        DPID, IPv4, IPv6, MAC, STRING, OBJECT, PRIMITIVE, COLLECTION_IPV4,
         COLLECTION_ATTACHMENT_POINT, COLLECTION_OBJECT, SREF_COLLECTION_OBJECT,
         SREF_OBJECT
     }

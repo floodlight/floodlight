@@ -414,6 +414,11 @@ public class ACL implements IACLService, IFloodlightModule, IDeviceListener {
 	}
 
 	@Override
+	public void deviceIPV6AddrChanged(IDevice device) {
+		logger.debug("IPv6 not implemented in ACL. Device changed: {}", device.toString());
+	}
+	
+	@Override
 	public void deviceIPV4AddrChanged(IDevice device) {
 
 		SwitchPort[] switchPort = device.getAttachmentPoints();
