@@ -113,5 +113,4 @@ public class DeviceUniqueIndex extends DeviceIndex {
             return null;
         return deviceKey;
     }
-
 }

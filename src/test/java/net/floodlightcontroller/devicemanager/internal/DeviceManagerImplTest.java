@@ -79,6 +79,7 @@ import net.floodlightcontroller.packet.Data;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPacket;
 import net.floodlightcontroller.packet.IPv4;
+import net.floodlightcontroller.packet.IPv6;
 import net.floodlightcontroller.packet.UDP;
 import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.restserver.RestApiServer;
@@ -119,8 +120,12 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 
 	protected OFPacketIn testARPReplyPacketIn_1, testARPReplyPacketIn_2;
 	protected OFPacketIn testUDPPacketIn;
+	protected OFPacketIn testUDPIPv6PacketIn;
+	protected OFPacketIn testUDPIPv6RevPacketIn;
 	protected IPacket testARPReplyPacket_1, testARPReplyPacket_2;
 	protected Ethernet testUDPPacket;
+	protected Ethernet testUDPIPv6Packet;
+	protected Ethernet testUDPIPv6RevPacket;
 	protected byte[] testARPReplyPacket_1_Srld, testARPReplyPacket_2_Srld;
 	protected byte[] testUDPPacketSrld;
 	private MockSyncService syncService;
@@ -287,7 +292,37 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 				.setPayload(new Data(new byte[] {0x01}))));
 		updateUDPPacketIn();
 
-		//TODO test UDP IPv6 packet
+		// This packet is used to test forming an entity from an IPv6 packet
+		this.testUDPIPv6Packet = (Ethernet) new Ethernet()
+		.setSourceMACAddress("00:11:22:33:44:55")
+		.setDestinationMACAddress("00:44:33:22:11:01")
+		.setEtherType(EthType.IPv6)
+		.setVlanID((short)5)
+		.setPayload(
+				new IPv6()
+				.setHopLimit((byte) 128)
+				.setSourceAddress(IPv6Address.of(1,1))
+				.setDestinationAddress(IPv6Address.of(2,2))
+				.setPayload(new UDP()
+				.setSourcePort((short) 5000)
+				.setDestinationPort((short) 5001)
+				.setPayload(new Data(new byte[] {0x01}))));
+
+		// This packet reverses the above
+		this.testUDPIPv6RevPacket = (Ethernet) new Ethernet()
+		.setSourceMACAddress("00:44:33:22:11:01")
+		.setDestinationMACAddress("00:11:22:33:44:55")
+		.setEtherType(EthType.IPv6)
+		.setVlanID((short)5)
+		.setPayload(
+				new IPv6()
+				.setHopLimit((byte) 128)
+				.setSourceAddress(IPv6Address.of(2,2))
+				.setDestinationAddress(IPv6Address.of(1,1))
+				.setPayload(new UDP()
+				.setSourcePort((short) 5001)
+				.setDestinationPort((short) 5000)
+				.setPayload(new Data(new byte[] {0x01}))));
 
 		// Build the PacketIn
 		this.testARPReplyPacketIn_1 = OFFactories.getFactory(OFVersion.OF_13).buildPacketIn()
@@ -302,6 +337,20 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 				.setBufferId(OFBufferId.NO_BUFFER)
 				.setMatch(OFFactories.getFactory(OFVersion.OF_13).buildMatch().setExact(MatchField.IN_PORT, OFPort.of(1)).build())
 				.setData(this.testARPReplyPacket_2_Srld)
+				.setReason(OFPacketInReason.NO_MATCH)
+				.build();
+
+		this.testUDPIPv6PacketIn = OFFactories.getFactory(OFVersion.OF_13).buildPacketIn()
+				.setBufferId(OFBufferId.NO_BUFFER)
+				.setMatch(OFFactories.getFactory(OFVersion.OF_13).buildMatch().setExact(MatchField.IN_PORT, OFPort.of(1)).build())
+				.setData(this.testUDPIPv6Packet.serialize())
+				.setReason(OFPacketInReason.NO_MATCH)
+				.build();
+		
+		this.testUDPIPv6RevPacketIn = OFFactories.getFactory(OFVersion.OF_13).buildPacketIn()
+				.setBufferId(OFBufferId.NO_BUFFER)
+				.setMatch(OFFactories.getFactory(OFVersion.OF_13).buildMatch().setExact(MatchField.IN_PORT, OFPort.of(1)).build())
+				.setData(this.testUDPIPv6RevPacket.serialize())
 				.setReason(OFPacketInReason.NO_MATCH)
 				.build();
 	}
@@ -380,7 +429,6 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 
 		deviceManager.topology = mockTopology;
 
-		//TODO add entities for IPv6
 		Entity entity1 = new Entity(MacAddress.of(1L), VlanVid.ZERO, IPv4Address.NONE, IPv6Address.NONE, DatapathId.of(1L), OFPort.of(1), new Date());
 		Entity entity2 = new Entity(MacAddress.of(1L), VlanVid.ZERO, IPv4Address.NONE, IPv6Address.NONE, DatapathId.of(10L), OFPort.of(1), new Date());
 		Entity entity3 = new Entity(MacAddress.of(1L), VlanVid.ZERO, IPv4Address.of(1), IPv6Address.NONE, DatapathId.of(10L), OFPort.of(1), new Date());
@@ -514,6 +562,175 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 		verify(mockListener);
 	}
 
+	@Test
+	public void testEntityLearningIPv6() throws Exception {
+		IDeviceListener mockListener =
+				createMock(IDeviceListener.class);
+		expect(mockListener.getName()).andReturn("mockListener").atLeastOnce();
+		expect(mockListener.isCallbackOrderingPostreq((String)anyObject(), (String)anyObject()))
+		.andReturn(false).atLeastOnce();
+		expect(mockListener.isCallbackOrderingPrereq((String)anyObject(), (String)anyObject()))
+		.andReturn(false).atLeastOnce();
+
+		replay(mockListener);
+		deviceManager.addListener(mockListener);
+		verify(mockListener);
+		reset(mockListener);
+		deviceManager.entityClassifier= new MockEntityClassifier();
+		deviceManager.startUp(null);
+
+		ITopologyService mockTopology = createMock(ITopologyService.class);
+		expect(mockTopology.getL2DomainId(DatapathId.of(anyLong()))).
+		andReturn(DatapathId.of(1L)).anyTimes();
+		expect(mockTopology.isBroadcastDomainPort(DatapathId.of(anyLong()), OFPort.of(anyShort()))).
+		andReturn(false).anyTimes();
+
+		expect(mockTopology.isAttachmentPointPort(DatapathId.of(anyLong()),
+				OFPort.of(anyShort()))).andReturn(true).anyTimes();
+		expect(mockTopology.isConsistent(DatapathId.of(10L), OFPort.of(1), DatapathId.of(10L), OFPort.of(1))).
+		andReturn(true).anyTimes();
+		expect(mockTopology.isConsistent(DatapathId.of(1L), OFPort.of(1), DatapathId.of(1L), OFPort.of(1))).
+		andReturn(true).anyTimes();
+		expect(mockTopology.isConsistent(DatapathId.of(50L), OFPort.of(3), DatapathId.of(50L), OFPort.of(3))).
+		andReturn(true).anyTimes();
+
+		Date topologyUpdateTime = new Date();
+		expect(mockTopology.getLastUpdateTime()).andReturn(topologyUpdateTime).
+		anyTimes();
+
+		deviceManager.topology = mockTopology;
+
+		Entity entity1 = new Entity(MacAddress.of(1L), VlanVid.ZERO, IPv4Address.NONE, IPv6Address.NONE, DatapathId.of(1L), OFPort.of(1), new Date());
+		Entity entity2 = new Entity(MacAddress.of(1L), VlanVid.ZERO, IPv4Address.NONE, IPv6Address.NONE, DatapathId.of(10L), OFPort.of(1), new Date());
+		Entity entity3 = new Entity(MacAddress.of(1L), VlanVid.ZERO, IPv4Address.NONE, IPv6Address.of(1, 1), DatapathId.of(10L), OFPort.of(1), new Date());
+		Entity entity4 = new Entity(MacAddress.of(1L), VlanVid.ZERO, IPv4Address.NONE, IPv6Address.of(1, 1), DatapathId.of(1L), OFPort.of(1), new Date());
+		Entity entity5 = new Entity(MacAddress.of(2L), VlanVid.ofVlan(4), IPv4Address.NONE, IPv6Address.of(1, 1), DatapathId.of(5L), OFPort.of(2), new Date());
+		Entity entity6 = new Entity(MacAddress.of(2L), VlanVid.ofVlan(4), IPv4Address.NONE, IPv6Address.of(1, 1), DatapathId.of(50L), OFPort.of(3), new Date());
+		Entity entity7 = new Entity(MacAddress.of(2L), VlanVid.ofVlan(4), IPv4Address.NONE, IPv6Address.of(2, 2), DatapathId.of(50L), OFPort.of(3), new Date());
+
+		mockListener.deviceAdded(isA(IDevice.class));
+		replay(mockListener, mockTopology);
+
+		Device d1 = deviceManager.learnDeviceByEntity(entity1);
+		assertSame(d1, deviceManager.learnDeviceByEntity(entity1));
+		assertSame(d1, deviceManager.findDeviceByEntity(entity1));
+		assertEquals(DefaultEntityClassifier.entityClass ,
+				d1.getEntityClass());
+		assertArrayEquals(new VlanVid[] { VlanVid.ZERO }, d1.getVlanId());
+		assertArrayEquals(new IPv6Address[] { }, d1.getIPv6Addresses());
+
+		assertEquals(1, deviceManager.getAllDevices().size());
+		verify(mockListener);
+
+		reset(mockListener);
+		mockListener.deviceAdded(isA(IDevice.class));
+		replay(mockListener);
+
+		Device d2 = deviceManager.learnDeviceByEntity(entity2);
+		assertFalse(d1.equals(d2));
+		assertNotSame(d1, d2);
+		assertNotSame(d1.getDeviceKey(), d2.getDeviceKey());
+		assertEquals(MockEntityClassifier.testEC, d2.getEntityClass());
+		assertArrayEquals(new VlanVid[] { VlanVid.ZERO }, d2.getVlanId());
+		assertArrayEquals(new IPv6Address[] { }, d2.getIPv6Addresses());
+
+		assertEquals(2, deviceManager.getAllDevices().size());
+		verify(mockListener);
+
+		reset(mockListener);
+		mockListener.deviceIPV6AddrChanged(isA(IDevice.class));
+		replay(mockListener);
+
+		Device d3 = deviceManager.learnDeviceByEntity(entity3);
+		assertNotSame(d2, d3);
+		assertEquals(d2.getDeviceKey(), d3.getDeviceKey());
+		assertEquals(MockEntityClassifier.testEC, d3.getEntityClass());
+		assertArrayEquals(new IPv6Address[] { IPv6Address.of(1, 1) },
+				d3.getIPv6Addresses());
+		assertArrayEquals(new SwitchPort[] { new SwitchPort(DatapathId.of(10L), OFPort.of(1)) },
+				d3.getAttachmentPoints());
+		assertArrayEquals(new SwitchPort[] { new SwitchPort(DatapathId.of(10L), OFPort.of(1)) },
+				d3.getAttachmentPoints(true));
+		assertArrayEquals(new VlanVid[] { VlanVid.ZERO },
+				d3.getVlanId());
+
+		assertEquals(2, deviceManager.getAllDevices().size());
+		verify(mockListener);
+
+		reset(mockListener);
+		mockListener.deviceIPV6AddrChanged(isA(IDevice.class));
+		replay(mockListener);
+
+		Device d4 = deviceManager.learnDeviceByEntity(entity4);
+		assertNotSame(d1, d4);
+		assertEquals(d1.getDeviceKey(), d4.getDeviceKey());
+		assertEquals(DefaultEntityClassifier.entityClass, d4.getEntityClass());
+		assertArrayEquals(new IPv6Address[] { IPv6Address.of(1, 1) },
+				d4.getIPv6Addresses());
+		assertArrayEquals(new SwitchPort[] { new SwitchPort(DatapathId.of(1L), OFPort.of(1)) },
+				d4.getAttachmentPoints());
+		assertArrayEquals(new VlanVid[] { VlanVid.ZERO },
+				d4.getVlanId());
+
+		assertEquals(2, deviceManager.getAllDevices().size());
+		verify(mockListener);
+
+		reset(mockListener);
+		mockListener.deviceAdded((isA(IDevice.class)));
+		replay(mockListener);
+
+		Device d5 = deviceManager.learnDeviceByEntity(entity5);
+		assertArrayEquals(new SwitchPort[] { new SwitchPort(DatapathId.of(5L), OFPort.of(2)) },
+				d5.getAttachmentPoints());
+		assertArrayEquals(new VlanVid[] { VlanVid.ofVlan(4) },
+				d5.getVlanId());
+		assertEquals(MacAddress.of(2L), d5.getMACAddress());
+		assertEquals("00:00:00:00:00:02", d5.getMACAddressString());
+		verify(mockListener);
+
+		reset(mockListener);
+		mockListener.deviceAdded(isA(IDevice.class));
+		replay(mockListener);
+
+		Device d6 = deviceManager.learnDeviceByEntity(entity6);
+		assertArrayEquals(new SwitchPort[] { new SwitchPort(DatapathId.of(50L), OFPort.of(3)) },
+				d6.getAttachmentPoints());
+		assertArrayEquals(new VlanVid[] { VlanVid.ofVlan(4) },
+				d6.getVlanId());
+
+		assertEquals(4, deviceManager.getAllDevices().size());
+		verify(mockListener);
+
+		reset(mockListener);
+		mockListener.deviceIPV6AddrChanged(isA(IDevice.class));
+		replay(mockListener);
+
+		Device d7 = deviceManager.learnDeviceByEntity(entity7);
+		assertNotSame(d6, d7);
+		assertEquals(d6.getDeviceKey(), d7.getDeviceKey());
+		assertArrayEquals(new SwitchPort[] { new SwitchPort(DatapathId.of(50L), OFPort.of(3)) },
+				d7.getAttachmentPoints());
+		assertArrayEquals(new VlanVid[] { VlanVid.ofVlan(4) },
+				d7.getVlanId());
+
+		assertEquals(4, deviceManager.getAllDevices().size());
+		verify(mockListener);
+
+		reset(mockListener);
+		replay(mockListener);
+
+		reset(deviceManager.topology);
+		deviceManager.topology.addListener(deviceManager);
+		expectLastCall().times(1);
+		replay(deviceManager.topology);
+
+		deviceManager.entityClassifier = new MockEntityClassifierMac();
+		deviceManager.startUp(null);
+		Entity entityNoClass = new Entity(MacAddress.of(5L), VlanVid.ofVlan(1), IPv4Address.NONE, IPv6Address.of(5, 5), DatapathId.of(-1L), OFPort.of(1), new Date());
+		assertEquals(null, deviceManager.learnDeviceByEntity(entityNoClass));
+
+		verify(mockListener);
+	}
 
 	private void doTestEntityOrdering(boolean computeInsertionPoint) throws Exception {
 		Entity e = new Entity(MacAddress.of(10L), VlanVid.ZERO, IPv4Address.NONE, IPv6Address.NONE, DatapathId.NONE, OFPort.ZERO, Entity.NO_DATE);
@@ -866,11 +1083,6 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 		mockListener.deviceIPV4AddrChanged((isA(IDevice.class)));
 		replay(mockListener);
 
-		// TODO: we currently do learn entities on suppressed APs
-		// // cannot learn device on suppressed AP
-		// d = deviceManager.learnDeviceByEntity(entity1);
-		// assertNull(d);
-
 		/* Device is learned w/o attachment point */
 		deviceManager.learnDeviceByEntity(entity0);
 		/* Device is "seen" with a suppressed AP now, so we shouldn't learn the AP but still keep the entity */
@@ -1199,6 +1411,109 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 		IDevice dstDev =
 				deviceManager.findDevice(dstMac, VlanVid.ofVlan(5), IPv4Address.NONE, IPv6Address.NONE, DatapathId.NONE, OFPort.ZERO);
 		verifyDevice(dstDev, dstMac, VlanVid.ofVlan(5), ipaddr, IPv6Address.NONE, DatapathId.of(5), OFPort.of(2));
+
+		cntxSrcDev = IDeviceService.fcStore.get(cntx,
+				IDeviceService.CONTEXT_SRC_DEVICE);
+		assertEquals(srcDev, cntxSrcDev);
+
+		cntxDstDev = IDeviceService.fcStore.get(cntx,
+				IDeviceService.CONTEXT_DST_DEVICE);
+		assertEquals(dstDev, cntxDstDev);
+
+		assertEquals(2, deviceManager.getAllDevices().size());
+	}
+
+	@Test
+	public void testPacketInBasicIPv6() throws Exception {
+		MacAddress deviceMac =
+				((Ethernet)this.testUDPIPv6Packet).getSourceMACAddress();
+		OFPacketIn packetIn = testUDPIPv6PacketIn;
+		IPv6Address ipaddr = IPv6Address.of(1, 1);
+
+		// Mock up our expected behavior
+		ITopologyService mockTopology = createMock(ITopologyService.class);
+		deviceManager.topology = mockTopology;
+		mockTopologyForPacketInTests(mockTopology);
+		replay(mockTopology);
+
+		FloodlightContext cntx = new FloodlightContext();
+		Command cmd = dispatchPacketIn(1L, packetIn, cntx);
+		verify(mockTopology);
+		assertEquals(Command.CONTINUE, cmd);
+		// Verify the device
+		Device rdevice = (Device)
+				deviceManager.findDevice(deviceMac,
+						VlanVid.ofVlan(5), IPv4Address.NONE, IPv6Address.NONE, DatapathId.NONE, OFPort.ZERO);
+		verifyDevice(rdevice, deviceMac, VlanVid.ofVlan(5), IPv4Address.NONE, ipaddr, DatapathId.of(1), OFPort.of(1));
+		IDevice cntxSrcDev = IDeviceService.fcStore.get(cntx,
+				IDeviceService.CONTEXT_SRC_DEVICE);
+		assertEquals(rdevice, cntxSrcDev);
+		IDevice cntxDstDev = IDeviceService.fcStore.get(cntx,
+				IDeviceService.CONTEXT_DST_DEVICE);
+		assertNull(cntxDstDev);
+
+		Device result = null;
+		Iterator<? extends IDevice> dstiter =
+				deviceManager.queryDevices(MacAddress.NONE, null /* any VLAN here */, IPv4Address.NONE,
+						ipaddr, DatapathId.NONE, OFPort.ZERO);
+		if (dstiter.hasNext()) {
+			result = (Device)dstiter.next();
+		}
+		assertFalse("There shouldn't be more than 1 device", dstiter.hasNext());
+		assertEquals(rdevice, result);
+
+
+		//-----------------
+		// Test packetIn again with a different source port. Should be
+		// the same device
+		reset(mockTopology);
+		mockTopologyForPacketInTests(mockTopology);
+		replay(mockTopology);
+
+		// trigger the packet in
+		cntx = new FloodlightContext();
+		packetIn = packetIn.createBuilder().setMatch(OFFactories.getFactory(OFVersion.OF_13).buildMatch().setExact(MatchField.IN_PORT, OFPort.of(2)).build()).build();
+		cmd = dispatchPacketIn(5L, packetIn, cntx);
+		verify(mockTopology);
+		// Verify the replay matched our expectations
+		assertEquals(Command.CONTINUE, cmd);
+
+		// Verify the device
+		rdevice = (Device)
+				deviceManager.findDevice(deviceMac,
+						VlanVid.ofVlan(5), IPv4Address.NONE, IPv6Address.NONE, DatapathId.NONE, OFPort.ZERO);
+		verifyDevice(rdevice, deviceMac, VlanVid.ofVlan(5), IPv4Address.NONE, ipaddr, DatapathId.of(5), OFPort.of(2));
+		cntxSrcDev = IDeviceService.fcStore.get(cntx,
+				IDeviceService.CONTEXT_SRC_DEVICE);
+		assertEquals(rdevice, cntxSrcDev);
+		cntxDstDev = IDeviceService.fcStore.get(cntx,
+				IDeviceService.CONTEXT_DST_DEVICE);
+		assertNull(cntxDstDev);
+		// There can be only one device
+		assertEquals(1, deviceManager.getAllDevices().size());
+
+		//----------------------------
+		// Test packetIn with a different packet going the reverse direction.
+		// We should now get source and dest device in the context
+		//==> The destination device in this step has been learned just before
+		MacAddress srcMac = testUDPIPv6RevPacket.getSourceMACAddress();
+		MacAddress dstMac = deviceMac;
+		reset(mockTopology);
+		mockTopologyForPacketInTests(mockTopology);
+		replay(mockTopology);
+		// trigger the packet in
+		cntx = new FloodlightContext();
+		cmd = dispatchPacketIn(1L, testUDPIPv6RevPacketIn, cntx);
+		verify(mockTopology);
+
+		assertEquals(Command.CONTINUE, cmd);
+		IDevice srcDev =
+				deviceManager.findDevice(srcMac, VlanVid.ofVlan(5), IPv4Address.NONE, IPv6Address.NONE, DatapathId.NONE, OFPort.ZERO);
+		verifyDevice(srcDev, srcMac, VlanVid.ofVlan(5), IPv4Address.NONE, IPv6Address.NONE, DatapathId.of(1), testUDPIPv6PacketIn.getMatch().get(MatchField.IN_PORT));
+
+		IDevice dstDev =
+				deviceManager.findDevice(dstMac, VlanVid.ofVlan(5), IPv4Address.NONE, IPv6Address.NONE, DatapathId.NONE, OFPort.ZERO);
+		verifyDevice(dstDev, dstMac, VlanVid.ofVlan(5), IPv4Address.NONE, ipaddr, DatapathId.of(5), OFPort.of(2));
 
 		cntxSrcDev = IDeviceService.fcStore.get(cntx,
 				IDeviceService.CONTEXT_SRC_DEVICE);
@@ -2251,7 +2566,6 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 		d4 = deviceManager.learnDeviceByEntity(e4c);
 		d4 = deviceManager.learnDeviceByEntity(e4d);
 		assertArrayEquals(new IPv4Address[0], d2.getIPv4Addresses());
-		// FIXME: d4 should not return IP4
 		assertArrayEquals(new IPv4Address[] { IPv4Address.of(2) }, d4.getIPv4Addresses());
 
 		// Add another newer entity to d2 but with different IP
@@ -2284,9 +2598,117 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 		Arrays.sort(ips);
 		assertArrayEquals(new IPv4Address[] { IPv4Address.of(2), IPv4Address.of(42), IPv4Address.of(4242) }, ips);
 	}
+	
+	@Test
+	public void testGetIPv6Addresses() {
+		// Looks like Date is only 1s granularity
 
-	// TODO: this test should really go into a separate class that collects
-	// unit tests for Device
+		ITopologyService mockTopology = createMock(ITopologyService.class);
+		deviceManager.topology = mockTopology;
+		expect(mockTopology.isAttachmentPointPort(DatapathId.of(anyLong()),
+				OFPort.of(anyShort()))).
+				andReturn(true).anyTimes();
+		expect(mockTopology.getL2DomainId(DatapathId.of(anyLong()))).andReturn(DatapathId.of(1L)).anyTimes();
+		expect(mockTopology.isConsistent(DatapathId.of(EasyMock.anyLong()),
+				OFPort.of(EasyMock.anyShort()),
+				DatapathId.of(EasyMock.anyLong()),
+				OFPort.of(EasyMock.anyShort())))
+				.andReturn(false)
+				.anyTimes();
+		expect(mockTopology.isBroadcastDomainPort(DatapathId.of(EasyMock.anyLong()),
+				OFPort.of(EasyMock.anyShort())))
+				.andReturn(false)
+				.anyTimes();
+		expect(mockTopology.isInSameBroadcastDomain(DatapathId.of(EasyMock.anyLong()),
+				OFPort.of(EasyMock.anyShort()),
+				DatapathId.of(EasyMock.anyLong()),
+				OFPort.of(EasyMock.anyShort()))).
+				andReturn(false).anyTimes();
+		replay(mockTopology);
+
+		Entity e1 = new Entity(MacAddress.of(1L), VlanVid.ofVlan(1), IPv4Address.NONE, IPv6Address.NONE, DatapathId.NONE, OFPort.ZERO, new Date(2000));
+		Device d1 = deviceManager.learnDeviceByEntity(e1);
+		assertArrayEquals(new IPv6Address[0], d1.getIPv6Addresses());
+
+		Entity e2 = new Entity(MacAddress.of(2L), VlanVid.ofVlan(2), IPv4Address.NONE, IPv6Address.of(2, 2), DatapathId.NONE, OFPort.ZERO, new Date(2000));
+		Device d2 = deviceManager.learnDeviceByEntity(e2);
+		d2 = deviceManager.learnDeviceByEntity(e2);
+		assertArrayEquals(new IPv6Address[] { IPv6Address.of(2, 2) }, d2.getIPv6Addresses());
+		// More than one entity
+		Entity e2b = new Entity(MacAddress.of(2L), VlanVid.ofVlan(2), IPv4Address.NONE, IPv6Address.NONE, DatapathId.of(2L), OFPort.of(2), new Date(3000));
+		d2 = deviceManager.learnDeviceByEntity(e2b);
+		assertEquals(2, d2.entities.length);
+		assertArrayEquals(new IPv6Address[] { IPv6Address.of(2, 2) }, d2.getIPv6Addresses());
+		// and now add an entity with an IP
+		Entity e2c = new Entity(MacAddress.of(2L), VlanVid.ofVlan(2), IPv4Address.NONE, IPv6Address.of(2, 2), DatapathId.of(2L), OFPort.of(3), new Date(3000));
+		d2 = deviceManager.learnDeviceByEntity(e2c);
+		assertArrayEquals(new IPv6Address[] { IPv6Address.of(2, 2) }, d2.getIPv6Addresses());
+		assertEquals(3, d2.entities.length);
+
+		// Other devices with different IPs shouldn't interfere
+		Entity e3 = new Entity(MacAddress.of(3L), VlanVid.ofVlan(3), IPv4Address.NONE, IPv6Address.of(3, 3), DatapathId.NONE, OFPort.ZERO, new Date(4000));
+		Entity e3b = new Entity(MacAddress.of(3L), VlanVid.ofVlan(3), IPv4Address.NONE, IPv6Address.of(3, 3), DatapathId.of(3L), OFPort.of(3), new Date(4400));
+		Device d3 = deviceManager.learnDeviceByEntity(e3);
+		d3 = deviceManager.learnDeviceByEntity(e3b);
+		assertArrayEquals(new IPv6Address[] { IPv6Address.of(2, 2) }, d2.getIPv6Addresses());
+		assertArrayEquals(new IPv6Address[] { IPv6Address.of(3, 3) }, d3.getIPv6Addresses());
+
+		// Add another IP to d3
+		Entity e3c = new Entity(MacAddress.of(3L), VlanVid.ofVlan(3), IPv4Address.NONE, IPv6Address.of(33, 33), DatapathId.of(3L), OFPort.of(3), new Date(4400));
+		d3 = deviceManager.learnDeviceByEntity(e3c);
+		IPv6Address[] ips = d3.getIPv6Addresses();
+		Arrays.sort(ips);
+		assertArrayEquals(new IPv6Address[] { IPv6Address.of(3, 3), IPv6Address.of(33, 33) }, ips);
+
+		// Add another device that also claims IP2 but is older than e2
+		Entity e4 = new Entity(MacAddress.of(4L), VlanVid.ofVlan(4), IPv4Address.NONE, IPv6Address.of(2, 2), DatapathId.NONE, OFPort.ZERO, new Date(1000));
+		Entity e4b = new Entity(MacAddress.of(4L), VlanVid.ofVlan(4), IPv4Address.NONE, IPv6Address.NONE, DatapathId.of(4L), OFPort.of(4), new Date(1000));
+		Device d4 = deviceManager.learnDeviceByEntity(e4);
+		assertArrayEquals(new IPv6Address[] { IPv6Address.of(2, 2) }, d2.getIPv6Addresses());
+		assertArrayEquals(new IPv6Address[0],  d4.getIPv6Addresses());
+		// add another entity to d4
+		d4 = deviceManager.learnDeviceByEntity(e4b);
+		assertArrayEquals(new IPv6Address[0], d4.getIPv6Addresses());
+
+		// Make e4 and e4a newer
+		Entity e4c = new Entity(MacAddress.of(4L), VlanVid.ofVlan(4), IPv4Address.NONE, IPv6Address.of(2, 2), DatapathId.NONE, OFPort.ZERO, new Date(5000));
+		Entity e4d = new Entity(MacAddress.of(4L), VlanVid.ofVlan(4), IPv4Address.NONE, IPv6Address.NONE, DatapathId.of(4L), OFPort.of(5), new Date(5000));
+		d4 = deviceManager.learnDeviceByEntity(e4c);
+		d4 = deviceManager.learnDeviceByEntity(e4d);
+		assertArrayEquals(new IPv6Address[0], d2.getIPv6Addresses());
+		assertArrayEquals(new IPv6Address[] { IPv6Address.of(2, 2) }, d4.getIPv6Addresses());
+
+		// Add another newer entity to d2 but with different IP
+		Entity e2d = new Entity(MacAddress.of(2L), VlanVid.ofVlan(2), IPv4Address.NONE, IPv6Address.of(22, 22), DatapathId.of(4L), OFPort.of(6), new Date(6000));
+		d2 = deviceManager.learnDeviceByEntity(e2d);
+		assertArrayEquals(new IPv6Address[] { IPv6Address.of(22, 22) }, d2.getIPv6Addresses());
+		assertArrayEquals(new IPv6Address[] { IPv6Address.of(2, 2) }, d4.getIPv6Addresses());
+
+		// new IP for d2,d4 but with same timestamp. Both devices get the IP
+		Entity e2e = new Entity(MacAddress.of(2L), VlanVid.ofVlan(2), IPv4Address.NONE, IPv6Address.of(42, 42), DatapathId.of(2L), OFPort.of(4), new Date(7000));
+		d2 = deviceManager.learnDeviceByEntity(e2e);
+		ips= d2.getIPv6Addresses();
+		Arrays.sort(ips);
+		assertArrayEquals(new IPv6Address[] { IPv6Address.of(22, 22), IPv6Address.of(42, 42) }, ips);
+		Entity e4e = new Entity(MacAddress.of(4L), VlanVid.ofVlan(4), IPv4Address.NONE, IPv6Address.of(42, 42), DatapathId.of(4L), OFPort.of(7), new Date(7000));
+		d4 = deviceManager.learnDeviceByEntity(e4e);
+		ips= d4.getIPv6Addresses();
+		Arrays.sort(ips);
+		assertArrayEquals(new IPv6Address[] { IPv6Address.of(2, 2), IPv6Address.of(42, 42) }, ips);
+
+		// add a couple more IPs
+		Entity e2f = new Entity(MacAddress.of(2L), VlanVid.ofVlan(2), IPv4Address.NONE, IPv6Address.of(4242, 4242), DatapathId.of(2L), OFPort.of(5), new Date(8000));
+		d2 = deviceManager.learnDeviceByEntity(e2f);
+		ips= d2.getIPv6Addresses();
+		Arrays.sort(ips);
+		assertArrayEquals(new IPv6Address[] { IPv6Address.of(22, 22), IPv6Address.of(42, 42), IPv6Address.of(4242, 4242) }, ips);
+		Entity e4f = new Entity(MacAddress.of(4L), VlanVid.ofVlan(4), IPv4Address.NONE, IPv6Address.of(4242, 4242), DatapathId.of(4L), OFPort.of(8), new Date(9000));
+		d4 = deviceManager.learnDeviceByEntity(e4f);
+		ips= d4.getIPv6Addresses();
+		Arrays.sort(ips);
+		assertArrayEquals(new IPv6Address[] { IPv6Address.of(2, 2), IPv6Address.of(42, 42), IPv6Address.of(4242, 4242) }, ips);
+	}
+
 	@Test
 	public void testGetSwitchPortVlanId() {
 		Entity entity1 = new Entity(MacAddress.of(1L), VlanVid.ofVlan(1), IPv4Address.NONE, IPv6Address.NONE, DatapathId.of(10L), OFPort.of(1), new Date());

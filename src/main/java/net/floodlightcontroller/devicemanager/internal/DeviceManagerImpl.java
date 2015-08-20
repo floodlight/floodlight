@@ -909,6 +909,7 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 		this.perClassIndices =
 				new HashSet<EnumSet<DeviceField>>();
 		addIndex(true, EnumSet.of(DeviceField.IPv4));
+		addIndex(true, EnumSet.of(DeviceField.IPv6));
 
 		this.deviceListeners = new ListenerDispatcher<String, IDeviceListener>();
 		this.suppressAPs = Collections.newSetFromMap(
