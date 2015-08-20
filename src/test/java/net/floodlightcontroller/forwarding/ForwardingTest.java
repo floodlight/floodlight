@@ -45,6 +45,7 @@ import net.floodlightcontroller.packet.Data;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPacket;
 import net.floodlightcontroller.packet.IPv4;
+import net.floodlightcontroller.packet.IPv6;
 import net.floodlightcontroller.packet.UDP;
 import net.floodlightcontroller.routing.IRoutingService;
 import net.floodlightcontroller.routing.Route;
@@ -96,12 +97,17 @@ public class ForwardingTest extends FloodlightTestCase {
 	protected MockThreadPoolService threadPool;
 	protected IOFSwitch sw1, sw2;
 	protected OFFeaturesReply swFeatures;
-	protected IDevice srcDevice, dstDevice1, dstDevice2;
+	protected IDevice srcDevice, dstDevice1, dstDevice2; /* reuse for IPv4 and IPv6 */
 	protected OFPacketIn packetIn;
+	protected OFPacketIn packetInIPv6;
 	protected OFPacketOut packetOut;
+	protected OFPacketOut packetOutIPv6;
 	protected OFPacketOut packetOutFlooded;
+	protected OFPacketOut packetOutFloodedIPv6;
 	protected IPacket testPacket;
+	protected IPacket testPacketIPv6;
 	protected byte[] testPacketSerialized;
+	protected byte[] testPacketSerializedIPv6;
 	protected int expected_wildcards;
 	protected Date currentDate;
 	private MockSyncService mockSyncService;
@@ -115,25 +121,6 @@ public class ForwardingTest extends FloodlightTestCase {
 		cntx = new FloodlightContext();
 
 		// Module loader setup
-		/*
-        Collection<Class<? extends IFloodlightModule>> mods = new ArrayList<Class<? extends IFloodlightModule>>();
-        Collection<IFloodlightService> mockedServices = new ArrayList<IFloodlightService>();
-        mods.add(Forwarding.class);
-        routingEngine = createMock(IRoutingService.class);
-        topology = createMock(ITopologyService.class);
-        mockedServices.add(routingEngine);
-        mockedServices.add(topology);
-        FloodlightTestModuleLoader fml = new FloodlightTestModuleLoader();
-        fml.setupModules(mods, mockedServices);
-        mockFloodlightProvider =
-        		(MockFloodlightProvider) fml.getModuleByName(MockFloodlightProvider.class);
-        deviceManager =
-        		(MockDeviceManager) fml.getModuleByName(MockDeviceManager.class);
-        threadPool =
-        		(MockThreadPoolService) fml.getModuleByName(MockThreadPoolService.class);
-        forwarding =
-        		(Forwarding) fml.getModuleByName(Forwarding.class);
-		 */
 		mockFloodlightProvider = getMockFloodlightProvider();
 		forwarding = new Forwarding();
 		threadPool = new MockThreadPoolService();
@@ -142,7 +129,6 @@ public class ForwardingTest extends FloodlightTestCase {
 		topology = createMock(ITopologyService.class);
 		mockSyncService = new MockSyncService();
 		DefaultEntityClassifier entityClassifier = new DefaultEntityClassifier();
-
 
 		FloodlightModuleContext fmc = new FloodlightModuleContext();
 		fmc.addService(IFloodlightProviderService.class,
@@ -211,12 +197,27 @@ public class ForwardingTest extends FloodlightTestCase {
 				.setDestinationPort((short) 5001)
 				.setPayload(new Data(new byte[] {0x01}))));
 
-
+		testPacketIPv6 = new Ethernet()
+		.setDestinationMACAddress("00:11:22:33:44:55")
+		.setSourceMACAddress("00:44:33:22:11:00")
+		.setEtherType(EthType.IPv6)
+		.setPayload(
+				new IPv6()
+				.setHopLimit((byte) 128)
+				.setSourceAddress(IPv6Address.of(1, 1))
+				.setDestinationAddress(IPv6Address.of(2, 2))
+				.setNextHeader(IpProtocol.UDP)
+				.setPayload(new UDP()
+				.setSourcePort((short) 5000)
+				.setDestinationPort((short) 5001)
+				.setPayload(new Data(new byte[] {0x01}))));
 
 		currentDate = new Date();
 
 		// Mock Packet-in
 		testPacketSerialized = testPacket.serialize();
+		testPacketSerializedIPv6 = testPacketIPv6.serialize();
+		
 		packetIn = factory.buildPacketIn()
 				.setMatch(factory.buildMatch()
 						.setExact(MatchField.IN_PORT, OFPort.of(1))
@@ -232,6 +233,22 @@ public class ForwardingTest extends FloodlightTestCase {
 						.setBufferId(OFBufferId.NO_BUFFER)
 						.setData(testPacketSerialized)
 						.setReason(OFPacketInReason.NO_MATCH)
+						.build();		
+		packetInIPv6 = factory.buildPacketIn()
+				.setMatch(factory.buildMatch()
+						.setExact(MatchField.IN_PORT, OFPort.of(1))
+						.setExact(MatchField.ETH_SRC, MacAddress.of("00:44:33:22:11:00"))
+						.setExact(MatchField.ETH_DST, MacAddress.of("00:11:22:33:44:55"))
+						.setExact(MatchField.ETH_TYPE, EthType.IPv6)
+						.setExact(MatchField.IPV6_SRC, IPv6Address.of(1, 1))
+						.setExact(MatchField.IPV6_DST, IPv6Address.of(2, 2))
+						.setExact(MatchField.IP_PROTO, IpProtocol.UDP)
+						.setExact(MatchField.UDP_SRC, TransportPort.of(5000))
+						.setExact(MatchField.UDP_DST, TransportPort.of(5001))
+						.build())
+						.setBufferId(OFBufferId.NO_BUFFER)
+						.setData(testPacketSerializedIPv6)
+						.setReason(OFPacketInReason.NO_MATCH)
 						.build();
 
 		// Mock Packet-out
@@ -242,6 +259,13 @@ public class ForwardingTest extends FloodlightTestCase {
 				.setActions(poactions)
 				.setInPort(OFPort.of(1))
 				.setData(testPacketSerialized)
+				.setXid(15)
+				.build();
+		packetOutIPv6 = factory.buildPacketOut()
+				.setBufferId(this.packetInIPv6.getBufferId())
+				.setActions(poactions)
+				.setInPort(OFPort.of(1))
+				.setData(testPacketSerializedIPv6)
 				.setXid(15)
 				.build();
 
@@ -255,11 +279,25 @@ public class ForwardingTest extends FloodlightTestCase {
 				.setActions(poactions)
 				.setData(testPacketSerialized)
 				.build();
-
+		packetOutFloodedIPv6 = factory.buildPacketOut()
+				.setBufferId(this.packetInIPv6.getBufferId())
+				.setInPort(packetInIPv6.getMatch().get(MatchField.IN_PORT))
+				.setXid(17)
+				.setActions(poactions)
+				.setData(testPacketSerializedIPv6)
+				.build();
+	}
+	
+	void removeDeviceFromContext() {
 		IFloodlightProviderService.bcStore.
-		put(cntx,
-				IFloodlightProviderService.CONTEXT_PI_PAYLOAD,
-				(Ethernet)testPacket);
+		remove(cntx,
+				IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
+		IFloodlightProviderService.bcStore.
+		remove(cntx,
+				IDeviceService.CONTEXT_SRC_DEVICE);
+		IFloodlightProviderService.bcStore.
+		remove(cntx,
+				IDeviceService.CONTEXT_DST_DEVICE);
 	}
 
 	enum DestDeviceToLearn { NONE, DEVICE1 ,DEVICE2 };
@@ -313,6 +351,68 @@ public class ForwardingTest extends FloodlightTestCase {
 					dstDevice2);
 		}
 		verify(topology);
+		
+		IFloodlightProviderService.bcStore.
+		put(cntx,
+				IFloodlightProviderService.CONTEXT_PI_PAYLOAD,
+				(Ethernet)testPacket);
+	}
+	
+	public void learnDevicesIPv6(DestDeviceToLearn destDeviceToLearn) {
+		// Build src and dest devices
+		MacAddress dataLayerSource = ((Ethernet)testPacketIPv6).getSourceMACAddress();
+		MacAddress dataLayerDest =
+				((Ethernet)testPacketIPv6).getDestinationMACAddress();
+		IPv6Address networkSource =
+				((IPv6)((Ethernet)testPacketIPv6).getPayload()).
+				getSourceAddress();
+		IPv6Address networkDest =
+				((IPv6)((Ethernet)testPacketIPv6).getPayload()).
+				getDestinationAddress();
+
+		reset(topology);
+		expect(topology.isAttachmentPointPort(DatapathId.of(1L), OFPort.of(1)))
+		.andReturn(true)
+		.anyTimes();
+		expect(topology.isAttachmentPointPort(DatapathId.of(2L), OFPort.of(3)))
+		.andReturn(true)
+		.anyTimes();
+		expect(topology.isAttachmentPointPort(DatapathId.of(1L), OFPort.of(3)))
+		.andReturn(true)
+		.anyTimes();
+		replay(topology);
+
+		srcDevice =
+				deviceManager.learnEntity(dataLayerSource, VlanVid.ZERO, 
+						IPv4Address.NONE, networkSource,
+						DatapathId.of(1), OFPort.of(1));
+		IDeviceService.fcStore.put(cntx,
+				IDeviceService.CONTEXT_SRC_DEVICE,
+				srcDevice);
+		if (destDeviceToLearn == DestDeviceToLearn.DEVICE1) {
+			dstDevice1 =
+					deviceManager.learnEntity(dataLayerDest, VlanVid.ZERO, 
+							IPv4Address.NONE, networkDest,
+							DatapathId.of(2), OFPort.of(3));
+			IDeviceService.fcStore.put(cntx,
+					IDeviceService.CONTEXT_DST_DEVICE,
+					dstDevice1);
+		}
+		if (destDeviceToLearn == DestDeviceToLearn.DEVICE2) {
+			dstDevice2 =
+					deviceManager.learnEntity(dataLayerDest, VlanVid.ZERO, 
+							 IPv4Address.NONE, networkDest,
+							DatapathId.of(1), OFPort.of(3));
+			IDeviceService.fcStore.put(cntx,
+					IDeviceService.CONTEXT_DST_DEVICE,
+					dstDevice2);
+		}
+		verify(topology);
+		
+		IFloodlightProviderService.bcStore.
+		put(cntx,
+				IFloodlightProviderService.CONTEXT_PI_PAYLOAD,
+				(Ethernet)testPacketIPv6);
 	}
 
 	@Test
@@ -381,6 +481,78 @@ public class ForwardingTest extends FloodlightTestCase {
 		OFMessage m = wc2.getValue();
 		assert (m instanceof OFFlowMod);
 		assertTrue(OFMessageUtils.equalsIgnoreXid(m, fm2));
+		
+		removeDeviceFromContext();
+	}
+	
+	@Test
+	public void testForwardMultiSwitchPathIPv6() throws Exception {
+		learnDevicesIPv6(DestDeviceToLearn.DEVICE1);
+
+		Capture<OFMessage> wc1 = new Capture<OFMessage>(CaptureType.ALL);
+		Capture<OFMessage> wc2 = new Capture<OFMessage>(CaptureType.ALL);
+
+		Route route = new Route(DatapathId.of(1L), DatapathId.of(2L));
+		List<NodePortTuple> nptList = new ArrayList<NodePortTuple>();
+		nptList.add(new NodePortTuple(DatapathId.of(1L), OFPort.of(1)));
+		nptList.add(new NodePortTuple(DatapathId.of(1L), OFPort.of(3)));
+		nptList.add(new NodePortTuple(DatapathId.of(2L), OFPort.of(1)));
+		nptList.add(new NodePortTuple(DatapathId.of(2L), OFPort.of(3)));
+		route.setPath(nptList);
+		expect(routingEngine.getRoute(DatapathId.of(1L), OFPort.of(1), DatapathId.of(2L), OFPort.of(3), U64.ZERO)).andReturn(route).atLeastOnce();
+
+		// Expected Flow-mods
+		Match match = packetInIPv6.getMatch();
+		OFActionOutput action = factory.actions().output(OFPort.of(3), Integer.MAX_VALUE);
+		List<OFAction> actions = new ArrayList<OFAction>();
+		actions.add(action);
+
+		OFFlowMod fm1 = factory.buildFlowAdd()
+				.setIdleTimeout((short)5)
+				.setMatch(match)
+				.setActions(actions)
+				.setOutPort(action.getPort())
+				.setBufferId(OFBufferId.NO_BUFFER)
+				.setCookie(U64.of(2L << 52))
+				.setPriority(1)
+				.build();
+		OFFlowMod fm2 = fm1.createBuilder().build();
+
+		sw1.write(capture(wc1));
+		expectLastCall().anyTimes();
+		sw2.write(capture(wc2));
+		expectLastCall().anyTimes();
+
+		reset(topology);
+		expect(topology.getL2DomainId(DatapathId.of(1L))).andReturn(DatapathId.of(1L)).anyTimes();
+		expect(topology.getL2DomainId(DatapathId.of(2L))).andReturn(DatapathId.of(1L)).anyTimes();
+		expect(topology.isAttachmentPointPort(DatapathId.of(1L),  OFPort.of(1))).andReturn(true).anyTimes();
+		expect(topology.isAttachmentPointPort(DatapathId.of(2L),  OFPort.of(3))).andReturn(true).anyTimes();
+		expect(topology.isIncomingBroadcastAllowed(DatapathId.of(anyLong()), OFPort.of(anyShort()))).andReturn(true).anyTimes();
+
+		// Reset mocks, trigger the packet in, and validate results
+		replay(sw1, sw2, routingEngine, topology);
+		forwarding.receive(sw1, this.packetInIPv6, cntx);
+		verify(sw1, sw2, routingEngine);
+
+		assertTrue(wc1.hasCaptured());  // wc1 should get packetout + flowmod.
+		assertTrue(wc2.hasCaptured());  // wc2 should be a flowmod.
+
+		List<OFMessage> msglist = wc1.getValues();
+
+		for (OFMessage m: msglist) {
+			if (m instanceof OFFlowMod)
+				assertTrue(OFMessageUtils.equalsIgnoreXid(fm1, m));
+			else if (m instanceof OFPacketOut) {
+				assertTrue(OFMessageUtils.equalsIgnoreXid(packetOutIPv6, m));
+			}
+		}
+
+		OFMessage m = wc2.getValue();
+		assert (m instanceof OFFlowMod);
+		assertTrue(OFMessageUtils.equalsIgnoreXid(m, fm2));
+		
+		removeDeviceFromContext();
 	}
 
 	@Test
@@ -433,9 +605,66 @@ public class ForwardingTest extends FloodlightTestCase {
 
 		assertTrue(OFMessageUtils.equalsIgnoreXid(wc1.getValue(), fm1));
 		assertTrue(OFMessageUtils.equalsIgnoreXid(wc2.getValue(), packetOut));
+		
+		removeDeviceFromContext();
+	}
+	
+	@Test
+	public void testForwardSingleSwitchPathIPv6() throws Exception {
+		learnDevicesIPv6(DestDeviceToLearn.DEVICE2);
+
+		Capture<OFMessage> wc1 = new Capture<OFMessage>(CaptureType.ALL);
+		Capture<OFMessage> wc2 = new Capture<OFMessage>(CaptureType.ALL);
+
+		Route route = new  Route(DatapathId.of(1L), DatapathId.of(1L));
+		route.getPath().add(new NodePortTuple(DatapathId.of(1L), OFPort.of(1)));
+		route.getPath().add(new NodePortTuple(DatapathId.of(1L), OFPort.of(3)));
+		expect(routingEngine.getRoute(DatapathId.of(1L), OFPort.of(1), DatapathId.of(1L), OFPort.of(3), U64.ZERO)).andReturn(route).atLeastOnce();
+
+		// Expected Flow-mods
+		Match match = packetInIPv6.getMatch();
+		OFActionOutput action = factory.actions().output(OFPort.of(3), Integer.MAX_VALUE);
+		List<OFAction> actions = new ArrayList<OFAction>();
+		actions.add(action);
+
+		OFFlowMod fm1 = factory.buildFlowAdd()
+				.setIdleTimeout((short)5)
+				.setMatch(match)
+				.setActions(actions)
+				.setOutPort(OFPort.of(3))
+				.setBufferId(OFBufferId.NO_BUFFER)
+				.setCookie(U64.of(2L<< 52))
+				.setPriority(1)
+				.build();
+
+		// Record expected packet-outs/flow-mods
+		sw1.write(capture(wc1));
+		expectLastCall().once();
+		sw1.write(capture(wc2));
+		expectLastCall().once();
+
+		reset(topology);
+		expect(topology.isIncomingBroadcastAllowed(DatapathId.of(anyLong()), OFPort.of(anyShort()))).andReturn(true).anyTimes();
+		expect(topology.getL2DomainId(DatapathId.of(1L))).andReturn(DatapathId.of(1L)).anyTimes();
+		expect(topology.isAttachmentPointPort(DatapathId.of(1L),  OFPort.of(1))).andReturn(true).anyTimes();
+		expect(topology.isAttachmentPointPort(DatapathId.of(1L),  OFPort.of(3))).andReturn(true).anyTimes();
+
+		// Reset mocks, trigger the packet in, and validate results
+		replay(sw1, sw2, routingEngine, topology);
+		forwarding.receive(sw1, this.packetInIPv6, cntx);
+		verify(sw1, sw2, routingEngine);
+
+		assertTrue(wc1.hasCaptured());
+		assertTrue(wc2.hasCaptured());
+
+		assertTrue(OFMessageUtils.equalsIgnoreXid(wc1.getValue(), fm1));
+		assertTrue(OFMessageUtils.equalsIgnoreXid(wc2.getValue(), packetOutIPv6));
+		
+		removeDeviceFromContext();
 	}
 
 	/*TODO OFMessageDamper broken due to XID variability in OFMessages... need to fix @Test */
+	/*TODO make an IPv6 test for this once OFMessageDamper fixed */
 	public void testFlowModDampening() throws Exception {
 		learnDevices(DestDeviceToLearn.DEVICE2);
 
@@ -488,6 +717,8 @@ public class ForwardingTest extends FloodlightTestCase {
 		forwarding.receive(sw1, this.packetIn, cntx);
 		forwarding.receive(sw1, this.packetIn, cntx);
 		verify(sw1, routingEngine);
+		
+		removeDeviceFromContext();
 	}
 
 	@Test
@@ -517,6 +748,38 @@ public class ForwardingTest extends FloodlightTestCase {
 
 		assertTrue(wc1.hasCaptured());
 		assertTrue(OFMessageUtils.equalsIgnoreXid(wc1.getValue(), packetOutFlooded));
+		
+		removeDeviceFromContext();
 	}
 
+	@Test
+	public void testForwardNoPathIPv6() throws Exception {
+		learnDevicesIPv6(DestDeviceToLearn.NONE);
+
+		// Set no destination attachment point or route
+		// expect no Flow-mod but expect the packet to be flooded
+
+		Capture<OFMessage> wc1 = new Capture<OFMessage>(CaptureType.ALL);
+
+		// Reset mocks, trigger the packet in, and validate results
+		reset(topology);
+		expect(topology.isIncomingBroadcastAllowed(DatapathId.of(1L), OFPort.of(1))).andReturn(true).anyTimes();
+		expect(topology.isAttachmentPointPort(DatapathId.of(anyLong()),
+				OFPort.of(anyShort())))
+				.andReturn(true)
+				.anyTimes();
+		expect(sw1.hasAttribute(IOFSwitch.PROP_SUPPORTS_OFPP_FLOOD))
+		.andReturn(true).anyTimes();
+		// Reset XID to expected (dependent on prior unit tests)
+		sw1.write(capture(wc1));
+		expectLastCall().once();
+		replay(sw1, sw2, routingEngine, topology);
+		forwarding.receive(sw1, this.packetInIPv6, cntx);
+		verify(sw1, sw2, routingEngine);
+
+		assertTrue(wc1.hasCaptured());
+		assertTrue(OFMessageUtils.equalsIgnoreXid(wc1.getValue(), packetOutFloodedIPv6));
+		
+		removeDeviceFromContext();
+	}
 }
