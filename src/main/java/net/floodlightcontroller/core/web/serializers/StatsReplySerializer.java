@@ -689,31 +689,36 @@ public class StatsReplySerializer extends JsonSerializer<StatsReply> {
 		jGen.writeEndArray();
 	} 
 
-
-	public static void serializePortReply(List<OFPortStatsReply> portReplies, JsonGenerator jGen) throws IOException, JsonProcessingException{
-		OFPortStatsReply portReply = portReplies.get(0); // we will get only one PortReply and it will contains many OFPortStatsEntry ?
-		jGen.writeStringField("version", portReply.getVersion().toString()); //return the enum name
-		jGen.writeFieldName("port");
+	public static void serializePortReply(List<OFPortStatsReply> portReplies, JsonGenerator jGen) throws IOException, JsonProcessingException{		
+		jGen.writeFieldName("port_reply");
 		jGen.writeStartArray();
-		for(OFPortStatsEntry entry : portReply.getEntries()) {
+		for (OFPortStatsReply portReply : portReplies) {
 			jGen.writeStartObject();
-			jGen.writeStringField("portNumber",entry.getPortNo().toString());
-			jGen.writeNumberField("receivePackets", entry.getRxPackets().getValue());
-			jGen.writeNumberField("transmitPackets", entry.getTxPackets().getValue());
-			jGen.writeNumberField("receiveBytes", entry.getRxBytes().getValue());
-			jGen.writeNumberField("transmitBytes", entry.getTxBytes().getValue());
-			jGen.writeNumberField("receiveDropped", entry.getRxDropped().getValue());
-			jGen.writeNumberField("transmitDropped", entry.getTxDropped().getValue());
-			jGen.writeNumberField("receiveErrors", entry.getRxErrors().getValue());
-			jGen.writeNumberField("transmitErrors", entry.getTxErrors().getValue());
-			jGen.writeNumberField("receiveFrameErrors", entry.getRxFrameErr().getValue());
-			jGen.writeNumberField("receiveOverrunErrors", entry.getRxOverErr().getValue());
-			jGen.writeNumberField("receiveCRCErrors", entry.getRxCrcErr().getValue());
-			jGen.writeNumberField("collisions", entry.getCollisions().getValue());
-			if (OFVersion.OF_13 == entry.getVersion()) {
-				jGen.writeNumberField("durationSec", entry.getDurationSec());
-				jGen.writeNumberField("durationNsec", entry.getDurationNsec());
+			jGen.writeStringField("version", portReply.getVersion().toString()); //return the enum name
+			jGen.writeFieldName("port");
+			jGen.writeStartArray();
+			for(OFPortStatsEntry entry : portReply.getEntries()) {
+				jGen.writeStartObject();
+				jGen.writeStringField("portNumber",entry.getPortNo().toString());
+				jGen.writeNumberField("receivePackets", entry.getRxPackets().getValue());
+				jGen.writeNumberField("transmitPackets", entry.getTxPackets().getValue());
+				jGen.writeNumberField("receiveBytes", entry.getRxBytes().getValue());
+				jGen.writeNumberField("transmitBytes", entry.getTxBytes().getValue());
+				jGen.writeNumberField("receiveDropped", entry.getRxDropped().getValue());
+				jGen.writeNumberField("transmitDropped", entry.getTxDropped().getValue());
+				jGen.writeNumberField("receiveErrors", entry.getRxErrors().getValue());
+				jGen.writeNumberField("transmitErrors", entry.getTxErrors().getValue());
+				jGen.writeNumberField("receiveFrameErrors", entry.getRxFrameErr().getValue());
+				jGen.writeNumberField("receiveOverrunErrors", entry.getRxOverErr().getValue());
+				jGen.writeNumberField("receiveCRCErrors", entry.getRxCrcErr().getValue());
+				jGen.writeNumberField("collisions", entry.getCollisions().getValue());
+				if (OFVersion.OF_13 == entry.getVersion()) {
+					jGen.writeNumberField("durationSec", entry.getDurationSec());
+					jGen.writeNumberField("durationNsec", entry.getDurationNsec());
+				}
+				jGen.writeEndObject();
 			}
+			jGen.writeEndArray();
 			jGen.writeEndObject();
 		}
 		jGen.writeEndArray();
