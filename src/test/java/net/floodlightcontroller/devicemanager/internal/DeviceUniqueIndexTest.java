@@ -28,6 +28,7 @@ import java.util.Iterator;
 import org.junit.Test;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.IPv4Address;
+import org.projectfloodlight.openflow.types.IPv6Address;
 import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.VlanVid;
@@ -52,8 +53,8 @@ public class DeviceUniqueIndexTest extends TestCase {
     @Override
     protected void setUp() throws Exception {
         super.setUp();
-        e1a = new Entity(MacAddress.of(1L), VlanVid.ofVlan(1), IPv4Address.of(1), DatapathId.of(1L), OFPort.of(1), new Date());
-        e1b = new Entity(MacAddress.of(1L), VlanVid.ofVlan(2), IPv4Address.of(1), DatapathId.of(1L), OFPort.of(1), new Date());
+        e1a = new Entity(MacAddress.of(1L), VlanVid.ofVlan(1), IPv4Address.of(1), IPv6Address.of(1, 1), DatapathId.of(1L), OFPort.of(1), new Date());
+        e1b = new Entity(MacAddress.of(1L), VlanVid.ofVlan(2), IPv4Address.of(1), IPv6Address.of(1, 1), DatapathId.of(1L), OFPort.of(1), new Date());
         List<Entity> d1Entities = new ArrayList<Entity>(2);
         d1Entities.add(e1a);
         d1Entities.add(e1b);
@@ -61,14 +62,14 @@ public class DeviceUniqueIndexTest extends TestCase {
                         d1Entities, null);
         
         // e2 and e2 alt match in MAC and VLAN
-        e2 = new Entity(MacAddress.of(2L), VlanVid.ofVlan(2), IPv4Address.of(2), DatapathId.of(2L), OFPort.of(2), new Date());
-        e2alt = new Entity(MacAddress.of(2L), VlanVid.ofVlan(2), null, null, null, null);
+        e2 = new Entity(MacAddress.of(2L), VlanVid.ofVlan(2), IPv4Address.of(2), IPv6Address.of(2, 2), DatapathId.of(2L), OFPort.of(2), new Date());
+        e2alt = new Entity(MacAddress.of(2L), VlanVid.ofVlan(2), IPv4Address.NONE, IPv6Address.NONE, DatapathId.NONE, OFPort.ZERO, Entity.NO_DATE);
         
         // IP is null
-        e3 = new Entity(MacAddress.of(3L), VlanVid.ofVlan(3), null, DatapathId.of(3L), OFPort.of(3), new Date());
+        e3 = new Entity(MacAddress.of(3L), VlanVid.ofVlan(3), IPv4Address.NONE, IPv6Address.NONE, DatapathId.of(3L), OFPort.of(3), new Date());
         
         // IP and switch and port are null
-        e4 = new Entity(MacAddress.of(4L), VlanVid.ofVlan(4), null, null, null, new Date());
+        e4 = new Entity(MacAddress.of(4L), VlanVid.ofVlan(4), IPv4Address.NONE, IPv6Address.NONE, DatapathId.NONE, OFPort.ZERO, new Date());
     }
     
     /*
@@ -142,7 +143,8 @@ public class DeviceUniqueIndexTest extends TestCase {
         //-------------
         // Test null keys
         DeviceUniqueIndex idx2 = new DeviceUniqueIndex(
-                                             EnumSet.of(DeviceField.IPV4,
+                                             EnumSet.of(DeviceField.IPv4,
+                                            		 	DeviceField.IPv6,
                                                         DeviceField.SWITCH));
         // only one key field is null
         idx2.updateIndex(e3, 3L);

@@ -22,6 +22,7 @@ import java.util.List;
 
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.IPv4Address;
+import org.projectfloodlight.openflow.types.IPv6Address;
 import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.VlanVid;
@@ -62,56 +63,27 @@ public class MockDeviceManager extends DeviceManagerImpl {
 	/**
 	 * Learn a device using the given characteristics.
 	 * @param macAddress the MAC
-	 * @param vlan the VLAN (can be null)
-	 * @param ipv4Address the IP (can be null)
-	 * @param switchDPID the attachment point switch DPID (can be null)
-	 * @param switchPort the attachment point switch port (can be null)
+	 * @param vlan the VLAN (can be VlanVid.ZERO for untagged)
+	 * @param ipv4Address the IPv4 (can be IPv4Address.NONE)
+	 * @param ipv6Address the IPv6 (can be IPv6Address.NONE)
+	 * @param switchDPID the attachment point switch DPID (can be DatapathId.NONE)
+	 * @param switchPort the attachment point switch port (can be OFPort.ZERO)
 	 * @param processUpdates if false, will not send updates.  Note that this
 	 * method is not thread safe if this is false
 	 * @return the device, either new or not
 	 */
-	public IDevice learnEntity(long macAddress, Short vlan,
-			Integer ipv4Address, Long switchDPID,
-			Integer switchPort,
+	public IDevice learnEntity(MacAddress macAddress, VlanVid vlan,
+			IPv4Address ipv4Address, IPv6Address ipv6Address, DatapathId switchDPID,
+			OFPort switchPort,
 			boolean processUpdates) {
 		List<IDeviceListener> listeners = deviceListeners.getOrderedListeners();
 		if (!processUpdates) {
 			deviceListeners.clearListeners();
 		}
 		
-		VlanVid v;
-		IPv4Address i;
-		DatapathId d;
-		OFPort p;
-
-		if (vlan != null && vlan.shortValue() <= 0)
-			vlan = null;
-		if (ipv4Address != null && ipv4Address == 0)
-			ipv4Address = null;
-		
-		if (vlan == null) {
-			v = VlanVid.ofVlan(-1);
-		} else {
-			v = VlanVid.ofVlan(vlan);
-		}
-		if (ipv4Address == null) {
-			i = IPv4Address.NONE;
-		} else {
-			i = IPv4Address.of(ipv4Address);
-		}
-		if (switchDPID == null) {
-			d = DatapathId.of(0);
-		} else {
-			d = DatapathId.of(switchDPID.longValue());
-		}
-		if (switchPort == null) {
-			p = OFPort.ZERO;
-		} else {
-			p = OFPort.of(switchPort);
-		}
-		
-		IDevice res =  learnDeviceByEntity(new Entity(MacAddress.of(macAddress), 
-				v, i, d, p, new Date()));
+		/* Entity will enforce all but VLAN be non-null */
+		IDevice res =  learnDeviceByEntity(new Entity(macAddress, 
+				vlan, ipv4Address, ipv6Address, switchDPID, switchPort, new Date()));
 		// Restore listeners
 		if (listeners != null) {
 			for (IDeviceListener listener : listeners) {
@@ -129,17 +101,17 @@ public class MockDeviceManager extends DeviceManagerImpl {
 	/**
 	 * Learn a device using the given characteristics.
 	 * @param macAddress the MAC
-	 * @param vlan the VLAN (can be null)
-	 * @param ipv4Address the IP (can be null)
-	 * @param switchDPID the attachment point switch DPID (can be null)
-	 * @param switchPort the attachment point switch port (can be null)
+	 * @param vlan the VLAN (can be VlanVid.ZERO for untagged)
+	 * @param ipv4Address the IPv4 (can be IPv4Address.NONE)
+	 * @param ipv6Address the IPv6 (can be IPv6Address.NONE)
+	 * @param switchDPID the attachment point switch DPID (can be DatapathId.NONE)
+	 * @param switchPort the attachment point switch port (can be OFPort.ZERO)
 	 * @return the device, either new or not
 	 */
-	public IDevice learnEntity(long macAddress, Short vlan,
-			Integer ipv4Address, Long switchDPID,
-			Integer switchPort) {
-		return learnEntity(macAddress, vlan, ipv4Address,
-				switchDPID, switchPort, true);
+	public IDevice learnEntity(MacAddress macAddress, VlanVid vlan,
+			IPv4Address ipv4Address, IPv6Address ipv6Address, DatapathId switchDPID,
+			OFPort switchPort) {
+		return learnEntity(macAddress, vlan, ipv4Address, ipv6Address, switchDPID, switchPort, true);
 	}
 
 	@Override

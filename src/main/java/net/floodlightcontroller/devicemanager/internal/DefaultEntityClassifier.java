@@ -125,6 +125,5 @@ public class DefaultEntityClassifier implements
     @Override
     public void addListener(IEntityClassListener listener) {
         // no-op
-        
     }
 }
