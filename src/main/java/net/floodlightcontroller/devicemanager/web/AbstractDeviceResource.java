@@ -61,7 +61,7 @@ public abstract class AbstractDeviceResource extends ServerResource {
                     get(IDeviceService.class.getCanonicalName());  
                 
         MacAddress macAddress = MacAddress.NONE;
-        VlanVid vlan = VlanVid.ZERO;
+        VlanVid vlan = null; /* must be null for don't care */
         IPv4Address ipv4Address = IPv4Address.NONE;
         IPv6Address ipv6Address = IPv6Address.NONE;
         DatapathId switchDPID = DatapathId.NONE;
