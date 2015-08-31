@@ -11,6 +11,7 @@ import org.projectfloodlight.openflow.types.ArpOpcode;
 import org.projectfloodlight.openflow.types.EthType;
 import org.projectfloodlight.openflow.types.ICMPv4Code;
 import org.projectfloodlight.openflow.types.ICMPv4Type;
+import org.projectfloodlight.openflow.types.IPv4Address;
 import org.projectfloodlight.openflow.types.IPv4AddressWithMask;
 import org.projectfloodlight.openflow.types.IPv6AddressWithMask;
 import org.projectfloodlight.openflow.types.IPv6FlowLabel;
@@ -104,6 +105,8 @@ public class MatchUtils {
 
 	public static final String STR_METADATA = "metadata";
 	public static final String STR_TUNNEL_ID = "tunnel_id";
+	public static final String STR_TUNNEL_IPV4_SRC = "tunnel_ipv4_src";
+	public static final String STR_TUNNEL_IPV4_DST = "tunnel_ipv4_dst";
 
 	public static final String STR_PBB_ISID = "pbb_isid";	
 
@@ -152,6 +155,53 @@ public class MatchUtils {
 		}
 		return mb.build();
 	}
+	
+	
+	/**
+	 * Retains all fields in the Match parent. Converts the parent to an
+	 * equivalent Match of OFVersion version. No polite check is done to verify 
+	 * if MatchFields in parent are supported in a Match of OFVersion
+	 * version. An exception will be thrown if there are any unsupported
+	 * fields during the conversion process.
+	 * 
+	 * Note that a Match.Builder is returned. This is a convenience for cases
+	 * where MatchFields might be modified, added, or removed prior to being
+	 * built (e.g. in Forwarding/Routing between switches of different OFVersions).
+	 * Simply build the returned Match.Builder if you would like to treat this
+	 * function as a strict copy-to-version.
+	 * 
+	 * @param parent, the Match to convert
+	 * @param version, the OFVersion to convert parent to
+	 * @return a Match.Builder of the newly-converted Match
+	 */
+	@SuppressWarnings("unchecked")
+	public static Match.Builder convertToVersion(Match parent, OFVersion version) {
+		/* Builder retains a parent MatchField list, but list will not be used to  
+		 * build the new match if the builder's set methods have been invoked; only 
+		 * additions will be built, and all parent MatchFields will be ignored,  
+		 * even if they were not modified by the new builder. Create a builder, and
+		 * walk through m's list of non-wildcarded MatchFields. Set them all in the
+		 * new builder by invoking a set method for each. This will make them persist
+		 * in the Match built from this builder if the user decides to add or subtract
+		 * from the MatchField list.
+		 */
+		Match.Builder mb = OFFactories.getFactory(version).buildMatch(); 
+		Iterator<MatchField<?>> itr = parent.getMatchFields().iterator(); // only get exact or masked fields (not fully wildcarded)
+		while(itr.hasNext()) {
+			@SuppressWarnings("rawtypes")
+			MatchField mf = itr.next();
+			if (parent.isExact(mf)) {
+				mb.setExact(mf, parent.get(mf));
+			} else if (parent.isPartiallyMasked(mf)) {
+				mb.setMasked(mf, parent.getMasked(mf));
+			} else {
+				// it's either exact, masked, or wildcarded
+				// itr only contains exact and masked MatchFields
+				// we should never get here
+			}
+		}
+		return mb;
+	}
 
 	/**
 	 * 
@@ -171,32 +221,8 @@ public class MatchUtils {
 	 * @return Match.Builder; the builder that can be modified, and when built,
 	 * will retain all of m's MatchFields, unless you explicitly overwrite them.
 	 */
-	@SuppressWarnings({ "unchecked", "rawtypes" })
 	public static Match.Builder createRetentiveBuilder(Match m) {
-		/* Builder retains a parent MatchField list, but list will not be used to  
-		 * build the new match if the builder's set methods have been invoked; only 
-		 * additions will be built, and all parent MatchFields will be ignored,  
-		 * even if they were not modified by the new builder. Create a builder, and
-		 * walk through m's list of non-wildcarded MatchFields. Set them all in the
-		 * new builder by invoking a set method for each. This will make them persist
-		 * in the Match built from this builder if the user decides to add or subtract
-		 * from the MatchField list.
-		 */
-		Match.Builder mb = m.createBuilder(); 
-		Iterator<MatchField<?>> itr = m.getMatchFields().iterator(); // only get exact or masked fields (not fully wildcarded)
-		while(itr.hasNext()) {
-			MatchField mf = itr.next();
-			if (m.isExact(mf)) {
-				mb.setExact(mf, m.get(mf));
-			} else if (m.isPartiallyMasked(mf)) {
-				mb.setMasked(mf, m.getMasked(mf));
-			} else {
-				// it's either exact, masked, or wildcarded
-				// itr only contains exact and masked MatchFields
-				// we should never get here
-			}
-		}
-		return mb;
+		return convertToVersion(m, m.getVersion());
 	}
 
 	/**
@@ -746,6 +772,20 @@ public class MatchUtils {
 				} else {
 					mb.setMasked(MatchField.TUNNEL_ID, dataMask[0].contains("0x") ? U64.of(Long.valueOf(dataMask[0].replaceFirst("0x", ""), 16)) : U64.of(Long.valueOf(dataMask[0])), 
 							dataMask[1].contains("0x") ? U64.of(Long.valueOf(dataMask[1].replaceFirst("0x", ""), 16)) : U64.of(Long.valueOf(dataMask[1])));
+				}
+				break;
+			case STR_TUNNEL_IPV4_SRC:
+				if (dataMask.length == 1) {
+					mb.setExact(MatchField.TUNNEL_IPV4_SRC, IPv4Address.of(key_value[1]));
+				} else {
+					mb.setMasked(MatchField.TUNNEL_IPV4_SRC, IPv4AddressWithMask.of(key_value[1]));
+				}
+				break;
+			case STR_TUNNEL_IPV4_DST:
+				if (dataMask.length == 1) {
+					mb.setExact(MatchField.TUNNEL_IPV4_DST, IPv4Address.of(key_value[1]));
+				} else {
+					mb.setMasked(MatchField.TUNNEL_IPV4_DST, IPv4AddressWithMask.of(key_value[1]));
 				}
 				break;
 			case STR_PBB_ISID:

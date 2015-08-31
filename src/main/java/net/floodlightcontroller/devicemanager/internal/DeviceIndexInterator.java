@@ -55,5 +55,4 @@ public class DeviceIndexInterator implements Iterator<Device> {
     public void remove() {
         subIterator.remove();
     }
-
 }

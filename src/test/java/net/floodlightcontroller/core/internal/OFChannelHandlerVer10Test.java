@@ -35,12 +35,14 @@ import org.jboss.netty.util.Timer;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+
 import net.floodlightcontroller.core.IOFConnectionBackend;
 import net.floodlightcontroller.core.OFConnectionCounters;
 import net.floodlightcontroller.core.internal.OpenflowPipelineFactory.PipelineHandler;
 import net.floodlightcontroller.core.internal.OpenflowPipelineFactory.PipelineHandshakeTimeout;
 import net.floodlightcontroller.debugcounter.DebugCounterServiceImpl;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
+
 import org.projectfloodlight.openflow.protocol.OFActionType;
 import org.projectfloodlight.openflow.protocol.OFBarrierReply;
 import org.projectfloodlight.openflow.protocol.OFCapabilities;
@@ -63,6 +65,7 @@ import org.projectfloodlight.openflow.protocol.OFType;
 import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFPort;
+import org.projectfloodlight.openflow.types.U32;
 
 import com.google.common.collect.ImmutableList;
 
@@ -92,7 +95,6 @@ public class OFChannelHandlerVer10Test {
     private Capture<IOFConnectionBackend> newConnection;
     private Capture<OFFeaturesReply> newFeaturesReply;
 
-    @Before
     public void setUpFeaturesReply() {
        portDesc = factory.buildPortDesc()
                 .setName("Eth1")
@@ -111,6 +113,7 @@ public class OFChannelHandlerVer10Test {
 
     @Before
     public void setUp() throws Exception {
+    	setUpFeaturesReply();
         switchManager = createMock(IOFSwitchManager.class);
         connectionListener = createMock(IOFConnectionListener.class);
         newConnectionListener = createMock(INewOFConnectionListener.class);
@@ -137,7 +140,7 @@ public class OFChannelHandlerVer10Test {
         replay(switchManager);
         handler = new OFChannelHandler(switchManager, newConnectionListener,
                                        pipeline, debugCounterService,
-                                       timer);
+                                       timer, Collections.singletonList(U32.of(0)), OFFactories.getFactory(OFVersion.OF_14));
         verify(switchManager);
         reset(switchManager);
 

@@ -97,7 +97,8 @@ public class OFSwitch implements IOFSwitchBackend {
 	protected Set<OFCapabilities> capabilities;
 	protected long buffers;
 	protected Set<OFActionType> actions;
-	protected short tables;
+	protected Collection<TableId> tables;
+	protected short nTables;
 	protected final DatapathId datapathId;
 
 	private Map<TableId, TableFeatures> tableFeaturesByTableId;
@@ -112,8 +113,6 @@ public class OFSwitch implements IOFSwitchBackend {
 	 */
 	private final PortManager portManager;
 
-	//private final TableManager tableManager;
-
 	private volatile boolean connected;
 
 	private volatile OFControllerRole role;
@@ -125,6 +124,8 @@ public class OFSwitch implements IOFSwitchBackend {
 	private SwitchStatus status;
 
 	public static final int OFSWITCH_APP_ID = ident(5);
+	
+	private TableId maxTableToGetTableMissFlow = TableId.of(4); /* this should cover most HW switches that have a couple SW flow tables */
 
 	static {
 		AppCookie.registerApp(OFSwitch.OFSWITCH_APP_ID, "switch");
@@ -164,6 +165,7 @@ public class OFSwitch implements IOFSwitchBackend {
 		this.setAttribute(PROP_SUPPORTS_OFPP_TABLE, Boolean.TRUE);
 
 		this.tableFeaturesByTableId = new HashMap<TableId, TableFeatures>();
+		this.tables = new ArrayList<TableId>();
 	}
 
 	private static int ident(int i) {
@@ -715,6 +717,7 @@ public class OFSwitch implements IOFSwitchBackend {
 		log.trace("Channel: {}, Connected: {}", connections.get(OFAuxId.MAIN).getRemoteInetAddress(), connections.get(OFAuxId.MAIN).isConnected());
 		if (isActive()) {
 			connections.get(OFAuxId.MAIN).write(m);
+			switchManager.handleOutgoingMessage(this, m);
 		} else {
 			log.warn("Attempted to write to switch {} that is SLAVE.", this.getId().toString());
 		}
@@ -746,6 +749,7 @@ public class OFSwitch implements IOFSwitchBackend {
 	public void write(OFMessage m, LogicalOFMessageCategory category) {
 		if (isActive()) {
 			this.getConnection(category).write(m);
+			switchManager.handleOutgoingMessage(this, m);
 		} else {
 			log.warn("Attempted to write to switch {} that is SLAVE.", this.getId().toString());
 		}
@@ -755,6 +759,10 @@ public class OFSwitch implements IOFSwitchBackend {
 	public void write(Iterable<OFMessage> msglist, LogicalOFMessageCategory category) {
 		if (isActive()) {
 			this.getConnection(category).write(msglist);
+			
+			for(OFMessage m : msglist) {
+				switchManager.handleOutgoingMessage(this, m);				
+			}
 		} else {
 			log.warn("Attempted to write to switch {} that is SLAVE.", this.getId().toString());
 		}
@@ -785,6 +793,10 @@ public class OFSwitch implements IOFSwitchBackend {
 	public void write(Iterable<OFMessage> msglist) {
 		if (isActive()) {
 			connections.get(OFAuxId.MAIN).write(msglist);
+						
+			for(OFMessage m : msglist) {
+				switchManager.handleOutgoingMessage(this, m);
+			}
 		} else {
 			log.warn("Attempted to write to switch {} that is SLAVE.", this.getId().toString());
 		}
@@ -816,10 +828,11 @@ public class OFSwitch implements IOFSwitchBackend {
 		this.buffers = featuresReply.getNBuffers();
 
 		if (featuresReply.getVersion().compareTo(OFVersion.OF_13) < 0 ) {
-			// FIXME:LOJI: OF1.3 has per table actions. This needs to be modeled / handled here
+			/* OF1.3+ Per-table actions are set later in the OFTableFeaturesRequest/Reply */
 			this.actions = featuresReply.getActions();
 		}
-		this.tables = featuresReply.getNTables();
+		
+		this.nTables = featuresReply.getNTables();
 	}
 
 	@Override
@@ -869,6 +882,7 @@ public class OFSwitch implements IOFSwitchBackend {
 			List<OFTableFeatures> tfs = reply.getEntries();
 			for (OFTableFeatures tf : tfs) {
 				tableFeaturesByTableId.put(tf.getTableId(), TableFeatures.of(tf));
+				tables.add(tf.getTableId());
 				log.trace("Received TableFeatures for TableId {}, TableName {}", tf.getTableId().toString(), tf.getName());
 			}
 		}
@@ -1075,9 +1089,18 @@ public class OFSwitch implements IOFSwitchBackend {
 	}
 
 
+	/**
+	 * This performs a copy on each 'get'.
+	 * Use sparingly for good performance.
+	 */
 	@Override
-	public short getTables() {
-		return tables;
+	public Collection<TableId> getTables() {
+		return new ArrayList<TableId>(tables);
+	}
+	
+	@Override
+	public short getNumTables() {
+		return this.nTables;
 	}
 
 	@Override
@@ -1207,5 +1230,20 @@ public class OFSwitch implements IOFSwitchBackend {
 	@Override
 	public TableFeatures getTableFeatures(TableId table) {
 		return tableFeaturesByTableId.get(table);
+	}
+
+	@Override
+	public TableId getMaxTableForTableMissFlow() {
+		return maxTableToGetTableMissFlow;
+	}
+	
+	@Override
+	public TableId setMaxTableForTableMissFlow(TableId max) {
+		if (max.getValue() >= nTables) {
+			maxTableToGetTableMissFlow = TableId.of(nTables - 1 < 0 ? 0 : nTables - 1);
+		} else {
+			maxTableToGetTableMissFlow = max;
+		}
+		return maxTableToGetTableMissFlow;
 	}
 }

@@ -27,6 +27,7 @@ import net.floodlightcontroller.util.FilterIterator;
 
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.IPv4Address;
+import org.projectfloodlight.openflow.types.IPv6Address;
 import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.VlanVid;
@@ -46,6 +47,8 @@ public abstract class AbstractDeviceResource extends ServerResource {
     public static final String IPV4_ERROR = 
             "Invalid IPv4 address: must be in dotted decimal format, " + 
             "234.0.59.1";
+    public static final String IPV6_ERROR = 
+            "Invalid IPv6 address: must be a valid IPv6 format.";
     public static final String DPID_ERROR = 
             "Invalid Switch DPID: must be a 64-bit quantity, expressed in " + 
             "hex as AA:BB:CC:DD:EE:FF:00:11";
@@ -57,16 +60,18 @@ public abstract class AbstractDeviceResource extends ServerResource {
                 (IDeviceService)getContext().getAttributes().
                     get(IDeviceService.class.getCanonicalName());  
                 
-        MacAddress macAddress = null;
-        VlanVid vlan = null;
-        IPv4Address ipv4Address = null;
-        DatapathId switchDPID = null;
-        OFPort switchPort = null;
+        MacAddress macAddress = MacAddress.NONE;
+        VlanVid vlan = null; /* must be null for don't care */
+        IPv4Address ipv4Address = IPv4Address.NONE;
+        IPv6Address ipv6Address = IPv6Address.NONE;
+        DatapathId switchDPID = DatapathId.NONE;
+        OFPort switchPort = OFPort.ZERO;
         
         Form form = getQuery();
         String macAddrStr = form.getFirstValue("mac", true);
         String vlanStr = form.getFirstValue("vlan", true);
         String ipv4Str = form.getFirstValue("ipv4", true);
+        String ipv6Str = form.getFirstValue("ipv6", true);
         String dpid = form.getFirstValue("dpid", true);
         String port = form.getFirstValue("port", true);
         
@@ -98,6 +103,14 @@ public abstract class AbstractDeviceResource extends ServerResource {
                 return null;
             }
         }
+        if (ipv6Str != null) {
+            try {
+                ipv6Address = IPv6Address.of(ipv6Str);
+            } catch (Exception e) {
+                setStatus(Status.CLIENT_ERROR_BAD_REQUEST, IPV6_ERROR);
+                return null;
+            }
+        }
         if (dpid != null) {
             try {
                 switchDPID = DatapathId.of(dpid);
@@ -124,6 +137,7 @@ public abstract class AbstractDeviceResource extends ServerResource {
                 deviceManager.queryDevices(macAddress, 
                                            vlan, 
                                            ipv4Address, 
+                                           ipv6Address,
                                            switchDPID, 
                                            switchPort);
         
@@ -133,6 +147,8 @@ public abstract class AbstractDeviceResource extends ServerResource {
                 form.getFirstValue("vlan__startswith", true);
         final String ipv4StartsWith = 
                 form.getFirstValue("ipv4__startswith", true);
+        final String ipv6StartsWith = 
+                form.getFirstValue("ipv6__startswith", true);
         final String dpidStartsWith = 
                 form.getFirstValue("dpid__startswith", true);
         final String portStartsWith = 
@@ -163,6 +179,19 @@ public abstract class AbstractDeviceResource extends ServerResource {
                         if (v != null && 
                             (str = v.toString()) != null &&
                             str.startsWith(ipv4StartsWith)) {
+                            match = true;
+                            break;
+                        }
+                    }
+                    if (!match) return false;
+                }
+                if (ipv6StartsWith != null) {
+                    boolean match = false;
+                    for (IPv6Address v : value.getIPv6Addresses()) {
+                        String str;
+                        if (v != null && 
+                            (str = v.toString()) != null &&
+                            str.startsWith(ipv6StartsWith)) {
                             match = true;
                             break;
                         }

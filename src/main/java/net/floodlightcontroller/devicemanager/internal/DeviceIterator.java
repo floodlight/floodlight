@@ -23,6 +23,7 @@ import java.util.List;
 
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.IPv4Address;
+import org.projectfloodlight.openflow.types.IPv6Address;
 import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.VlanVid;
@@ -40,6 +41,7 @@ public class DeviceIterator extends FilterIterator<Device> {
     private MacAddress macAddress;
     private VlanVid vlan;
     private IPv4Address ipv4Address; 
+    private IPv6Address ipv6Address;
     private DatapathId switchDPID;
     private OFPort switchPort;
     
@@ -50,6 +52,7 @@ public class DeviceIterator extends FilterIterator<Device> {
      * @param macAddress The MAC address
      * @param vlan the VLAN
      * @param ipv4Address the ipv4 address
+     * @param ipv6Address the ipv6 address
      * @param switchDPID the switch DPID
      * @param switchPort the switch port
      */
@@ -58,6 +61,7 @@ public class DeviceIterator extends FilterIterator<Device> {
                           MacAddress macAddress,
                           VlanVid vlan, 
                           IPv4Address ipv4Address, 
+                          IPv6Address ipv6Address,
                           DatapathId switchDPID,
                           OFPort switchPort) {
         super(subIterator);
@@ -66,6 +70,7 @@ public class DeviceIterator extends FilterIterator<Device> {
         this.macAddress = macAddress;
         this.vlan = vlan;
         this.ipv4Address = ipv4Address;
+        this.ipv6Address = ipv6Address;
         this.switchDPID = switchDPID;
         this.switchPort = switchPort;
     }
@@ -86,35 +91,42 @@ public class DeviceIterator extends FilterIterator<Device> {
             }
             if (!match) return false;                
         }
-        if (macAddress != null) {
+        if (!macAddress.equals(MacAddress.NONE)) {
             if (!macAddress.equals(value.getMACAddress()))
                 return false;
         }
-        if (vlan != null) {
+        if (vlan != null) { /* VLAN is null, since VlanVid.ZERO is untagged */
             VlanVid[] vlans = value.getVlanId();
             List<VlanVid> searchableVlanList = Arrays.asList(vlans);
             if (!searchableVlanList.contains(vlan)) {
             	return false;
             }
         }
-        if (ipv4Address != null) {
+        if (!ipv4Address.equals(IPv4Address.NONE)) {
             IPv4Address[] ipv4Addresses = value.getIPv4Addresses();
             List<IPv4Address> searchableIPv4AddrList = Arrays.asList(ipv4Addresses);
             if (!searchableIPv4AddrList.contains(ipv4Address)) {
             	return false;
             }
         }
-        if (switchDPID != null || switchPort != null) {
+        if (!ipv6Address.equals(IPv6Address.NONE)) {
+            IPv6Address[] ipv6Addresses = value.getIPv6Addresses();
+            List<IPv6Address> searchableIPv6AddrList = Arrays.asList(ipv6Addresses);
+            if (!searchableIPv6AddrList.contains(ipv6Address)) {
+            	return false;
+            }
+        }
+        if (!switchDPID.equals(DatapathId.NONE) || !switchPort.equals(OFPort.ZERO)) {
             SwitchPort[] sps = value.getAttachmentPoints();
             if (sps == null) return false;
             
             match = false;
             for (SwitchPort sp : sps) {
-                if (switchDPID != null) {
+                if (!switchDPID.equals(DatapathId.NONE)) {
                     if (!switchDPID.equals(sp.getSwitchDPID()))
                         return false;
                 }
-                if (switchPort != null) {
+                if (!switchPort.equals(OFPort.ZERO)) {
                     if (!switchPort.equals(sp.getPort()))
                         return false;
                 }

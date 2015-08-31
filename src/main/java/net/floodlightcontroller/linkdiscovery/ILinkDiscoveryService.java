@@ -25,6 +25,7 @@ import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFPort;
 
+import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.routing.Link;
 import net.floodlightcontroller.topology.NodePortTuple;
@@ -62,7 +63,7 @@ public interface ILinkDiscoveryService extends IFloodlightService {
      * to switchport (sw, port). PacketOut does not contain actions.
      * PacketOut length includes the minimum length and data length.
      */
-    public OFPacketOut generateLLDPMessage(DatapathId sw, OFPort port,
+    public OFPacketOut generateLLDPMessage(IOFSwitch iofSwitch, OFPort port,
                                            boolean isStandard,
                                            boolean isReverse);
 

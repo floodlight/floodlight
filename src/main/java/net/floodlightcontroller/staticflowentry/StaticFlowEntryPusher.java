@@ -362,7 +362,14 @@ implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService, 
 			}
 
 			// get the correct builder for the OF version supported by the switch
-			fmb = OFFactories.getFactory(switchService.getSwitch(DatapathId.of(switchName)).getOFFactory().getVersion()).buildFlowModify();
+			try {
+				fmb = OFFactories.getFactory(switchService.getSwitch(DatapathId.of(switchName)).getOFFactory().getVersion()).buildFlowModify();
+			} catch (NullPointerException e) {
+				/* switch was not connected/known */
+				storageSourceService.deleteRowAsync(TABLE_NAME, entryName);
+				log.error("Deleting entry {}. Switch {} was not connected to the controller, and we need to know the OF protocol version to compose the flow mod.", entryName, switchName);
+				return;
+			}
 
 			StaticFlowEntries.initDefaultFlowMod(fmb, entryName);
 
@@ -587,16 +594,20 @@ implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService, 
 		}
 
 		// send flow_mod delete
-		OFFlowDeleteStrict flowMod = FlowModUtils.toFlowDeleteStrict(entriesFromStorage.get(dpid).get(entryName));
+		if (switchService.getSwitch(DatapathId.of(dpid)) != null) {
+			OFFlowDeleteStrict flowMod = FlowModUtils.toFlowDeleteStrict(entriesFromStorage.get(dpid).get(entryName));
 
-		if (entriesFromStorage.containsKey(dpid) && entriesFromStorage.get(dpid).containsKey(entryName)) {
-			entriesFromStorage.get(dpid).remove(entryName);
+			if (entriesFromStorage.containsKey(dpid) && entriesFromStorage.get(dpid).containsKey(entryName)) {
+				entriesFromStorage.get(dpid).remove(entryName);
+			} else {
+				log.debug("Tried to delete non-existent entry {} for switch {}", entryName, dpid);
+				return;
+			}
+
+			writeFlowModToSwitch(DatapathId.of(dpid), flowMod);
 		} else {
-			log.debug("Tried to delete non-existent entry {} for switch {}", entryName, dpid);
-			return;
+			log.debug("Not sending flow delete for disconnected switch.");
 		}
-
-		writeFlowModToSwitch(DatapathId.of(dpid), flowMod);
 		return;
 	}
 
@@ -730,19 +741,19 @@ implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService, 
 					Map<String, OFFlowMod> flowsByName = getFlows(sw.getId());
 					for (Map.Entry<String, OFFlowMod> entry : flowsByName.entrySet()) {
 						if (msg.getCookie().equals(entry.getValue().getCookie()) &&
-								msg.getHardTimeout() == entry.getValue().getHardTimeout() &&
+								(msg.getVersion().compareTo(OFVersion.OF_12) < 0 ? true : msg.getHardTimeout() == entry.getValue().getHardTimeout()) &&
 								msg.getIdleTimeout() == entry.getValue().getIdleTimeout() &&
 								msg.getMatch().equals(entry.getValue().getMatch()) &&
 								msg.getPriority() == entry.getValue().getPriority() &&
-								msg.getTableId().equals(entry.getValue().getTableId())
-							) {
+								(msg.getVersion().compareTo(OFVersion.OF_10) == 0 ? true : msg.getTableId().equals(entry.getValue().getTableId()))
+								) {
 							flowToRemove = entry.getKey();
 							break;
 						}
 					}
-					
+
 					log.debug("Flow to Remove: {}", flowToRemove);
-					
+
 					/*
 					 * Remove the flow. This will send the delete message to the switch,
 					 * since we cannot tell the storage listener rowsdeleted() that we

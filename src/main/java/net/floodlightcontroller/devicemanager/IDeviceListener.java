@@ -56,6 +56,13 @@ public interface IDeviceListener extends IListener<String> {
     public void deviceIPV4AddrChanged(IDevice device);
     
     /**
+     * Called when a network address has been added or remove from a device
+     * 
+     * @param device the device that changed
+     */
+    public void deviceIPV6AddrChanged(IDevice device);
+    
+    /**
      * Called when a VLAN tag for the device has been added or removed
      * @param device the device that changed
      */

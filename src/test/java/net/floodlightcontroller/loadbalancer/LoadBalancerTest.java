@@ -47,11 +47,13 @@ import org.projectfloodlight.openflow.protocol.OFPacketOut;
 import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.types.EthType;
 import org.projectfloodlight.openflow.types.IPv4Address;
+import org.projectfloodlight.openflow.types.IPv6Address;
 import org.projectfloodlight.openflow.types.IpProtocol;
 import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFBufferId;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.U64;
+import org.projectfloodlight.openflow.types.VlanVid;
 import org.projectfloodlight.openflow.protocol.OFPacketInReason;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
@@ -490,10 +492,10 @@ public class LoadBalancerTest extends FloodlightTestCase {
 				.setHardwareAddressLength((byte) 6)
 				.setProtocolAddressLength((byte) 4)
 				.setOpCode(ARP.OP_REQUEST)
-				.setSenderHardwareAddress(HexString.fromHexString("00:00:00:00:00:01"))
-				.setSenderProtocolAddress(IPv4.toIPv4AddressBytes("10.0.0.1"))
-				.setTargetHardwareAddress(HexString.fromHexString("00:00:00:00:00:00"))
-				.setTargetProtocolAddress(IPv4.toIPv4AddressBytes("10.0.0.100")));
+				.setSenderHardwareAddress(MacAddress.of("00:00:00:00:00:01"))
+				.setSenderProtocolAddress(IPv4Address.of("10.0.0.1"))
+				.setTargetHardwareAddress(MacAddress.of("00:00:00:00:00:00"))
+				.setTargetProtocolAddress(IPv4Address.of("10.0.0.100")));
 
 		arpRequest1Serialized = arpRequest1.serialize();
 
@@ -522,10 +524,10 @@ public class LoadBalancerTest extends FloodlightTestCase {
 				.setHardwareAddressLength((byte) 6)
 				.setProtocolAddressLength((byte) 4)
 				.setOpCode(ARP.OP_REPLY)
-				.setSenderHardwareAddress(HexString.fromHexString(LBVip.LB_PROXY_MAC))
-				.setSenderProtocolAddress(IPv4.toIPv4AddressBytes("10.0.0.100"))
-				.setTargetHardwareAddress(HexString.fromHexString("00:00:00:00:00:01"))
-				.setTargetProtocolAddress(IPv4.toIPv4AddressBytes("10.0.0.1")));
+				.setSenderHardwareAddress(MacAddress.of(LBVip.LB_PROXY_MAC))
+				.setSenderProtocolAddress(IPv4Address.of("10.0.0.100"))
+				.setTargetHardwareAddress(MacAddress.of("00:00:00:00:00:01"))
+				.setTargetProtocolAddress(IPv4Address.of("10.0.0.1")));
 
 		arpReply1Serialized = arpReply1.serialize();
 
@@ -621,18 +623,18 @@ public class LoadBalancerTest extends FloodlightTestCase {
 		MacAddress dataLayerDest2 = MacAddress.of("00:00:00:00:00:04");
 		IPv4Address networkDest2 = IPv4Address.of("10.0.0.4");
 
-		deviceManager.learnEntity(dataLayerSource1.getLong(),
-				null, networkSource1.getInt(),
-				1L, 1);
-		deviceManager.learnEntity(dataLayerSource2.getLong(),
-				null, networkSource2.getInt(),
-				1L, 2);
-		deviceManager.learnEntity(dataLayerDest1.getLong(),
-				null, networkDest1.getInt(),
-				1L, 3);
-		deviceManager.learnEntity(dataLayerDest2.getLong(),
-				null, networkDest2.getInt(),
-				1L, 4);
+		deviceManager.learnEntity(dataLayerSource1,
+				VlanVid.ZERO, networkSource1, IPv6Address.NONE,
+				DatapathId.of(1), OFPort.of(1));
+		deviceManager.learnEntity(dataLayerSource2,
+				VlanVid.ZERO, networkSource2, IPv6Address.NONE,
+				DatapathId.of(1), OFPort.of(2));
+		deviceManager.learnEntity(dataLayerDest1,
+				VlanVid.ZERO, networkDest1, IPv6Address.NONE,
+				DatapathId.of(1), OFPort.of(3));
+		deviceManager.learnEntity(dataLayerDest2,
+				VlanVid.ZERO, networkDest2, IPv6Address.NONE,
+				DatapathId.of(1), OFPort.of(4));
 
 		// in bound #1
 		Route route1 = new Route(DatapathId.of(1L), DatapathId.of(1L));

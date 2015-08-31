@@ -42,6 +42,7 @@ import net.floodlightcontroller.core.util.AppCookie;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPv4;
+import net.floodlightcontroller.packet.IPv6;
 import net.floodlightcontroller.packet.TCP;
 import net.floodlightcontroller.packet.UDP;
 import net.floodlightcontroller.routing.ForwardingBase;
@@ -60,6 +61,7 @@ import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.EthType;
 import org.projectfloodlight.openflow.types.IPv4Address;
+import org.projectfloodlight.openflow.types.IPv6Address;
 import org.projectfloodlight.openflow.types.IpProtocol;
 import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFBufferId;
@@ -181,6 +183,8 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
 			for (SwitchPort dstDap : dstDevice.getAttachmentPoints()) {
 				DatapathId dstSwDpid = dstDap.getSwitchDPID();
 				DatapathId dstIsland = topologyService.getL2DomainId(dstSwDpid);
+				log.trace("Source Island: {}, Destination Island: {}", srcIsland, dstIsland);
+				log.trace("Source Device: {}, Destination Device: {}", srcDevice, dstDevice);
 				if ((dstIsland != null) && dstIsland.equals(srcIsland)) {
 					on_same_island = true;
 					if (sw.getId().equals(dstSwDpid) && inPort.equals(dstDap.getPort())) {
@@ -337,6 +341,38 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
 			}
 		} else if (eth.getEtherType() == EthType.ARP) { /* shallow check for equality is okay for EthType */
 			mb.setExact(MatchField.ETH_TYPE, EthType.ARP);
+		} else if (eth.getEtherType() == EthType.IPv6) {
+			IPv6 ip = (IPv6) eth.getPayload();
+			IPv6Address srcIp = ip.getSourceAddress();
+			IPv6Address dstIp = ip.getDestinationAddress();
+			
+			if (FLOWMOD_DEFAULT_MATCH_IP_ADDR) {
+				mb.setExact(MatchField.ETH_TYPE, EthType.IPv6)
+				.setExact(MatchField.IPV6_SRC, srcIp)
+				.setExact(MatchField.IPV6_DST, dstIp);
+			}
+
+			if (FLOWMOD_DEFAULT_MATCH_TRANSPORT) {
+				/*
+				 * Take care of the ethertype if not included earlier,
+				 * since it's a prerequisite for transport ports.
+				 */
+				if (!FLOWMOD_DEFAULT_MATCH_IP_ADDR) {
+					mb.setExact(MatchField.ETH_TYPE, EthType.IPv6);
+				}
+				
+				if (ip.getNextHeader().equals(IpProtocol.TCP)) {
+					TCP tcp = (TCP) ip.getPayload();
+					mb.setExact(MatchField.IP_PROTO, IpProtocol.TCP)
+					.setExact(MatchField.TCP_SRC, tcp.getSourcePort())
+					.setExact(MatchField.TCP_DST, tcp.getDestinationPort());
+				} else if (ip.getNextHeader().equals(IpProtocol.UDP)) {
+					UDP udp = (UDP) ip.getPayload();
+					mb.setExact(MatchField.IP_PROTO, IpProtocol.UDP)
+					.setExact(MatchField.UDP_SRC, udp.getSourcePort())
+					.setExact(MatchField.UDP_DST, udp.getDestinationPort());
+				}
+			}
 		}
 		return mb.build();
 	}
@@ -469,6 +505,13 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
 			log.info("Default priority set to {}.", FLOWMOD_DEFAULT_PRIORITY);
 		} else {
 			log.info("Default priority not configured. Using {}.", FLOWMOD_DEFAULT_PRIORITY);
+		}
+		tmp = configParameters.get("set-send-flow-rem-flag");
+		if (tmp != null) {
+			FLOWMOD_DEFAULT_SET_SEND_FLOW_REM_FLAG = Boolean.parseBoolean(tmp);
+			log.info("Default flags will be set to SEND_FLOW_REM.");
+		} else {
+			log.info("Default flags will be empty.");
 		}
 		tmp = configParameters.get("match");
 		if (tmp != null) {

@@ -158,7 +158,7 @@ public class StatsReplySerializer extends JsonSerializer<StatsReply> {
 
 		jGen.configure(Feature.WRITE_NUMBERS_AS_STRINGS, true); // IMHO this just looks nicer and is easier to read if everything is quoted
 		jGen.writeStartObject();
-		
+
 		if (reply.getStatType() == null) { // must be an OFFeaturesReply. getValues() was already checked for null above.
 			serializeFeaturesReply((OFFeaturesReply) reply.getValues(), jGen);
 		} else {
@@ -213,7 +213,7 @@ public class StatsReplySerializer extends JsonSerializer<StatsReply> {
 		}
 		jGen.writeEndObject();
 	}
-	
+
 	public static void serializeFeaturesReply(OFFeaturesReply fr, JsonGenerator jGen) throws IOException, JsonProcessingException {
 		/* Common to All OF Versions */			
 		jGen.writeStringField("capabilities", fr.getCapabilities().toString());
@@ -221,7 +221,7 @@ public class StatsReplySerializer extends JsonSerializer<StatsReply> {
 		jGen.writeNumberField("buffers", fr.getNBuffers());
 		jGen.writeNumberField("tables", fr.getNTables());
 		jGen.writeStringField("version", fr.getVersion().toString());
-		
+
 		if (fr.getVersion().compareTo(OFVersion.OF_13) < 0) { // OF1.3+ break this out into port_config
 			serializePortDesc(fr.getPorts(), jGen);
 		}
@@ -509,236 +509,216 @@ public class StatsReplySerializer extends JsonSerializer<StatsReply> {
 	 */
 	public static void serializeTableFeaturesReply(List<OFTableFeaturesStatsReply> tableFeaturesReplies, JsonGenerator jGen) throws IOException, JsonProcessingException{
 
-		OFTableFeaturesStatsReply tableFeaturesReply = tableFeaturesReplies.get(0);
-		jGen.writeStringField("version", tableFeaturesReply.getVersion().toString()); //return the enum name
-
 		jGen.writeFieldName("tableFeatures");
 		jGen.writeStartArray();
-		for(OFTableFeatures tableFeature : tableFeaturesReply.getEntries()) {
-			jGen.writeStartObject();                        
-			jGen.writeNumberField("tableId", tableFeature.getTableId().getValue());
-			jGen.writeStringField("name", tableFeature.getName());
-			jGen.writeNumberField("metadataMatch", tableFeature.getMetadataMatch().getValue());
-			jGen.writeNumberField("metadataWrite", tableFeature.getMetadataWrite().getValue());
-			jGen.writeNumberField("config", tableFeature.getConfig());
-			jGen.writeNumberField("maxEntries", tableFeature.getMaxEntries());
+		for (OFTableFeaturesStatsReply tableFeaturesReply : tableFeaturesReplies) {
 
-			jGen.writeFieldName("properties");
-			jGen.writeStartArray();
-			for (OFTableFeatureProp properties : tableFeature.getProperties()) {            	
-				jGen.writeStartObject();
-				short type = (short)properties.getType();
-				jGen.writeNumberField("tableFeaturePropType",type);
+			for(OFTableFeatures tableFeature : tableFeaturesReply.getEntries()) {
+				jGen.writeStartObject();    
+				jGen.writeStringField("version", tableFeature.getVersion().toString());
+				jGen.writeNumberField("tableId", tableFeature.getTableId().getValue());
+				jGen.writeStringField("name", tableFeature.getName());
+				jGen.writeNumberField("metadataMatch", tableFeature.getMetadataMatch().getValue());
+				jGen.writeNumberField("metadataWrite", tableFeature.getMetadataWrite().getValue());
+				jGen.writeNumberField("config", tableFeature.getConfig());
+				jGen.writeNumberField("maxEntries", tableFeature.getMaxEntries());
 
-				switch (type) {
-				case OFTableFeaturePropTypeSerializerVer13.INSTRUCTIONS_VAL:
-					OFTableFeaturePropInstructions propInstruct = (OFTableFeaturePropInstructions) properties;
-					jGen.writeFieldName("instructions");
-					jGen.writeStartArray();
-					for (OFInstructionId id : propInstruct.getInstructionIds()) {
-						jGen.writeStartObject();
-						jGen.writeString(id.getType().toString());              			
-						jGen.writeEndObject();
-					}
-					jGen.writeEndArray();
-					break;
-				case OFTableFeaturePropTypeSerializerVer13.INSTRUCTIONS_MISS_VAL:
-					OFTableFeaturePropInstructionsMiss propInstructMiss = (OFTableFeaturePropInstructionsMiss) properties;
-					jGen.writeFieldName("instructionsMiss");
-					jGen.writeStartArray();
-					for (OFInstructionId id : propInstructMiss.getInstructionIds()) {
-						jGen.writeStartObject();
-						jGen.writeString(id.getType().toString());              			
-						jGen.writeEndObject();
-					}
-					jGen.writeEndArray();
-					break;
-				case OFTableFeaturePropTypeSerializerVer13.NEXT_TABLES_VAL:
-					OFTableFeaturePropNextTables propNxtTables = (OFTableFeaturePropNextTables) properties;
-					jGen.writeFieldName("nextTables");
-					jGen.writeStartArray();
-					for (U8 id : propNxtTables.getNextTableIds()) {
-						jGen.writeStartObject();
-						jGen.writeNumber(id.getValue());
-						jGen.writeEndObject();
-					}
-					jGen.writeEndArray();
-					break;
-				case OFTableFeaturePropTypeSerializerVer13.NEXT_TABLES_MISS_VAL:
-					OFTableFeaturePropNextTablesMiss propNxtTablesMiss = (OFTableFeaturePropNextTablesMiss) properties;
-					jGen.writeFieldName("nextTablesMiss");
-					jGen.writeStartArray();
-					for (U8 id : propNxtTablesMiss.getNextTableIds()) {
-						jGen.writeStartObject();
-						jGen.writeNumber(id.getValue());
-						jGen.writeEndObject();
-					}
-					jGen.writeEndArray();
-					break;
-				case OFTableFeaturePropTypeSerializerVer13.WRITE_ACTIONS_VAL:
-					OFTableFeaturePropWriteActions propWrAct = (OFTableFeaturePropWriteActions) properties; 
-					jGen.writeFieldName("writeActions");
-					jGen.writeStartArray();
-					for (OFActionId id : propWrAct.getActionIds()) {
-						jGen.writeStartObject();
-						jGen.writeString(id.getType().toString());
-						jGen.writeEndObject();
-					}
-					jGen.writeEndArray();
-					break;
-				case OFTableFeaturePropTypeSerializerVer13.WRITE_ACTIONS_MISS_VAL:
-					OFTableFeaturePropWriteActionsMiss propWrActMiss = (OFTableFeaturePropWriteActionsMiss) properties;
-					jGen.writeFieldName("writeActionsMiss");
-					jGen.writeStartArray();
-					for (OFActionId id : propWrActMiss.getActionIds()) {
-						jGen.writeStartObject();
-						jGen.writeString(id.getType().toString());
-						jGen.writeEndObject();
-					}
-					jGen.writeEndArray();
-					break;
-				case OFTableFeaturePropTypeSerializerVer13.APPLY_ACTIONS_VAL:
-					OFTableFeaturePropApplyActions propAppAct = (OFTableFeaturePropApplyActions) properties;   
-					jGen.writeFieldName("applyActions");
-					jGen.writeStartArray();
-					for (OFActionId id : propAppAct.getActionIds()) {
-						jGen.writeStartObject();
-						jGen.writeString(id.getType().toString());
-						jGen.writeEndObject();
-					}
-					jGen.writeEndArray();
-					break;	
-				case OFTableFeaturePropTypeSerializerVer13.APPLY_ACTIONS_MISS_VAL:
-					OFTableFeaturePropApplyActionsMiss propAppActMiss = (OFTableFeaturePropApplyActionsMiss) properties;
-					jGen.writeFieldName("applyActionsMiss");
-					jGen.writeStartArray();
-					for (OFActionId id : propAppActMiss.getActionIds()) {
-						jGen.writeStartObject();
-						jGen.writeString(id.getType().toString());
-						jGen.writeEndObject();
-					}
-					jGen.writeEndArray();
-					break;
-				case OFTableFeaturePropTypeSerializerVer13.MATCH_VAL:                	
-					OFTableFeaturePropMatch propMatch = (OFTableFeaturePropMatch) properties;
-					jGen.writeFieldName("match");
-					jGen.writeStartArray();
-					for (U32 id : propMatch.getOxmIds()) {
-						jGen.writeStartObject();
-						jGen.writeNumber(id.getValue());
-						jGen.writeEndObject();
-					}
-					jGen.writeEndArray();
-					break;
-				case OFTableFeaturePropTypeSerializerVer13.WILDCARDS_VAL:
-					OFTableFeaturePropWildcards propWildcards = (OFTableFeaturePropWildcards) properties;
-					jGen.writeFieldName("wildcards");
-					jGen.writeStartArray();
-					for (U32 id : propWildcards.getOxmIds()) {
-						jGen.writeStartObject();
-						jGen.writeNumber(id.getValue());
-						jGen.writeEndObject();
-					}
-					jGen.writeEndArray();
-					break;
-				case OFTableFeaturePropTypeSerializerVer13.WRITE_SETFIELD_VAL:
-					OFTableFeaturePropWriteSetfield propWrSetfield = (OFTableFeaturePropWriteSetfield) properties;           
-					jGen.writeFieldName("writeSetfield");
-					jGen.writeStartArray();
-					for (U32 id : propWrSetfield.getOxmIds()) {
-						jGen.writeStartObject();
-						jGen.writeNumber(id.getValue());
-						jGen.writeEndObject();
-					}
-					jGen.writeEndArray();
-					break;
-				case OFTableFeaturePropTypeSerializerVer13.WRITE_SETFIELD_MISS_VAL:
-					OFTableFeaturePropWriteSetfieldMiss propWrSetfieldMiss = (OFTableFeaturePropWriteSetfieldMiss) properties; 
-					jGen.writeFieldName("writeSetfieldMiss");
-					jGen.writeStartArray();
-					for (U32 id : propWrSetfieldMiss.getOxmIds()) {
-						jGen.writeStartObject();
-						jGen.writeNumber(id.getValue());
-						jGen.writeEndObject();
-					}
-					jGen.writeEndArray();
-					break;
-				case OFTableFeaturePropTypeSerializerVer13.APPLY_SETFIELD_VAL:
-					OFTableFeaturePropApplySetfield propAppSetfield = (OFTableFeaturePropApplySetfield) properties;
-					jGen.writeFieldName("applySetfield");
-					jGen.writeStartArray();
-					for (U32 id : propAppSetfield.getOxmIds()) {
-						jGen.writeStartObject();
-						jGen.writeNumber(id.getValue());
-						jGen.writeEndObject();
-					}
-					jGen.writeEndArray();
-					break;
-				case OFTableFeaturePropTypeSerializerVer13.APPLY_SETFIELD_MISS_VAL:
-					OFTableFeaturePropApplySetfieldMiss propAppSetfieldMiss = (OFTableFeaturePropApplySetfieldMiss) properties;                		
-					jGen.writeFieldName("applySetfieldMiss");
-					jGen.writeStartArray();
-					for (U32 id : propAppSetfieldMiss.getOxmIds()) {
-						jGen.writeStartObject();
-						jGen.writeNumber(id.getValue());
-						jGen.writeEndObject();
-					}
-					jGen.writeEndArray();
-					break;
-				case OFTableFeaturePropTypeSerializerVer13.EXPERIMENTER_VAL:
-					OFTableFeaturePropExperimenter propExp = (OFTableFeaturePropExperimenter) properties; 
-					jGen.writeFieldName("experimenter");
+				jGen.writeFieldName("properties");
+				jGen.writeStartArray();
+				for (OFTableFeatureProp properties : tableFeature.getProperties()) {            	
 					jGen.writeStartObject();
-					jGen.writeNumberField("subType", propExp.getSubtype());
-					jGen.writeNumberField("experimenter", propExp.getExperimenter());
-					jGen.writeStringField("subType", propExp.getExperimenterData().toString());
+
+					short type = (short)properties.getType();
+					switch (type) {
+					case OFTableFeaturePropTypeSerializerVer13.INSTRUCTIONS_VAL:
+						OFTableFeaturePropInstructions propInstruct = (OFTableFeaturePropInstructions) properties;
+						jGen.writeFieldName("instructions");
+						jGen.writeStartArray();
+						for (OFInstructionId id : propInstruct.getInstructionIds()) {
+							jGen.writeString(id.getType().toString());              			
+						}
+						jGen.writeEndArray();
+						break;
+					case OFTableFeaturePropTypeSerializerVer13.INSTRUCTIONS_MISS_VAL:
+						OFTableFeaturePropInstructionsMiss propInstructMiss = (OFTableFeaturePropInstructionsMiss) properties;
+						jGen.writeFieldName("instructionsMiss");
+						jGen.writeStartArray();
+						for (OFInstructionId id : propInstructMiss.getInstructionIds()) {
+							jGen.writeString(id.getType().toString());              			
+						}
+						jGen.writeEndArray();
+						break;
+					case OFTableFeaturePropTypeSerializerVer13.NEXT_TABLES_VAL:
+						OFTableFeaturePropNextTables propNxtTables = (OFTableFeaturePropNextTables) properties;
+						jGen.writeFieldName("nextTables");
+						jGen.writeStartArray();
+						for (U8 id : propNxtTables.getNextTableIds()) {
+							jGen.writeNumber(id.getValue());
+						}
+						jGen.writeEndArray();
+						break;
+					case OFTableFeaturePropTypeSerializerVer13.NEXT_TABLES_MISS_VAL:
+						OFTableFeaturePropNextTablesMiss propNxtTablesMiss = (OFTableFeaturePropNextTablesMiss) properties;
+						jGen.writeFieldName("nextTablesMiss");
+						jGen.writeStartArray();
+						for (U8 id : propNxtTablesMiss.getNextTableIds()) {
+							jGen.writeNumber(id.getValue());
+						}
+						jGen.writeEndArray();
+						break;
+					case OFTableFeaturePropTypeSerializerVer13.WRITE_ACTIONS_VAL:
+						OFTableFeaturePropWriteActions propWrAct = (OFTableFeaturePropWriteActions) properties; 
+						jGen.writeFieldName("writeActions");
+						jGen.writeStartArray();
+						for (OFActionId id : propWrAct.getActionIds()) {
+							jGen.writeString(id.getType().toString());
+						}
+						jGen.writeEndArray();
+						break;
+					case OFTableFeaturePropTypeSerializerVer13.WRITE_ACTIONS_MISS_VAL:
+						OFTableFeaturePropWriteActionsMiss propWrActMiss = (OFTableFeaturePropWriteActionsMiss) properties;
+						jGen.writeFieldName("writeActionsMiss");
+						jGen.writeStartArray();
+						for (OFActionId id : propWrActMiss.getActionIds()) {
+							jGen.writeString(id.getType().toString());
+						}
+						jGen.writeEndArray();
+						break;
+					case OFTableFeaturePropTypeSerializerVer13.APPLY_ACTIONS_VAL:
+						OFTableFeaturePropApplyActions propAppAct = (OFTableFeaturePropApplyActions) properties;   
+						jGen.writeFieldName("applyActions");
+						jGen.writeStartArray();
+						for (OFActionId id : propAppAct.getActionIds()) {
+							jGen.writeString(id.getType().toString());
+						}
+						jGen.writeEndArray();
+						break;	
+					case OFTableFeaturePropTypeSerializerVer13.APPLY_ACTIONS_MISS_VAL:
+						OFTableFeaturePropApplyActionsMiss propAppActMiss = (OFTableFeaturePropApplyActionsMiss) properties;
+						jGen.writeFieldName("applyActionsMiss");
+						jGen.writeStartArray();
+						for (OFActionId id : propAppActMiss.getActionIds()) {
+							jGen.writeString(id.getType().toString());
+						}
+						jGen.writeEndArray();
+						break;
+					case OFTableFeaturePropTypeSerializerVer13.MATCH_VAL:                	
+						OFTableFeaturePropMatch propMatch = (OFTableFeaturePropMatch) properties;
+						jGen.writeFieldName("match");
+						jGen.writeStartArray();
+						for (U32 id : propMatch.getOxmIds()) {
+							jGen.writeString(OXMSerializer.oxmIdToString(id));
+						}
+						jGen.writeEndArray();
+						break;
+					case OFTableFeaturePropTypeSerializerVer13.WILDCARDS_VAL:
+						OFTableFeaturePropWildcards propWildcards = (OFTableFeaturePropWildcards) properties;
+						jGen.writeFieldName("wildcards");
+						jGen.writeStartArray();
+						for (U32 id : propWildcards.getOxmIds()) {
+							jGen.writeString(OXMSerializer.oxmIdToString(id));
+						}
+						jGen.writeEndArray();
+						break;
+					case OFTableFeaturePropTypeSerializerVer13.WRITE_SETFIELD_VAL:
+						OFTableFeaturePropWriteSetfield propWrSetfield = (OFTableFeaturePropWriteSetfield) properties;           
+						jGen.writeFieldName("writeSetfield");
+						jGen.writeStartArray();
+						for (U32 id : propWrSetfield.getOxmIds()) {
+							jGen.writeString(OXMSerializer.oxmIdToString(id));
+						}
+						jGen.writeEndArray();
+						break;
+					case OFTableFeaturePropTypeSerializerVer13.WRITE_SETFIELD_MISS_VAL:
+						OFTableFeaturePropWriteSetfieldMiss propWrSetfieldMiss = (OFTableFeaturePropWriteSetfieldMiss) properties; 
+						jGen.writeFieldName("writeSetfieldMiss");
+						jGen.writeStartArray();
+						for (U32 id : propWrSetfieldMiss.getOxmIds()) {
+							jGen.writeString(OXMSerializer.oxmIdToString(id));
+						}
+						jGen.writeEndArray();
+						break;
+					case OFTableFeaturePropTypeSerializerVer13.APPLY_SETFIELD_VAL:
+						OFTableFeaturePropApplySetfield propAppSetfield = (OFTableFeaturePropApplySetfield) properties;
+						jGen.writeFieldName("applySetfield");
+						jGen.writeStartArray();
+						for (U32 id : propAppSetfield.getOxmIds()) {
+							jGen.writeString(OXMSerializer.oxmIdToString(id));
+						}
+						jGen.writeEndArray();
+						break;
+					case OFTableFeaturePropTypeSerializerVer13.APPLY_SETFIELD_MISS_VAL:
+						OFTableFeaturePropApplySetfieldMiss propAppSetfieldMiss = (OFTableFeaturePropApplySetfieldMiss) properties;                		
+						jGen.writeFieldName("applySetfieldMiss");
+						jGen.writeStartArray();
+						for (U32 id : propAppSetfieldMiss.getOxmIds()) {
+							jGen.writeString(OXMSerializer.oxmIdToString(id));
+						}
+						jGen.writeEndArray();
+						break;
+					case OFTableFeaturePropTypeSerializerVer13.EXPERIMENTER_VAL:
+						OFTableFeaturePropExperimenter propExp = (OFTableFeaturePropExperimenter) properties; 
+						jGen.writeFieldName("experimenter");
+						jGen.writeStartObject();
+						jGen.writeNumberField("subType", propExp.getSubtype());
+						jGen.writeNumberField("experimenter", propExp.getExperimenter());
+						jGen.writeStringField("data", propExp.getExperimenterData().toString());
+						jGen.writeEndObject();
+						break;	
+					case OFTableFeaturePropTypeSerializerVer13.EXPERIMENTER_MISS_VAL:
+						OFTableFeaturePropExperimenterMiss propExpMiss = (OFTableFeaturePropExperimenterMiss) properties;
+						jGen.writeFieldName("experimenterMiss");
+						jGen.writeStartObject();
+						jGen.writeNumberField("subType", propExpMiss.getSubtype());
+						jGen.writeNumberField("experimenter", propExpMiss.getExperimenter());
+						jGen.writeStringField("data", propExpMiss.getExperimenterData().toString());
+						jGen.writeEndObject();
+						break;	
+					default:
+						// shouldn't ever get here
+						jGen.writeStartObject();
+						jGen.writeEndObject();
+						break;            		
+					}//end of Switch Case  
 					jGen.writeEndObject();
-					break;	
-				case OFTableFeaturePropTypeSerializerVer13.EXPERIMENTER_MISS_VAL:
-					OFTableFeaturePropExperimenterMiss propExpMiss = (OFTableFeaturePropExperimenterMiss) properties;
-					jGen.writeFieldName("experimenterMiss");
-					jGen.writeStartObject();
-					jGen.writeNumberField("subType", propExpMiss.getSubtype());
-					jGen.writeNumberField("experimenter", propExpMiss.getExperimenter());
-					jGen.writeStringField("subType", propExpMiss.getExperimenterData().toString());
-					jGen.writeEndObject();
-					break;	
-				default:
-					// shouldn't ever get here
-					break;            		
-				}//end of Switch Case  
+				}//end of for loop - properties                                              
+				jGen.writeEndArray();
 				jGen.writeEndObject();
-			}//end of for loop - properties                                              
-			jGen.writeEndObject();
-		}//end of for loop - features
+			}//end of for loop - features
+		} //end of looping through REQ_MORE flagged message loop
 		jGen.writeEndArray();
 	} 
 
-
-	public static void serializePortReply(List<OFPortStatsReply> portReplies, JsonGenerator jGen) throws IOException, JsonProcessingException{
-		OFPortStatsReply portReply = portReplies.get(0); // we will get only one PortReply and it will contains many OFPortStatsEntry ?
-		jGen.writeStringField("version", portReply.getVersion().toString()); //return the enum name
-		jGen.writeFieldName("port");
+	public static void serializePortReply(List<OFPortStatsReply> portReplies, JsonGenerator jGen) throws IOException, JsonProcessingException{		
+		jGen.writeFieldName("port_reply");
 		jGen.writeStartArray();
-		for(OFPortStatsEntry entry : portReply.getEntries()) {
+		for (OFPortStatsReply portReply : portReplies) {
 			jGen.writeStartObject();
-			jGen.writeStringField("portNumber",entry.getPortNo().toString());
-			jGen.writeNumberField("receivePackets", entry.getRxPackets().getValue());
-			jGen.writeNumberField("transmitPackets", entry.getTxPackets().getValue());
-			jGen.writeNumberField("receiveBytes", entry.getRxBytes().getValue());
-			jGen.writeNumberField("transmitBytes", entry.getTxBytes().getValue());
-			jGen.writeNumberField("receiveDropped", entry.getRxDropped().getValue());
-			jGen.writeNumberField("transmitDropped", entry.getTxDropped().getValue());
-			jGen.writeNumberField("receiveErrors", entry.getRxErrors().getValue());
-			jGen.writeNumberField("transmitErrors", entry.getTxErrors().getValue());
-			jGen.writeNumberField("receiveFrameErrors", entry.getRxFrameErr().getValue());
-			jGen.writeNumberField("receiveOverrunErrors", entry.getRxOverErr().getValue());
-			jGen.writeNumberField("receiveCRCErrors", entry.getRxCrcErr().getValue());
-			jGen.writeNumberField("collisions", entry.getCollisions().getValue());
-			if (OFVersion.OF_13 == entry.getVersion()) {
-				jGen.writeNumberField("durationSec", entry.getDurationSec());
-				jGen.writeNumberField("durationNsec", entry.getDurationNsec());
+			jGen.writeStringField("version", portReply.getVersion().toString()); //return the enum name
+			jGen.writeFieldName("port");
+			jGen.writeStartArray();
+			for(OFPortStatsEntry entry : portReply.getEntries()) {
+				jGen.writeStartObject();
+				jGen.writeStringField("portNumber",entry.getPortNo().toString());
+				jGen.writeNumberField("receivePackets", entry.getRxPackets().getValue());
+				jGen.writeNumberField("transmitPackets", entry.getTxPackets().getValue());
+				jGen.writeNumberField("receiveBytes", entry.getRxBytes().getValue());
+				jGen.writeNumberField("transmitBytes", entry.getTxBytes().getValue());
+				jGen.writeNumberField("receiveDropped", entry.getRxDropped().getValue());
+				jGen.writeNumberField("transmitDropped", entry.getTxDropped().getValue());
+				jGen.writeNumberField("receiveErrors", entry.getRxErrors().getValue());
+				jGen.writeNumberField("transmitErrors", entry.getTxErrors().getValue());
+				jGen.writeNumberField("receiveFrameErrors", entry.getRxFrameErr().getValue());
+				jGen.writeNumberField("receiveOverrunErrors", entry.getRxOverErr().getValue());
+				jGen.writeNumberField("receiveCRCErrors", entry.getRxCrcErr().getValue());
+				jGen.writeNumberField("collisions", entry.getCollisions().getValue());
+				if (OFVersion.OF_13 == entry.getVersion()) {
+					jGen.writeNumberField("durationSec", entry.getDurationSec());
+					jGen.writeNumberField("durationNsec", entry.getDurationNsec());
+				}
+				jGen.writeEndObject();
 			}
+			jGen.writeEndArray();
 			jGen.writeEndObject();
 		}
 		jGen.writeEndArray();
@@ -847,7 +827,7 @@ public class StatsReplySerializer extends JsonSerializer<StatsReply> {
 		jGen.writeStringField("version", portDescReply.getVersion().toString()); //return the enum name
 		serializePortDesc(portDescReply.getEntries(), jGen);
 	}
-	
+
 	public static void serializePortDesc(List<OFPortDesc> portDescList, JsonGenerator jGen) throws IOException, JsonProcessingException {
 		jGen.writeFieldName("portDesc");
 		jGen.writeStartArray();

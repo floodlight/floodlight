@@ -91,7 +91,7 @@ public class TopologyInstance {
 
         @Override
         public Route load(RouteId rid) {
-            return ti.buildroute(rid);
+        	return ti.buildroute(rid);
         }
     }
 
@@ -638,7 +638,7 @@ public class TopologyInstance {
         if (log.isTraceEnabled()) {
             log.trace("buildroute: {}", result);
         }
-        return result;
+        return result; 
     }
 
     protected int getCost(DatapathId srcId, DatapathId dstId) {

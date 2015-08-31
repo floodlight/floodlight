@@ -198,7 +198,7 @@ public class OFSwitchManagerTest{
         expect(sw.getSwitchDescription()).andReturn(description).anyTimes();
         expect(sw.getBuffers())
                 .andReturn(featuresReply.getNBuffers()).anyTimes();
-        expect(sw.getTables())
+        expect(sw.getNumTables())
                 .andReturn(featuresReply.getNTables()).anyTimes();
         expect(sw.getCapabilities())
                 .andReturn(featuresReply.getCapabilities()).anyTimes();
@@ -258,6 +258,7 @@ public class OFSwitchManagerTest{
         expect(sw.getStatus()).andReturn(SwitchStatus.MASTER).anyTimes();
         sw.disconnect();
         expectLastCall().once();
+        expect(sw.getOFFactory()).andReturn(factory).once();
         replay(sw, listener); // nothing recorded
         switchManager.switchAdded(sw);
         switchManager.switchStatusChanged(sw, SwitchStatus.HANDSHAKE, SwitchStatus.MASTER);

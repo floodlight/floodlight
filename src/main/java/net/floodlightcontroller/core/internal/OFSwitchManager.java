@@ -1,9 +1,13 @@
 package net.floodlightcontroller.core.internal;
 
+import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -51,12 +55,16 @@ import net.floodlightcontroller.debugevent.IEventCategory;
 import net.floodlightcontroller.debugevent.MockDebugEventService;
 
 import org.projectfloodlight.openflow.protocol.OFControllerRole;
+import org.projectfloodlight.openflow.protocol.OFFactories;
 import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFFeaturesReply;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
+import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFAuxId;
+import org.projectfloodlight.openflow.types.TableId;
+import org.projectfloodlight.openflow.types.U32;
 import org.sdnplatform.sync.IStoreClient;
 import org.sdnplatform.sync.IStoreListener;
 import org.sdnplatform.sync.ISyncService;
@@ -65,6 +73,10 @@ import org.sdnplatform.sync.error.SyncException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonToken;
+import com.fasterxml.jackson.databind.MappingJsonFactory;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -93,14 +105,20 @@ public class OFSwitchManager implements IOFSwitchManager, INewOFConnectionListen
 	private static String keyStorePassword;
 	private static String keyStore;
 	private static boolean useSsl = false;
-	
+
 	protected static boolean clearTablesOnInitialConnectAsMaster = false;
 	protected static boolean clearTablesOnEachTransitionToMaster = false;
 
+	protected static Map<DatapathId, TableId> forwardToControllerFlowsUpToTableByDpid;
+	protected static TableId forwardToControllerFlowsUpToTable = TableId.of(4); /* this should cover most HW switches that have a couple SW-based flow tables */
+
+	protected static List<U32> ofBitmaps;
+	protected static OFFactory defaultFactory;
+	
 	private ConcurrentHashMap<DatapathId, OFSwitchHandshakeHandler> switchHandlers;
 	private ConcurrentHashMap<DatapathId, IOFSwitchBackend> switches;
 	private ConcurrentHashMap<DatapathId, IOFSwitch> syncedSwitches;
-
+	private Set<DatapathId> pastSwitches;
 
 	private ISwitchDriverRegistry driverRegistry;
 
@@ -166,7 +184,17 @@ public class OFSwitchManager implements IOFSwitchManager, INewOFConnectionListen
 			addUpdateToQueue(new SwitchUpdate(dpid, SwitchUpdateType.REMOVED));
 			oldSw.disconnect();
 		}
-
+		
+		/*
+		 * Set some other config options for this switch.
+		 */
+		if (sw.getOFFactory().getVersion().compareTo(OFVersion.OF_13) >= 0) {
+			if (forwardToControllerFlowsUpToTableByDpid.containsKey(sw.getId())) {
+				sw.setMaxTableForTableMissFlow(forwardToControllerFlowsUpToTableByDpid.get(sw.getId()));
+			} else {
+				sw.setMaxTableForTableMissFlow(forwardToControllerFlowsUpToTable);
+			}
+		}
 	}
 
 	@LogMessageDocs({
@@ -476,12 +504,18 @@ public class OFSwitchManager implements IOFSwitchManager, INewOFConnectionListen
 	public IOFSwitchBackend getOFSwitchInstance(IOFConnectionBackend connection,
 			SwitchDescription description,
 			OFFactory factory, DatapathId datapathId) {
+		
 		return this.driverRegistry.getOFSwitchInstance(connection, description, factory, datapathId);
 	}
 
 	@Override
 	public void handleMessage(IOFSwitchBackend sw, OFMessage m, FloodlightContext bContext) {
 		floodlightProvider.handleMessage(sw, m, bContext);
+	}
+	
+	@Override
+	public void handleOutgoingMessage(IOFSwitch sw, OFMessage m) {
+		floodlightProvider.handleOutgoingMessage(sw, m);
 	}
 
 	@Override
@@ -643,6 +677,8 @@ public class OFSwitchManager implements IOFSwitchManager, INewOFConnectionListen
 		driverRegistry = new NaiveSwitchDriverRegistry(this);
 
 		this.switchListeners = new CopyOnWriteArraySet<IOFSwitchListener>();
+		
+		this.pastSwitches = new HashSet<DatapathId>();
 
 		/* TODO @Ryan
 		try {
@@ -679,13 +715,13 @@ public class OFSwitchManager implements IOFSwitchManager, INewOFConnectionListen
 			OFSwitchManager.keyStore = null;
 			OFSwitchManager.keyStorePassword = null;
 		} else {
-			log.warn("SSL enabled. Using secure connections between Floodlight and switches.");
+			log.info("SSL enabled. Using secure connections between Floodlight and switches.");
 			log.info("SSL keystore path: {}, password: {}", path, (pass == null ? "" : pass)); 
 			OFSwitchManager.useSsl = true;
 			OFSwitchManager.keyStore = path;
 			OFSwitchManager.keyStorePassword = (pass == null ? "" : pass);
 		}
-		
+
 		/*
 		 * Get config to define what to do when a switch connects.
 		 * 
@@ -693,33 +729,250 @@ public class OFSwitchManager implements IOFSwitchManager, INewOFConnectionListen
 		 */
 		String clearInitial = configParams.get("clearTablesOnInitialHandshakeAsMaster");
 		String clearLater = configParams.get("clearTablesOnEachTransitionToMaster");
-		
+
 		if (clearInitial == null || clearInitial.isEmpty() || 
 				(!clearInitial.equalsIgnoreCase("yes") && !clearInitial.equalsIgnoreCase("true") &&
-				!clearInitial.equalsIgnoreCase("yep") && !clearInitial.equalsIgnoreCase("ja") &&
-				!clearInitial.equalsIgnoreCase("stimmt"))) {
-			log.warn("Clear switch flow tables on initial handshake as master: FALSE");
+						!clearInitial.equalsIgnoreCase("yep") && !clearInitial.equalsIgnoreCase("ja") &&
+						!clearInitial.equalsIgnoreCase("stimmt"))) {
+			log.info("Clear switch flow tables on initial handshake as master: FALSE");
 			OFSwitchManager.clearTablesOnInitialConnectAsMaster = false;
 		} else {
-			log.warn("Clear switch flow tables on initial handshake as master: TRUE");
+			log.info("Clear switch flow tables on initial handshake as master: TRUE");
 			OFSwitchManager.clearTablesOnInitialConnectAsMaster = true;
 		}
-		
+
 		if (clearLater == null || clearLater.isEmpty() || 
 				(!clearLater.equalsIgnoreCase("yes") && !clearLater.equalsIgnoreCase("true") &&
-				!clearLater.equalsIgnoreCase("yep") && !clearLater.equalsIgnoreCase("ja") &&
-				!clearLater.equalsIgnoreCase("stimmt"))) {
-			log.warn("Clear switch flow tables on each transition to master: FALSE");
+						!clearLater.equalsIgnoreCase("yep") && !clearLater.equalsIgnoreCase("ja") &&
+						!clearLater.equalsIgnoreCase("stimmt"))) {
+			log.info("Clear switch flow tables on each transition to master: FALSE");
 			OFSwitchManager.clearTablesOnEachTransitionToMaster = false;
 		} else {
-			log.warn("Clear switch flow tables on each transition to master: TRUE");
+			log.info("Clear switch flow tables on each transition to master: TRUE");
 			OFSwitchManager.clearTablesOnEachTransitionToMaster = true;
 		}
-		
-		String tablesToGetFTCFlow = configParams.get("addDefaultSendToControllerFlowInTables");
-		if (tablesToGetFTCFlow == null || tablesToGetFTCFlow.isEmpty()) {
-			
+
+		/*
+		 * Get default max table for forward to controller flows. 
+		 * Internal default set as class variable at top of OFSwitchManager.
+		 */
+		String defaultFlowsUpToTable = configParams.get("defaultMaxTablesToReceiveTableMissFlow");
+		/* Backward compatibility */
+		if (defaultFlowsUpToTable == null || defaultFlowsUpToTable.isEmpty()) {
+			defaultFlowsUpToTable = configParams.get("defaultMaxTableToReceiveTableMissFlow");
 		}
+		if (defaultFlowsUpToTable != null && !defaultFlowsUpToTable.isEmpty()) {
+			defaultFlowsUpToTable = defaultFlowsUpToTable.toLowerCase().trim();
+			try {
+				forwardToControllerFlowsUpToTable = TableId.of(defaultFlowsUpToTable.startsWith("0x") 
+						? Integer.parseInt(defaultFlowsUpToTable.replaceFirst("0x", ""), 16) 
+								: Integer.parseInt(defaultFlowsUpToTable));
+				log.info("Setting {} as the default max tables to receive table-miss flow", forwardToControllerFlowsUpToTable.toString());
+			} catch (IllegalArgumentException e) {
+				log.error("Invalid table ID {} for default max tables to receive table-miss flow. Using pre-set of {}", 
+						defaultFlowsUpToTable, forwardToControllerFlowsUpToTable.toString());
+			}
+		} else {
+			log.info("Default max tables to receive table-miss flow not configured. Using {}", forwardToControllerFlowsUpToTable.toString());
+		}
+
+		/*
+		 * Get config to define which tables per switch will get a
+		 * default forward-to-controller flow. This can be used to
+		 * reduce the number of such flows if only a reduced set of
+		 * tables are being used.
+		 */
+		String maxPerDpid = configParams.get("maxTablesToReceiveTableMissFlowPerDpid");
+		/* Backward compatibility */
+		if (maxPerDpid == null || maxPerDpid.isEmpty()) {
+			maxPerDpid = configParams.get("maxTableToReceiveTableMissFlowPerDpid");
+		}
+		forwardToControllerFlowsUpToTableByDpid = jsonToSwitchTableIdMap(maxPerDpid);
+	
+		/*
+		 * Get config to determine what versions of OpenFlow we will
+		 * support. The versions will determine the hello's header
+		 * version as well as the OF1.3.1 version bitmap contents.
+		 */
+		String protocols = configParams.get("supportedOpenFlowVersions");
+		Set<OFVersion> ofVersions = new HashSet<OFVersion>();
+		if (protocols != null && !protocols.isEmpty()) {
+			protocols = protocols.toLowerCase();
+			/* 
+			 * Brute-force check for all known versions. 
+			 */
+			if (protocols.contains("1.0") || protocols.contains("10")) {
+				ofVersions.add(OFVersion.OF_10);
+			}
+			if (protocols.contains("1.1") || protocols.contains("11")) {
+				ofVersions.add(OFVersion.OF_11);
+			}
+			if (protocols.contains("1.2") || protocols.contains("12")) {
+				ofVersions.add(OFVersion.OF_12);
+			}
+			if (protocols.contains("1.3") || protocols.contains("13")) {
+				ofVersions.add(OFVersion.OF_13);
+			}
+			if (protocols.contains("1.4") || protocols.contains("14")) {
+				ofVersions.add(OFVersion.OF_14);
+			}
+			/*
+			 * TODO This will need to be updated if/when 
+			 * Loxi is updated to support > 1.4.
+			 * 
+			 * if (protocols.contains("1.5") || protocols.contains("15")) {
+			 *     ofVersions.add(OFVersion.OF_15);
+			 * }
+			 */
+		} else {
+			log.warn("Supported OpenFlow versions not specified. Using Loxi-defined {}", OFVersion.values());
+			ofVersions.addAll(Arrays.asList(OFVersion.values()));
+		}
+		/* Sanity check */
+		if (ofVersions.isEmpty()) {
+			throw new IllegalStateException("OpenFlow version list should never be empty at this point. Make sure it's being populated in OFSwitchManager's init function.");
+		}
+		defaultFactory = computeInitialFactory(ofVersions);
+		ofBitmaps = computeOurVersionBitmaps(ofVersions);
+	}
+	
+	/**
+	 * Find the max version supplied in the supported
+	 * versions list and use it as the default, which
+	 * will subsequently be used in our hello message
+	 * header's version field.
+	 * 
+	 * The factory can be later "downgraded" to a lower
+	 * version depending on what's computed during the
+	 * version-negotiation part of the handshake.
+	 * 
+	 * Assumption: The Set of OFVersion ofVersions
+	 * variable has been set already and is NOT EMPTY.
+	 * 
+	 * @return the highest-version OFFactory we support
+	 */
+	private OFFactory computeInitialFactory(Set<OFVersion> ofVersions) {
+		/* This should NEVER happen. Double-checking. */
+		if (ofVersions == null || ofVersions.isEmpty()) {
+			throw new IllegalStateException("OpenFlow version list should never be null or empty at this point. Make sure it's set in the OFSwitchManager.");
+		}
+		OFVersion highest = null;
+		for (OFVersion v : ofVersions) {
+			if (highest == null) {
+				highest = v;
+			} else if (v.compareTo(highest) > 0) {
+				highest = v;
+			}
+		}
+		/* 
+		 * This assumes highest != null, which
+		 * it won't be if the list of versions
+		 * is not empty.
+		 */
+		return OFFactories.getFactory(highest);
+	}
+	
+	/**
+	 * Based on the list of OFVersions provided as input (or from Loxi),
+	 * create a list of bitmaps for use in version negotiation during a
+	 * cross-version OpenFlow handshake where both parties support 
+	 * OpenFlow versions >= 1.3.1.
+	 * 
+	 * Type Set is used as input to guarantee all unique versions.
+	 * 
+	 * @param ofVersions, the list of bitmaps. Supply to an OFHello message.
+	 * @return list of bitmaps for the versions of OpenFlow we support
+	 */
+	private List<U32> computeOurVersionBitmaps(Set<OFVersion> ofVersions) {
+		/* This should NEVER happen. Double-checking. */
+		if (ofVersions == null || ofVersions.isEmpty()) {
+			throw new IllegalStateException("OpenFlow version list should never be null or empty at this point. Make sure it's set in the OFSwitchManager.");
+		}
+		
+		int pos = 1; /* initial bitmap in list */
+		int size = 32; /* size of a U32 */
+		int tempBitmap = 0; /* maintain the current bitmap we're working on */
+		List<U32> bitmaps = new ArrayList<U32>();
+		ArrayList<OFVersion> sortedVersions = new ArrayList<OFVersion>(ofVersions);
+		Collections.sort(sortedVersions);
+		for (OFVersion v : sortedVersions) {
+			/* Move on to another bitmap */
+			if (v.getWireVersion() > pos * size - 1 ) {
+				bitmaps.add(U32.ofRaw(tempBitmap));
+				tempBitmap = 0;
+				pos++;
+			}
+			tempBitmap = tempBitmap | (1 << (v.getWireVersion() % size));
+		}
+		if (tempBitmap != 0) {
+			bitmaps.add(U32.ofRaw(tempBitmap));
+		}
+		log.info("Computed OpenFlow version bitmap as {}", Arrays.asList(tempBitmap));
+		return bitmaps;
+	}
+
+	private static Map<DatapathId, TableId> jsonToSwitchTableIdMap(String json) {
+		MappingJsonFactory f = new MappingJsonFactory();
+		JsonParser jp;
+		Map<DatapathId, TableId> retValue = new HashMap<DatapathId, TableId>();
+
+		if (json == null || json.isEmpty()) {
+			return retValue;
+		}
+
+		try {
+			try {
+				jp = f.createJsonParser(json);
+			} catch (JsonParseException e) {
+				throw new IOException(e);
+			}
+
+			jp.nextToken();
+			if (jp.getCurrentToken() != JsonToken.START_OBJECT) {
+				throw new IOException("Expected START_OBJECT");
+			}
+
+			while (jp.nextToken() != JsonToken.END_OBJECT) {
+				if (jp.getCurrentToken() != JsonToken.FIELD_NAME) {
+					throw new IOException("Expected FIELD_NAME");
+				}
+
+				String n = jp.getCurrentName();
+				jp.nextToken();
+				if (jp.getText().equals("")) {
+					continue;
+				}
+
+				DatapathId dpid;
+				try {
+					n = n.trim();
+					dpid = DatapathId.of(n);
+
+					TableId tablesToGetDefaultFlow;
+					String value = jp.getText();
+					if (value != null && !value.isEmpty()) {
+						value = value.trim().toLowerCase();
+						try {
+							tablesToGetDefaultFlow = TableId.of(
+									value.startsWith("0x") 
+									? Integer.parseInt(value.replaceFirst("0x", ""), 16) 
+											: Integer.parseInt(value)
+									); /* will throw exception if outside valid TableId number range */
+							retValue.put(dpid, tablesToGetDefaultFlow);
+							log.info("Setting max tables to receive table-miss flow to {} for DPID {}", 
+									tablesToGetDefaultFlow.toString(), dpid.toString());
+						} catch (IllegalArgumentException e) { /* catches both IllegalArgumentExcpt. and NumberFormatExcpt. */
+							log.error("Invalid value of {} for max tables to receive table-miss flow for DPID {}. Using default of {}.", value, dpid.toString());
+						}
+					}
+				} catch (NumberFormatException e) {
+					log.error("Invalid DPID format {} for max tables to receive table-miss flow for specific DPID. Using default for the intended DPID.", n);
+				}
+			}
+		} catch (IOException e) {
+			log.error("Using default for remaining DPIDs. JSON formatting error in max tables to receive table-miss flow for DPID input String: {}", e);
+		}
+		return retValue;
 	}
 
 	@Override
@@ -757,10 +1010,10 @@ public class OFSwitchManager implements IOFSwitchManager, INewOFConnectionListen
 			bootstrap.setOption("child.keepAlive", true);
 			bootstrap.setOption("child.tcpNoDelay", true);
 			bootstrap.setOption("child.sendBufferSize", Controller.SEND_BUFFER_SIZE);
-
-			ChannelPipelineFactory pfact = useSsl ? new OpenflowPipelineFactory(this, floodlightProvider.getTimer(), this, debugCounterService, keyStore, keyStorePassword) :
-				new OpenflowPipelineFactory(this, floodlightProvider.getTimer(), this, debugCounterService);
-
+			
+			ChannelPipelineFactory pfact = useSsl ? new OpenflowPipelineFactory(this, floodlightProvider.getTimer(), this, debugCounterService, ofBitmaps, defaultFactory, keyStore, keyStorePassword) :
+				new OpenflowPipelineFactory(this, floodlightProvider.getTimer(), this, debugCounterService, ofBitmaps, defaultFactory);
+			
 			bootstrap.setPipelineFactory(pfact);
 			InetSocketAddress sa = new InetSocketAddress(floodlightProvider.getOFPort());
 			final ChannelGroup cg = new DefaultChannelGroup();

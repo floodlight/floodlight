@@ -90,6 +90,12 @@ public class MockSwitchManager implements IFloodlightModule, IOFSwitchManager, I
         // do nothing
 
     }
+    
+    @Override
+    public void handleOutgoingMessage(IOFSwitch sw, OFMessage m) {
+    	// do nothing
+    	
+    }
 
     public void setSwitchHandshakeHandlers(Map<DatapathId, OFSwitchHandshakeHandler> handlers) {
         this.switchHandlers = handlers;

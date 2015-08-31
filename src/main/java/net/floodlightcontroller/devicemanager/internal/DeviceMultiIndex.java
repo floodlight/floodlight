@@ -78,7 +78,7 @@ public class DeviceMultiIndex extends DeviceIndex {
         Collection<Long> devices = null;
 
         IndexedEntity ie = new IndexedEntity(keyFields, entity);
-        if (!ie.hasNonNullKeys()) return false;
+        if (!ie.hasNonZeroOrNonNullKeys()) return false;
 
         devices = index.get(ie);
         if (devices == null) {

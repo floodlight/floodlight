@@ -3,6 +3,7 @@ package net.floodlightcontroller.core.internal;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -24,10 +25,13 @@ import net.floodlightcontroller.core.SwitchDescription;
 import net.floodlightcontroller.core.annotations.LogMessageDoc;
 import net.floodlightcontroller.core.annotations.LogMessageDocs;
 import net.floodlightcontroller.core.internal.OFSwitchAppHandshakePlugin.PluginResultType;
+import net.floodlightcontroller.util.OFDPAUtils;
 
+import org.projectfloodlight.openflow.protocol.OFActionType;
 import org.projectfloodlight.openflow.protocol.OFBadRequestCode;
 import org.projectfloodlight.openflow.protocol.OFBarrierReply;
 import org.projectfloodlight.openflow.protocol.OFBarrierRequest;
+import org.projectfloodlight.openflow.protocol.OFBucket;
 import org.projectfloodlight.openflow.protocol.OFControllerRole;
 import org.projectfloodlight.openflow.protocol.OFDescStatsReply;
 import org.projectfloodlight.openflow.protocol.OFDescStatsRequest;
@@ -44,6 +48,7 @@ import org.projectfloodlight.openflow.protocol.OFFlowModFailedCode;
 import org.projectfloodlight.openflow.protocol.OFFlowRemoved;
 import org.projectfloodlight.openflow.protocol.OFGetConfigReply;
 import org.projectfloodlight.openflow.protocol.OFGetConfigRequest;
+import org.projectfloodlight.openflow.protocol.OFGroupAdd;
 import org.projectfloodlight.openflow.protocol.OFGroupDelete;
 import org.projectfloodlight.openflow.protocol.OFGroupType;
 import org.projectfloodlight.openflow.protocol.OFMessage;
@@ -51,6 +56,7 @@ import org.projectfloodlight.openflow.protocol.OFNiciraControllerRole;
 import org.projectfloodlight.openflow.protocol.OFNiciraControllerRoleReply;
 import org.projectfloodlight.openflow.protocol.OFNiciraControllerRoleRequest;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
+import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.protocol.OFPortDescStatsReply;
 import org.projectfloodlight.openflow.protocol.OFPortStatus;
 import org.projectfloodlight.openflow.protocol.OFQueueGetConfigReply;
@@ -66,14 +72,22 @@ import org.projectfloodlight.openflow.protocol.OFTableFeaturesStatsRequest;
 import org.projectfloodlight.openflow.protocol.OFType;
 import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
+import org.projectfloodlight.openflow.protocol.actionid.OFActionId;
+import org.projectfloodlight.openflow.protocol.actionid.OFActionIdOutput;
 import org.projectfloodlight.openflow.protocol.errormsg.OFBadRequestErrorMsg;
 import org.projectfloodlight.openflow.protocol.errormsg.OFFlowModFailedErrorMsg;
+import org.projectfloodlight.openflow.protocol.instruction.OFInstruction;
+import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFAuxId;
+import org.projectfloodlight.openflow.types.OFBufferId;
 import org.projectfloodlight.openflow.types.OFGroup;
 import org.projectfloodlight.openflow.types.OFPort;
+import org.projectfloodlight.openflow.types.OFVlanVidMatch;
 import org.projectfloodlight.openflow.types.TableId;
+import org.projectfloodlight.openflow.types.U16;
 import org.projectfloodlight.openflow.types.U64;
+import org.projectfloodlight.openflow.types.VlanVid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -103,7 +117,7 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 	private OFFactory factory = OFFactories.getFactory(OFVersion.OF_14);
 	private final OFFeaturesReply featuresReply;
 	private final Timer timer;
-	
+
 	private volatile OFControllerRole initialRole = null;
 
 	private final ArrayList<OFPortStatus> pendingPortStatusMsg;
@@ -471,15 +485,25 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 			.setGroupType(OFGroupType.SELECT)
 			.build();
 			this.sw.write(delgroup);
+
+			/*
+			 * Make sure we allow these operations to complete before proceeding.
+			 */
+			OFBarrierRequest barrier = factory.buildBarrierRequest()
+					.setXid(handshakeTransactionIds--)
+					.build();
+			sw.write(barrier);
 		}
 	}
 
 	/** 
-	 * Adds an initial table-miss flow to each
-	 * and every table on the switch. This replaces the default behavior of
-	 * forwarding table-miss packets to the controller. The table-miss flows
-	 * inserted will forward all packets that do not match a flow to the 
-	 * controller for processing.
+	 * Adds an initial table-miss flow to tables on the switch. 
+	 * This replaces the default behavior of forwarding table-miss packets 
+	 * to the controller. The table-miss flows inserted will forward all 
+	 * packets that do not match a flow to the controller for processing.
+	 * 
+	 * The OFSwitchManager is checked for used-defined behavior and default
+	 * max table to try to use.
 	 * 
 	 * Adding the default flow only applies to OpenFlow 1.3+ switches, which 
 	 * remove the default forward-to-controller behavior of flow tables.
@@ -498,20 +522,183 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 					.setOutPort(OFPort.CONTROLLER)
 					.build();
 			this.sw.write(deleteFlow);
-						
+
 			ArrayList<OFAction> actions = new ArrayList<OFAction>(1);
 			actions.add(factory.actions().output(OFPort.CONTROLLER, 0xffFFffFF));
 			ArrayList<OFMessage> flows = new ArrayList<OFMessage>();
-			for (int tableId = 0; tableId < this.sw.getTables(); tableId++) {
-				OFFlowAdd defaultFlow = this.factory.buildFlowAdd()
-						.setTableId(TableId.of(tableId))
-						.setPriority(0)
-						.setActions(actions)
-						.build();
-				flows.add(defaultFlow);
+
+			/* If we received a table features reply, iterate over the tables */
+			if (!this.sw.getTables().isEmpty()) {
+				short missCount = 0;
+				for (TableId tid : this.sw.getTables()) {
+					/* Only add the flow if the table exists and if it supports sending to the controller */
+					TableFeatures tf = this.sw.getTableFeatures(tid);
+					if (tf != null && (missCount < this.sw.getMaxTableForTableMissFlow().getValue())) {
+						for (OFActionId aid : tf.getPropApplyActionsMiss().getActionIds()) {
+							if (aid.getType() == OFActionType.OUTPUT) { /* The assumption here is that OUTPUT includes the special port CONTROLLER... */
+								OFFlowAdd defaultFlow = this.factory.buildFlowAdd()
+										.setTableId(tid)
+										.setPriority(0)
+										.setActions(actions)
+										.build();
+								flows.add(defaultFlow);
+								break; /* Stop searching for actions and go to the next table in the list */
+							}
+						}
+					}
+					missCount++;
+				}
+			} else { /* Otherwise, use the number of tables starting at TableId=0 as indicated in the features reply */
+				short missCount = 0;
+				for (short tid = 0; tid < this.sw.getNumTables(); tid++, missCount++) {
+					if (missCount < this.sw.getMaxTableForTableMissFlow().getValue()) { /* Only insert if we want it */
+						OFFlowAdd defaultFlow = this.factory.buildFlowAdd()
+								.setTableId(TableId.of(tid))
+								.setPriority(0)
+								.setActions(actions)
+								.build();
+						flows.add(defaultFlow);
+					}
+				}
 			}
 			this.sw.write(flows);
 		}
+	}
+
+	private void addBroadcomOFDPAFlows() {
+		/*
+		 * By default, we'll assume everyone's on the same VLAN,
+		 * and all switch ports are configured as access ports.
+		 * As such, all packets on the wire will be untagged
+		 * and will only be tagged internally in the switch for 
+		 * pipeline processing.
+		 * 
+		 * If you would like to configure trunks on switches, then
+		 * each switch will need to be configured specifically, as
+		 * we won't be able to automatically handle such a topology.
+		 * 
+		 * Ingress port table (0)     = empty --> default to VLAN table
+		 * VLAN table (10)            = match untagged, apply internal tag, goto termination MAC
+		 * Termination MAC table (20) = match vlan tag and dst MAC, goto bridging table (default miss-->bridging)
+		 * 							  	match only vlan tag, goto controller (DLF or Dest Lookup Failure)
+		 * Bridging table (50)        = default send to policy ACL table
+		 * Policy ACL table (60)      = priority=0 go to controller
+		 *                              write action group of forwarding decision
+		 * Group tables
+		 *   One per interface per VLAN
+		 *   One per VLAN (for flooding)
+		 *   
+		 *  TABLE_INGRESS = 0
+		 *  TABLE_VLAN = 10
+		 *  TABLE_MAC = 20
+		 *  TABLE_UNICAST = 30
+		 *  TABLE_MULTICAST = 40
+		 *  TABLE_BRIDGING = 50
+		 *  TABLE_ACL = 60
+		 */
+
+		/*
+		 * Add flow to match all untagged packets from all ports in VLAN table
+		 */
+		List<OFAction> al = new ArrayList<OFAction>(1);
+		/* al.add(factory.actions().pushVlan(EthType.IPv4)); might not need this */
+		al.add(factory.actions().setVlanVid(VlanVid.ofVlan(1))); /* we'll use 1 internally, just because */
+
+		List<OFInstruction> il = new ArrayList<OFInstruction>(2);
+		il.add(factory.instructions().gotoTable(TableId.of(20))); /* 20 is the termination MAC table */
+		il.add(factory.instructions().applyActions(al));
+		OFFlowAdd fa = factory.buildFlowAdd()
+				.setTableId(TableId.of(10))
+				.setOutPort(OFPort.ANY)
+				.setBufferId(OFBufferId.NO_BUFFER)
+				.setCookie(U64.ZERO)
+				.setMatch(factory.buildMatch()
+						.setExact(MatchField.VLAN_VID, OFVlanVidMatch.UNTAGGED) /* this flow handles untagged */
+						/* do we have to match on the in port here? */
+						.build()
+						)
+						.setInstructions(il)
+						.setPriority(1000)
+						.build();
+		sw.write(fa);
+
+		/*
+		 * The termination MAC flow table must proactively forward to controller specific dst MACs,
+		 * so we need to wait to do wildcarded dst MACs in bridging table upon a miss. Send to bridging
+		 * table by default here.
+		 */
+
+		/*
+		 * Add flow to match all vlan=1 packets to forward to controller in bridging table (DLF).
+		 * Default is to send to policy ACL if this does not match.
+		 */
+		al = new ArrayList<OFAction>(1);
+		al.add(factory.actions().output(OFPort.CONTROLLER, 0xffFFffFF));
+
+		il = new ArrayList<OFInstruction>(1);
+		il.add(factory.instructions().applyActions(al));
+		fa = factory.buildFlowAdd()
+				.setTableId(TableId.of(50))
+				.setOutPort(OFPort.ANY)
+				.setBufferId(OFBufferId.NO_BUFFER)
+				.setCookie(U64.ZERO)
+				.setMatch(factory.buildMatch()
+						.setExact(MatchField.VLAN_VID, OFVlanVidMatch.ofVlan(1)) /* this flow handles recently-tagged VLAN=1 */
+						.build()
+						)
+						.setInstructions(il) 
+						.setPriority(1)
+						.build();
+		sw.write(fa);
+
+		/*
+		 * Lastly, add a group for flooding and for each port.
+		 * This group is only for VLAN=1.
+		 * 
+		 * The flood group has buckets with goto group actions
+		 * for each port's individual L2 group for VLAN=1.
+		 * 
+		 * This means we must first add the individual groups.
+		 */
+		ArrayList<OFBucket> buckets = new ArrayList<OFBucket>();
+		for (OFPortDesc pd : this.sw.getPorts()) {
+			OFPort p = pd.getPortNo();
+			if ((p.getShortPortNumber() & 0xFF00) == 0) { /* TODO Is this correct for special ports? */
+				OFGroupAdd ga = factory.buildGroupAdd()
+						.setGroupType(OFGroupType.INDIRECT)
+						.setBuckets(Collections.singletonList(factory.buildBucket()
+								.setActions(
+										Collections.singletonList((OFAction) factory.actions().buildOutput()
+												.setMaxLen(0xffFFffFF)
+												.setPort(p)
+												.build()))
+												.build()))
+												.setGroup(OFDPAUtils.GroupIds.createL2Interface(p, VlanVid.ofVlan(100)))
+												.build();
+				sw.write(ga);
+
+				/*
+				 * Add the port+bucket for creating the FLOOD group below.
+				 * All L2_INTERFACE groups in a VLAN should be within a
+				 * corresponding L2_FLOOD group of type ALL.
+				 */
+				buckets.add(factory.buildBucket().setActions(
+						Collections.singletonList(
+								(OFAction) factory.actions().buildOutput()
+								.setMaxLen(0xffFFffFF)
+								.setPort(p)
+								.build()
+								)
+						).build());
+			}
+		}
+
+		OFGroupAdd ga = factory.buildGroupAdd()
+				.setGroupType(OFGroupType.ALL)
+				.setBuckets(buckets)
+				.setGroup(OFDPAUtils.GroupIds.createL2Flood(U16.ZERO, VlanVid.ofVlan(100)))
+				.build();
+		sw.write(ga);
 	}
 
 	/**
@@ -766,7 +953,7 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 					switchManager.notifyPortChanged(sw, ev.port, ev.type);
 			}
 		}
-		
+
 		/**
 		 * Handle a table features message.
 		 *
@@ -858,7 +1045,6 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 				}
 				break;
 			default:
-				illegalMessageReceived(m);
 				break;
 			}
 		}
@@ -1014,7 +1200,7 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 			OFDescStatsReply descStatsReply = (OFDescStatsReply) m;
 			SwitchDescription description = new SwitchDescription(descStatsReply);
 			sw = switchManager.getOFSwitchInstance(mainConnection, description, factory, featuresReply.getDatapathId());
-			switchManager.switchAdded(sw);
+			
 			// set switch information
 			// set features reply and channel first so we a DPID and
 			// channel info.
@@ -1022,6 +1208,11 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 			if (portDescStats != null) {
 				sw.setPortDescStats(portDescStats);
 			}
+			/*
+			 * Need to add after setting the features.
+			 */
+			switchManager.switchAdded(sw);
+
 
 			// Handle pending messages now that we have a sw object
 			handlePendingPortStatusMessages(description);
@@ -1042,7 +1233,7 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 			sendHandshakeDescriptionStatsRequest();
 		}
 	}
-	
+
 	/*
 	 * New state: WaitSwitchTableFeaturesReplyState
 	 */
@@ -1053,7 +1244,7 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 			super(false);
 			replies = new ArrayList<OFTableFeaturesStatsReply>();
 		}
-		
+
 		@Override
 		/**
 		 * Accumulate a list of the OFTableFeaturesStatsReply's until there 
@@ -1076,23 +1267,23 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 				/* should only receive TABLE_FEATURES here */
 				log.error("Received {} message but expected TABLE_FEATURES.", m.getStatsType().toString());
 			}
-		
+
 		}
-		
+
 		@Override
 		void processOFError(OFErrorMsg m) {
 			if ((m.getErrType() == OFErrorType.BAD_REQUEST) &&
 					((((OFBadRequestErrorMsg)m).getCode() == OFBadRequestCode.MULTIPART_BUFFER_OVERFLOW)
-					|| ((OFBadRequestErrorMsg)m).getCode() == OFBadRequestCode.BAD_STAT)) { 
+							|| ((OFBadRequestErrorMsg)m).getCode() == OFBadRequestCode.BAD_STAT)) { 
 				log.warn("Switch {} is {} but does not support OFTableFeaturesStats. Assuming all tables can perform any match, action, and instruction in the spec.", 
 						sw.getId().toString(), sw.getOFFactory().getVersion().toString());
 			} else {
 				log.error("Received unexpected OFErrorMsg {} on switch {}.", m.toString(), sw.getId().toString());
 			}
 			nextState();
-			
+
 		}
-		
+
 		private void nextState() {
 			/* move on to the next state */
 			sw.startDriverHandshake();
@@ -1102,7 +1293,7 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 				setState(new WaitSwitchDriverSubHandshakeState());
 			}
 		}
-		
+
 		@Override
 		void enterState() {
 			if (sw.getOFFactory().getVersion().compareTo(OFVersion.OF_13) < 0) {
@@ -1111,7 +1302,7 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 				sendHandshakeTableFeaturesRequest();
 			}
 		}
-		
+
 	}
 
 	public class WaitSwitchDriverSubHandshakeState extends OFSwitchHandshakeState {
@@ -1319,18 +1510,37 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 			super(true);
 		}
 
+		private long sendBarrier() {
+			long xid = handshakeTransactionIds--;
+			OFBarrierRequest barrier = factory.buildBarrierRequest()
+					.setXid(xid)
+					.build();
+			sw.write(barrier); /* don't use ListenableFuture here; we receive via barrier reply OR error (barrier unsupported) */
+			return xid;
+		}
+
 		@Override
 		void enterState() {
-			setSwitchStatus(SwitchStatus.MASTER);
 			if (OFSwitchManager.clearTablesOnEachTransitionToMaster) {
-				log.info("Clearing flow tables of {} on recent transition to MASTER.", sw.getId().toString());
+				log.info("Clearing flow tables of {} on upcoming transition to MASTER.", sw.getId().toString());
 				clearAllTables();
 			} else if (OFSwitchManager.clearTablesOnInitialConnectAsMaster && initialRole == null) { /* don't do it if we were slave first */
 				initialRole = OFControllerRole.ROLE_MASTER;
-				log.info("Clearing flow tables of {} on initial role as MASTER.", sw.getId().toString());
+				log.info("Clearing flow tables of {} on upcoming initial role as MASTER.", sw.getId().toString());
 				clearAllTables();
 			}
+
+			sendBarrier(); /* Need to make sure the tables are clear before adding default flows */
 			addDefaultFlows();
+
+			/*
+			 * We also need a barrier between adding flows and notifying modules of the
+			 * transition to master. Some modules might modify the flow tables and expect 
+			 * the clear/default flow operations above to have completed.
+			 */
+			sendBarrier();
+
+			setSwitchStatus(SwitchStatus.MASTER);
 		}
 
 		@LogMessageDoc(level="WARN",
@@ -1439,7 +1649,7 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 		void processOFFlowRemoved(OFFlowRemoved m) {
 			dispatchMessage(m);
 		}
-		
+
 		@Override
 		void processOFStatsReply(OFStatsReply m) {
 			// TODO Auto-generated method stub
@@ -1762,7 +1972,7 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 				.build();
 		mainConnection.write(descStatsRequest);
 	}
-	
+
 	/**
 	 * send a table features request
 	 */

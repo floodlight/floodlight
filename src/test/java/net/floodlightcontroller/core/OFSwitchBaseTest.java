@@ -154,9 +154,9 @@ public class OFSwitchBaseTest {
         switches.put(sw.getId(), sw);
         reset(switchManager);
         //expect(switchManager.getSwitch(sw.getId())).andReturn(sw).anyTimes();
+        setUpPorts();
     }
 
-    @Before
     public void setUpPorts() {
         OFPortDesc.Builder pdb = OFFactories.getFactory(OFVersion.OF_13).buildPortDesc();
         // p1a is disabled
@@ -1394,6 +1394,8 @@ public class OFSwitchBaseTest {
 
         reset(switchManager);
         expect(switchManager.isCategoryRegistered(category)).andReturn(true);
+        switchManager.handleOutgoingMessage(sw, testMessage);
+        expectLastCall();
         replay(switchManager);
 
         sw.write(testMessage, category);

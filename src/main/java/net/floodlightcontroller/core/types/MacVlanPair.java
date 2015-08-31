@@ -44,4 +44,8 @@ public class MacVlanPair {
     public int hashCode() {
         return mac.hashCode() ^ vlan.hashCode();
     }
+
+    public String toString() {
+        return "(" + mac.toString() + ", " + vlan.toString() + ")";
+    }
 }

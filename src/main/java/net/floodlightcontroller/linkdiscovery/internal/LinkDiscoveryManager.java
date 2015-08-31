@@ -288,15 +288,14 @@ IFloodlightModule, IInfoProvider {
 	//*********************
 
 	@Override
-	public OFPacketOut generateLLDPMessage(DatapathId sw, OFPort port,
+	public OFPacketOut generateLLDPMessage(IOFSwitch iofSwitch, OFPort port,
 			boolean isStandard, boolean isReverse) {
-
-		IOFSwitch iofSwitch = switchService.getSwitch(sw);
+		
 		OFPortDesc ofpPort = iofSwitch.getPort(port);
 
 		if (log.isTraceEnabled()) {
 			log.trace("Sending LLDP packet out of swich: {}, port: {}",
-					sw.toString(), port);
+					iofSwitch.getId().toString(), port);
 		}
 
 		// using "nearest customer bridge" MAC address for broadest possible
@@ -320,7 +319,7 @@ IFloodlightModule, IInfoProvider {
 		ByteBuffer dpidBB = ByteBuffer.wrap(dpidArray);
 		ByteBuffer portBB = ByteBuffer.wrap(portId, 1, 2);
 
-		DatapathId dpid = sw;
+		DatapathId dpid = iofSwitch.getId();
 		dpidBB.putLong(dpid.getLong());
 		// set the chassis id's value to last 6 bytes of dpid
 		System.arraycopy(dpidArray, 2, chassisId, 1, 6);
@@ -344,7 +343,7 @@ IFloodlightModule, IInfoProvider {
 		portBB.putShort(port.getShortPortNumber());
 		if (log.isTraceEnabled()) {
 			log.trace("Sending LLDP out of interface: {}/{}",
-					sw.toString(), port);
+					iofSwitch.getId().toString(), port);
 		}
 
 		LLDP lldp = new LLDP();
@@ -385,7 +384,7 @@ IFloodlightModule, IInfoProvider {
 
 		// serialize and wrap in a packet out
 		byte[] data = ethernet.serialize();
-		OFPacketOut.Builder pob = switchService.getSwitch(sw).getOFFactory().buildPacketOut();
+		OFPacketOut.Builder pob = iofSwitch.getOFFactory().buildPacketOut();
 		pob.setBufferId(OFBufferId.NO_BUFFER);
 		pob.setInPort(OFPort.ANY);
 
@@ -1160,13 +1159,15 @@ IFloodlightModule, IInfoProvider {
 			return;
 
 		IOFSwitch iofSwitch = switchService.getSwitch(sw);
+		if (iofSwitch == null)             //fix dereference violations in case race conditions
+			return;
 		OFPortDesc ofpPort = iofSwitch.getPort(port);
 
 		if (log.isTraceEnabled()) {
 			log.trace("Sending LLDP packet out of swich: {}, port: {}",
 					sw.toString(), port.getPortNumber());
 		}
-		OFPacketOut po = generateLLDPMessage(sw, port, isStandard, isReverse);
+		OFPacketOut po = generateLLDPMessage(iofSwitch, port, isStandard, isReverse);
 		OFPacketOut.Builder pob = po.createBuilder();
 
 		// Add actions
@@ -1687,6 +1688,8 @@ IFloodlightModule, IInfoProvider {
 	@Override
 	public void switchActivated(DatapathId switchId) {
 		IOFSwitch sw = switchService.getSwitch(switchId);
+		if (sw == null)       //fix dereference violation in case race conditions
+			return;
 		if (sw.getEnabledPortNumbers() != null) {
 			for (OFPort p : sw.getEnabledPortNumbers()) {
 				processNewPort(sw.getId(), p);

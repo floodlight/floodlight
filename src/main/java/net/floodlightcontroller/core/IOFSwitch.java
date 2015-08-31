@@ -116,7 +116,13 @@ public interface IOFSwitch extends IOFMessageWriter {
 
     Set<OFCapabilities> getCapabilities();
 
-    short getTables();
+    /**
+     * Get the specific TableIds according to the ofp_table_features.
+     * Not all switches have sequential TableIds, so this will give the
+     * specific TableIds used by the switch.
+     * @return
+     */
+    Collection<TableId> getTables();
 
     /**
      * @return a copy of the description statistics for this switch
@@ -350,5 +356,11 @@ public interface IOFSwitch extends IOFMessageWriter {
      * @return The table features or null if no features are known for the table requested.
      */
     public TableFeatures getTableFeatures(TableId table);
+
+    /**
+     * Get the number of tables as returned by the ofp_features_reply.
+     * @return
+     */
+	short getNumTables();
     
 }
