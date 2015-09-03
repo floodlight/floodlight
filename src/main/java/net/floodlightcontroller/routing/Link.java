@@ -137,7 +137,7 @@ public class Link implements Comparable<Link> {
             return (int) (this.getSrc().getLong() - a.getSrc().getLong());
         
         if (this.getSrcPort() != a.getSrcPort())
-            return (int) (this.getSrc().getLong() - a.getSrc().getLong());
+            return (int) (this.getSrcPort().getLong() - a.getSrcPort().getLong());
         
         if (this.getDst() != a.getDst())
             return (int) (this.getDst().getLong() - a.getDst().getLong());
