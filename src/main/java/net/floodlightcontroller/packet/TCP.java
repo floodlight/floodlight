@@ -207,36 +207,136 @@ public class TCP extends BasePacket {
             ((IPv4)this.parent).setProtocol(IpProtocol.TCP);
 
         // compute checksum if needed
-        if (this.checksum == 0) {
-            bb.rewind();
-            int accumulation = 0;
+		if (this.checksum == 0) {
 
-            // compute pseudo header mac
-            if (this.parent != null && this.parent instanceof IPv4) {
-                IPv4 ipv4 = (IPv4) this.parent;
-                accumulation += ((ipv4.getSourceAddress().getInt() >> 16) & 0xffff)
-                        + (ipv4.getSourceAddress().getInt() & 0xffff);
-                accumulation += ((ipv4.getDestinationAddress().getInt() >> 16) & 0xffff)
-                        + (ipv4.getDestinationAddress().getInt() & 0xffff);
-                accumulation += ipv4.getProtocol().getIpProtocolNumber() & 0xff;
-                accumulation += length & 0xffff;
-            }
+			if (this.parent != null && this.parent instanceof IPv4) {
+			    //Checksum calculation based on the JSocket Wrench code
+				// https://github.com/ehrmann/jswrench
+				//The original code can be found at 
+				//https://github.com/ehrmann/jswrench/blob/master/src/com/act365/net/SocketUtils.java
+				IPv4 ipv4 = (IPv4) this.parent;
 
-            for (int i = 0; i < length / 2; ++i) {
-                accumulation += 0xffff & bb.getShort();
-            }
-            // pad to an even number of shorts
-            if (length % 2 > 0) {
-                accumulation += (bb.get() & 0xff) << 8;
-            }
+				int bufferlength = length + 12;
+				boolean odd = length % 2 == 1;
+				byte[] source = ipv4.getSourceAddress().getBytes();
+				byte[] destination = ipv4.getDestinationAddress().getBytes();
 
-            accumulation = ((accumulation >> 16) & 0xffff)
-                    + (accumulation & 0xffff);
-            this.checksum = (short) (~accumulation & 0xffff);
-            bb.putShort(16, this.checksum);
-        }
+				if (odd) {
+					++bufferlength;
+				}
+
+				byte[] buffer = new byte[bufferlength];
+
+				buffer[0] = source[0];
+				buffer[1] = source[1];
+				buffer[2] = source[2];
+				buffer[3] = source[3];
+
+				buffer[4] = destination[0];
+				buffer[5] = destination[1];
+				buffer[6] = destination[2];
+				buffer[7] = destination[3];
+
+				buffer[8] = (byte) 0;
+				buffer[9] = (byte) ipv4.getProtocol().getIpProtocolNumber();
+
+				shortToBytes((short) length, buffer, 10);
+
+				int i = 11;
+
+				while (++i < length + 12) {
+					buffer[i] = data[i + 0 - 12];
+				}
+
+				if (odd) {
+					buffer[i] = (byte) 0;
+				}
+
+				this.checksum = checksum(buffer, buffer.length, 0);
+			} else {
+				bb.rewind();
+				int accumulation = 0;
+				for (int i = 0; i < length / 2; ++i) {
+					accumulation += 0xffff & bb.getShort();
+				}
+				// pad to an even number of shorts
+				if (length % 2 > 0) {
+					accumulation += (bb.get() & 0xff) << 8;
+				}
+
+				accumulation = ((accumulation >> 16) & 0xffff)
+						+ (accumulation & 0xffff);
+				this.checksum = (short) (~accumulation & 0xffff);
+			}
+
+			bb.putShort(16, this.checksum);
+		}
+        
         return data;
     }
+    
+    //Checksum calculation based on the JSocket Wrench code
+	// https://github.com/ehrmann/jswrench
+	//The original code can be found at 
+	//https://github.com/ehrmann/jswrench/blob/master/src/com/act365/net/SocketUtils.java
+	private static long integralFromBytes(byte[] buffer, int offset, int length) {
+
+		long answer = 0;
+
+		while (--length >= 0) {
+			answer = answer << 8;
+			answer |= buffer[offset] >= 0 ? buffer[offset]
+					: 0xffffff00 ^ buffer[offset];
+			++offset;
+		}
+
+		return answer;
+	}
+    
+    //Checksum calculation based on the JSocket Wrench code
+	// https://github.com/ehrmann/jswrench
+	//The original code can be found at 
+	//https://github.com/ehrmann/jswrench/blob/master/src/com/act365/net/SocketUtils.java
+	private static void shortToBytes(short value, byte[] buffer, int offset) {
+		buffer[offset + 1] = (byte) (value & 0xff);
+		value = (short) (value >> 8);
+		buffer[offset] = (byte) (value);
+	}
+    
+    //Checksum calculation based on the JSocket Wrench code
+	// https://github.com/ehrmann/jswrench
+	//The original code can be found at 
+	//https://github.com/ehrmann/jswrench/blob/master/src/com/act365/net/SocketUtils.java
+	private static short checksum(byte[] message, int length, int offset) {
+		// Sum consecutive 16-bit words.
+
+		int sum = 0;
+
+		while (offset < length - 1) {
+
+			sum += (int) integralFromBytes(message, offset, 2);
+
+			offset += 2;
+		}
+
+		if (offset == length - 1) {
+
+			sum += (message[offset] >= 0 ? message[offset]
+					: message[offset] ^ 0xffffff00) << 8;
+		}
+
+		// Add upper 16 bits to lower 16 bits.
+
+		sum = (sum >>> 16) + (sum & 0xffff);
+
+		// Add carry
+
+		sum += sum >>> 16;
+
+		// Ones complement and truncate.
+
+		return (short) ~sum;
+	}
 
     /* (non-Javadoc)
      * @see java.lang.Object#hashCode()
