@@ -133,16 +133,19 @@ public class Link implements Comparable<Link> {
     @Override
     public int compareTo(Link a) {
         // compare link based on natural ordering - src id, src port, dst id, dst port
-        if (this.getSrc() != a.getSrc())
-            return (int) (this.getSrc().getLong() - a.getSrc().getLong());
+        int srcComp = this.getSrc().compareTo(a.getSrc());
+        if (srcComp != 0)
+            return srcComp;
         
-        if (this.getSrcPort() != a.getSrcPort())
-            return (int) (this.getSrc().getLong() - a.getSrc().getLong());
+        int srcPortComp = this.getSrcPort().compareTo(a.getSrcPort());
+        if (srcPortComp != 0)
+            return srcPortComp;
+            
+        int dstComp = this.getDst().compareTo(a.getDst());
+        if (dstComp != 0)
+            return dstComp;
         
-        if (this.getDst() != a.getDst())
-            return (int) (this.getDst().getLong() - a.getDst().getLong());
-        
-        return this.getDstPort().getPortNumber() - a.getDstPort().getPortNumber();
+        return this.getDstPort().compareTo(a.getDstPort());
     }
 }
 
