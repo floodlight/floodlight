@@ -108,7 +108,7 @@ public class StaticFlowEntries {
 		JsonParser jp;
 
 		try {
-			jp = f.createJsonParser(fmJson);
+			jp = f.createParser(fmJson);
 		} catch (JsonParseException e) {
 			throw new IOException(e);
 		}
@@ -614,7 +614,7 @@ public class StaticFlowEntries {
 		String ipProto = "NOT_SPECIFIED";
 
 		try {
-			jp = f.createJsonParser(fmJson);
+			jp = f.createParser(fmJson);
 		} catch (JsonParseException e) {
 			throw new IOException(e);
 		}

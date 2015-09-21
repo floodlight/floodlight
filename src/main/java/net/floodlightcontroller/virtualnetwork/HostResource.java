@@ -45,7 +45,7 @@ public class HostResource extends org.restlet.resource.ServerResource {
         JsonParser jp;
         
         try {
-            jp = f.createJsonParser(json);
+            jp = f.createParser(json);
         } catch (JsonParseException e) {
             throw new IOException(e);
         }
