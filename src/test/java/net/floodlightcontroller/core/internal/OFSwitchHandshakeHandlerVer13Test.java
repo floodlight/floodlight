@@ -132,7 +132,8 @@ public class OFSwitchHandshakeHandlerVer13Test extends OFSwitchHandlerTestBase {
         verify(sw, switchManager);
     }
     
-    public void handleTableFeatures(boolean subHandShakeComplete) throws Exception {
+    @SuppressWarnings("unchecked")
+	public void handleTableFeatures(boolean subHandShakeComplete) throws Exception {
     	// build the table features stats reply
     	OFTableFeaturesStatsReply tf = createTableFeaturesStatsReply();
     	
