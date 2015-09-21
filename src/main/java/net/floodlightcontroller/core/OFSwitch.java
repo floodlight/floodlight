@@ -69,6 +69,7 @@ import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFAuxId;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.TableId;
+import org.projectfloodlight.openflow.types.U64;
 
 import net.floodlightcontroller.util.LinkedHashSetWrapper;
 import net.floodlightcontroller.util.OrderedCollection;
@@ -124,7 +125,7 @@ public class OFSwitch implements IOFSwitchBackend {
 	private SwitchStatus status;
 
 	public static final int OFSWITCH_APP_ID = ident(5);
-	
+
 	private TableId maxTableToGetTableMissFlow = TableId.of(4); /* this should cover most HW switches that have a couple SW flow tables */
 
 	static {
@@ -759,7 +760,7 @@ public class OFSwitch implements IOFSwitchBackend {
 	public void write(Iterable<OFMessage> msglist, LogicalOFMessageCategory category) {
 		if (isActive()) {
 			this.getConnection(category).write(msglist);
-			
+
 			for(OFMessage m : msglist) {
 				switchManager.handleOutgoingMessage(this, m);				
 			}
@@ -793,7 +794,7 @@ public class OFSwitch implements IOFSwitchBackend {
 	public void write(Iterable<OFMessage> msglist) {
 		if (isActive()) {
 			connections.get(OFAuxId.MAIN).write(msglist);
-						
+
 			for(OFMessage m : msglist) {
 				switchManager.handleOutgoingMessage(this, m);
 			}
@@ -831,7 +832,7 @@ public class OFSwitch implements IOFSwitchBackend {
 			/* OF1.3+ Per-table actions are set later in the OFTableFeaturesRequest/Reply */
 			this.actions = featuresReply.getActions();
 		}
-		
+
 		this.nTables = featuresReply.getNTables();
 	}
 
@@ -986,7 +987,7 @@ public class OFSwitch implements IOFSwitchBackend {
 	private <REPLY extends OFStatsReply> ListenableFuture<List<REPLY>> addInternalStatsReplyListener(final ListenableFuture<List<REPLY>> future, OFStatsRequest<REPLY> request) {
 		switch (request.getStatsType()) {
 		case TABLE_FEATURES:
-		/* case YOUR_CASE_HERE */
+			/* case YOUR_CASE_HERE */
 			future.addListener(new Runnable() {
 				/*
 				 * We know the reply will be a list of OFStatsReply.
@@ -1009,7 +1010,7 @@ public class OFSwitch implements IOFSwitchBackend {
 							case TABLE_FEATURES:
 								processOFTableFeatures((List<OFTableFeaturesStatsReply>) future.get());
 								break;
-							/* case YOUR_CASE_HERE */
+								/* case YOUR_CASE_HERE */
 							default:
 								throw new Exception("Received an invalid OFStatsReply of " 
 										+ replies.get(0).getStatsType().toString() + ". Expected TABLE_FEATURES.");
@@ -1097,7 +1098,7 @@ public class OFSwitch implements IOFSwitchBackend {
 	public Collection<TableId> getTables() {
 		return new ArrayList<TableId>(tables);
 	}
-	
+
 	@Override
 	public short getNumTables() {
 		return this.nTables;
@@ -1236,7 +1237,7 @@ public class OFSwitch implements IOFSwitchBackend {
 	public TableId getMaxTableForTableMissFlow() {
 		return maxTableToGetTableMissFlow;
 	}
-	
+
 	@Override
 	public TableId setMaxTableForTableMissFlow(TableId max) {
 		if (max.getValue() >= nTables) {
@@ -1245,5 +1246,10 @@ public class OFSwitch implements IOFSwitchBackend {
 			maxTableToGetTableMissFlow = max;
 		}
 		return maxTableToGetTableMissFlow;
+	}
+
+	@Override
+	public U64 getLatency() {
+		return this.connections.get(OFAuxId.MAIN).getLatency();
 	}
 }

@@ -51,6 +51,7 @@ import org.projectfloodlight.openflow.protocol.OFStatsRequest;
 import org.projectfloodlight.openflow.protocol.OFType;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFAuxId;
+import org.projectfloodlight.openflow.types.U64;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -85,9 +86,10 @@ public class OFConnection implements IOFConnection, IOFConnectionBackend{
     private static final long DELIVERABLE_TIME_OUT = 60;
     private static final TimeUnit DELIVERABLE_TIME_OUT_UNIT = TimeUnit.SECONDS;
 
-
     private final OFConnectionCounters counters;
     private IOFConnectionListener listener;
+    
+    private volatile U64 latency;
 
     public OFConnection(@Nonnull DatapathId dpid,
                         @Nonnull OFFactory factory,
@@ -110,6 +112,7 @@ public class OFConnection implements IOFConnection, IOFConnectionBackend{
         this.xidDeliverableMap = new ConcurrentHashMap<>();
         this.counters = new OFConnectionCounters(debugCounters, dpid, this.auxId);
         this.timer = timer;
+        this.latency = U64.ZERO;
     }
 
     @Override
@@ -380,6 +383,27 @@ public class OFConnection implements IOFConnection, IOFConnectionBackend{
             listener.messageReceived(this, m);
         }
     }
+    
+    @Override
+    public U64 getLatency() {
+    	return this.latency;
+    }
+    
+    @Override
+    public void updateLatency(U64 latency) {
+    	if (latency == null) {
+			logger.error("Latency must be non-null. Ignoring null latency value.");
+			return;
+		} else if (this.latency.equals(U64.ZERO)) { 
+			logger.debug("Recording previously 0ms switch {} latency as {}ms", this.getDatapathId(), latency.getValue());
+			this.latency = latency;
+			return;
+		} else {
+			double oldWeight = 0.30;
+			this.latency = U64.of((long) (this.latency.getValue() * oldWeight + latency.getValue() * (1 - oldWeight)));
+			logger.debug("Switch {} latency updated to {}ms", this.getDatapathId(), this.latency.getValue());
+		}
+    }
 
     /** A dummy connection listener that just logs warn messages. Saves us a few null checks
      * @author Andreas Wundsam <andreas.wundsam@bigswitch.com>
@@ -409,6 +433,5 @@ public class OFConnection implements IOFConnection, IOFConnectionBackend{
 			// TODO Auto-generated method stub
 			
 		}
-
     }
 }

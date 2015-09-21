@@ -468,6 +468,7 @@ public class LinkDiscoveryManagerTest extends FloodlightTestCase {
         expect(sw1.getEnabledPortNumbers()).andReturn(ports).anyTimes();
         expect(sw1.getPort(OFPort.of(EasyMock.anyInt()))).andReturn(ofpp).anyTimes();
         expect(sw1.getOFFactory()).andReturn(OFFactories.getFactory(OFVersion.OF_13)).anyTimes();
+        expect(sw1.getLatency()).andReturn(U64.ZERO).anyTimes();
         sw1.write(capture(wc));
         expectLastCall().anyTimes();
         replay(sw1);

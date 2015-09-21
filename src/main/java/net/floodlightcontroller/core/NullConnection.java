@@ -2,9 +2,10 @@ package net.floodlightcontroller.core;
 
 import java.net.SocketAddress;
 import java.util.List;
-
 import java.util.Date;
+
 import net.floodlightcontroller.core.internal.IOFConnectionListener;
+
 import org.projectfloodlight.openflow.protocol.OFFactories;
 import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFMessage;
@@ -14,6 +15,7 @@ import org.projectfloodlight.openflow.protocol.OFStatsRequest;
 import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFAuxId;
+import org.projectfloodlight.openflow.types.U64;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -111,4 +113,13 @@ public class NullConnection implements IOFConnectionBackend, IOFMessageWriter {
     public void setListener(IOFConnectionListener listener) {
     }
 
+	@Override
+	public U64 getLatency() {
+		return U64.ZERO;
+	}
+
+	@Override
+	public void updateLatency(U64 latency) {
+		// noop
+	}
 }

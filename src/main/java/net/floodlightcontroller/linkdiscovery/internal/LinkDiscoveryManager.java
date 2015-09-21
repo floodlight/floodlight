@@ -378,7 +378,7 @@ IFloodlightModule, IInfoProvider {
 				.put((byte) 0x26)
 				.put((byte) 0xe1)
 				.put((byte) 0x01) /* 0x01 is what we'll use to differentiate DPID (0x00) from time (0x01) */
-				.putLong(System.currentTimeMillis())
+				.putLong(System.currentTimeMillis() + iofSwitch.getLatency().getValue() /* account for our switch's one-way latency */)
 				.array();
 
 		LLDPTLV timestampTLV = new LLDPTLV()
@@ -691,8 +691,8 @@ IFloodlightModule, IInfoProvider {
 					&& lldptlv.getValue()[1] == 0x26
 					&& lldptlv.getValue()[2] == (byte) 0xe1
 					&& lldptlv.getValue()[3] == 0x01) { /* 0x01 for timestamp */
-				ByteBuffer tsBB = ByteBuffer.wrap(lldptlv.getValue());
-				timestamp = tsBB.getLong(4); /* skip OpenFlow OUI (4 bytes above) */
+				ByteBuffer tsBB = ByteBuffer.wrap(lldptlv.getValue()); /* skip OpenFlow OUI (4 bytes above) */
+				timestamp = tsBB.getLong(4) + iofSwitch.getLatency().getValue(); /* include the RX switch latency to "subtract" it */
 			} else if (lldptlv.getType() == 12 && lldptlv.getLength() == 8) {
 				otherId = ByteBuffer.wrap(lldptlv.getValue()).getLong();
 				if (myId == otherId) myLLDP = true;
