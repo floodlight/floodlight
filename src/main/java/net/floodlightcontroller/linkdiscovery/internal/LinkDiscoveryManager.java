@@ -103,6 +103,7 @@ import org.projectfloodlight.openflow.types.EthType;
 import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFBufferId;
 import org.projectfloodlight.openflow.types.OFPort;
+import org.projectfloodlight.openflow.types.U64;
 import org.projectfloodlight.openflow.util.HexString;
 import org.projectfloodlight.openflow.protocol.OFType;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
@@ -255,7 +256,7 @@ IFloodlightModule, IInfoProvider {
 	protected LinkedBlockingQueue<NodePortTuple> maintenanceQueue;
 	protected LinkedBlockingQueue<NodePortTuple> toRemoveFromQuarantineQueue;
 	protected LinkedBlockingQueue<NodePortTuple> toRemoveFromMaintenanceQueue;
-	
+
 	/**
 	 * Quarantine task
 	 */
@@ -290,12 +291,12 @@ IFloodlightModule, IInfoProvider {
 	@Override
 	public OFPacketOut generateLLDPMessage(IOFSwitch iofSwitch, OFPort port,
 			boolean isStandard, boolean isReverse) {
-		
+
 		OFPortDesc ofpPort = iofSwitch.getPort(port);
 
 		if (log.isTraceEnabled()) {
-			log.trace("Sending LLDP packet out of swich: {}, port: {}",
-					iofSwitch.getId().toString(), port);
+			log.trace("Sending LLDP packet out of swich: {}, port: {}, reverse: {}",
+					new Object[] {iofSwitch.getId().toString(), port.toString(), Boolean.toString(isReverse)});
 		}
 
 		// using "nearest customer bridge" MAC address for broadest possible
@@ -308,7 +309,7 @@ IFloodlightModule, IInfoProvider {
 		// later
 		byte[] portId = new byte[] { 2, 0, 0 }; // filled in later
 		byte[] ttlValue = new byte[] { 0, 0x78 };
-		// OpenFlow OUI - 00-26-E1
+		// OpenFlow OUI - 00-26-E1-00
 		byte[] dpidTLVValue = new byte[] { 0x0, 0x26, (byte) 0xe1, 0, 0, 0,
 				0, 0, 0, 0, 0, 0 };
 		LLDPTLV dpidTLV = new LLDPTLV().setType((byte) 127)
@@ -341,10 +342,6 @@ IFloodlightModule, IInfoProvider {
 
 		// set the portId to the outgoing port
 		portBB.putShort(port.getShortPortNumber());
-		if (log.isTraceEnabled()) {
-			log.trace("Sending LLDP out of interface: {}/{}",
-					iofSwitch.getId().toString(), port);
-		}
 
 		LLDP lldp = new LLDP();
 		lldp.setChassisId(new LLDPTLV().setType((byte) 1)
@@ -365,6 +362,32 @@ IFloodlightModule, IInfoProvider {
 		} else {
 			lldp.getOptionalTLVList().add(forwardTLV);
 		}
+		
+		/* 
+		 * Introduce a new TLV for med-granularity link latency detection.
+		 * If same controller, can assume system clock is the same, but
+		 * cannot guarantee processing time or account for network congestion.
+		 * 
+		 * Need to include our OpenFlow OUI - 00-26-E1-01 (note 01; 00 is DPID); 
+		 * save last 8 bytes for long (time in ms). 
+		 * 
+		 * Note Long.SIZE is in bits (64).
+		 */
+		byte[] timestampTLVValue = ByteBuffer.allocate(Long.SIZE / 8 + 4)
+				.put((byte) 0x00)
+				.put((byte) 0x26)
+				.put((byte) 0xe1)
+				.put((byte) 0x01) /* 0x01 is what we'll use to differentiate DPID (0x00) from time (0x01) */
+				.putLong(System.currentTimeMillis() + iofSwitch.getLatency().getValue() /* account for our switch's one-way latency */)
+				.array();
+
+		LLDPTLV timestampTLV = new LLDPTLV()
+		.setType((byte) 127)
+		.setLength((short) timestampTLVValue.length)
+		.setValue(timestampTLVValue);
+		
+		/* Now add TLV to our LLDP packet */
+		lldp.getOptionalTLVList().add(timestampTLV);
 
 		Ethernet ethernet;
 		if (isStandard) {
@@ -583,19 +606,19 @@ IFloodlightModule, IInfoProvider {
 		} else if (eth.getPayload() instanceof LLDP) {
 			return handleLldp((LLDP) eth.getPayload(), sw, inPort, true, cntx);
 		} else if (eth.getEtherType().getValue() < 1536 && eth.getEtherType().getValue() >= 17) {
-	        long destMac = eth.getDestinationMACAddress().getLong();
-	        if ((destMac & LINK_LOCAL_MASK) == LINK_LOCAL_VALUE) {
-	            ctrLinkLocalDrops.increment();
-	            if (log.isTraceEnabled()) {
-	                log.trace("Ignoring packet addressed to 802.1D/Q "
-	                        + "reserved address.");
-	            }
-	            return Command.STOP;
-	        }
-	    } else if (eth.getEtherType().getValue() < 17) {
-	        log.error("Received invalid ethertype of {}.", eth.getEtherType());
-	        return Command.STOP;
-	    }
+			long destMac = eth.getDestinationMACAddress().getLong();
+			if ((destMac & LINK_LOCAL_MASK) == LINK_LOCAL_VALUE) {
+				ctrLinkLocalDrops.increment();
+				if (log.isTraceEnabled()) {
+					log.trace("Ignoring packet addressed to 802.1D/Q "
+							+ "reserved address.");
+				}
+				return Command.STOP;
+			}
+		} else if (eth.getEtherType().getValue() < 17) {
+			log.error("Received invalid ethertype of {}.", eth.getEtherType());
+			return Command.STOP;
+		}
 
 		if (ignorePacketInFromSource(eth.getSourceMACAddress())) {
 			ctrIgnoreSrcMacDrops.increment();
@@ -632,6 +655,8 @@ IFloodlightModule, IInfoProvider {
 		// If LLDP is suppressed on this port, ignore received packet as well
 		IOFSwitch iofSwitch = switchService.getSwitch(sw);
 
+		log.warn("Received LLDP packet on sw {}, port {}", sw, inPort);
+
 		if (!isIncomingDiscoveryAllowed(sw, inPort, isStandard))
 			return Command.STOP;
 
@@ -650,7 +675,8 @@ IFloodlightModule, IInfoProvider {
 
 		OFPort remotePort = OFPort.of(portBB.getShort());
 		IOFSwitch remoteSwitch = null;
-
+		long timestamp = 0;
+		
 		// Verify this LLDP packet matches what we're looking for
 		for (LLDPTLV lldptlv : lldp.getOptionalTLVList()) {
 			if (lldptlv.getType() == 127 && lldptlv.getLength() == 12
@@ -660,6 +686,13 @@ IFloodlightModule, IInfoProvider {
 					&& lldptlv.getValue()[3] == 0x0) {
 				ByteBuffer dpidBB = ByteBuffer.wrap(lldptlv.getValue());
 				remoteSwitch = switchService.getSwitch(DatapathId.of(dpidBB.getLong(4)));
+			} else if (lldptlv.getType() == 127 && lldptlv.getLength() == 12
+					&& lldptlv.getValue()[0] == 0x0
+					&& lldptlv.getValue()[1] == 0x26
+					&& lldptlv.getValue()[2] == (byte) 0xe1
+					&& lldptlv.getValue()[3] == 0x01) { /* 0x01 for timestamp */
+				ByteBuffer tsBB = ByteBuffer.wrap(lldptlv.getValue()); /* skip OpenFlow OUI (4 bytes above) */
+				timestamp = tsBB.getLong(4) + iofSwitch.getLatency().getValue(); /* include the RX switch latency to "subtract" it */
 			} else if (lldptlv.getType() == 12 && lldptlv.getLength() == 8) {
 				otherId = ByteBuffer.wrap(lldptlv.getValue()).getLong();
 				if (myId == otherId) myLLDP = true;
@@ -735,8 +768,9 @@ IFloodlightModule, IInfoProvider {
 
 		// Store the time of update to this link, and push it out to
 		// routingEngine
+		U64 latency = timestamp != 0 ? U64.of(System.currentTimeMillis() - timestamp) : U64.ZERO;
 		Link lt = new Link(remoteSwitch.getId(), remotePort,
-				iofSwitch.getId(), inPort);
+				iofSwitch.getId(), inPort, latency); /* we assume 0 latency is undefined */
 
 		if (!isLinkAllowed(lt.getSrc(), lt.getSrcPort(),
 				lt.getDst(), lt.getDstPort()))
@@ -765,7 +799,7 @@ IFloodlightModule, IInfoProvider {
 		newLinkInfo = links.get(lt);
 		if (newLinkInfo != null && isStandard && isReverse == false) {
 			Link reverseLink = new Link(lt.getDst(), lt.getDstPort(),
-					lt.getSrc(), lt.getSrcPort());
+					lt.getSrc(), lt.getSrcPort(), U64.ZERO); /* latency not used; not important what the value is, since it's intentionally not in equals() */
 			LinkInfo reverseInfo = links.get(reverseLink);
 			if (reverseInfo == null) {
 				// the reverse link does not exist.
@@ -781,7 +815,7 @@ IFloodlightModule, IInfoProvider {
 		// link as well.
 		if (!isStandard) {
 			Link reverseLink = new Link(lt.getDst(), lt.getDstPort(),
-					lt.getSrc(), lt.getSrcPort());
+					lt.getSrc(), lt.getSrcPort(), latency);
 
 			// srcPortState and dstPort state are reversed.
 			LinkInfo reverseInfo = new LinkInfo(firstSeenTime, lastLldpTime,
@@ -795,7 +829,7 @@ IFloodlightModule, IInfoProvider {
 				lt.getSrcPort());
 		NodePortTuple nptDst = new NodePortTuple(lt.getDst(),
 				lt.getDstPort());
-		
+
 		flagToRemoveFromQuarantineQueue(nptSrc);
 		flagToRemoveFromMaintenanceQueue(nptSrc);
 		flagToRemoveFromQuarantineQueue(nptDst);
@@ -1036,7 +1070,7 @@ IFloodlightModule, IInfoProvider {
 		} else {
 			operation = UpdateOperation.PORT_DOWN;
 		}
-		
+
 		updates.add(new LDUpdate(sw, port, operation));
 	}
 
@@ -1163,17 +1197,13 @@ IFloodlightModule, IInfoProvider {
 			return;
 		OFPortDesc ofpPort = iofSwitch.getPort(port);
 
-		if (log.isTraceEnabled()) {
-			log.trace("Sending LLDP packet out of swich: {}, port: {}",
-					sw.toString(), port.getPortNumber());
-		}
 		OFPacketOut po = generateLLDPMessage(iofSwitch, port, isStandard, isReverse);
 		OFPacketOut.Builder pob = po.createBuilder();
 
 		// Add actions
 		List<OFAction> actions = getDiscoveryActions(iofSwitch, ofpPort.getPortNo());
 		pob.setActions(actions);
-		
+
 		// no need to set length anymore
 
 		// send
@@ -1194,10 +1224,10 @@ IFloodlightModule, IInfoProvider {
 			if (!iofSwitch.isActive()) continue; /* can't do anything if the switch is SLAVE */
 			if (iofSwitch.getEnabledPorts() != null) {
 				for (OFPortDesc ofp : iofSwitch.getEnabledPorts()) {
-					if (isLinkDiscoverySuppressed(sw, ofp.getPortNo())) {
+					if (isLinkDiscoverySuppressed(sw, ofp.getPortNo())) {			
 						continue;
 					}
-
+					log.trace("Enabled port: {}", ofp);
 					sendDiscoveryMessage(sw, ofp.getPortNo(), true, false);
 
 					// If the switch port is not already in the maintenance
@@ -1373,6 +1403,7 @@ IFloodlightModule, IInfoProvider {
 				// find out if the link was added or removed here.
 				updates.add(new LDUpdate(lt.getSrc(), lt.getSrcPort(),
 						lt.getDst(), lt.getDstPort(),
+						lt.getLatency(),
 						getLinkType(lt, newInfo),
 						updateOperation));
 			}
@@ -1456,6 +1487,7 @@ IFloodlightModule, IInfoProvider {
 						lt.getSrcPort(),
 						lt.getDst(),
 						lt.getDstPort(),
+						lt.getLatency(),
 						linkType,
 						UpdateOperation.LINK_REMOVED));
 
@@ -1547,7 +1579,7 @@ IFloodlightModule, IInfoProvider {
 					eraseList.add(entry.getKey());
 				} else if (linkChanged) {
 					updates.add(new LDUpdate(lt.getSrc(), lt.getSrcPort(),
-							lt.getDst(), lt.getDstPort(),
+							lt.getDst(), lt.getDstPort(), lt.getLatency(),
 							getLinkType(lt, info),
 							UpdateOperation.LINK_UPDATED));
 				}
@@ -1656,33 +1688,33 @@ IFloodlightModule, IInfoProvider {
 
 	@Override
 	public void switchRemoved(DatapathId sw) {
-        List<Link> eraseList = new ArrayList<Link>();
-        lock.writeLock().lock();
-        try {
-            if (switchLinks.containsKey(sw)) {
-                if (log.isTraceEnabled()) {
-                    log.trace("Handle switchRemoved. Switch {}; removing links {}", sw.toString(), switchLinks.get(sw));
-                }
+		List<Link> eraseList = new ArrayList<Link>();
+		lock.writeLock().lock();
+		try {
+			if (switchLinks.containsKey(sw)) {
+				if (log.isTraceEnabled()) {
+					log.trace("Handle switchRemoved. Switch {}; removing links {}", sw.toString(), switchLinks.get(sw));
+				}
 
-                List<LDUpdate> updateList = new ArrayList<LDUpdate>();
-                updateList.add(new LDUpdate(sw, SwitchType.BASIC_SWITCH, UpdateOperation.SWITCH_REMOVED));
-                // add all tuples with an endpoint on this switch to erase list
-                eraseList.addAll(switchLinks.get(sw));
+				List<LDUpdate> updateList = new ArrayList<LDUpdate>();
+				updateList.add(new LDUpdate(sw, SwitchType.BASIC_SWITCH, UpdateOperation.SWITCH_REMOVED));
+				// add all tuples with an endpoint on this switch to erase list
+				eraseList.addAll(switchLinks.get(sw));
 
-                // Sending the updateList, will ensure the updates in this
-                // list will be added at the end of all the link updates.
-                // Thus, it is not necessary to explicitly add these updates
-                // to the queue.
-                deleteLinks(eraseList, "Switch Removed", updateList);
-            } else {
-                // Switch does not have any links.
-                updates.add(new LDUpdate(sw, SwitchType.BASIC_SWITCH, UpdateOperation.SWITCH_REMOVED));
-            }
-        } finally {
-            lock.writeLock().unlock();
-        }
+				// Sending the updateList, will ensure the updates in this
+				// list will be added at the end of all the link updates.
+				// Thus, it is not necessary to explicitly add these updates
+				// to the queue.
+				deleteLinks(eraseList, "Switch Removed", updateList);
+			} else {
+				// Switch does not have any links.
+				updates.add(new LDUpdate(sw, SwitchType.BASIC_SWITCH, UpdateOperation.SWITCH_REMOVED));
+			}
+		} finally {
+			lock.writeLock().unlock();
+		}
 
-    }
+	}
 
 
 	@Override
@@ -1730,11 +1762,11 @@ IFloodlightModule, IInfoProvider {
 	@Override
 	public void rowsModified(String tableName, Set<Object> rowKeys) {
 
-        if (tableName.equals(TOPOLOGY_TABLE_NAME)) {
-            readTopologyConfigFromStorage();
-            return;
-        }
-    }
+		if (tableName.equals(TOPOLOGY_TABLE_NAME)) {
+			readTopologyConfigFromStorage();
+			return;
+		}
+	}
 
 	@Override
 	public void rowsDeleted(String tableName, Set<Object> rowKeys) {

@@ -92,7 +92,7 @@ public class PoolsResource extends ServerResource {
         LBPool pool = new LBPool();
         
         try {
-            jp = f.createJsonParser(json);
+            jp = f.createParser(json);
         } catch (JsonParseException e) {
             throw new IOException(e);
         }

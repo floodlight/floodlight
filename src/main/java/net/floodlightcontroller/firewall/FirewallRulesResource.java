@@ -135,7 +135,7 @@ public class FirewallRulesResource extends ServerResource {
 		JsonParser jp;
 		try {
 			try {
-				jp = f.createJsonParser(fmJson);
+				jp = f.createParser(fmJson);
 			} catch (JsonParseException e) {
 				throw new IOException(e);
 			}

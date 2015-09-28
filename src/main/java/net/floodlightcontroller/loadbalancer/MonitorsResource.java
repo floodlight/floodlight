@@ -88,7 +88,7 @@ public class MonitorsResource extends ServerResource {
         LBMonitor monitor = new LBMonitor();
         
         try {
-            jp = f.createJsonParser(json);
+            jp = f.createParser(json);
         } catch (JsonParseException e) {
             throw new IOException(e);
         }

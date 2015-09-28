@@ -7,9 +7,10 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
 import java.util.Date;
+
 import net.floodlightcontroller.core.IOFConnectionBackend;
+
 import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFRequest;
@@ -17,6 +18,7 @@ import org.projectfloodlight.openflow.protocol.OFStatsReply;
 import org.projectfloodlight.openflow.protocol.OFStatsRequest;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFAuxId;
+import org.projectfloodlight.openflow.types.U64;
 
 import com.google.common.collect.Iterables;
 import com.google.common.util.concurrent.ListenableFuture;
@@ -214,4 +216,16 @@ public class MockOFConnection implements IOFConnectionBackend {
     public OFMessage retrieveMessage() {
         return this.messages.remove(0);
     }
+
+	@Override
+	public U64 getLatency() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public void updateLatency(U64 latency) {
+		// TODO Auto-generated method stub
+		
+	}
 }

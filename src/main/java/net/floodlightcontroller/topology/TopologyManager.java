@@ -1125,7 +1125,7 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 			switch (update.getOperation()) {
 			case LINK_UPDATED:
 				addOrUpdateLink(update.getSrc(), update.getSrcPort(),
-						update.getDst(), update.getDstPort(),
+						update.getDst(), update.getDstPort(), update.getLatency(),
 						update.getType());
 				break;
 			case LINK_REMOVED:
@@ -1399,13 +1399,13 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 	}
 
 	protected void addOrUpdateTunnelLink(DatapathId srcId, OFPort srcPort, DatapathId dstId,
-			OFPort dstPort) {
+			OFPort dstPort, U64 latency) {
 		// If you need to handle tunnel links, this is a placeholder.
 	}
 
 	public void addOrUpdateLink(DatapathId srcId, OFPort srcPort, DatapathId dstId,
-			OFPort dstPort, LinkType type) {
-		Link link = new Link(srcId, srcPort, dstId, dstPort);
+			OFPort dstPort, U64 latency, LinkType type) {
+		Link link = new Link(srcId, srcPort, dstId, dstPort, latency);
 
 		if (type.equals(LinkType.MULTIHOP_LINK)) {
 			addPortToSwitch(srcId, srcPort);
@@ -1425,7 +1425,7 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 			dtLinksUpdated = true;
 			linksUpdated = true;
 		} else if (type.equals(LinkType.TUNNEL)) {
-			addOrUpdateTunnelLink(srcId, srcPort, dstId, dstPort);
+			addOrUpdateTunnelLink(srcId, srcPort, dstId, dstPort, latency);
 		}
 	}
 
@@ -1463,7 +1463,7 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 
 	public void removeLink(DatapathId srcId, OFPort srcPort,
 			DatapathId dstId, OFPort dstPort) {
-		Link link = new Link(srcId, srcPort, dstId, dstPort);
+		Link link = new Link(srcId, srcPort, dstId, dstPort, U64.ZERO /* not needed for lookup */);
 		removeLink(link);
 	}
 

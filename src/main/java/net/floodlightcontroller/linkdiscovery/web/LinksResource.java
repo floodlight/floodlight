@@ -29,6 +29,7 @@ import net.floodlightcontroller.routing.Link;
 
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFPort;
+import org.projectfloodlight.openflow.types.U64;
 import org.restlet.resource.Get;
 import org.restlet.resource.ServerResource;
 
@@ -53,7 +54,7 @@ public class LinksResource extends ServerResource {
                     DatapathId dst = link.getDst();
                     OFPort srcPort = link.getSrcPort();
                     OFPort dstPort = link.getDstPort();
-                    Link otherLink = new Link(dst, dstPort, src, srcPort);
+                    Link otherLink = new Link(dst, dstPort, src, srcPort, U64.ZERO /* not important in lookup */);
                     LinkInfo otherInfo = links.get(otherLink);
                     LinkType otherType = null;
                     if (otherInfo != null)

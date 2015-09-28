@@ -53,6 +53,7 @@ import org.projectfloodlight.openflow.protocol.ver13.OFHelloElemTypeSerializerVe
 import org.projectfloodlight.openflow.protocol.ver14.OFHelloElemTypeSerializerVer14;
 import org.projectfloodlight.openflow.types.OFAuxId;
 import org.projectfloodlight.openflow.types.U32;
+import org.projectfloodlight.openflow.types.U64;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -84,6 +85,8 @@ class OFChannelHandler extends IdleStateAwareChannelHandler {
 	 * We will count down
 	 */
 	private long handshakeTransactionIds = 0x00FFFFFFFFL;
+	
+    private volatile long echoSendTime;
 
 
 	/**
@@ -107,11 +110,12 @@ class OFChannelHandler extends IdleStateAwareChannelHandler {
 
 		void processOFEchoReply(OFEchoReply m)
 				throws IOException {
-			// do nothing
+			/* Update the latency -- halve it for one-way time */
+			updateLatency(U64.of( (System.currentTimeMillis() - echoSendTime) / 2) );
 		}
 
 		void processOFError(OFErrorMsg m) {
-			logErrorDisconnect(m);
+			logErrorDisconnect(m); 
 		}
 
 		void processOFExperimenter(OFExperimenter m) {
@@ -880,13 +884,15 @@ class OFChannelHandler extends IdleStateAwareChannelHandler {
 				.build();
 		
 		channel.write(Collections.singletonList(m));
-		log.debug("Send hello: {}", m);
+		log.debug("Send hello: {}", m); 
 	}
 
 	private void sendEchoRequest() {
 		OFEchoRequest request = factory.buildEchoRequest()
 				.setXid(handshakeTransactionIds--)
 				.build();
+		/* Record for latency calculation */
+		echoSendTime = System.currentTimeMillis();
 		channel.write(Collections.singletonList(request));
 	}
 
@@ -910,4 +916,9 @@ class OFChannelHandler extends IdleStateAwareChannelHandler {
 		return this.pipeline;
 	}
 
+	private void updateLatency(U64 latency) {
+		if (connection != null) {
+			connection.updateLatency(latency);
+		}
+	}
 }

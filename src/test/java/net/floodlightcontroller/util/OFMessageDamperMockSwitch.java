@@ -44,6 +44,7 @@ import org.projectfloodlight.openflow.protocol.OFStatsRequest;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.TableId;
+import org.projectfloodlight.openflow.types.U64;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.ListenableFuture;
@@ -345,6 +346,12 @@ public class OFMessageDamperMockSwitch implements IOFSwitch {
 
 	@Override
 	public TableFeatures getTableFeatures(TableId table) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public U64 getLatency() {
 		// TODO Auto-generated method stub
 		return null;
 	}
