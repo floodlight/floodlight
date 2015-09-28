@@ -512,7 +512,8 @@ public class LoadBalancer implements IFloodlightModule,
                fmb.setPriority(FlowModUtils.PRIORITY_MAX);
                
                if (inBound) {
-                   entryName = "inbound-vip-"+ member.vipId+"-client-"+client.ipAddress+"-port-"+client.targetPort
+                   entryName = "inbound-vip-"+ member.vipId+"-client-"+client.ipAddress
+                		   +"-srcport-"+client.srcPort+"-dstport-"+client.targetPort
                            +"-srcswitch-"+path.get(0).getNodeId()+"-sw-"+sw;
                    mb.setExact(MatchField.ETH_TYPE, EthType.IPv4)
                    .setExact(MatchField.IP_PROTO, client.nw_proto)
@@ -545,7 +546,8 @@ public class LoadBalancer implements IFloodlightModule,
                 	   actions.add(switchService.getSwitch(path.get(i+1).getNodeId()).getOFFactory().actions().output(path.get(i+1).getPortId(), Integer.MAX_VALUE));
                    }
                } else {
-                   entryName = "outbound-vip-"+ member.vipId+"-client-"+client.ipAddress+"-port-"+client.targetPort
+                   entryName = "outbound-vip-"+ member.vipId+"-client-"+client.ipAddress
+                		   +"-srcport-"+client.srcPort+"-dstport-"+client.targetPort
                            +"-srcswitch-"+path.get(0).getNodeId()+"-sw-"+sw;
                    mb.setExact(MatchField.ETH_TYPE, EthType.IPv4)
                    .setExact(MatchField.IP_PROTO, client.nw_proto)
