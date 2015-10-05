@@ -17,6 +17,7 @@
 package net.floodlightcontroller.topology;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
@@ -311,6 +312,8 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 	// **********************
 	// ILinkDiscoveryListener
 	// **********************
+        
+    
 	@Override
 	public void linkDiscoveryUpdate(List<LDUpdate> updateList) {
 		if (log.isTraceEnabled()) {
@@ -326,7 +329,9 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 		}
 		ldUpdates.add(update);
 	}
-
+	
+	
+	
 	// ****************
 	// ITopologyService
 	// ****************
@@ -334,6 +339,46 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 	//
 	// ITopologyService interface methods
 	//
+	
+	@Override
+	public Map<DatapathId, Set<Link>> getAllLinks(){
+		
+		Map<DatapathId, Set<Link>> dpidLinks = new HashMap<DatapathId, Set<Link>>();
+       	TopologyInstance ti = getCurrentInstance(true);
+		Set<DatapathId> switches = ti.getSwitches();
+		
+		for(DatapathId s: switches) {
+            if (this.switchPorts.get(s) == null) continue;
+            for (OFPort p: switchPorts.get(s)) {
+                NodePortTuple np = new NodePortTuple(s, p);
+                if (this.switchPortLinks.get(np) == null) continue;
+                for(Link l: this.switchPortLinks.get(np)) {
+                	if(dpidLinks.containsKey(s)) {
+                		dpidLinks.get(s).add(l);
+                	}
+                	else {
+                		dpidLinks.put(s,new HashSet<Link>(Arrays.asList(l)));
+                	}
+            	
+                }
+            }
+        }
+		
+		return dpidLinks;
+	}
+	
+	@Override
+    	public boolean isEdge(DatapathId sw, OFPort p){
+        TopologyInstance ti = getCurrentInstance(true);
+		return ti.isEdge(sw,p);
+   	}
+
+	@Override
+	public Set<OFPort> getSwitchBroadcastPorts(DatapathId sw){
+		TopologyInstance ti = getCurrentInstance(true);
+		return ti.swBroadcastPorts(sw);
+	}
+	 
 	@Override
 	public Date getLastUpdateTime() {
 		return lastUpdateTime;
@@ -1125,8 +1170,8 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 			switch (update.getOperation()) {
 			case LINK_UPDATED:
 				addOrUpdateLink(update.getSrc(), update.getSrcPort(),
-						update.getDst(), update.getDstPort(), update.getLatency(),
-						update.getType());
+						update.getDst(), update.getDstPort(),
+						update.getLatency(), update.getType());
 				break;
 			case LINK_REMOVED:
 				removeLink(update.getSrc(), update.getSrcPort(),
@@ -1173,6 +1218,8 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 	public boolean createNewInstance() {
 		return createNewInstance("internal");
 	}
+	
+	
 
 	/**
 	 * This function computes a new topology instance.
@@ -1180,12 +1227,17 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 	 * and tunnel ports. The method returns if a new instance of
 	 * topology was created or not.
 	 */
+	 
+	
+
+	
+
 	protected boolean createNewInstance(String reason) {
 		Set<NodePortTuple> blockedPorts = new HashSet<NodePortTuple>();
-
+        
 		if (!linksUpdated) return false;
-
-		Map<NodePortTuple, Set<Link>> openflowLinks;
+		
+        Map<NodePortTuple, Set<Link>> openflowLinks;
 		openflowLinks =
 				new HashMap<NodePortTuple, Set<Link>>();
 		Set<NodePortTuple> nptList = switchPortLinks.keySet();
@@ -1219,23 +1271,33 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 				removeLinkFromStructure(openflowLinks, link);
 			}
 		}
-
+		//switchPorts contains only ports that are part of links. Calculation of broadcast ports needs set of all ports. 
+		Map<DatapathId, Set<OFPort>> allPorts = new HashMap<DatapathId, Set<OFPort>>();;
+		for (DatapathId sw : switchPorts.keySet()){
+			allPorts.put(sw, this.getPorts(sw));
+		}
+		
 		TopologyInstance nt = new TopologyInstance(switchPorts,
 				blockedPorts,
 				openflowLinks,
 				broadcastDomainPorts,
-				tunnelPorts);
+				tunnelPorts,switchPortLinks,allPorts);
+				
+        log.info("-----------creating Topology instance-------------");
 		nt.compute();
+		
 		// We set the instances with and without tunnels to be identical.
 		// If needed, we may compute them differently.
 		currentInstance = nt;
 		currentInstanceWithoutTunnels = nt;
+
 
 		TopologyEventInfo topologyInfo =
 				new TopologyEventInfo(0, nt.getClusters().size(),
 						new HashMap<DatapathId, List<NodePortTuple>>(),
 						0);
 		eventCategory.newEventWithFlush(new TopologyEvent(reason, topologyInfo));
+	
 		return true;
 	}
 
@@ -1463,7 +1525,7 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 
 	public void removeLink(DatapathId srcId, OFPort srcPort,
 			DatapathId dstId, OFPort dstPort) {
-		Link link = new Link(srcId, srcPort, dstId, dstPort, U64.ZERO /* not needed for lookup */);
+		Link link = new Link(srcId, srcPort, dstId, dstPort, U64.ZERO /* does not matter for remove (not included in .equals() of Link) */);
 		removeLink(link);
 	}
 

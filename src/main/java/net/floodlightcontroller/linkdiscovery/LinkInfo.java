@@ -49,7 +49,7 @@ public class LinkInfo {
     }
 
     protected Date firstSeenTime;
-    protected Date lastLldpReceivedTime; /* Standard LLLDP received time */
+    protected Date lastLldpReceivedTime; /* Standard LLDP received time */
     protected Date lastBddpReceivedTime; /* Modified LLDP received time  */
 
     /** The port states stored here are topology's last knowledge of

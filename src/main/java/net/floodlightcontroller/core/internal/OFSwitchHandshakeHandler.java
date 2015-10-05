@@ -1098,8 +1098,7 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 	 * we send a DescriptionStatsRequest to the switch.
 	 * Next state: WAIT_DESCRIPTION_STAT_REPLY
 	 */
-	public class WaitConfigReplyState extends OFSwitchHandshakeState {
-
+	public class WaitConfigReplyState extends OFSwitchHandshakeState {		
 		WaitConfigReplyState() {
 			super(false);
 		}
@@ -1179,6 +1178,8 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 	 */
 	public class WaitDescriptionStatReplyState extends OFSwitchHandshakeState{
 
+		long timestamp;
+		
 		WaitDescriptionStatReplyState() {
 			super(false);
 		}
@@ -1207,11 +1208,11 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 			if (portDescStats != null) {
 				sw.setPortDescStats(portDescStats);
 			}
+			
 			/*
 			 * Need to add after setting the features.
 			 */
 			switchManager.switchAdded(sw);
-
 
 			// Handle pending messages now that we have a sw object
 			handlePendingPortStatusMessages(description);

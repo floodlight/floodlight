@@ -209,6 +209,12 @@ IFloodlightModule, IInfoProvider {
 	protected LLDPTLV controllerTLV;
 	protected ReentrantReadWriteLock lock;
 	int lldpTimeCount = 0;
+	
+	/*
+	 * Latency tracking
+	 */
+	protected static int LATENCY_HISTORY_SIZE = 4;
+	protected static double LATENCY_UPDATE_THRESHOLD = 0.25;
 
 	/**
 	 * Flag to indicate if automatic port fast is enabled or not. Default is set
@@ -362,7 +368,7 @@ IFloodlightModule, IInfoProvider {
 		} else {
 			lldp.getOptionalTLVList().add(forwardTLV);
 		}
-		
+
 		/* 
 		 * Introduce a new TLV for med-granularity link latency detection.
 		 * If same controller, can assume system clock is the same, but
@@ -373,19 +379,24 @@ IFloodlightModule, IInfoProvider {
 		 * 
 		 * Note Long.SIZE is in bits (64).
 		 */
+		long time = System.currentTimeMillis();
+		long swLatency = iofSwitch.getLatency().getValue();
+		if (log.isDebugEnabled()) {
+			log.debug("SETTING LLDP LATENCY TLV: Current Time {}; {} control plane latency {}; sum {}", new Object[] { time, iofSwitch.getId(), swLatency, time + swLatency });
+		}
 		byte[] timestampTLVValue = ByteBuffer.allocate(Long.SIZE / 8 + 4)
 				.put((byte) 0x00)
 				.put((byte) 0x26)
 				.put((byte) 0xe1)
 				.put((byte) 0x01) /* 0x01 is what we'll use to differentiate DPID (0x00) from time (0x01) */
-				.putLong(System.currentTimeMillis() + iofSwitch.getLatency().getValue() /* account for our switch's one-way latency */)
+				.putLong(time + swLatency /* account for our switch's one-way latency */)
 				.array();
 
 		LLDPTLV timestampTLV = new LLDPTLV()
 		.setType((byte) 127)
 		.setLength((short) timestampTLVValue.length)
 		.setValue(timestampTLVValue);
-		
+
 		/* Now add TLV to our LLDP packet */
 		lldp.getOptionalTLVList().add(timestampTLV);
 
@@ -676,7 +687,7 @@ IFloodlightModule, IInfoProvider {
 		OFPort remotePort = OFPort.of(portBB.getShort());
 		IOFSwitch remoteSwitch = null;
 		long timestamp = 0;
-		
+
 		// Verify this LLDP packet matches what we're looking for
 		for (LLDPTLV lldptlv : lldp.getOptionalTLVList()) {
 			if (lldptlv.getType() == 127 && lldptlv.getLength() == 12
@@ -692,7 +703,12 @@ IFloodlightModule, IInfoProvider {
 					&& lldptlv.getValue()[2] == (byte) 0xe1
 					&& lldptlv.getValue()[3] == 0x01) { /* 0x01 for timestamp */
 				ByteBuffer tsBB = ByteBuffer.wrap(lldptlv.getValue()); /* skip OpenFlow OUI (4 bytes above) */
-				timestamp = tsBB.getLong(4) + iofSwitch.getLatency().getValue(); /* include the RX switch latency to "subtract" it */
+				long swLatency = iofSwitch.getLatency().getValue();
+				timestamp = tsBB.getLong(4); /* include the RX switch latency to "subtract" it */
+				if (log.isDebugEnabled()) {
+					log.debug("RECEIVED LLDP LATENCY TLV: Got timestamp of {}; Switch {} latency of {}", new Object[] { timestamp, iofSwitch.getId(), iofSwitch.getLatency().getValue() }); 
+				}
+				timestamp = timestamp + swLatency;
 			} else if (lldptlv.getType() == 12 && lldptlv.getLength() == 8) {
 				otherId = ByteBuffer.wrap(lldptlv.getValue()).getLong();
 				if (myId == otherId) myLLDP = true;
@@ -768,7 +784,12 @@ IFloodlightModule, IInfoProvider {
 
 		// Store the time of update to this link, and push it out to
 		// routingEngine
-		U64 latency = timestamp != 0 ? U64.of(System.currentTimeMillis() - timestamp) : U64.ZERO;
+		long time = System.currentTimeMillis();
+		U64 latency = (timestamp != 0 && (time - timestamp) > 0) ? U64.of(time - timestamp) : U64.ZERO;
+		if (log.isDebugEnabled()) {
+			log.debug("COMPUTING FINAL DATAPLANE LATENCY: Current time {}; Dataplane+{} latency {}; Overall latency from {} to {} is {}", 
+					new Object[] { time, iofSwitch.getId(), timestamp, remoteSwitch.getId(), iofSwitch.getId(), String.valueOf(latency.getValue()) });
+		}
 		Link lt = new Link(remoteSwitch.getId(), remotePort,
 				iofSwitch.getId(), inPort, latency); /* we assume 0 latency is undefined */
 
@@ -1303,6 +1324,13 @@ IFloodlightModule, IInfoProvider {
 		return true;
 	}
 
+	/**
+	 * Determine if a link should be updated. This includes 
+	 * @param lt
+	 * @param oldInfo
+	 * @param newInfo
+	 * @return
+	 */
 	protected boolean updateLink(Link lt, LinkInfo oldInfo, LinkInfo newInfo) {
 		boolean linkChanged = false;
 		// Since the link info is already there, we need to
@@ -1331,7 +1359,12 @@ IFloodlightModule, IInfoProvider {
 		} else if (oldTime == null & newTime != null) {
 			linkChanged = true;
 		}
-
+		
+		/*
+		 * TODO Update Link latency
+		 */
+		
+		
 		return linkChanged;
 	}
 
@@ -1351,9 +1384,9 @@ IFloodlightModule, IInfoProvider {
 		try {
 			// put the new info. if an old info exists, it will be returned.
 			LinkInfo oldInfo = links.put(lt, newInfo);
-			if (oldInfo != null
-					&& oldInfo.getFirstSeenTime().getTime() < newInfo.getFirstSeenTime().getTime())
+			if (oldInfo != null && oldInfo.getFirstSeenTime().getTime() < newInfo.getFirstSeenTime().getTime()) {
 				newInfo.setFirstSeenTime(oldInfo.getFirstSeenTime());
+			}
 
 			if (log.isTraceEnabled()) {
 				log.trace("addOrUpdateLink: {} {}",
@@ -1951,9 +1984,29 @@ IFloodlightModule, IInfoProvider {
 				EVENT_HISTORY_SIZE = Short.parseShort(histSize);
 			}
 		} catch (NumberFormatException e) {
-			log.warn("Error event history size, using default of {} seconds", EVENT_HISTORY_SIZE);
+			log.warn("Error event history size. Using default of {} seconds", EVENT_HISTORY_SIZE);
 		}
 		log.debug("Event history size set to {}", EVENT_HISTORY_SIZE);
+		
+		try {
+			String latencyHistorySize = configOptions.get("latency-history-size");
+			if (latencyHistorySize != null) {
+				LATENCY_HISTORY_SIZE = Short.parseShort(latencyHistorySize);
+			}
+		} catch (NumberFormatException e) {
+			log.warn("Error in latency history size. Using default of {} LLDP intervals", LATENCY_HISTORY_SIZE);
+		}
+		log.info("Latency history size set to {}. Link latency updates will happen no sooner than LLDP update intervals of {}", LATENCY_HISTORY_SIZE, LATENCY_HISTORY_SIZE);
+		
+		try {
+			String latencyUpdateThreshold = configOptions.get("latency-update-threshold");
+			if (latencyUpdateThreshold != null) {
+				LATENCY_UPDATE_THRESHOLD = Short.parseShort(latencyUpdateThreshold);
+			}
+		} catch (NumberFormatException e) {
+			log.warn("Error in latency update threshold. Can be from 0 to 1.", LATENCY_UPDATE_THRESHOLD);
+		}
+		log.info("Latency update threshold set to +/-{} ({}%) of last averaged link latency value", LATENCY_UPDATE_THRESHOLD, LATENCY_UPDATE_THRESHOLD * 100);
 
 		// Set the autoportfast feature to false.
 		this.autoPortFastFeature = AUTOPORTFAST_DEFAULT;

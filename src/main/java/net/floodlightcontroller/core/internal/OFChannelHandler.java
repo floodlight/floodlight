@@ -87,8 +87,8 @@ class OFChannelHandler extends IdleStateAwareChannelHandler {
 	private long handshakeTransactionIds = 0x00FFFFFFFFL;
 	
     private volatile long echoSendTime;
-
-
+    private volatile long featuresLatency;
+    
 	/**
 	 * Default implementation for message handlers in any OFChannelState.
 	 *
@@ -385,8 +385,7 @@ class OFChannelHandler extends IdleStateAwareChannelHandler {
 	 * we send capture the features reply.
 	 * Next state is CompleteState
 	 */
-	class WaitFeaturesReplyState extends OFChannelState{
-
+	class WaitFeaturesReplyState extends OFChannelState {
 		WaitFeaturesReplyState() {
 			super(false);
 		}
@@ -394,6 +393,8 @@ class OFChannelHandler extends IdleStateAwareChannelHandler {
 		void processOFFeaturesReply(OFFeaturesReply  m)
 				throws IOException {
 			featuresReply = m;
+			
+			featuresLatency = (System.currentTimeMillis() - featuresLatency) / 2;
 
 			// Mark handshake as completed
 			setState(new CompleteState());
@@ -433,6 +434,7 @@ class OFChannelHandler extends IdleStateAwareChannelHandler {
 		@Override
 		void enterState() throws IOException {
 			sendFeaturesRequest();
+			featuresLatency = System.currentTimeMillis();
 		}
 
 		@Override
@@ -474,9 +476,12 @@ class OFChannelHandler extends IdleStateAwareChannelHandler {
 					setAuxChannelIdle();
 				}
 			}
+			
+			connection.updateLatency(U64.of(featuresLatency));
+			echoSendTime = 0;
+			
 			// Notify the connection broker
 			notifyConnectionOpened(connection);
-
 		}
 	};
 
