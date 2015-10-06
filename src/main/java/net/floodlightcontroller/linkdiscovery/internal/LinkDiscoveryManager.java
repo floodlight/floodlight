@@ -913,13 +913,14 @@ IFloodlightModule, IInfoProvider {
 
 			if (linkDiscoveryAware != null) {
 				if (log.isTraceEnabled()) {
-					log.trace("Dispatching link discovery update {} {} {} {} {} for {}",
+					log.trace("Dispatching link discovery update {} {} {} {} {} {}ms for {}",
 							new Object[] {
 							update.getOperation(),
 							update.getSrc().toString(),
 							update.getSrcPort(),
 							update.getDst().toString(),
 							update.getDstPort(),
+							update.getLatency().getValue(),
 							linkDiscoveryAware });
 				}
 				try {
