@@ -590,13 +590,11 @@ public class TopologyInstance {
             Map<Link, Integer> linkCost,
             boolean isDstRooted) {
     	HashMap<DatapathId, Link> nexthoplinks = new HashMap<DatapathId, Link>();
-    	//HashMap<Long, Long> nexthopnodes = new HashMap<Long, Long>();
     	HashMap<DatapathId, Integer> cost = new HashMap<DatapathId, Integer>();
     	int w;
     	
     	for (DatapathId node: links.keySet()) {
     		nexthoplinks.put(node, null);
-    		//nexthopnodes.put(node, null);
     		cost.put(node, MAX_PATH_WEIGHT);
     	}
 		

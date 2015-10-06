@@ -40,6 +40,8 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+import javax.annotation.Nonnull;
+
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.HAListenerTypeMarker;
 import net.floodlightcontroller.core.HARole;
@@ -74,7 +76,6 @@ import net.floodlightcontroller.linkdiscovery.ILinkDiscovery.SwitchType;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscovery.UpdateOperation;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryListener;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryService;
-import net.floodlightcontroller.linkdiscovery.LinkInfo;
 import net.floodlightcontroller.linkdiscovery.web.LinkDiscoveryWebRoutable;
 import net.floodlightcontroller.notification.INotificationManager;
 import net.floodlightcontroller.notification.NotificationManagerFactory;
@@ -209,12 +210,12 @@ IFloodlightModule, IInfoProvider {
 	protected LLDPTLV controllerTLV;
 	protected ReentrantReadWriteLock lock;
 	int lldpTimeCount = 0;
-	
+
 	/*
 	 * Latency tracking
 	 */
-	protected static int LATENCY_HISTORY_SIZE = 4;
-	protected static double LATENCY_UPDATE_THRESHOLD = 0.25;
+	protected static int LATENCY_HISTORY_SIZE = 5;
+	protected static double LATENCY_UPDATE_THRESHOLD = 0.30;
 
 	/**
 	 * Flag to indicate if automatic port fast is enabled or not. Default is set
@@ -557,7 +558,7 @@ IFloodlightModule, IInfoProvider {
 		LinkInfo linkInfo = links.get(link);
 		LinkInfo retLinkInfo = null;
 		if (linkInfo != null) {
-			retLinkInfo  = new LinkInfo(linkInfo);
+			retLinkInfo = new LinkInfo(linkInfo);
 		}
 		lock.readLock().unlock();
 		return retLinkInfo;
@@ -803,10 +804,11 @@ IFloodlightModule, IInfoProvider {
 
 		Date firstSeenTime = new Date(System.currentTimeMillis());
 
-		if (isStandard)
-			lastLldpTime = new Date(System.currentTimeMillis());
-		else
-			lastBddpTime = new Date(System.currentTimeMillis());
+		if (isStandard) {
+			lastLldpTime = new Date(firstSeenTime.getTime());
+		} else {
+			lastBddpTime = new Date(firstSeenTime.getTime());
+		}
 
 		LinkInfo newLinkInfo = new LinkInfo(firstSeenTime, lastLldpTime,
 				lastBddpTime);
@@ -1320,51 +1322,71 @@ IFloodlightModule, IInfoProvider {
 			portLinks.put(dstNpt,
 					new HashSet<Link>());
 		portLinks.get(dstNpt).add(lt);
+		
+		newInfo.addObservedLatency(lt.getLatency());
 
 		return true;
 	}
 
 	/**
-	 * Determine if a link should be updated. This includes 
-	 * @param lt
-	 * @param oldInfo
-	 * @param newInfo
-	 * @return
+	 * Determine if a link should be updated and set the time stamps if it should.
+	 * Also, determine the correct latency value for the link. An existing link
+	 * will have a list of latencies associated with its LinkInfo. If enough time has
+	 * elapsed to determine a good latency baseline average and the new average is
+	 * greater or less than the existing latency value by a set threshold, then the
+	 * latency should be updated. This allows for latencies to be smoothed and reduces
+	 * the number of link updates due to small fluctuations (or outliers) in instantaneous
+	 * link latency values.
+	 * 
+	 * @param lt with observed latency. Will be replaced with latency to use.
+	 * @param existingInfo with past observed latencies and time stamps
+	 * @param newInfo with updated time stamps
+	 * @return true if update occurred; false if no update should be dispatched
 	 */
-	protected boolean updateLink(Link lt, LinkInfo oldInfo, LinkInfo newInfo) {
+	protected boolean updateLink(@Nonnull Link lk, @Nonnull LinkInfo existingInfo, @Nonnull LinkInfo newInfo) {
 		boolean linkChanged = false;
-		// Since the link info is already there, we need to
-		// update the right fields.
-		if (newInfo.getUnicastValidTime() == null) {
-			// This is due to a multicast LLDP, so copy the old unicast
-			// value.
-			if (oldInfo.getUnicastValidTime() != null) {
-				newInfo.setUnicastValidTime(oldInfo.getUnicastValidTime());
-			}
-		} else if (newInfo.getMulticastValidTime() == null) {
-			// This is due to a unicast LLDP, so copy the old multicast
-			// value.
-			if (oldInfo.getMulticastValidTime() != null) {
-				newInfo.setMulticastValidTime(oldInfo.getMulticastValidTime());
-			}
+
+		/*
+		 * Check if we are transitioning from one link type to another.
+		 * A transition is:
+		 * -- going from no LLDP time to an LLDP time (is OpenFlow link)
+		 * -- going from an LLDP time to no LLDP time (is non-OpenFlow link)
+		 */
+		if (existingInfo.getUnicastValidTime() != null && newInfo.getUnicastValidTime() == null) {
+			linkChanged = true; /* detected BDDP */
+		} else if (existingInfo.getUnicastValidTime() == null && newInfo.getUnicastValidTime() != null) {
+			linkChanged = true; /* detected LLDP */
 		}
 
-		Date oldTime = oldInfo.getUnicastValidTime();
-		Date newTime = newInfo.getUnicastValidTime();
-		// the link has changed its state between openflow and
-		// non-openflow
-		// if the unicastValidTimes are null or not null
-		if (oldTime != null & newTime == null) {
-			linkChanged = true;
-		} else if (oldTime == null & newTime != null) {
-			linkChanged = true;
-		}
-		
-		/*
-		 * TODO Update Link latency
+		/* 
+		 * If we're undergoing an LLDP update (non-null time), grab the new LLDP time.
+		 * If we're undergoing a BDDP update (non-null time), grab the new BDDP time.
+		 * 
+		 * Only do this if the new LinkInfo is non-null for each respective field.
+		 * We want to overwrite an existing LLDP/BDDP time stamp with null if it's
+		 * still valid.
 		 */
+		if (newInfo.getUnicastValidTime() != null) {
+			existingInfo.setUnicastValidTime(newInfo.getUnicastValidTime());
+		} else if (newInfo.getMulticastValidTime() != null) {
+			existingInfo.setMulticastValidTime(newInfo.getMulticastValidTime());
+		}	
+
+		/*
+		 * Update Link latency if we've accumulated enough latency data points
+		 * and if the average exceeds +/- the current stored latency by the
+		 * defined update threshold.
+		 */
+		U64 latencyToUse = existingInfo.addObservedLatency(lk.getLatency());
 		
-		
+		if (!latencyToUse.equals(lk.getLatency())) {
+			log.warn("Updating link {} latency to {}ms", lk.toString(), latencyToUse.getValue());
+			lk.setLatency(latencyToUse);
+			linkChanged = true;
+		} else {
+			log.debug("No need to update link {} latency", lk.toString());
+		}
+
 		return linkChanged;
 	}
 
@@ -1377,28 +1399,37 @@ IFloodlightModule, IInfoProvider {
 						"use show link to find current status")
 	})
 	protected boolean addOrUpdateLink(Link lt, LinkInfo newInfo) {
-
 		boolean linkChanged = false;
 
 		lock.writeLock().lock();
 		try {
-			// put the new info. if an old info exists, it will be returned.
-			LinkInfo oldInfo = links.put(lt, newInfo);
-			if (oldInfo != null && oldInfo.getFirstSeenTime().getTime() < newInfo.getFirstSeenTime().getTime()) {
-				newInfo.setFirstSeenTime(oldInfo.getFirstSeenTime());
+			/*
+			 * Put the new info only if new. We want a single LinkInfo
+			 * to exist per Link. This will allow us to track latencies
+			 * without having to conduct a deep, potentially expensive
+			 * copy each time a link is updated.
+			 */
+			LinkInfo existingInfo = null;
+			if (links.get(lt) == null) {
+				links.put(lt, newInfo); /* Only put if doesn't exist or null value */
+			} else {
+				existingInfo = links.get(lt);
+			}
+
+			/* Update existing LinkInfo with most recent time stamp */
+			if (existingInfo != null && existingInfo.getFirstSeenTime().getTime() >= newInfo.getFirstSeenTime().getTime()) {
+				existingInfo.setFirstSeenTime(newInfo.getFirstSeenTime());
 			}
 
 			if (log.isTraceEnabled()) {
-				log.trace("addOrUpdateLink: {} {}",
-						lt,
-						(newInfo.getMulticastValidTime() != null) ? "multicast"
-								: "unicast");
+				log.trace("addOrUpdateLink: {} {}", lt,
+						(newInfo.getMulticastValidTime() != null) ? "multicast" : "unicast");
 			}
 
 			UpdateOperation updateOperation = null;
 			linkChanged = false;
 
-			if (oldInfo == null) {
+			if (existingInfo == null) {
 				addLink(lt, newInfo);
 				updateOperation = UpdateOperation.LINK_UPDATED;
 				linkChanged = true;
@@ -1413,7 +1444,7 @@ IFloodlightModule, IInfoProvider {
 				}
 				notifier.postNotification("Link added: " + lt.toString());
 			} else {
-				linkChanged = updateLink(lt, oldInfo, newInfo);
+				linkChanged = updateLink(lt, existingInfo, newInfo);
 				if (linkChanged) {
 					updateOperation = UpdateOperation.LINK_UPDATED;
 					LinkType linkType = getLinkType(lt, newInfo);
@@ -1979,7 +2010,7 @@ IFloodlightModule, IInfoProvider {
 		// read our config options
 		Map<String, String> configOptions = context.getConfigParams(this);
 		try {
-			String histSize = configOptions.get("eventhistorysize");
+			String histSize = configOptions.get("event-history-size");
 			if (histSize != null) {
 				EVENT_HISTORY_SIZE = Short.parseShort(histSize);
 			}
@@ -1987,26 +2018,26 @@ IFloodlightModule, IInfoProvider {
 			log.warn("Error event history size. Using default of {} seconds", EVENT_HISTORY_SIZE);
 		}
 		log.debug("Event history size set to {}", EVENT_HISTORY_SIZE);
-		
+
 		try {
 			String latencyHistorySize = configOptions.get("latency-history-size");
 			if (latencyHistorySize != null) {
-				LATENCY_HISTORY_SIZE = Short.parseShort(latencyHistorySize);
+				LATENCY_HISTORY_SIZE = Integer.parseInt(latencyHistorySize);
 			}
 		} catch (NumberFormatException e) {
 			log.warn("Error in latency history size. Using default of {} LLDP intervals", LATENCY_HISTORY_SIZE);
 		}
-		log.info("Latency history size set to {}. Link latency updates will happen no sooner than LLDP update intervals of {}", LATENCY_HISTORY_SIZE, LATENCY_HISTORY_SIZE);
-		
+		log.info("Link latency history set to {} LLDP data points", LATENCY_HISTORY_SIZE, LATENCY_HISTORY_SIZE);
+
 		try {
 			String latencyUpdateThreshold = configOptions.get("latency-update-threshold");
 			if (latencyUpdateThreshold != null) {
-				LATENCY_UPDATE_THRESHOLD = Short.parseShort(latencyUpdateThreshold);
+				LATENCY_UPDATE_THRESHOLD = Double.parseDouble(latencyUpdateThreshold);
 			}
 		} catch (NumberFormatException e) {
 			log.warn("Error in latency update threshold. Can be from 0 to 1.", LATENCY_UPDATE_THRESHOLD);
 		}
-		log.info("Latency update threshold set to +/-{} ({}%) of last averaged link latency value", LATENCY_UPDATE_THRESHOLD, LATENCY_UPDATE_THRESHOLD * 100);
+		log.info("Latency update threshold set to +/-{} ({}%) of rolling historical average", LATENCY_UPDATE_THRESHOLD, LATENCY_UPDATE_THRESHOLD * 100);
 
 		// Set the autoportfast feature to false.
 		this.autoPortFastFeature = AUTOPORTFAST_DEFAULT;
