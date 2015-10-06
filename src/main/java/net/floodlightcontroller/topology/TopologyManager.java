@@ -304,8 +304,8 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 	// **********************
 	// ILinkDiscoveryListener
 	// **********************
-        
-    
+
+
 	@Override
 	public void linkDiscoveryUpdate(List<LDUpdate> updateList) {
 		if (log.isTraceEnabled()) {
@@ -321,9 +321,9 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 		}
 		ldUpdates.add(update);
 	}
-	
-	
-	
+
+
+
 	// ****************
 	// ITopologyService
 	// ****************
@@ -331,46 +331,46 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 	//
 	// ITopologyService interface methods
 	//
-	
+
 	@Override
 	public Map<DatapathId, Set<Link>> getAllLinks(){
-		
+
 		Map<DatapathId, Set<Link>> dpidLinks = new HashMap<DatapathId, Set<Link>>();
-       	TopologyInstance ti = getCurrentInstance(true);
+		TopologyInstance ti = getCurrentInstance(true);
 		Set<DatapathId> switches = ti.getSwitches();
-		
+
 		for(DatapathId s: switches) {
-            if (this.switchPorts.get(s) == null) continue;
-            for (OFPort p: switchPorts.get(s)) {
-                NodePortTuple np = new NodePortTuple(s, p);
-                if (this.switchPortLinks.get(np) == null) continue;
-                for(Link l: this.switchPortLinks.get(np)) {
-                	if(dpidLinks.containsKey(s)) {
-                		dpidLinks.get(s).add(l);
-                	}
-                	else {
-                		dpidLinks.put(s,new HashSet<Link>(Arrays.asList(l)));
-                	}
-            	
-                }
-            }
-        }
-		
+			if (this.switchPorts.get(s) == null) continue;
+			for (OFPort p: switchPorts.get(s)) {
+				NodePortTuple np = new NodePortTuple(s, p);
+				if (this.switchPortLinks.get(np) == null) continue;
+				for(Link l: this.switchPortLinks.get(np)) {
+					if(dpidLinks.containsKey(s)) {
+						dpidLinks.get(s).add(l);
+					}
+					else {
+						dpidLinks.put(s,new HashSet<Link>(Arrays.asList(l)));
+					}
+
+				}
+			}
+		}
+
 		return dpidLinks;
 	}
-	
+
 	@Override
-    	public boolean isEdge(DatapathId sw, OFPort p){
-        TopologyInstance ti = getCurrentInstance(true);
+	public boolean isEdge(DatapathId sw, OFPort p){
+		TopologyInstance ti = getCurrentInstance(true);
 		return ti.isEdge(sw,p);
-   	}
+	}
 
 	@Override
 	public Set<OFPort> getSwitchBroadcastPorts(DatapathId sw){
 		TopologyInstance ti = getCurrentInstance(true);
 		return ti.swBroadcastPorts(sw);
 	}
-	 
+
 	@Override
 	public Date getLastUpdateTime() {
 		return lastUpdateTime;
@@ -1068,7 +1068,7 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 			switches.add(pinSwitch);
 		}
 
-		for(DatapathId sid: switches) {
+		for (DatapathId sid : switches) {
 			IOFSwitch sw = switchService.getSwitch(sid);
 			if (sw == null) continue;
 			Collection<OFPort> enabledPorts = sw.getEnabledPortNumbers();
@@ -1083,7 +1083,7 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 			Set<OFPort> portsKnownToTopo = ti.getPortsWithLinks(sid);
 
 			if (portsKnownToTopo != null) {
-				for(OFPort p: portsKnownToTopo) {
+				for (OFPort p : portsKnownToTopo) {
 					NodePortTuple npt =
 							new NodePortTuple(sid, p);
 					if (ti.isBroadcastDomainPort(npt) == false) {
@@ -1201,8 +1201,6 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 	public boolean createNewInstance() {
 		return createNewInstance("internal");
 	}
-	
-	
 
 	/**
 	 * This function computes a new topology instance.
@@ -1210,17 +1208,12 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 	 * and tunnel ports. The method returns if a new instance of
 	 * topology was created or not.
 	 */
-	 
-	
-
-	
-
 	protected boolean createNewInstance(String reason) {
 		Set<NodePortTuple> blockedPorts = new HashSet<NodePortTuple>();
-        
+
 		if (!linksUpdated) return false;
-		
-        Map<NodePortTuple, Set<Link>> openflowLinks;
+
+		Map<NodePortTuple, Set<Link>> openflowLinks;
 		openflowLinks =
 				new HashMap<NodePortTuple, Set<Link>>();
 		Set<NodePortTuple> nptList = switchPortLinks.keySet();
@@ -1240,17 +1233,17 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 				identifyBroadcastDomainPorts();
 
 		// Remove all links incident on broadcast domain ports.
-		for(NodePortTuple npt: broadcastDomainPorts) {
+		for (NodePortTuple npt : broadcastDomainPorts) {
 			if (switchPortLinks.get(npt) == null) continue;
-			for(Link link: switchPortLinks.get(npt)) {
+			for (Link link : switchPortLinks.get(npt)) {
 				removeLinkFromStructure(openflowLinks, link);
 			}
 		}
 
 		// Remove all tunnel links.
-		for(NodePortTuple npt: tunnelPorts) {
+		for (NodePortTuple npt: tunnelPorts) {
 			if (switchPortLinks.get(npt) == null) continue;
-			for(Link link: switchPortLinks.get(npt)) {
+			for (Link link : switchPortLinks.get(npt)) {
 				removeLinkFromStructure(openflowLinks, link);
 			}
 		}
@@ -1259,28 +1252,26 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 		for (DatapathId sw : switchPorts.keySet()){
 			allPorts.put(sw, this.getPorts(sw));
 		}
-		
+
 		TopologyInstance nt = new TopologyInstance(switchPorts,
 				blockedPorts,
 				openflowLinks,
 				broadcastDomainPorts,
 				tunnelPorts,switchPortLinks,allPorts);
-				
-        log.info("-----------creating Topology instance-------------");
+
 		nt.compute();
-		
+
 		// We set the instances with and without tunnels to be identical.
 		// If needed, we may compute them differently.
 		currentInstance = nt;
 		currentInstanceWithoutTunnels = nt;
-
 
 		TopologyEventInfo topologyInfo =
 				new TopologyEventInfo(0, nt.getClusters().size(),
 						new HashMap<DatapathId, List<NodePortTuple>>(),
 						0);
 		eventCategory.newEventWithFlush(new TopologyEvent(reason, topologyInfo));
-	
+
 		return true;
 	}
 
@@ -1301,18 +1292,18 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 		// Copy switchPortLinks
 		Map<NodePortTuple, Set<Link>> spLinks =
 				new HashMap<NodePortTuple, Set<Link>>();
-		for(NodePortTuple npt: switchPortLinks.keySet()) {
+		for (NodePortTuple npt : switchPortLinks.keySet()) {
 			spLinks.put(npt, new HashSet<Link>(switchPortLinks.get(npt)));
 		}
 
-		for(NodePortTuple npt: spLinks.keySet()) {
+		for (NodePortTuple npt : spLinks.keySet()) {
 			Set<Link> links = spLinks.get(npt);
 			boolean bdPort = false;
 			ArrayList<Link> linkArray = new ArrayList<Link>();
 			if (links.size() > 2) {
 				bdPort = true;
 			} else if (links.size() == 2) {
-				for(Link l: links) {
+				for (Link l : links) {
 					linkArray.add(l);
 				}
 				// now, there should be two links in [0] and [1].

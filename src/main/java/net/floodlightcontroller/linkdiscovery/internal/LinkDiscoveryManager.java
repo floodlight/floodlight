@@ -297,10 +297,10 @@ IFloodlightModule, IInfoProvider {
 
 		OFPortDesc ofpPort = iofSwitch.getPort(port);
 
-		//if (log.isTraceEnabled()) {
-		log.warn("Sending LLDP packet out of swich: {}, port: {}, reverse: {}",
+		if (log.isTraceEnabled()) {
+			log.trace("Sending LLDP packet out of swich: {}, port: {}, reverse: {}",
 				new Object[] {iofSwitch.getId().toString(), port.toString(), Boolean.toString(isReverse)});
-		//}
+		}
 
 		// using "nearest customer bridge" MAC address for broadest possible
 		// propagation
@@ -902,7 +902,7 @@ IFloodlightModule, IInfoProvider {
 				updateList.add(updates.remove());
 			}
 
-			if (linkDiscoveryAware != null) {
+			if (linkDiscoveryAware != null && !updateList.isEmpty()) {
 				if (log.isTraceEnabled()) {
 					log.trace("Dispatching link discovery update {} {} {} {} {} {}ms for {}",
 							new Object[] {
@@ -1333,16 +1333,27 @@ IFloodlightModule, IInfoProvider {
 	 */
 	protected boolean updateLink(@Nonnull Link lk, @Nonnull LinkInfo existingInfo, @Nonnull LinkInfo newInfo) {
 		boolean linkChanged = false;
-
+		boolean ignoreBDDP_haveLLDPalready = false;
+		
 		/*
 		 * Check if we are transitioning from one link type to another.
 		 * A transition is:
 		 * -- going from no LLDP time to an LLDP time (is OpenFlow link)
-		 * -- going from an LLDP time to no LLDP time (is non-OpenFlow link)
+		 * -- going from an LLDP time to a BDDP time (is non-OpenFlow link)
+		 * 
+		 * Note: Going from LLDP to BDDP means our LLDP link must have timed
+		 * out already (null in existing LinkInfo). Otherwise, we'll flap
+		 * between mulitcast and unicast links.
 		 */
-		if (existingInfo.getUnicastValidTime() != null && newInfo.getUnicastValidTime() == null) {
-			linkChanged = true; /* detected BDDP */
+		if (existingInfo.getMulticastValidTime() == null && newInfo.getMulticastValidTime() != null) {
+			if (existingInfo.getUnicastValidTime() == null) { /* unicast must be null to go to multicast */
+				log.warn("Link is BDDP. Changed.");
+				linkChanged = true; /* detected BDDP */
+			} else {
+				ignoreBDDP_haveLLDPalready = true;
+			}
 		} else if (existingInfo.getUnicastValidTime() == null && newInfo.getUnicastValidTime() != null) {
+			log.warn("Link is LLDP. Changed.");
 			linkChanged = true; /* detected LLDP */
 		}
 
@@ -1370,7 +1381,7 @@ IFloodlightModule, IInfoProvider {
 
 		if (currentLatency == null) {
 			/* no-op; already 'changed' as this is a new link */
-		} else if (!latencyToUse.equals(currentLatency)) {
+		} else if (!latencyToUse.equals(currentLatency) && !ignoreBDDP_haveLLDPalready) {
 			log.warn("Updating link {} latency to {}ms", lk.toKeyString(), latencyToUse.getValue());
 			lk.setLatency(latencyToUse);
 			linkChanged = true;
@@ -1400,7 +1411,7 @@ IFloodlightModule, IInfoProvider {
 			}
 
 			/* Update existing LinkInfo with most recent time stamp */
-			if (existingInfo != null && existingInfo.getFirstSeenTime().getTime() >= newInfo.getFirstSeenTime().getTime()) {
+			if (existingInfo != null && existingInfo.getFirstSeenTime().before(newInfo.getFirstSeenTime())) {
 				existingInfo.setFirstSeenTime(newInfo.getFirstSeenTime());
 			}
 
@@ -1421,7 +1432,7 @@ IFloodlightModule, IInfoProvider {
 				// Add all to event history
 				LinkType linkType = getLinkType(lt, newInfo);
 				if (linkType == ILinkDiscovery.LinkType.DIRECT_LINK) {
-					log.info("Inter-switch link detected: {}", lt);
+					log.debug("Inter-switch link detected: {}", lt);
 					eventCategory.newEventNoFlush(new DirectLinkEvent(lt.getSrc(),
 							lt.getSrcPort(), lt.getDst(), lt.getDstPort(), "direct-link-added::rcvd LLDP"));
 				}
