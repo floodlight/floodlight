@@ -104,7 +104,7 @@ public class LinkInfo {
 		if (newLatency != null) {
 			/* check threshold */
 			if ((((double) Math.abs(newLatency.getValue() - currentLatency.getValue())) 
-					/ currentLatency.getValue()
+					/ (currentLatency.getValue() == 0 ? 1 : currentLatency.getValue())
 					) 
 					>= latencyUpdateThreshold) {
 				/* perform update */

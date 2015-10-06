@@ -214,8 +214,8 @@ IFloodlightModule, IInfoProvider {
 	/*
 	 * Latency tracking
 	 */
-	protected static int LATENCY_HISTORY_SIZE = 5;
-	protected static double LATENCY_UPDATE_THRESHOLD = 0.30;
+	protected static int LATENCY_HISTORY_SIZE = 10;
+	protected static double LATENCY_UPDATE_THRESHOLD = 0.50;
 
 	/**
 	 * Flag to indicate if automatic port fast is enabled or not. Default is set
