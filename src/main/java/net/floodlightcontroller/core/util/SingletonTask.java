@@ -20,7 +20,6 @@ package net.floodlightcontroller.core.util;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-import net.floodlightcontroller.core.annotations.LogMessageDoc;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -57,9 +56,6 @@ public class SingletonTask {
         }
 
         @Override
-        @LogMessageDoc(level="ERROR",
-                       message="Exception while executing task",
-                       recommendation=LogMessageDoc.GENERIC_ACTION)
         public void run() {
             synchronized (parent.context) {
                 if (canceled || !parent.context.taskShouldRun)

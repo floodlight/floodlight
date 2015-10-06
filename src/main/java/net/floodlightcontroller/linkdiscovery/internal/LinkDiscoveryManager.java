@@ -53,9 +53,6 @@ import net.floodlightcontroller.core.IInfoProvider;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.IOFSwitchListener;
-import net.floodlightcontroller.core.annotations.LogMessageCategory;
-import net.floodlightcontroller.core.annotations.LogMessageDoc;
-import net.floodlightcontroller.core.annotations.LogMessageDocs;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
@@ -129,7 +126,6 @@ import org.slf4j.LoggerFactory;
  * 
  * @edited Ryan Izard, rizard@g.clemson.edu, ryan.izard@bigswitch.com
  */
-@LogMessageCategory("Network Topology")
 public class LinkDiscoveryManager implements IOFMessageListener,
 IOFSwitchListener, IStorageSourceListener, ILinkDiscoveryService,
 IFloodlightModule, IInfoProvider {
@@ -301,10 +297,10 @@ IFloodlightModule, IInfoProvider {
 
 		OFPortDesc ofpPort = iofSwitch.getPort(port);
 
-		if (log.isTraceEnabled()) {
-			log.trace("Sending LLDP packet out of swich: {}, port: {}, reverse: {}",
-					new Object[] {iofSwitch.getId().toString(), port.toString(), Boolean.toString(isReverse)});
-		}
+		//if (log.isTraceEnabled()) {
+		log.warn("Sending LLDP packet out of swich: {}, port: {}, reverse: {}",
+				new Object[] {iofSwitch.getId().toString(), port.toString(), Boolean.toString(isReverse)});
+		//}
 
 		// using "nearest customer bridge" MAC address for broadest possible
 		// propagation
@@ -792,7 +788,7 @@ IFloodlightModule, IInfoProvider {
 					new Object[] { time, iofSwitch.getId(), timestamp, remoteSwitch.getId(), iofSwitch.getId(), String.valueOf(latency.getValue()) });
 		}
 		Link lt = new Link(remoteSwitch.getId(), remotePort,
-				iofSwitch.getId(), inPort, latency); /* we assume 0 latency is undefined */
+				iofSwitch.getId(), inPort, latency);
 
 		if (!isLinkAllowed(lt.getSrc(), lt.getSrcPort(),
 				lt.getDst(), lt.getDstPort()))
@@ -810,8 +806,7 @@ IFloodlightModule, IInfoProvider {
 			lastBddpTime = new Date(firstSeenTime.getTime());
 		}
 
-		LinkInfo newLinkInfo = new LinkInfo(firstSeenTime, lastLldpTime,
-				lastBddpTime);
+		LinkInfo newLinkInfo = new LinkInfo(firstSeenTime, lastLldpTime, lastBddpTime);
 
 		addOrUpdateLink(lt, newLinkInfo);
 
@@ -828,6 +823,7 @@ IFloodlightModule, IInfoProvider {
 				// the reverse link does not exist.
 				if (newLinkInfo.getFirstSeenTime().getTime() > System.currentTimeMillis()
 						- LINK_TIMEOUT) {
+					log.debug("Sending reverse LLDP for link {}", lt);
 					this.sendDiscoveryMessage(lt.getDst(), lt.getDstPort(),
 							isStandard, true);
 				}
@@ -895,11 +891,6 @@ IFloodlightModule, IInfoProvider {
 	//  Internal Methods - Discovery Related
 	//***********************************
 
-	@LogMessageDoc(level = "ERROR",
-			message = "Error in link discovery updates loop",
-			explanation = "An unknown error occured while dispatching "
-					+ "link update notifications",
-					recommendation = LogMessageDoc.GENERIC_ACTION)
 	private void doUpdatesThread() throws InterruptedException {
 		do {
 			LDUpdate update = updates.take();
@@ -1204,11 +1195,6 @@ IFloodlightModule, IInfoProvider {
 	 * @param isReverse
 	 *            indicates whether the LLDP was sent as a response
 	 */
-	@LogMessageDoc(level = "ERROR",
-			message = "Failure sending LLDP out port {port} on switch {switch}",
-			explanation = "An I/O error occured while sending LLDP message "
-					+ "to the switch.",
-					recommendation = LogMessageDoc.CHECK_SWITCH)
 	protected void sendDiscoveryMessage(DatapathId sw, OFPort port,
 			boolean isStandard, boolean isReverse) {
 
@@ -1246,17 +1232,18 @@ IFloodlightModule, IInfoProvider {
 			IOFSwitch iofSwitch = switchService.getSwitch(sw);
 			if (iofSwitch == null) continue;
 			if (!iofSwitch.isActive()) continue; /* can't do anything if the switch is SLAVE */
-			if (iofSwitch.getEnabledPorts() != null) {
-				for (OFPortDesc ofp : iofSwitch.getEnabledPorts()) {
-					if (isLinkDiscoverySuppressed(sw, ofp.getPortNo())) {			
+			Collection<OFPort> c = iofSwitch.getEnabledPortNumbers();
+			if (c != null) {
+				for (OFPort ofp : c) {
+					if (isLinkDiscoverySuppressed(sw, ofp)) {			
 						continue;
 					}
 					log.trace("Enabled port: {}", ofp);
-					sendDiscoveryMessage(sw, ofp.getPortNo(), true, false);
+					sendDiscoveryMessage(sw, ofp, true, false);
 
 					// If the switch port is not already in the maintenance
 					// queue, add it.
-					NodePortTuple npt = new NodePortTuple(sw, ofp.getPortNo());
+					NodePortTuple npt = new NodePortTuple(sw, ofp);
 					addToMaintenanceQueue(npt);
 				}
 			}
@@ -1323,7 +1310,7 @@ IFloodlightModule, IInfoProvider {
 			portLinks.put(dstNpt,
 					new HashSet<Link>());
 		portLinks.get(dstNpt).add(lt);
-		
+
 		newInfo.addObservedLatency(lt.getLatency());
 
 		return true;
@@ -1380,7 +1367,7 @@ IFloodlightModule, IInfoProvider {
 		 */
 		U64 currentLatency = existingInfo.getCurrentLatency();
 		U64 latencyToUse = existingInfo.addObservedLatency(lk.getLatency());
-		
+
 		if (currentLatency == null) {
 			/* no-op; already 'changed' as this is a new link */
 		} else if (!latencyToUse.equals(currentLatency)) {
@@ -1394,14 +1381,6 @@ IFloodlightModule, IInfoProvider {
 		return linkChanged;
 	}
 
-	@LogMessageDocs({
-		@LogMessageDoc(message="Inter-switch link detected:",
-				explanation="Detected a new link between two openflow switches," +
-				"use show link to find current status"),
-				@LogMessageDoc(message="Inter-switch link updated:",
-				explanation="Detected a link change between two openflow switches, " +
-						"use show link to find current status")
-	})
 	protected boolean addOrUpdateLink(Link lt, LinkInfo newInfo) {
 		boolean linkChanged = false;
 
@@ -1513,9 +1492,6 @@ IFloodlightModule, IInfoProvider {
 	 * @param links
 	 *            The List of @LinkTuple to delete.
 	 */
-	@LogMessageDoc(message="Inter-switch link removed:",
-			explanation="A previously detected link between two openflow switches no longer exists, " +
-			"use show link to find current status")
 	protected void deleteLinks(List<Link> links, String reason,
 			List<LDUpdate> updateList) {
 
@@ -1665,14 +1641,6 @@ IFloodlightModule, IInfoProvider {
 	//******************
 	// Internal Helper Methods
 	//******************
-	@LogMessageDoc(level="WARN",
-			message="Could not get list of interfaces of local machine to " +
-					"encode in TLV: {detail-msg}",
-					explanation="Outgoing LLDP packets encode a unique hash to " +
-							"identify the local machine. The list of network " +
-							"interfaces is used as input and the controller failed " +
-							"to query this list",
-							recommendation=LogMessageDoc.REPORT_CONTROLLER_BUG)
 	protected void setControllerTLV() {
 		// Setting the controllerTLVValue based on current nano time,
 		// controller's IP address, and the network interface object hash
@@ -2067,28 +2035,6 @@ IFloodlightModule, IInfoProvider {
 	}
 
 	@Override
-	@LogMessageDocs({
-		@LogMessageDoc(level = "ERROR",
-				message = "No storage source found.",
-				explanation = "Storage source was not initialized; cannot initialize "
-						+ "link discovery.",
-						recommendation = LogMessageDoc.REPORT_CONTROLLER_BUG),
-						@LogMessageDoc(level = "ERROR",
-						message = "Error in installing listener for "
-								+ "switch config table {table}",
-								explanation = "Failed to install storage notification for the "
-										+ "switch config table",
-										recommendation = LogMessageDoc.REPORT_CONTROLLER_BUG),
-										@LogMessageDoc(level = "ERROR",
-										message = "No storage source found.",
-										explanation = "Storage source was not initialized; cannot initialize "
-												+ "link discovery.",
-												recommendation = LogMessageDoc.REPORT_CONTROLLER_BUG),
-												@LogMessageDoc(level = "ERROR",
-												message = "Exception in LLDP send timer.",
-												explanation = "An unknown error occured while sending LLDP "
-														+ "messages to switches.",
-														recommendation = LogMessageDoc.CHECK_SWITCH) })
 	public void startUp(FloodlightModuleContext context) throws FloodlightModuleException {
 
 		// Initialize role to floodlight provider role.
@@ -2247,7 +2193,6 @@ IFloodlightModule, IInfoProvider {
 		}
 	}
 
-
 	//*********************
 	//  IInfoProvider
 	//*********************
@@ -2320,5 +2265,4 @@ IFloodlightModule, IInfoProvider {
 			//no-op
 		}
 	}
-
 }

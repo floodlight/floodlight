@@ -39,8 +39,6 @@ import net.floodlightcontroller.core.LogicalOFMessageCategory;
 import net.floodlightcontroller.core.PortChangeType;
 import net.floodlightcontroller.core.SwitchDescription;
 import net.floodlightcontroller.core.SwitchSyncRepresentation;
-import net.floodlightcontroller.core.annotations.LogMessageDoc;
-import net.floodlightcontroller.core.annotations.LogMessageDocs;
 import net.floodlightcontroller.core.internal.Controller.IUpdate;
 import net.floodlightcontroller.core.internal.Controller.ModuleLoaderState;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
@@ -118,7 +116,6 @@ public class OFSwitchManager implements IOFSwitchManager, INewOFConnectionListen
 	private ConcurrentHashMap<DatapathId, OFSwitchHandshakeHandler> switchHandlers;
 	private ConcurrentHashMap<DatapathId, IOFSwitchBackend> switches;
 	private ConcurrentHashMap<DatapathId, IOFSwitch> syncedSwitches;
-	private Set<DatapathId> pastSwitches;
 
 	private ISwitchDriverRegistry driverRegistry;
 
@@ -197,27 +194,6 @@ public class OFSwitchManager implements IOFSwitchManager, INewOFConnectionListen
 		}
 	}
 
-	@LogMessageDocs({
-		@LogMessageDoc(level="ERROR",
-				message="Switch {switch} activated but was already active",
-				explanation="A switch that was already activated was " +
-						"activated again. This should not happen.",
-						recommendation=LogMessageDoc.REPORT_CONTROLLER_BUG
-				),
-				@LogMessageDoc(level="WARN",
-				message="New switch added {switch} for already-added switch {switch}",
-				explanation="A switch with the same DPID as another switch " +
-						"connected to the controller.  This can be caused by " +
-						"multiple switches configured with the same DPID, or " +
-						"by a switch reconnected very quickly after " +
-						"disconnecting.",
-						recommendation="If this happens repeatedly, it is likely there " +
-								"are switches with duplicate DPIDs on the network.  " +
-								"Reconfigure the appropriate switches.  If it happens " +
-								"very rarely, then it is likely this is a transient " +
-								"network problem that can be ignored."
-						)
-	})
 	@Override
 	public synchronized void switchStatusChanged(IOFSwitchBackend sw, SwitchStatus oldStatus, SwitchStatus newStatus) {
 		DatapathId dpid = sw.getId();
@@ -678,8 +654,6 @@ public class OFSwitchManager implements IOFSwitchManager, INewOFConnectionListen
 
 		this.switchListeners = new CopyOnWriteArraySet<IOFSwitchListener>();
 		
-		this.pastSwitches = new HashSet<DatapathId>();
-
 		/* TODO @Ryan
 		try {
 			this.storeClient = this.syncService.getStoreClient(
@@ -922,7 +896,7 @@ public class OFSwitchManager implements IOFSwitchManager, INewOFConnectionListen
 
 		try {
 			try {
-				jp = f.createJsonParser(json);
+				jp = f.createParser(json);
 			} catch (JsonParseException e) {
 				throw new IOException(e);
 			}

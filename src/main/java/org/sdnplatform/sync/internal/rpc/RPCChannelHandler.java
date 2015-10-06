@@ -6,8 +6,6 @@ import java.util.List;
 import java.util.Random;
 import java.util.Map.Entry;
 
-import net.floodlightcontroller.core.annotations.LogMessageCategory;
-import net.floodlightcontroller.core.annotations.LogMessageDoc;
 import net.floodlightcontroller.debugcounter.IDebugCounter;
 
 import org.jboss.netty.channel.Channel;
@@ -42,7 +40,6 @@ import org.slf4j.LoggerFactory;
  * Channel handler for the RPC service
  * @author readams
  */
-@LogMessageCategory("State Synchronization")
 public class RPCChannelHandler extends AbstractRPCChannelHandler {
     protected static final Logger logger =
             LoggerFactory.getLogger(RPCChannelHandler.class);
@@ -88,14 +85,6 @@ public class RPCChannelHandler extends AbstractRPCChannelHandler {
     }
 
     @Override
-    @LogMessageDoc(level="ERROR",
-              message="[{id}->{id}] Attempted connection from unrecognized " +
-                      "floodlight node {id}; disconnecting",
-              explanation="A unknown node connected.  This can happen " +
-                      "transiently if new nodes join the cluster.",
-              recommendation="If the problem persists, verify your cluster" +
-                "configuration and that you don't have unauthorized agents " +
-                "in your network.")
     protected void handleHello(HelloMessage hello, Channel channel) {
         if (!hello.isSetNodeId()) {
             // this is a client connection.  Don't set this up as a node

@@ -11,10 +11,6 @@ import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import javax.xml.bind.DatatypeConverter;
 
-import net.floodlightcontroller.core.annotations.LogMessageCategory;
-import net.floodlightcontroller.core.annotations.LogMessageDoc;
-import net.floodlightcontroller.core.annotations.LogMessageDocs;
-
 import org.jboss.netty.channel.Channel;
 import org.jboss.netty.channel.ChannelHandlerContext;
 import org.jboss.netty.channel.ChannelStateEvent;
@@ -65,7 +61,6 @@ import org.slf4j.LoggerFactory;
  * a {@link SyncMessage} which will provide specific type information. 
  * @author readams
  */
-@LogMessageCategory("State Synchronization")
 public abstract class AbstractRPCChannelHandler 
     extends IdleStateAwareChannelHandler {
     protected static final Logger logger =
@@ -132,32 +127,6 @@ public abstract class AbstractRPCChannelHandler
     }
 
     @Override
-    @LogMessageDocs({
-        @LogMessageDoc(level="ERROR",
-                message="[{id}->{id}] Disconnecting client due to read timeout",
-                explanation="The connected client has failed to send any " +
-                            "messages or respond to echo requests",
-                recommendation=LogMessageDoc.CHECK_CONTROLLER),
-        @LogMessageDoc(level="ERROR",
-                message="[{id}->{id}] Disconnecting RPC node due to " +
-                    "handshake timeout",
-                explanation="The remote node did not complete the handshake",
-                recommendation=LogMessageDoc.CHECK_CONTROLLER),
-                @LogMessageDoc(level="ERROR",
-                message="[{id}->{id}] IOException: {message}",
-                explanation="There was an error communicating with the " + 
-                            "remote client",
-                recommendation=LogMessageDoc.GENERIC_ACTION),
-                @LogMessageDoc(level="ERROR",
-                message="[{id}->{id}] ConnectException: {message} {error}",
-                explanation="There was an error connecting to the " + 
-                            "remote node",
-                recommendation=LogMessageDoc.GENERIC_ACTION),
-        @LogMessageDoc(level="ERROR",
-                message="[{}->{}] An error occurred on RPC channel",
-                explanation="An error occurred processing the message",
-                recommendation=LogMessageDoc.GENERIC_ACTION),
-    })
     public void exceptionCaught(ChannelHandlerContext ctx,
                                 ExceptionEvent e) throws Exception {
         if (e.getCause() instanceof ReadTimeoutException) {
@@ -219,10 +188,6 @@ public abstract class AbstractRPCChannelHandler
      * @param ctx the context
      * @param message the message object
      */
-    @LogMessageDoc(level="WARN",
-                   message="[{id}->{id}] Unhandled message: {message type}",
-                   explanation="An unrecognized event occurred",
-                   recommendation=LogMessageDoc.REPORT_CONTROLLER_BUG)
     protected void handleUnknownMessage(ChannelHandlerContext ctx, 
                                         Object message) {
         logger.warn("[{}->{}] Unhandled message: {}", 
@@ -343,11 +308,6 @@ public abstract class AbstractRPCChannelHandler
         
     }
 
-    @LogMessageDoc(level="WARN",
-                   message="Failed to authenticate connection from {remote}: {message}",
-                   explanation="Challenge/Response authentication failed",
-                   recommendation="Check the included error message, and " + 
-                           "verify the shared secret is correctly-configured")
     protected void handshake(HelloMessage request, Channel channel) {
         try {
             switch (getAuthScheme()) {
@@ -527,11 +487,6 @@ public abstract class AbstractRPCChannelHandler
                           MessageType.CLUSTER_JOIN_RESPONSE, channel);
     }
 
-    @LogMessageDoc(level="ERROR",
-                   message="[{id}->{id}] Error for message {id} ({type}): " + 
-                           "{message} {error code}",
-                   explanation="Remote client sent an error",
-                   recommendation=LogMessageDoc.GENERIC_ACTION)
     protected void handleError(ErrorMessage error, Channel channel) {
         logger.error("[{}->{}] Error for message {} ({}): {} ({})", 
                      new Object[]{getLocalNodeIdString(), 
@@ -554,11 +509,6 @@ public abstract class AbstractRPCChannelHandler
      * @param type the type of the message that generated the error
      * @return the {@link SyncError} message
      */
-    @LogMessageDoc(level="ERROR",
-                   message="Unexpected error processing message {} ({})",
-                   explanation="An error occurred while processing an " + 
-                               "RPC message",
-                   recommendation=LogMessageDoc.GENERIC_ACTION)
     protected SyncMessage getError(int transactionId, Exception error, 
                                    MessageType type) {
         int ec = SyncException.ErrorType.GENERIC.getValue();
@@ -590,11 +540,6 @@ public abstract class AbstractRPCChannelHandler
      * @param type The type of the message that generated the error
      * @param channel the channel to write the error
      */
-    @LogMessageDoc(level="WARN",
-                    message="[{id}->{id}] Received unexpected message: {type}",
-                    explanation="A inappriopriate message was sent by the remote" +
-                            "client",
-                    recommendation=LogMessageDoc.REPORT_CONTROLLER_BUG)
     protected void unexpectedMessage(int transactionId,
                                      MessageType type,
                                      Channel channel) {

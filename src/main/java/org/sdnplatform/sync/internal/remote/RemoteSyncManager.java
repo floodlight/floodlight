@@ -37,8 +37,6 @@ import org.sdnplatform.sync.thrift.Store;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import net.floodlightcontroller.core.annotations.LogMessageCategory;
-import net.floodlightcontroller.core.annotations.LogMessageDoc;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightService;
@@ -48,7 +46,6 @@ import net.floodlightcontroller.core.module.IFloodlightService;
  * remote sync manager over a TCP connection
  * @author readams
  */
-@LogMessageCategory("State Synchronization")
 public class RemoteSyncManager extends AbstractSyncManager {
     protected static final Logger logger =
             LoggerFactory.getLogger(RemoteSyncManager.class.getName());
@@ -271,10 +268,6 @@ public class RemoteSyncManager extends AbstractSyncManager {
         return future;
     }
 
-    @LogMessageDoc(level="WARN",
-                   message="Unexpected sync message reply type={type} id={id}",
-                   explanation="An error occurred in the sync protocol",
-                   recommendation=LogMessageDoc.REPORT_CONTROLLER_BUG)
     public void dispatchReply(int xid,
                               SyncReply reply) {
         RemoteSyncFuture future = futureMap.get(Integer.valueOf(xid));

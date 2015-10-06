@@ -51,9 +51,6 @@ import org.sdnplatform.sync.thrift.SyncValueMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import net.floodlightcontroller.core.annotations.LogMessageCategory;
-import net.floodlightcontroller.core.annotations.LogMessageDoc;
-import net.floodlightcontroller.core.annotations.LogMessageDocs;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightService;
@@ -70,7 +67,6 @@ import net.floodlightcontroller.threadpool.IThreadPoolService;
  * @author readams
  * @see ISyncService
  */
-@LogMessageCategory("State Synchronization")
 public class SyncManager extends AbstractSyncManager {
     protected static final Logger logger =
             LoggerFactory.getLogger(SyncManager.class.getName());
@@ -210,9 +206,6 @@ public class SyncManager extends AbstractSyncManager {
     /**
      * Perform a synchronization with the node specified
      */
-    @LogMessageDoc(level="INFO",
-                   message="[{id}->{id}] Synchronizing local state to remote node",
-                   explanation="Normal state resynchronization is occurring")
     public void antientropy(Node node) {
         if (!rpcService.isConnected(node.getNodeId())) return;
 
@@ -359,10 +352,6 @@ public class SyncManager extends AbstractSyncManager {
      * @param e the storage engine for the values
      * @param kv the values to synchronize
      */
-    @LogMessageDoc(level="WARN",
-            message="Sync task queue full and not emptying",
-            explanation="The synchronization service is overloaded",
-            recommendation=LogMessageDoc.CHECK_CONTROLLER)
     public void queueSyncTask(SynchronizingStorageEngine e,
                               ByteArray key, Versioned<byte[]> value) {
         storeRegistry.queueHint(e.getName(), key, value);
@@ -592,15 +581,6 @@ public class SyncManager extends AbstractSyncManager {
     // Local methods
     // ***************
 
-    @LogMessageDocs({
-        @LogMessageDoc(level="INFO",
-                message="[{id}] Updating sync configuration {config}",
-                explanation="The sync service cluster configuration has been updated"),
-        @LogMessageDoc(level="INFO",
-                message="[{id}] Local node configuration changed; restarting sync" +
-                        "service",
-                explanation="The sync service must be restarted to update its configuration")
-    })
     protected void doUpdateConfiguration()
             throws FloodlightModuleException {
 
@@ -674,10 +654,6 @@ public class SyncManager extends AbstractSyncManager {
      * Periodically perform cleanup
      * @author readams
      */
-    @LogMessageDoc(level="ERROR",
-            message="Cleanup task failed",
-            explanation="Failed to clean up deleted data in the store",
-            recommendation=LogMessageDoc.REPORT_CONTROLLER_BUG)
     protected class CleanupTask implements Runnable {
         @Override
         public void run() {
@@ -699,10 +675,6 @@ public class SyncManager extends AbstractSyncManager {
      * Periodically perform antientropy
      * @author readams
      */
-    @LogMessageDoc(level="ERROR",
-            message="Antientropy task failed",
-            explanation="Failed to synchronize state between two nodes",
-            recommendation=LogMessageDoc.REPORT_CONTROLLER_BUG)
     protected class AntientropyTask implements Runnable {
         @Override
         public void run() {
@@ -725,10 +697,6 @@ public class SyncManager extends AbstractSyncManager {
      * Worker task to periodically rescan the configuration
      * @author readams
      */
-    @LogMessageDoc(level="ERROR",
-            message="Failed to update configuration",
-            explanation="An error occured while updating sync service configuration",
-            recommendation=LogMessageDoc.REPORT_CONTROLLER_BUG)
     protected class UpdateConfigTask implements Runnable {
         @Override
         public void run() {
@@ -750,10 +718,6 @@ public class SyncManager extends AbstractSyncManager {
      * appropriate messages to the node I/O channels
      * @author readams
      */
-    @LogMessageDoc(level="ERROR",
-            message="Error occured in synchronization worker",
-            explanation="Failed to synchronize state to remote node",
-            recommendation=LogMessageDoc.REPORT_CONTROLLER_BUG)
     protected class HintWorker implements Runnable {
         ArrayList<Hint> tasks = new ArrayList<Hint>(50);
         protected Map<String, SyncMessage> messages =

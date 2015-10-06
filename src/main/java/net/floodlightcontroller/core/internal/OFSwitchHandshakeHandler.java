@@ -22,8 +22,6 @@ import net.floodlightcontroller.core.IOFSwitch.SwitchStatus;
 import net.floodlightcontroller.core.IOFSwitchBackend;
 import net.floodlightcontroller.core.PortChangeEvent;
 import net.floodlightcontroller.core.SwitchDescription;
-import net.floodlightcontroller.core.annotations.LogMessageDoc;
-import net.floodlightcontroller.core.annotations.LogMessageDocs;
 import net.floodlightcontroller.core.internal.OFSwitchAppHandshakePlugin.PluginResultType;
 import net.floodlightcontroller.util.OFDPAUtils;
 
@@ -229,13 +227,6 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 		 * @param role The role to send to the switch.
 		 * @throws IOException
 		 */
-		@LogMessageDoc(level="WARN",
-				message="Reasserting master role on switch {SWITCH}, " +
-						"likely a configruation error with multiple masters",
-						explanation="The controller keeps getting permission error " +
-								"from switch, likely due to switch connected to another " +
-								"controller also in master mode",
-								recommendation=LogMessageDoc.CHECK_SWITCH)
 		synchronized void sendRoleRequestIfNotPending(OFControllerRole role, long xid)
 				throws IOException {
 			long now = System.nanoTime();
@@ -883,15 +874,6 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 		 * Log an OpenFlow error message from a switch
 		 * @param error The error message
 		 */
-		@LogMessageDoc(level="ERROR",
-				message="Error {error type} {error code} from {switch} " +
-						"in state {state}",
-						explanation="The switch responded with an unexpected error" +
-								"to an OpenFlow message from the controller",
-								recommendation="This could indicate improper network operation. " +
-										"If the problem persists restarting the switch and " +
-										"controller may help."
-				)
 		protected void logError(OFErrorMsg error) {
 			log.error("{} from switch {} in state {}",
 					new Object[] {
@@ -1104,16 +1086,6 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 		}
 
 		@Override
-		@LogMessageDocs({
-			@LogMessageDoc(level="WARN",
-					message="Config Reply from {switch} has " +
-							"miss length set to {length}",
-							explanation="The controller requires that the switch " +
-									"use a miss length of 0xffff for correct " +
-									"function",
-									recommendation="Use a different switch to ensure " +
-					"correct function")
-		})
 		void processOFGetConfigReply(OFGetConfigReply m) {
 			if (m.getMissSendLen() == 0xffff) {
 				log.trace("Config Reply from switch {} confirms "
@@ -1184,11 +1156,6 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 			super(false);
 		}
 
-		@LogMessageDoc(message="Switch {switch info} bound to class " +
-				"{switch driver}, description {switch description}",
-				explanation="The specified switch has been bound to " +
-						"a switch driver based on the switch description" +
-				"received from the switch")
 		@Override
 		void processOFStatsReply(OFStatsReply m) {
 			// Read description, if it has been updated
@@ -1543,15 +1510,6 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 			setSwitchStatus(SwitchStatus.MASTER);
 		}
 
-		@LogMessageDoc(level="WARN",
-				message="Received permission error from switch {} while" +
-						"being master. Reasserting master role.",
-						explanation="The switch has denied an operation likely " +
-								"indicating inconsistent controller roles",
-								recommendation="This situation can occurs transiently during role" +
-										" changes. If, however, the condition persists or happens" +
-										" frequently this indicates a role inconsistency. " +
-										LogMessageDoc.CHECK_CONTROLLER )
 		@Override
 		void processOFError(OFErrorMsg m) {
 			// role changer will ignore the error if it isn't for it
@@ -1748,15 +1706,6 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 		}
 
 		@Override
-		@LogMessageDoc(level="WARN",
-		message="Received PacketIn from switch {} while" +
-				"being slave. Reasserting slave role.",
-				explanation="The switch has receive a PacketIn despite being " +
-						"in slave role indicating inconsistent controller roles",
-						recommendation="This situation can occurs transiently during role" +
-								" changes. If, however, the condition persists or happens" +
-								" frequently this indicates a role inconsistency. " +
-								LogMessageDoc.CHECK_CONTROLLER )
 		void processOFPacketIn(OFPacketIn m) {
 			// we don't expect packetIn while slave, reassert we are slave
 			switchManagerCounters.packetInWhileSwitchIsSlave.increment();

@@ -30,9 +30,6 @@ import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
-import net.floodlightcontroller.core.annotations.LogMessageCategory;
-import net.floodlightcontroller.core.annotations.LogMessageDoc;
-import net.floodlightcontroller.core.annotations.LogMessageDocs;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.util.AppCookie;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
@@ -73,7 +70,6 @@ import org.slf4j.LoggerFactory;
  * responsible for programming flows to a switch in response to a policy
  * decision.
  */
-@LogMessageCategory("Flow Programming")
 public abstract class ForwardingBase implements IOFMessageListener {
 
 	protected static Logger log =
@@ -202,18 +198,6 @@ public abstract class ForwardingBase implements IOFMessageListener {
 	 *        OFFlowMod.OFPFC_MODIFY etc.
 	 * @return srcSwitchIncluded True if the source switch is included in this route
 	 */
-	@LogMessageDocs({
-		@LogMessageDoc(level="WARN",
-				message="Unable to push route, switch at DPID {dpid} not available",
-				explanation="A switch along the calculated path for the " +
-						"flow has disconnected.",
-						recommendation=LogMessageDoc.CHECK_SWITCH),
-						@LogMessageDoc(level="ERROR",
-						message="Failure writing flow mod",
-						explanation="An I/O error occurred while writing a " +
-								"flow modification to a switch",
-								recommendation=LogMessageDoc.CHECK_SWITCH)
-	})
 	public boolean pushRoute(Route route, Match match, OFPacketIn pi,
 			DatapathId pinSwitch, U64 cookie, FloodlightContext cntx,
 			boolean reqeustFlowRemovedNotifn, boolean doFlush,
@@ -327,20 +311,6 @@ public abstract class ForwardingBase implements IOFMessageListener {
 	 * @param cntx      context of the packet
 	 * @param flush     force to flush the packet.
 	 */
-	@LogMessageDocs({
-		@LogMessageDoc(level="ERROR",
-				message="BufferId is not and packet data is null. " +
-						"Cannot send packetOut. " +
-						"srcSwitch={dpid} inPort={port} outPort={port}",
-						explanation="The switch send a malformed packet-in." +
-								"The packet will be dropped",
-								recommendation=LogMessageDoc.REPORT_SWITCH_BUG),
-								@LogMessageDoc(level="ERROR",
-								message="Failure writing packet out",
-								explanation="An I/O error occurred while writing a " +
-										"packet out to a switch",
-										recommendation=LogMessageDoc.CHECK_SWITCH)
-	})
 
 	/**
 	 * Pushes a packet-out to a switch.  The assumption here is that
@@ -468,13 +438,6 @@ public abstract class ForwardingBase implements IOFMessageListener {
 		packetOutMultiPort(packet.serialize(), sw, inPort, outPorts, cntx);
 	}
 
-	@LogMessageDocs({
-		@LogMessageDoc(level="ERROR",
-				message="Failure writing deny flow mod",
-				explanation="An I/O error occurred while writing a " +
-						"deny flow mod to a switch",
-						recommendation=LogMessageDoc.CHECK_SWITCH)
-	})
 	public static boolean blockHost(IOFSwitchService switchService,
 			SwitchPort sw_tup, MacAddress host_mac, short hardTimeout, U64 cookie) {
 

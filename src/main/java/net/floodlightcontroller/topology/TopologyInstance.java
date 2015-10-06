@@ -26,8 +26,6 @@ import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.Set;
 
-import net.floodlightcontroller.core.annotations.LogMessageCategory;
-import net.floodlightcontroller.core.annotations.LogMessageDoc;
 import net.floodlightcontroller.routing.BroadcastTree;
 import net.floodlightcontroller.routing.Link;
 import net.floodlightcontroller.routing.Route;
@@ -49,7 +47,6 @@ import com.google.common.cache.LoadingCache;
  * A representation of a network topology.  Used internally by
  * {@link TopologyManager}
  */
-@LogMessageCategory("Network Topology")
 public class TopologyInstance {
 
     public static final short LT_SH_LINK = 1;
@@ -279,10 +276,6 @@ public class TopologyInstance {
      *
      * http://en.wikipedia.org/wiki/Tarjan%27s_strongly_connected_components_algorithm
      */
-    @LogMessageDoc(level="ERROR",
-            message="No DFS object for switch {} found.",
-            explanation="The internal state of the topology module is corrupt",
-            recommendation=LogMessageDoc.REPORT_CONTROLLER_BUG)
     public void identifyOpenflowDomains() {
         Map<DatapathId, ClusterDFS> dfsList = new HashMap<DatapathId, ClusterDFS>();
 

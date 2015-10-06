@@ -37,7 +37,6 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import javax.annotation.Nonnull;
 
-import net.floodlightcontroller.core.annotations.LogMessageDoc;
 import net.floodlightcontroller.core.internal.IOFSwitchManager;
 import net.floodlightcontroller.core.internal.TableFeatures;
 import net.floodlightcontroller.core.util.AppCookie;
@@ -249,8 +248,12 @@ public class OFSwitch implements IOFSwitchBackend {
 				newPortsByName.put(p.getName().toLowerCase(), p);
 				if (!p.getState().contains(OFPortState.LINK_DOWN) 
 						&& !p.getConfig().contains(OFPortConfig.PORT_DOWN)) {
-					newEnabledPortList.add(p);
-					newEnabledPortNumbers.add(p.getPortNo());
+					if (!newEnabledPortList.contains(p)) {
+						newEnabledPortList.add(p);
+					}
+					if (!newEnabledPortNumbers.contains(p.getPortNo())) {
+						newEnabledPortNumbers.add(p.getPortNo());
+					}
 				}
 			}
 			portsByName = Collections.unmodifiableMap(newPortsByName);
@@ -575,8 +578,12 @@ public class OFSwitch implements IOFSwitchBackend {
 					// Enabled = not down admin (config) or phys (state)
 					if (!p.getConfig().contains(OFPortConfig.PORT_DOWN)
 							&& !p.getState().contains(OFPortState.LINK_DOWN)) {
-						newEnabledPortList.add(p);
-						newEnabledPortNumbers.add(p.getPortNo());
+						if (!newEnabledPortList.contains(p)) {
+							newEnabledPortList.add(p);
+						}
+						if (!newEnabledPortNumbers.contains(p.getPortNo())) {
+							newEnabledPortNumbers.add(p.getPortNo());
+						}
 					}
 
 					// get changes
@@ -785,12 +792,6 @@ public class OFSwitch implements IOFSwitchBackend {
 	}
 
 	@Override
-	@LogMessageDoc(level="WARN",
-	message="Sending OF message that modifies switch " +
-			"state while in the slave role: {switch}",
-			explanation="An application has sent a message to a switch " +
-					"that is not valid when the switch is in a slave role",
-					recommendation=LogMessageDoc.REPORT_CONTROLLER_BUG)
 	public void write(Iterable<OFMessage> msglist) {
 		if (isActive()) {
 			connections.get(OFAuxId.MAIN).write(msglist);
@@ -1110,12 +1111,6 @@ public class OFSwitch implements IOFSwitchBackend {
 	}
 
 	@Override
-	@LogMessageDoc(level="WARN",
-	message="Switch {switch} flow table is full",
-	explanation="The controller received flow table full " +
-			"message from the switch, could be caused by increased " +
-			"traffic pattern",
-			recommendation=LogMessageDoc.REPORT_CONTROLLER_BUG)
 	public void setTableFull(boolean isFull) {
 		if (isFull && !flowTableFull) {
 			switchManager.addSwitchEvent(this.datapathId,

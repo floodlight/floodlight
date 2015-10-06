@@ -42,7 +42,6 @@ public class DefaultStoreClient<K, V> extends AbstractStoreClient<K, V> {
     private Class<K> keyClass;
     private TypeReference<K> keyType;
 
-    @SuppressWarnings("unchecked")
     public DefaultStoreClient(IStore<K, V> delegate,
                               IInconsistencyResolver<Versioned<V>> resolver,
                               AbstractSyncManager syncManager,

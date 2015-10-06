@@ -25,8 +25,6 @@ import org.jboss.netty.util.Timer;
 
 import net.floodlightcontroller.core.IOFConnectionBackend;
 import net.floodlightcontroller.core.OFConnection;
-import net.floodlightcontroller.core.annotations.LogMessageDoc;
-import net.floodlightcontroller.core.annotations.LogMessageDocs;
 import net.floodlightcontroller.core.internal.OpenflowPipelineFactory.PipelineHandler;
 import net.floodlightcontroller.core.internal.OpenflowPipelineFactory.PipelineHandshakeTimeout;
 import net.floodlightcontroller.core.internal.OpenflowPipelineFactory.PipelineIdleReadTimeout;
@@ -209,15 +207,6 @@ class OFChannelHandler extends IdleStateAwareChannelHandler {
 		 * @param sw The switch that sent the error
 		 * @param error The error message
 		 */
-		@LogMessageDoc(level="ERROR",
-				message="Error {error type} {error code} from {switch} " +
-						"in state {state}",
-						explanation="The switch responded with an unexpected error" +
-								"to an OpenFlow message from the controller",
-								recommendation="This could indicate improper network operation. " +
-										"If the problem persists restarting the switch and " +
-										"controller may help."
-				)
 		protected void logError(OFErrorMsg error) {
 			log.error("{} from switch {} in state {}",
 					new Object[] {
@@ -599,9 +588,6 @@ class OFChannelHandler extends IdleStateAwareChannelHandler {
 	}
 
 	@Override
-	@LogMessageDoc(message="New switch connection from {ip address}",
-	explanation="A new switch has connected from the " +
-			"specified IP address")
 	public void channelConnected(ChannelHandlerContext ctx,
 			ChannelStateEvent e) throws Exception {
 		log.debug("channelConnected on OFChannelHandler {}", String.format("%08x", System.identityHashCode(this)));
@@ -613,8 +599,6 @@ class OFChannelHandler extends IdleStateAwareChannelHandler {
 	}
 
 	@Override
-	@LogMessageDoc(message="Disconnected switch {switch information}",
-	explanation="The specified switch has disconnected.")
 	public void channelDisconnected(ChannelHandlerContext ctx,
 			ChannelStateEvent e) throws Exception {
 		// Only handle cleanup connection is even known
@@ -628,47 +612,6 @@ class OFChannelHandler extends IdleStateAwareChannelHandler {
 	}
 
 	@Override
-	@LogMessageDocs({
-		@LogMessageDoc(level="ERROR",
-				message="Disconnecting switch {switch} due to read timeout",
-				explanation="The connected switch has failed to send any " +
-						"messages or respond to echo requests",
-						recommendation=LogMessageDoc.CHECK_SWITCH),
-						@LogMessageDoc(level="ERROR",
-						message="Disconnecting switch {switch}: failed to " +
-								"complete handshake",
-								explanation="The switch did not respond correctly " +
-										"to handshake messages",
-										recommendation=LogMessageDoc.CHECK_SWITCH),
-										@LogMessageDoc(level="ERROR",
-										message="Disconnecting switch {switch} due to IO Error: {}",
-										explanation="There was an error communicating with the switch",
-										recommendation=LogMessageDoc.CHECK_SWITCH),
-										@LogMessageDoc(level="ERROR",
-										message="Disconnecting switch {switch} due to switch " +
-												"state error: {error}",
-												explanation="The switch sent an unexpected message",
-												recommendation=LogMessageDoc.CHECK_SWITCH),
-												@LogMessageDoc(level="ERROR",
-												message="Disconnecting switch {switch} due to " +
-														"message parse failure",
-														explanation="Could not parse a message from the switch",
-														recommendation=LogMessageDoc.CHECK_SWITCH),
-														@LogMessageDoc(level="ERROR",
-														message="Terminating controller due to storage exception",
-														explanation=Controller.ERROR_DATABASE,
-														recommendation=LogMessageDoc.CHECK_CONTROLLER),
-														@LogMessageDoc(level="ERROR",
-														message="Could not process message: queue full",
-														explanation="OpenFlow messages are arriving faster than " +
-																" the controller can process them.",
-																recommendation=LogMessageDoc.CHECK_CONTROLLER),
-																@LogMessageDoc(level="ERROR",
-																message="Error while processing message " +
-																		"from switch {switch} {cause}",
-																		explanation="An error occurred processing the switch message",
-																		recommendation=LogMessageDoc.GENERIC_ACTION)
-	})
 	public void exceptionCaught(ChannelHandlerContext ctx, ExceptionEvent e)
 			throws Exception {
 		if (e.getCause() instanceof ReadTimeoutException) {

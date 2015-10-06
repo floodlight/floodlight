@@ -36,7 +36,6 @@ import org.jboss.netty.util.TimerTask;
 
 import java.util.Date;
 
-import net.floodlightcontroller.core.annotations.LogMessageDoc;
 import net.floodlightcontroller.core.internal.Controller;
 import net.floodlightcontroller.core.internal.IOFConnectionListener;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
@@ -152,12 +151,6 @@ public class OFConnection implements IOFConnection, IOFConnectionBackend{
     }
 
     @Override
-    @LogMessageDoc(level = "WARN",
-                   message = "Sending OF message that modifies switch "
-                           + "state while in the slave role: {switch}",
-                   explanation = "An application has sent a message to a switch "
-                           + "that is not valid when the switch is in a slave role",
-                   recommendation = LogMessageDoc.REPORT_CONTROLLER_BUG)
     public void write(Iterable<OFMessage> msglist) {
         if (!isConnected()) {
             if (logger.isDebugEnabled())
