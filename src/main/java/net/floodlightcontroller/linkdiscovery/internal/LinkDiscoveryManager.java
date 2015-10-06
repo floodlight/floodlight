@@ -667,7 +667,7 @@ IFloodlightModule, IInfoProvider {
 		// If LLDP is suppressed on this port, ignore received packet as well
 		IOFSwitch iofSwitch = switchService.getSwitch(sw);
 
-		log.warn("Received LLDP packet on sw {}, port {}", sw, inPort);
+		log.debug("Received LLDP packet on sw {}, port {}", sw, inPort);
 
 		if (!isIncomingDiscoveryAllowed(sw, inPort, isStandard))
 			return Command.STOP;
@@ -1378,10 +1378,13 @@ IFloodlightModule, IInfoProvider {
 		 * and if the average exceeds +/- the current stored latency by the
 		 * defined update threshold.
 		 */
+		U64 currentLatency = existingInfo.getCurrentLatency();
 		U64 latencyToUse = existingInfo.addObservedLatency(lk.getLatency());
 		
-		if (!latencyToUse.equals(lk.getLatency())) {
-			log.warn("Updating link {} latency to {}ms", lk.toString(), latencyToUse.getValue());
+		if (currentLatency == null) {
+			/* no-op; already 'changed' as this is a new link */
+		} else if (!latencyToUse.equals(currentLatency)) {
+			log.warn("Updating link {} latency to {}ms", lk.toKeyString(), latencyToUse.getValue());
 			lk.setLatency(latencyToUse);
 			linkChanged = true;
 		} else {

@@ -149,6 +149,16 @@ public class LinkInfo {
 			return getLatency();
 		}
 	}
+	
+	/**
+	 * Read-only. Retrieve the currently-assigned
+	 * latency for this link. Does not attempt to
+	 * update or compute an average.
+	 * @return the latency; null if an initial latency has not been set
+	 */
+	public U64 getCurrentLatency() {
+		return currentLatency;
+	}
 
 	public Date getFirstSeenTime() {
 		return firstSeenTime;
