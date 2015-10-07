@@ -212,9 +212,9 @@ public class TopologyInstance {
 	/*
 	 * Checks if OF port is edge port
 	 */
-    public boolean isEdge(DatapathId sw, OFPort portId) { 
+    public boolean isEdge(DatapathId sw, OFPort portId){ 
 		NodePortTuple np = new NodePortTuple(sw, portId);
-		if (allLinks.get(np) == null || allLinks.get(np).isEmpty()) {
+		if (allLinks.get(np) == null){
 			return true;
 		}
 		else {

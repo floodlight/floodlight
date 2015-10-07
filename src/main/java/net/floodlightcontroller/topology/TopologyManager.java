@@ -356,7 +356,7 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 	@Override
 	public boolean isEdge(DatapathId sw, OFPort p){
 		TopologyInstance ti = getCurrentInstance(true);
-		return ti.isEdge(sw, p);
+		return ti.isEdge(sw,p);
 	}
 
 	@Override

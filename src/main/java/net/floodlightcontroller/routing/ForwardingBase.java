@@ -78,21 +78,19 @@ public abstract class ForwardingBase implements IOFMessageListener {
 	protected static int OFMESSAGE_DAMPER_CAPACITY = 10000; // TODO: find sweet spot
 	protected static int OFMESSAGE_DAMPER_TIMEOUT = 250; // ms
 
-	protected static int FLOWMOD_DEFAULT_IDLE_TIMEOUT = 5; // in seconds
-	protected static int FLOWMOD_DEFAULT_HARD_TIMEOUT = 0; // infinite
-	protected static int FLOWMOD_DEFAULT_PRIORITY = 1; // 0 is the default table-miss flow in OF1.3+, so we need to use 1
+	public static int FLOWMOD_DEFAULT_IDLE_TIMEOUT = 5; // in seconds
+	public static int FLOWMOD_DEFAULT_HARD_TIMEOUT = 0; // infinite
+	public static int FLOWMOD_DEFAULT_PRIORITY = 1; // 0 is the default table-miss flow in OF1.3+, so we need to use 1
 	
-	protected static boolean FLOWMOD_DEFAULT_SET_SEND_FLOW_REM_FLAG = false;
+	public static boolean FLOWMOD_DEFAULT_SET_SEND_FLOW_REM_FLAG = false;
 	
-	protected static boolean FLOWMOD_DEFAULT_MATCH_VLAN = true;
-	protected static boolean FLOWMOD_DEFAULT_MATCH_MAC = true;
-	protected static boolean FLOWMOD_DEFAULT_MATCH_IP_ADDR = true;
-	protected static boolean FLOWMOD_DEFAULT_MATCH_TRANSPORT = true;
+	public static boolean FLOWMOD_DEFAULT_MATCH_VLAN = true;
+	public static boolean FLOWMOD_DEFAULT_MATCH_MAC = true;
+	public static boolean FLOWMOD_DEFAULT_MATCH_IP_ADDR = true;
+	public static boolean FLOWMOD_DEFAULT_MATCH_TRANSPORT = true;
 
-	protected static final short FLOWMOD_DEFAULT_IDLE_TIMEOUT_CONSTANT = 5;
-	protected static final short FLOWMOD_DEFAULT_HARD_TIMEOUT_CONSTANT = 0;
-	
-	protected static boolean FLOOD_ALL_ARP_PACKETS = false;
+	public static final short FLOWMOD_DEFAULT_IDLE_TIMEOUT_CONSTANT = 5;
+	public static final short FLOWMOD_DEFAULT_HARD_TIMEOUT_CONSTANT = 0;
 
 	protected IFloodlightProviderService floodlightProviderService;
 	protected IOFSwitchService switchService;
