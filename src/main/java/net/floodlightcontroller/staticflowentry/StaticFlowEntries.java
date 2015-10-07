@@ -23,7 +23,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-import net.floodlightcontroller.core.annotations.LogMessageCategory;
 import net.floodlightcontroller.core.util.AppCookie;
 import net.floodlightcontroller.staticflowentry.web.StaticFlowEntryPusherResource;
 import net.floodlightcontroller.util.ActionUtils;
@@ -57,7 +56,6 @@ import org.projectfloodlight.openflow.types.U64;
  * Represents static flow entries to be maintained by the controller on the 
  * switches. 
  */
-@LogMessageCategory("Static Flow Pusher")
 public class StaticFlowEntries {
 	protected static Logger log = LoggerFactory.getLogger(StaticFlowEntries.class);
 	private static final int INFINITE_TIMEOUT = 0;

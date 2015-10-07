@@ -48,7 +48,6 @@ import net.floodlightcontroller.debugevent.IDebugEventService;
 import net.floodlightcontroller.debugevent.MockDebugEventService;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryListener;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryService;
-import net.floodlightcontroller.linkdiscovery.LinkInfo;
 import net.floodlightcontroller.packet.Data;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPacket;
@@ -172,14 +171,42 @@ public class LinkDiscoveryManagerTest extends FloodlightTestCase {
     }
 
     @Test
+    public void testLinkLatency() throws Exception {
+        LinkDiscoveryManager.LATENCY_HISTORY_SIZE = 5;
+        LinkDiscoveryManager.LATENCY_UPDATE_THRESHOLD = 0.25;
+        
+        LinkInfo info = new LinkInfo(new Date(), new Date(), null);
+
+        /*
+         * Should retain initial latency until LATENCY_HISTORY_SIZE
+         * data points are accumulated.
+         */
+        assertEquals(U64.of(0), info.addObservedLatency(U64.of(0)));
+        assertEquals(U64.of(0), info.addObservedLatency(U64.of(10)));
+        assertEquals(U64.of(0), info.addObservedLatency(U64.of(20)));
+        assertEquals(U64.of(0), info.addObservedLatency(U64.of(30)));
+        assertEquals(U64.of(20), info.addObservedLatency(U64.of(40)));
+        
+        /*
+         * LATENCY_HISTORY_SIZE is maintained. Oldest value is evicted
+         * per new value added. New average should be computed each
+         * addition, but latency should not change until current latency
+         * versus historical average latency differential threshold is
+         * exceeded again.
+         */
+        assertEquals(U64.of(20), info.addObservedLatency(U64.of(20))); /* avg = 24; diff = 4; 4/24 = 1/6 = 17% !>= 25% --> no update */
+        assertEquals(U64.of(26), info.addObservedLatency(U64.of(20))); /* avg = 26; diff = 6; 6/20 = 3/10 = 33% >= 25% --> update */
+        assertEquals(U64.of(26), info.addObservedLatency(U64.of(20))); /* avg = 26; diff = 0; 0/20 = 0/10 = 0% !>= 25% --> no update */
+    }
+    
+    @Test
     public void testAddOrUpdateLink() throws Exception {
         LinkDiscoveryManager linkDiscovery = getLinkDiscoveryManager();
-
-        Link lt = new Link(DatapathId.of(1L), OFPort.of(2), DatapathId.of(2L), OFPort.of(1), U64.ZERO);
+        U64 latency = U64.of(100);
+        Link lt = new Link(DatapathId.of(1L), OFPort.of(2), DatapathId.of(2L), OFPort.of(1), latency);
         LinkInfo info = new LinkInfo(new Date(),
                                      new Date(), null);
         linkDiscovery.addOrUpdateLink(lt, info);
-
 
         NodePortTuple srcNpt = new NodePortTuple(DatapathId.of(1L), OFPort.of(2));
         NodePortTuple dstNpt = new NodePortTuple(DatapathId.of(2L), OFPort.of(1));
@@ -192,6 +219,7 @@ public class LinkDiscoveryManagerTest extends FloodlightTestCase {
         assertNotNull(linkDiscovery.portLinks.get(dstNpt));
         assertTrue(linkDiscovery.portLinks.get(dstNpt).contains(lt));
         assertTrue(linkDiscovery.links.containsKey(lt));
+        assertTrue(linkDiscovery.switchLinks.get(lt.getSrc()).iterator().next().getLatency().equals(latency));
     }
 
     @Test

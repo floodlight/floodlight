@@ -40,6 +40,8 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+import javax.annotation.Nonnull;
+
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.HAListenerTypeMarker;
 import net.floodlightcontroller.core.HARole;
@@ -51,9 +53,6 @@ import net.floodlightcontroller.core.IInfoProvider;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.IOFSwitchListener;
-import net.floodlightcontroller.core.annotations.LogMessageCategory;
-import net.floodlightcontroller.core.annotations.LogMessageDoc;
-import net.floodlightcontroller.core.annotations.LogMessageDocs;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
@@ -74,7 +73,6 @@ import net.floodlightcontroller.linkdiscovery.ILinkDiscovery.SwitchType;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscovery.UpdateOperation;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryListener;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryService;
-import net.floodlightcontroller.linkdiscovery.LinkInfo;
 import net.floodlightcontroller.linkdiscovery.web.LinkDiscoveryWebRoutable;
 import net.floodlightcontroller.notification.INotificationManager;
 import net.floodlightcontroller.notification.NotificationManagerFactory;
@@ -128,7 +126,6 @@ import org.slf4j.LoggerFactory;
  * 
  * @edited Ryan Izard, rizard@g.clemson.edu, ryan.izard@bigswitch.com
  */
-@LogMessageCategory("Network Topology")
 public class LinkDiscoveryManager implements IOFMessageListener,
 IOFSwitchListener, IStorageSourceListener, ILinkDiscoveryService,
 IFloodlightModule, IInfoProvider {
@@ -209,6 +206,12 @@ IFloodlightModule, IInfoProvider {
 	protected LLDPTLV controllerTLV;
 	protected ReentrantReadWriteLock lock;
 	int lldpTimeCount = 0;
+
+	/*
+	 * Latency tracking
+	 */
+	protected static int LATENCY_HISTORY_SIZE = 10;
+	protected static double LATENCY_UPDATE_THRESHOLD = 0.50;
 
 	/**
 	 * Flag to indicate if automatic port fast is enabled or not. Default is set
@@ -296,7 +299,7 @@ IFloodlightModule, IInfoProvider {
 
 		if (log.isTraceEnabled()) {
 			log.trace("Sending LLDP packet out of swich: {}, port: {}, reverse: {}",
-					new Object[] {iofSwitch.getId().toString(), port.toString(), Boolean.toString(isReverse)});
+				new Object[] {iofSwitch.getId().toString(), port.toString(), Boolean.toString(isReverse)});
 		}
 
 		// using "nearest customer bridge" MAC address for broadest possible
@@ -362,7 +365,7 @@ IFloodlightModule, IInfoProvider {
 		} else {
 			lldp.getOptionalTLVList().add(forwardTLV);
 		}
-		
+
 		/* 
 		 * Introduce a new TLV for med-granularity link latency detection.
 		 * If same controller, can assume system clock is the same, but
@@ -373,19 +376,24 @@ IFloodlightModule, IInfoProvider {
 		 * 
 		 * Note Long.SIZE is in bits (64).
 		 */
+		long time = System.currentTimeMillis();
+		long swLatency = iofSwitch.getLatency().getValue();
+		if (log.isTraceEnabled()) {
+			log.trace("SETTING LLDP LATENCY TLV: Current Time {}; {} control plane latency {}; sum {}", new Object[] { time, iofSwitch.getId(), swLatency, time + swLatency });
+		}
 		byte[] timestampTLVValue = ByteBuffer.allocate(Long.SIZE / 8 + 4)
 				.put((byte) 0x00)
 				.put((byte) 0x26)
 				.put((byte) 0xe1)
 				.put((byte) 0x01) /* 0x01 is what we'll use to differentiate DPID (0x00) from time (0x01) */
-				.putLong(System.currentTimeMillis() + iofSwitch.getLatency().getValue() /* account for our switch's one-way latency */)
+				.putLong(time + swLatency /* account for our switch's one-way latency */)
 				.array();
 
 		LLDPTLV timestampTLV = new LLDPTLV()
 		.setType((byte) 127)
 		.setLength((short) timestampTLVValue.length)
 		.setValue(timestampTLVValue);
-		
+
 		/* Now add TLV to our LLDP packet */
 		lldp.getOptionalTLVList().add(timestampTLV);
 
@@ -546,7 +554,7 @@ IFloodlightModule, IInfoProvider {
 		LinkInfo linkInfo = links.get(link);
 		LinkInfo retLinkInfo = null;
 		if (linkInfo != null) {
-			retLinkInfo  = new LinkInfo(linkInfo);
+			retLinkInfo = new LinkInfo(linkInfo);
 		}
 		lock.readLock().unlock();
 		return retLinkInfo;
@@ -655,7 +663,7 @@ IFloodlightModule, IInfoProvider {
 		// If LLDP is suppressed on this port, ignore received packet as well
 		IOFSwitch iofSwitch = switchService.getSwitch(sw);
 
-		log.warn("Received LLDP packet on sw {}, port {}", sw, inPort);
+		log.debug("Received LLDP packet on sw {}, port {}", sw, inPort);
 
 		if (!isIncomingDiscoveryAllowed(sw, inPort, isStandard))
 			return Command.STOP;
@@ -676,7 +684,7 @@ IFloodlightModule, IInfoProvider {
 		OFPort remotePort = OFPort.of(portBB.getShort());
 		IOFSwitch remoteSwitch = null;
 		long timestamp = 0;
-		
+
 		// Verify this LLDP packet matches what we're looking for
 		for (LLDPTLV lldptlv : lldp.getOptionalTLVList()) {
 			if (lldptlv.getType() == 127 && lldptlv.getLength() == 12
@@ -692,7 +700,12 @@ IFloodlightModule, IInfoProvider {
 					&& lldptlv.getValue()[2] == (byte) 0xe1
 					&& lldptlv.getValue()[3] == 0x01) { /* 0x01 for timestamp */
 				ByteBuffer tsBB = ByteBuffer.wrap(lldptlv.getValue()); /* skip OpenFlow OUI (4 bytes above) */
-				timestamp = tsBB.getLong(4) + iofSwitch.getLatency().getValue(); /* include the RX switch latency to "subtract" it */
+				long swLatency = iofSwitch.getLatency().getValue();
+				timestamp = tsBB.getLong(4); /* include the RX switch latency to "subtract" it */
+				if (log.isTraceEnabled()) {
+					log.trace("RECEIVED LLDP LATENCY TLV: Got timestamp of {}; Switch {} latency of {}", new Object[] { timestamp, iofSwitch.getId(), iofSwitch.getLatency().getValue() }); 
+				}
+				timestamp = timestamp + swLatency;
 			} else if (lldptlv.getType() == 12 && lldptlv.getLength() == 8) {
 				otherId = ByteBuffer.wrap(lldptlv.getValue()).getLong();
 				if (myId == otherId) myLLDP = true;
@@ -768,9 +781,14 @@ IFloodlightModule, IInfoProvider {
 
 		// Store the time of update to this link, and push it out to
 		// routingEngine
-		U64 latency = timestamp != 0 ? U64.of(System.currentTimeMillis() - timestamp) : U64.ZERO;
+		long time = System.currentTimeMillis();
+		U64 latency = (timestamp != 0 && (time - timestamp) > 0) ? U64.of(time - timestamp) : U64.ZERO;
+		if (log.isTraceEnabled()) {
+			log.trace("COMPUTING FINAL DATAPLANE LATENCY: Current time {}; Dataplane+{} latency {}; Overall latency from {} to {} is {}", 
+					new Object[] { time, iofSwitch.getId(), timestamp, remoteSwitch.getId(), iofSwitch.getId(), String.valueOf(latency.getValue()) });
+		}
 		Link lt = new Link(remoteSwitch.getId(), remotePort,
-				iofSwitch.getId(), inPort, latency); /* we assume 0 latency is undefined */
+				iofSwitch.getId(), inPort, latency);
 
 		if (!isLinkAllowed(lt.getSrc(), lt.getSrcPort(),
 				lt.getDst(), lt.getDstPort()))
@@ -782,13 +800,13 @@ IFloodlightModule, IInfoProvider {
 
 		Date firstSeenTime = new Date(System.currentTimeMillis());
 
-		if (isStandard)
-			lastLldpTime = new Date(System.currentTimeMillis());
-		else
-			lastBddpTime = new Date(System.currentTimeMillis());
+		if (isStandard) {
+			lastLldpTime = new Date(firstSeenTime.getTime());
+		} else {
+			lastBddpTime = new Date(firstSeenTime.getTime());
+		}
 
-		LinkInfo newLinkInfo = new LinkInfo(firstSeenTime, lastLldpTime,
-				lastBddpTime);
+		LinkInfo newLinkInfo = new LinkInfo(firstSeenTime, lastLldpTime, lastBddpTime);
 
 		addOrUpdateLink(lt, newLinkInfo);
 
@@ -805,6 +823,7 @@ IFloodlightModule, IInfoProvider {
 				// the reverse link does not exist.
 				if (newLinkInfo.getFirstSeenTime().getTime() > System.currentTimeMillis()
 						- LINK_TIMEOUT) {
+					log.debug("Sending reverse LLDP for link {}", lt);
 					this.sendDiscoveryMessage(lt.getDst(), lt.getDstPort(),
 							isStandard, true);
 				}
@@ -872,11 +891,6 @@ IFloodlightModule, IInfoProvider {
 	//  Internal Methods - Discovery Related
 	//***********************************
 
-	@LogMessageDoc(level = "ERROR",
-			message = "Error in link discovery updates loop",
-			explanation = "An unknown error occured while dispatching "
-					+ "link update notifications",
-					recommendation = LogMessageDoc.GENERIC_ACTION)
 	private void doUpdatesThread() throws InterruptedException {
 		do {
 			LDUpdate update = updates.take();
@@ -888,15 +902,16 @@ IFloodlightModule, IInfoProvider {
 				updateList.add(updates.remove());
 			}
 
-			if (linkDiscoveryAware != null) {
-				if (log.isTraceEnabled()) {
-					log.trace("Dispatching link discovery update {} {} {} {} {} for {}",
+			if (linkDiscoveryAware != null && !updateList.isEmpty()) {
+				if (log.isDebugEnabled()) {
+					log.debug("Dispatching link discovery update {} {} {} {} {} {}ms for {}",
 							new Object[] {
 							update.getOperation(),
-							update.getSrc().toString(),
+							update.getSrc(),
 							update.getSrcPort(),
-							update.getDst().toString(),
+							update.getDst(),
 							update.getDstPort(),
+							update.getLatency().getValue(),
 							linkDiscoveryAware });
 				}
 				try {
@@ -1180,11 +1195,6 @@ IFloodlightModule, IInfoProvider {
 	 * @param isReverse
 	 *            indicates whether the LLDP was sent as a response
 	 */
-	@LogMessageDoc(level = "ERROR",
-			message = "Failure sending LLDP out port {port} on switch {switch}",
-			explanation = "An I/O error occured while sending LLDP message "
-					+ "to the switch.",
-					recommendation = LogMessageDoc.CHECK_SWITCH)
 	protected void sendDiscoveryMessage(DatapathId sw, OFPort port,
 			boolean isStandard, boolean isReverse) {
 
@@ -1222,17 +1232,18 @@ IFloodlightModule, IInfoProvider {
 			IOFSwitch iofSwitch = switchService.getSwitch(sw);
 			if (iofSwitch == null) continue;
 			if (!iofSwitch.isActive()) continue; /* can't do anything if the switch is SLAVE */
-			if (iofSwitch.getEnabledPorts() != null) {
-				for (OFPortDesc ofp : iofSwitch.getEnabledPorts()) {
-					if (isLinkDiscoverySuppressed(sw, ofp.getPortNo())) {			
+			Collection<OFPort> c = iofSwitch.getEnabledPortNumbers();
+			if (c != null) {
+				for (OFPort ofp : c) {
+					if (isLinkDiscoverySuppressed(sw, ofp)) {			
 						continue;
 					}
 					log.trace("Enabled port: {}", ofp);
-					sendDiscoveryMessage(sw, ofp.getPortNo(), true, false);
+					sendDiscoveryMessage(sw, ofp, true, false);
 
 					// If the switch port is not already in the maintenance
 					// queue, add it.
-					NodePortTuple npt = new NodePortTuple(sw, ofp.getPortNo());
+					NodePortTuple npt = new NodePortTuple(sw, ofp);
 					addToMaintenanceQueue(npt);
 				}
 			}
@@ -1300,72 +1311,119 @@ IFloodlightModule, IInfoProvider {
 					new HashSet<Link>());
 		portLinks.get(dstNpt).add(lt);
 
+		newInfo.addObservedLatency(lt.getLatency());
+
 		return true;
 	}
 
-	protected boolean updateLink(Link lt, LinkInfo oldInfo, LinkInfo newInfo) {
+	/**
+	 * Determine if a link should be updated and set the time stamps if it should.
+	 * Also, determine the correct latency value for the link. An existing link
+	 * will have a list of latencies associated with its LinkInfo. If enough time has
+	 * elapsed to determine a good latency baseline average and the new average is
+	 * greater or less than the existing latency value by a set threshold, then the
+	 * latency should be updated. This allows for latencies to be smoothed and reduces
+	 * the number of link updates due to small fluctuations (or outliers) in instantaneous
+	 * link latency values.
+	 * 
+	 * @param lt with observed latency. Will be replaced with latency to use.
+	 * @param existingInfo with past observed latencies and time stamps
+	 * @param newInfo with updated time stamps
+	 * @return true if update occurred; false if no update should be dispatched
+	 */
+	protected boolean updateLink(@Nonnull Link lk, @Nonnull LinkInfo existingInfo, @Nonnull LinkInfo newInfo) {
 		boolean linkChanged = false;
-		// Since the link info is already there, we need to
-		// update the right fields.
-		if (newInfo.getUnicastValidTime() == null) {
-			// This is due to a multicast LLDP, so copy the old unicast
-			// value.
-			if (oldInfo.getUnicastValidTime() != null) {
-				newInfo.setUnicastValidTime(oldInfo.getUnicastValidTime());
+		boolean ignoreBDDP_haveLLDPalready = false;
+		
+		/*
+		 * Check if we are transitioning from one link type to another.
+		 * A transition is:
+		 * -- going from no LLDP time to an LLDP time (is OpenFlow link)
+		 * -- going from an LLDP time to a BDDP time (is non-OpenFlow link)
+		 * 
+		 * Note: Going from LLDP to BDDP means our LLDP link must have timed
+		 * out already (null in existing LinkInfo). Otherwise, we'll flap
+		 * between mulitcast and unicast links.
+		 */
+		if (existingInfo.getMulticastValidTime() == null && newInfo.getMulticastValidTime() != null) {
+			if (existingInfo.getUnicastValidTime() == null) { /* unicast must be null to go to multicast */
+				log.debug("Link is BDDP. Changed.");
+				linkChanged = true; /* detected BDDP */
+			} else {
+				ignoreBDDP_haveLLDPalready = true;
 			}
-		} else if (newInfo.getMulticastValidTime() == null) {
-			// This is due to a unicast LLDP, so copy the old multicast
-			// value.
-			if (oldInfo.getMulticastValidTime() != null) {
-				newInfo.setMulticastValidTime(oldInfo.getMulticastValidTime());
-			}
+		} else if (existingInfo.getUnicastValidTime() == null && newInfo.getUnicastValidTime() != null) {
+			log.debug("Link is LLDP. Changed.");
+			linkChanged = true; /* detected LLDP */
 		}
 
-		Date oldTime = oldInfo.getUnicastValidTime();
-		Date newTime = newInfo.getUnicastValidTime();
-		// the link has changed its state between openflow and
-		// non-openflow
-		// if the unicastValidTimes are null or not null
-		if (oldTime != null & newTime == null) {
+		/* 
+		 * If we're undergoing an LLDP update (non-null time), grab the new LLDP time.
+		 * If we're undergoing a BDDP update (non-null time), grab the new BDDP time.
+		 * 
+		 * Only do this if the new LinkInfo is non-null for each respective field.
+		 * We want to overwrite an existing LLDP/BDDP time stamp with null if it's
+		 * still valid.
+		 */
+		if (newInfo.getUnicastValidTime() != null) {
+			existingInfo.setUnicastValidTime(newInfo.getUnicastValidTime());
+		} else if (newInfo.getMulticastValidTime() != null) {
+			existingInfo.setMulticastValidTime(newInfo.getMulticastValidTime());
+		}	
+
+		/*
+		 * Update Link latency if we've accumulated enough latency data points
+		 * and if the average exceeds +/- the current stored latency by the
+		 * defined update threshold.
+		 */
+		U64 currentLatency = existingInfo.getCurrentLatency();
+		U64 latencyToUse = existingInfo.addObservedLatency(lk.getLatency());
+
+		if (currentLatency == null) {
+			/* no-op; already 'changed' as this is a new link */
+		} else if (!latencyToUse.equals(currentLatency) && !ignoreBDDP_haveLLDPalready) {
+			log.debug("Updating link {} latency to {}ms", lk.toKeyString(), latencyToUse.getValue());
+			lk.setLatency(latencyToUse);
 			linkChanged = true;
-		} else if (oldTime == null & newTime != null) {
-			linkChanged = true;
+		} else {
+			log.trace("No need to update link latency {}", lk.toString());
 		}
 
 		return linkChanged;
 	}
 
-	@LogMessageDocs({
-		@LogMessageDoc(message="Inter-switch link detected:",
-				explanation="Detected a new link between two openflow switches," +
-				"use show link to find current status"),
-				@LogMessageDoc(message="Inter-switch link updated:",
-				explanation="Detected a link change between two openflow switches, " +
-						"use show link to find current status")
-	})
 	protected boolean addOrUpdateLink(Link lt, LinkInfo newInfo) {
-
 		boolean linkChanged = false;
 
 		lock.writeLock().lock();
 		try {
-			// put the new info. if an old info exists, it will be returned.
-			LinkInfo oldInfo = links.put(lt, newInfo);
-			if (oldInfo != null
-					&& oldInfo.getFirstSeenTime().getTime() < newInfo.getFirstSeenTime().getTime())
-				newInfo.setFirstSeenTime(oldInfo.getFirstSeenTime());
+			/*
+			 * Put the new info only if new. We want a single LinkInfo
+			 * to exist per Link. This will allow us to track latencies
+			 * without having to conduct a deep, potentially expensive
+			 * copy each time a link is updated.
+			 */
+			LinkInfo existingInfo = null;
+			if (links.get(lt) == null) {
+				links.put(lt, newInfo); /* Only put if doesn't exist or null value */
+			} else {
+				existingInfo = links.get(lt);
+			}
+
+			/* Update existing LinkInfo with most recent time stamp */
+			if (existingInfo != null && existingInfo.getFirstSeenTime().before(newInfo.getFirstSeenTime())) {
+				existingInfo.setFirstSeenTime(newInfo.getFirstSeenTime());
+			}
 
 			if (log.isTraceEnabled()) {
-				log.trace("addOrUpdateLink: {} {}",
-						lt,
-						(newInfo.getMulticastValidTime() != null) ? "multicast"
-								: "unicast");
+				log.trace("addOrUpdateLink: {} {}", lt,
+						(newInfo.getMulticastValidTime() != null) ? "multicast" : "unicast");
 			}
 
 			UpdateOperation updateOperation = null;
 			linkChanged = false;
 
-			if (oldInfo == null) {
+			if (existingInfo == null) {
 				addLink(lt, newInfo);
 				updateOperation = UpdateOperation.LINK_UPDATED;
 				linkChanged = true;
@@ -1374,18 +1432,18 @@ IFloodlightModule, IInfoProvider {
 				// Add all to event history
 				LinkType linkType = getLinkType(lt, newInfo);
 				if (linkType == ILinkDiscovery.LinkType.DIRECT_LINK) {
-					log.info("Inter-switch link detected: {}", lt);
+					log.debug("Inter-switch link detected: {}", lt);
 					eventCategory.newEventNoFlush(new DirectLinkEvent(lt.getSrc(),
 							lt.getSrcPort(), lt.getDst(), lt.getDstPort(), "direct-link-added::rcvd LLDP"));
 				}
 				notifier.postNotification("Link added: " + lt.toString());
 			} else {
-				linkChanged = updateLink(lt, oldInfo, newInfo);
+				linkChanged = updateLink(lt, existingInfo, newInfo);
 				if (linkChanged) {
 					updateOperation = UpdateOperation.LINK_UPDATED;
 					LinkType linkType = getLinkType(lt, newInfo);
 					if (linkType == ILinkDiscovery.LinkType.DIRECT_LINK) {
-						log.info("Inter-switch link updated: {}", lt);
+						log.debug("Inter-switch link updated: {}", lt);
 						eventCategory.newEventNoFlush(new DirectLinkEvent(lt.getSrc(),
 								lt.getSrcPort(), lt.getDst(), lt.getDstPort(),
 								"link-port-state-updated::rcvd LLDP"));
@@ -1394,11 +1452,6 @@ IFloodlightModule, IInfoProvider {
 				}
 			}
 
-			// Write changes to storage. This will always write the updated
-			// valid time, plus the port states if they've changed (i.e. if
-			// they weren't set to null in the previous block of code.
-			writeLinkToStorage(lt, newInfo);
-
 			if (linkChanged) {
 				// find out if the link was added or removed here.
 				updates.add(new LDUpdate(lt.getSrc(), lt.getSrcPort(),
@@ -1406,7 +1459,22 @@ IFloodlightModule, IInfoProvider {
 						lt.getLatency(),
 						getLinkType(lt, newInfo),
 						updateOperation));
+				/* Update link structure (FIXME shouldn't have to do this, since it should be the same object) */
+				Iterator<Entry<Link, LinkInfo>> it = links.entrySet().iterator();
+				while (it.hasNext()) {
+					Entry<Link, LinkInfo> entry = it.next();
+					if (entry.getKey().equals(lt)) {
+						entry.getKey().setLatency(lt.getLatency());
+						break;
+					}
+				}
 			}
+			
+			// Write changes to storage. This will always write the updated
+			// valid time, plus the port states if they've changed (i.e. if
+			// they weren't set to null in the previous block of code.
+			writeLinkToStorage(lt, newInfo);
+			
 		} finally {
 			lock.writeLock().unlock();
 		}
@@ -1445,9 +1513,6 @@ IFloodlightModule, IInfoProvider {
 	 * @param links
 	 *            The List of @LinkTuple to delete.
 	 */
-	@LogMessageDoc(message="Inter-switch link removed:",
-			explanation="A previously detected link between two openflow switches no longer exists, " +
-			"use show link to find current status")
 	protected void deleteLinks(List<Link> links, String reason,
 			List<LDUpdate> updateList) {
 
@@ -1546,38 +1611,41 @@ IFloodlightModule, IInfoProvider {
 	protected void timeoutLinks() {
 		List<Link> eraseList = new ArrayList<Link>();
 		Long curTime = System.currentTimeMillis();
-		boolean linkChanged = false;
-
-		// reentrant required here because deleteLink also write locks
+		boolean unicastTimedOut = false;
+		
+		/* Reentrant required here because deleteLink also write locks. */
 		lock.writeLock().lock();
 		try {
-			Iterator<Entry<Link, LinkInfo>> it = this.links.entrySet()
-					.iterator();
+			Iterator<Entry<Link, LinkInfo>> it = this.links.entrySet().iterator();
 			while (it.hasNext()) {
 				Entry<Link, LinkInfo> entry = it.next();
 				Link lt = entry.getKey();
 				LinkInfo info = entry.getValue();
 
-				// Timeout the unicast and multicast LLDP valid times
-				// independently.
+				/* Timeout the unicast and multicast LLDP valid times independently. */
 				if ((info.getUnicastValidTime() != null)
 						&& (info.getUnicastValidTime().getTime()
 								+ (this.LINK_TIMEOUT * 1000) < curTime)) {
+					unicastTimedOut = true;
 					info.setUnicastValidTime(null);
-					linkChanged = true;
 				}
 				if ((info.getMulticastValidTime() != null)
 						&& (info.getMulticastValidTime().getTime()
 								+ (this.LINK_TIMEOUT * 1000) < curTime)) {
 					info.setMulticastValidTime(null);
-					linkChanged = true;
 				}
-				// Add to the erase list only if the unicast
-				// time is null.
-				if (info.getUnicastValidTime() == null
+				/* 
+				 * Add to the erase list only if the unicast time is null
+				 * and the multicast time is null as well. Otherwise, if
+				 * only the unicast time is null and we just set it to 
+				 * null (meaning it just timed out), then we transition
+				 * from unicast to multicast.
+				 */
+				if (info.getUnicastValidTime() == null 
 						&& info.getMulticastValidTime() == null) {
 					eraseList.add(entry.getKey());
-				} else if (linkChanged) {
+				} else if (unicastTimedOut) {
+					/* Just moved from unicast to multicast. */
 					updates.add(new LDUpdate(lt.getSrc(), lt.getSrcPort(),
 							lt.getDst(), lt.getDstPort(), lt.getLatency(),
 							getLinkType(lt, info),
@@ -1585,8 +1653,7 @@ IFloodlightModule, IInfoProvider {
 				}
 			}
 
-			// if any link was deleted or any link was changed.
-			if ((eraseList.size() > 0) || linkChanged) {
+			if (!eraseList.isEmpty()) {
 				deleteLinks(eraseList, "LLDP timeout");
 			}
 		} finally {
@@ -1597,14 +1664,6 @@ IFloodlightModule, IInfoProvider {
 	//******************
 	// Internal Helper Methods
 	//******************
-	@LogMessageDoc(level="WARN",
-			message="Could not get list of interfaces of local machine to " +
-					"encode in TLV: {detail-msg}",
-					explanation="Outgoing LLDP packets encode a unique hash to " +
-							"identify the local machine. The list of network " +
-							"interfaces is used as input and the controller failed " +
-							"to query this list",
-							recommendation=LogMessageDoc.REPORT_CONTROLLER_BUG)
 	protected void setControllerTLV() {
 		// Setting the controllerTLVValue based on current nano time,
 		// controller's IP address, and the network interface object hash
@@ -1946,14 +2005,34 @@ IFloodlightModule, IInfoProvider {
 		// read our config options
 		Map<String, String> configOptions = context.getConfigParams(this);
 		try {
-			String histSize = configOptions.get("eventhistorysize");
+			String histSize = configOptions.get("event-history-size");
 			if (histSize != null) {
 				EVENT_HISTORY_SIZE = Short.parseShort(histSize);
 			}
 		} catch (NumberFormatException e) {
-			log.warn("Error event history size, using default of {} seconds", EVENT_HISTORY_SIZE);
+			log.warn("Error event history size. Using default of {} seconds", EVENT_HISTORY_SIZE);
 		}
 		log.debug("Event history size set to {}", EVENT_HISTORY_SIZE);
+
+		try {
+			String latencyHistorySize = configOptions.get("latency-history-size");
+			if (latencyHistorySize != null) {
+				LATENCY_HISTORY_SIZE = Integer.parseInt(latencyHistorySize);
+			}
+		} catch (NumberFormatException e) {
+			log.warn("Error in latency history size. Using default of {} LLDP intervals", LATENCY_HISTORY_SIZE);
+		}
+		log.info("Link latency history set to {} LLDP data points", LATENCY_HISTORY_SIZE, LATENCY_HISTORY_SIZE);
+
+		try {
+			String latencyUpdateThreshold = configOptions.get("latency-update-threshold");
+			if (latencyUpdateThreshold != null) {
+				LATENCY_UPDATE_THRESHOLD = Double.parseDouble(latencyUpdateThreshold);
+			}
+		} catch (NumberFormatException e) {
+			log.warn("Error in latency update threshold. Can be from 0 to 1.", LATENCY_UPDATE_THRESHOLD);
+		}
+		log.info("Latency update threshold set to +/-{} ({}%) of rolling historical average", LATENCY_UPDATE_THRESHOLD, LATENCY_UPDATE_THRESHOLD * 100);
 
 		// Set the autoportfast feature to false.
 		this.autoPortFastFeature = AUTOPORTFAST_DEFAULT;
@@ -1979,28 +2058,6 @@ IFloodlightModule, IInfoProvider {
 	}
 
 	@Override
-	@LogMessageDocs({
-		@LogMessageDoc(level = "ERROR",
-				message = "No storage source found.",
-				explanation = "Storage source was not initialized; cannot initialize "
-						+ "link discovery.",
-						recommendation = LogMessageDoc.REPORT_CONTROLLER_BUG),
-						@LogMessageDoc(level = "ERROR",
-						message = "Error in installing listener for "
-								+ "switch config table {table}",
-								explanation = "Failed to install storage notification for the "
-										+ "switch config table",
-										recommendation = LogMessageDoc.REPORT_CONTROLLER_BUG),
-										@LogMessageDoc(level = "ERROR",
-										message = "No storage source found.",
-										explanation = "Storage source was not initialized; cannot initialize "
-												+ "link discovery.",
-												recommendation = LogMessageDoc.REPORT_CONTROLLER_BUG),
-												@LogMessageDoc(level = "ERROR",
-												message = "Exception in LLDP send timer.",
-												explanation = "An unknown error occured while sending LLDP "
-														+ "messages to switches.",
-														recommendation = LogMessageDoc.CHECK_SWITCH) })
 	public void startUp(FloodlightModuleContext context) throws FloodlightModuleException {
 
 		// Initialize role to floodlight provider role.
@@ -2159,7 +2216,6 @@ IFloodlightModule, IInfoProvider {
 		}
 	}
 
-
 	//*********************
 	//  IInfoProvider
 	//*********************
@@ -2232,5 +2288,4 @@ IFloodlightModule, IInfoProvider {
 			//no-op
 		}
 	}
-
 }

@@ -52,8 +52,6 @@ import net.floodlightcontroller.core.IOFSwitchListener;
 import net.floodlightcontroller.core.LogicalOFMessageCategory;
 import net.floodlightcontroller.core.PortChangeType;
 import net.floodlightcontroller.core.RoleInfo;
-import net.floodlightcontroller.core.annotations.LogMessageDoc;
-import net.floodlightcontroller.core.annotations.LogMessageDocs;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.FloodlightModuleLoader;
 import net.floodlightcontroller.core.util.ListenerDispatcher;
@@ -90,8 +88,6 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Optional;
 import com.google.common.base.Strings;
-
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
 /**
  * The main controller class.  Handles all setup and network listeners
@@ -420,20 +416,6 @@ public class Controller implements IFloodlightProviderService, IStorageSourceLis
      * FIXME: this method and the ChannelHandler disagree on which messages
      * should be dispatched and which shouldn't
      */
-    @LogMessageDocs({
-        @LogMessageDoc(level="ERROR",
-                message="Ignoring PacketIn (Xid = {xid}) because the data" +
-                        " field is empty.",
-                explanation="The switch sent an improperly-formatted PacketIn" +
-                        " message",
-                recommendation=LogMessageDoc.CHECK_SWITCH),
-        @LogMessageDoc(level="WARN",
-                message="Unhandled OF Message: {} from {}",
-                explanation="The switch sent a message not handled by " +
-                        "the controller")
-    })
-    @SuppressFBWarnings(value="SF_SWITCH_NO_DEFAULT",
-                        justification="False positive -- has default")
     @Override
     public void handleMessage(IOFSwitch sw, OFMessage m,
                                  FloodlightContext bContext) {
@@ -646,15 +628,6 @@ public class Controller implements IFloodlightProviderService, IStorageSourceLis
      * @return A valid role if role information is specified in the
      *         config params, otherwise null
      */
-    @LogMessageDocs({
-        @LogMessageDoc(message="Controller role set to {role}",
-                explanation="Setting the initial HA role to "),
-        @LogMessageDoc(level="ERROR",
-                message="Invalid current role value: {role}",
-                explanation="An invalid HA role value was read from the " +
-                            "properties file",
-                recommendation=LogMessageDoc.CHECK_CONTROLLER)
-    })
     protected HARole getInitialRole(Map<String, String> configParams) {
         HARole role = HARole.STANDBY;
         String roleString = configParams.get("role");
@@ -676,19 +649,6 @@ public class Controller implements IFloodlightProviderService, IStorageSourceLis
      * @throws IOException
      */
     @Override
-    @LogMessageDocs({
-        @LogMessageDoc(message="Listening for switch connections on {address}",
-                explanation="The controller is ready and listening for new" +
-                        " switch connections"),
-        @LogMessageDoc(message="Storage exception in controller " +
-                        "updates loop; terminating process",
-                explanation=ERROR_DATABASE,
-                recommendation=LogMessageDoc.CHECK_CONTROLLER),
-        @LogMessageDoc(level="ERROR",
-                message="Exception in controller updates loop",
-                explanation="Failed to dispatch controller event",
-                recommendation=LogMessageDoc.GENERIC_ACTION)
-    })
     public void run() {
         this.moduleLoaderState = ModuleLoaderState.COMPLETE;
 
@@ -772,11 +732,6 @@ public class Controller implements IFloodlightProviderService, IStorageSourceLis
      * Startup all of the controller's components
      * @param floodlightModuleLoader
      */
-    @LogMessageDoc(message="Waiting for storage source",
-                explanation="The system database is not yet ready",
-                recommendation="If this message persists, this indicates " +
-                        "that the system database has failed to start. " +
-                        LogMessageDoc.CHECK_CONTROLLER)
     public void startupComponents(FloodlightModuleLoader floodlightModuleLoader) throws FloodlightModuleException {
 
         this.moduleLoaderState = ModuleLoaderState.STARTUP;
@@ -810,10 +765,6 @@ public class Controller implements IFloodlightProviderService, IStorageSourceLis
         addInfoProvider("summary", this);
     }
     
-    @LogMessageDoc(level="ERROR",
-            message="failed to access storage: {reason}",
-            explanation="Could not retrieve forwarding configuration",
-            recommendation=LogMessageDoc.CHECK_CONTROLLER)
     private void readFlowPriorityConfigurationFromStorage() {
         try {
             Map<String, Object> row;
@@ -961,13 +912,6 @@ public class Controller implements IFloodlightProviderService, IStorageSourceLis
             "Flow priority configuration has changed after " +
             "controller startup. Restart controller for new " +
             "configuration to take effect.";
-    @LogMessageDoc(level="WARN",
-            message=FLOW_PRIORITY_CHANGED_AFTER_STARTUP,
-            explanation="A user has changed the priority with which access " +
-                    "and core flows are installed after controller startup. " +
-                    "Changing this setting will only take affect after a " +
-                    "controller restart",
-            recommendation="Restart controller")
     @Override
     public void rowsModified(String tableName, Set<Object> rowKeys) {
         if (tableName.equals(CONTROLLER_INTERFACE_TABLE_NAME)) {
@@ -1007,11 +951,6 @@ public class Controller implements IFloodlightProviderService, IStorageSourceLis
         return rb.getUptime();
     }
 
-    @LogMessageDoc(level="WARN",
-            message="Failure adding update {} to queue",
-            explanation="The controller tried to add an internal notification" +
-                        " to its message queue but the add failed.",
-            recommendation=LogMessageDoc.REPORT_CONTROLLER_BUG)
     @Override
     public void addUpdateToQueue(IUpdate update) {
         try {

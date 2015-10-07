@@ -19,17 +19,14 @@ package net.floodlightcontroller.forwarding;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
-import net.floodlightcontroller.devicemanager.IDevice;
-import net.floodlightcontroller.devicemanager.IDeviceService;
-import net.floodlightcontroller.devicemanager.SwitchPort;
 import net.floodlightcontroller.core.annotations.LogMessageCategory;
 import net.floodlightcontroller.core.annotations.LogMessageDoc;
 import net.floodlightcontroller.core.annotations.LogMessageDocs;
@@ -40,6 +37,9 @@ import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.core.util.AppCookie;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
+import net.floodlightcontroller.devicemanager.IDevice;
+import net.floodlightcontroller.devicemanager.IDeviceService;
+import net.floodlightcontroller.devicemanager.SwitchPort;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.packet.IPv6;
@@ -52,12 +52,13 @@ import net.floodlightcontroller.routing.Route;
 import net.floodlightcontroller.topology.ITopologyService;
 
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
-import org.projectfloodlight.openflow.protocol.match.Match;
-import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.protocol.OFFlowModCommand;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.OFPacketOut;
 import org.projectfloodlight.openflow.protocol.OFVersion;
+import org.projectfloodlight.openflow.protocol.action.OFAction;
+import org.projectfloodlight.openflow.protocol.match.Match;
+import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.EthType;
 import org.projectfloodlight.openflow.types.IPv4Address;
@@ -69,7 +70,6 @@ import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.OFVlanVidMatch;
 import org.projectfloodlight.openflow.types.U64;
 import org.projectfloodlight.openflow.types.VlanVid;
-import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -136,7 +136,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
 		OFFlowMod.Builder fmb = sw.getOFFactory().buildFlowAdd(); // this will be a drop-flow; a flow that will not output to any ports
 		List<OFAction> actions = new ArrayList<OFAction>(); // set no action to drop
 		U64 cookie = AppCookie.makeCookie(FORWARDING_APP_ID, 0);
-
+		log.info("Droppingggg");
 		fmb.setCookie(cookie)
 		.setHardTimeout(FLOWMOD_DEFAULT_HARD_TIMEOUT)
 		.setIdleTimeout(FLOWMOD_DEFAULT_IDLE_TIMEOUT)
@@ -162,111 +162,82 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
 		// Check if we have the location of the destination
 		IDevice dstDevice = IDeviceService.fcStore.get(cntx, IDeviceService.CONTEXT_DST_DEVICE);
 
+		DatapathId source=sw.getId();
+		log.info("Packet arrived on switch {}",source);
+		log.info("Port number {}", inPort);
 		if (dstDevice != null) {
 			IDevice srcDevice = IDeviceService.fcStore.get(cntx, IDeviceService.CONTEXT_SRC_DEVICE);
-			DatapathId srcIsland = topologyService.getL2DomainId(sw.getId());
+			DatapathId srcIsland = topologyService.getL2DomainId(source);
 
 			if (srcDevice == null) {
-				log.debug("No device entry found for source device");
+				log.info("No device entry found for source device");
 				return;
 			}
 			if (srcIsland == null) {
-				log.debug("No openflow island found for source {}/{}",
+				log.info("No openflow island found for source {}/{}",
 						sw.getId().toString(), inPort);
 				return;
 			}
 
-			// Validate that we have a destination known on the same island
 			// Validate that the source and destination are not on the same switchport
-			boolean on_same_island = false;
+
 			boolean on_same_if = false;
 			for (SwitchPort dstDap : dstDevice.getAttachmentPoints()) {
-				DatapathId dstSwDpid = dstDap.getSwitchDPID();
-				DatapathId dstIsland = topologyService.getL2DomainId(dstSwDpid);
-				log.trace("Source Island: {}, Destination Island: {}", srcIsland, dstIsland);
-				log.trace("Source Device: {}, Destination Device: {}", srcDevice, dstDevice);
-				if ((dstIsland != null) && dstIsland.equals(srcIsland)) {
-					on_same_island = true;
-					if (sw.getId().equals(dstSwDpid) && inPort.equals(dstDap.getPort())) {
-						on_same_if = true;
-					}
-					break;
+				if (sw.getId().equals(dstDap.getSwitchDPID()) && inPort.equals(dstDap.getPort())) {
+					on_same_if = true;
 				}
-			}
-
-			if (!on_same_island) {
-				// Flood since we don't know the dst device
-				if (log.isTraceEnabled()) {
-					log.trace("No first hop island found for destination " +
-							"device {}, Action = flooding", dstDevice);
-				}
-				doFlood(sw, pi, cntx);
-				return;
+				break;
 			}
 
 			if (on_same_if) {
-				if (log.isTraceEnabled()) {
-					log.trace("Both source and destination are on the same " +
-							"switch/port {}/{}, Action = NOP",
-							sw.toString(), inPort);
-				}
+				log.info("Both source and destination are on the same " +
+						"switch/port {}/{}, Action = NOP",
+						sw.toString(), inPort);
 				return;
 			}
 
-			// Install all the routes where both src and dst have attachment
-			// points.  Since the lists are stored in sorted order we can
-			// traverse the attachment points in O(m+n) time
-			SwitchPort[] srcDaps = srcDevice.getAttachmentPoints();
-			Arrays.sort(srcDaps, clusterIdComparator);
 			SwitchPort[] dstDaps = dstDevice.getAttachmentPoints();
-			Arrays.sort(dstDaps, clusterIdComparator);
 
-			int iSrcDaps = 0, iDstDaps = 0;
+			SwitchPort dstDap = null;
 
-			while ((iSrcDaps < srcDaps.length) && (iDstDaps < dstDaps.length)) {
-				SwitchPort srcDap = srcDaps[iSrcDaps];
-				SwitchPort dstDap = dstDaps[iDstDaps];
-
-				// srcCluster and dstCluster here cannot be null as
-				// every switch will be at least in its own L2 domain.
-				DatapathId srcCluster = topologyService.getL2DomainId(srcDap.getSwitchDPID());
-				DatapathId dstCluster = topologyService.getL2DomainId(dstDap.getSwitchDPID());
-
-				int srcVsDest = srcCluster.compareTo(dstCluster);
-				if (srcVsDest == 0) {
-					if (!srcDap.equals(dstDap)) {
-						Route route =
-								routingEngineService.getRoute(srcDap.getSwitchDPID(), 
-										srcDap.getPort(),
-										dstDap.getSwitchDPID(),
-										dstDap.getPort(), U64.of(0)); //cookie = 0, i.e., default route
-						if (route != null) {
-							if (log.isTraceEnabled()) {
-								log.trace("pushRoute inPort={} route={} " +
-										"destination={}:{}",
-										new Object[] { inPort, route,
-										dstDap.getSwitchDPID(),
-										dstDap.getPort()});
-							}
-
-							U64 cookie = AppCookie.makeCookie(FORWARDING_APP_ID, 0);
-
-							Match m = createMatchFromPacket(sw, inPort, cntx);
-
-							pushRoute(route, m, pi, sw.getId(), cookie,
-									cntx, requestFlowRemovedNotifn, false,
-									OFFlowModCommand.ADD);
-						}
-					}
-					iSrcDaps++;
-					iDstDaps++;
-				} else if (srcVsDest < 0) {
-					iSrcDaps++;
-				} else {
-					iDstDaps++;
+			// looking for the last attachment (at the network edge)
+			for (SwitchPort ap : dstDaps){
+				if (topologyService.isEdge(ap.getSwitchDPID(),ap.getPort())){
+					dstDap = ap;
+					break;
 				}
+			}	
+
+			if (!topologyService.isEdge(source, inPort)) {
+				// It's possible that we learned packed destination while it was in flight
+				log.info("Packet destination is known, but packet was not received on the edge port. Flooding... {}");
+				doFlood(sw, pi, cntx);
+				return; 
+			}				
+			Route route = routingEngineService.getRoute(source, 
+					inPort,
+					dstDap.getSwitchDPID(),
+					dstDap.getPort(), U64.of(0)); //cookie = 0, i.e., default route
+
+			if (route != null) {
+
+				log.info("pushRoute inPort={} route={} " +
+						"destination={}:{}",
+						new Object[] { inPort, route,
+						dstDap.getSwitchDPID(),
+						dstDap.getPort()});
+
+
+				U64 cookie = AppCookie.makeCookie(FORWARDING_APP_ID, 0);
+
+				Match m = createMatchFromPacket(sw, inPort, cntx);
+				log.info("Cretaing flow rules on the route, match rule: {}", m);
+				pushRoute(route, m, pi, sw.getId(), cookie,
+						cntx, requestFlowRemovedNotifn, false,
+						OFFlowModCommand.ADD);	
 			}
 		} else {
+			log.info("Destination unknown, flooding");
 			// Flood since we don't know the dst device
 			doFlood(sw, pi, cntx);
 		}
@@ -306,7 +277,6 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
 		}
 
 		// TODO Detect switch type and match to create hardware-implemented flow
-		// TODO Allow for IPv6 matches
 		if (eth.getEtherType() == EthType.IPv4) { /* shallow check for equality is okay for EthType */
 			IPv4 ip = (IPv4) eth.getPayload();
 			IPv4Address srcIp = ip.getSourceAddress();
@@ -393,25 +363,17 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
 							recommendation=LogMessageDoc.CHECK_SWITCH)
 	protected void doFlood(IOFSwitch sw, OFPacketIn pi, FloodlightContext cntx) {
 		OFPort inPort = (pi.getVersion().compareTo(OFVersion.OF_12) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT));
-		if (topologyService.isIncomingBroadcastAllowed(sw.getId(), inPort) == false) {
-			if (log.isTraceEnabled()) {
-				log.trace("doFlood, drop broadcast packet, pi={}, " +
-						"from a blocked port, srcSwitch=[{},{}], linkInfo={}",
-						new Object[] {pi, sw.getId(), inPort});
-			}
-			return;
-		}
-
 		// Set Action to flood
 		OFPacketOut.Builder pob = sw.getOFFactory().buildPacketOut();
 		List<OFAction> actions = new ArrayList<OFAction>();
-		if (sw.hasAttribute(IOFSwitch.PROP_SUPPORTS_OFPP_FLOOD)) {
-			actions.add(sw.getOFFactory().actions().output(OFPort.FLOOD, Integer.MAX_VALUE)); // FLOOD is a more selective/efficient version of ALL
-		} else {
-			actions.add(sw.getOFFactory().actions().output(OFPort.ALL, Integer.MAX_VALUE));
+		Set<OFPort> broadcastPorts = this.topologyService.getSwitchBroadcastPorts(sw.getId());
+
+		for (OFPort p : broadcastPorts) {
+			if (p.equals(inPort)) continue;
+			actions.add(sw.getOFFactory().actions().output(p, Integer.MAX_VALUE));
 		}
 		pob.setActions(actions);
-
+		// log.info("actions {}",actions);
 		// set buffer-id, in-port and packet-data based on packet-in
 		pob.setBufferId(OFBufferId.NO_BUFFER);
 		pob.setInPort(inPort);
@@ -501,7 +463,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
 		}
 		tmp = configParameters.get("priority");
 		if (tmp != null) {
-			FLOWMOD_DEFAULT_PRIORITY = Integer.parseInt(tmp);
+			FLOWMOD_DEFAULT_PRIORITY = 35777;
 			log.info("Default priority set to {}.", FLOWMOD_DEFAULT_PRIORITY);
 		} else {
 			log.info("Default priority not configured. Using {}.", FLOWMOD_DEFAULT_PRIORITY);

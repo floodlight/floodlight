@@ -27,14 +27,12 @@ import org.apache.thrift.transport.TNonblockingServerTransport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import net.floodlightcontroller.core.annotations.LogMessageCategory;
 // Generated code
 import net.floodlightcontroller.packetstreamer.thrift.*;
 
 /**
  * The PacketStreamer Server that brokers the packet streaming service.
  */
-@LogMessageCategory("OpenFlow Message Tracing")
 public class PacketStreamerServer {
     protected static Logger log = LoggerFactory.getLogger(PacketStreamerServer.class);
     protected static int port = 9090;

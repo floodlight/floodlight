@@ -131,6 +131,8 @@ public class Link implements Comparable<Link> {
                 + ", dst=" + this.dst.toString()
                 + ", inPort="
                 + dstPort.toString()
+                + ", latency="
+                + String.valueOf(latency.getValue())
                 + "]";
     }
     
@@ -159,4 +161,3 @@ public class Link implements Comparable<Link> {
         return this.getDstPort().compareTo(a.getDstPort());
     }
 }
-

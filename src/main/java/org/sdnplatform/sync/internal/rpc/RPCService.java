@@ -16,9 +16,6 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.LinkedTransferQueue;
 
-import net.floodlightcontroller.core.annotations.LogMessageCategory;
-import net.floodlightcontroller.core.annotations.LogMessageDoc;
-import net.floodlightcontroller.core.annotations.LogMessageDocs;
 import net.floodlightcontroller.core.util.SingletonTask;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
 
@@ -40,13 +37,10 @@ import org.sdnplatform.sync.thrift.MessageType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-
-
 /**
  * A lightweight RPC mechanism built on netty.
  * @author readams
  */
-@LogMessageCategory("State Synchronization")
 public class RPCService {
     protected static final Logger logger =
             LoggerFactory.getLogger(RPCService.class);
@@ -223,14 +217,6 @@ public class RPCService {
     /**
      * Stop the RPC service
      */
-    @LogMessageDocs({
-        @LogMessageDoc(level="WARN",
-                message="Failed to cleanly shut down RPC server",
-                explanation="Could not close all open sockets cleanly"),
-        @LogMessageDoc(level="WARN",
-        message="Interrupted while shutting down RPC server",
-        explanation="Could not close all open sockets cleanly")
-    })
     public void shutdown() {
         shutDown = true;
         try {
@@ -436,9 +422,6 @@ public class RPCService {
     /**
      * Start listening sockets
      */
-    @LogMessageDoc(level="INFO",
-                   message="Listening for internal floodlight RPC on {port}",
-                   explanation="The internal RPC service is ready for connections")
     protected void startServer(ChannelPipelineFactory pipelineFactory) {
         final ServerBootstrap bootstrap =
                 new ServerBootstrap(

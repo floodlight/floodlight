@@ -22,7 +22,6 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 import net.floodlightcontroller.core.IOFSwitch;
-import net.floodlightcontroller.core.annotations.LogMessageDoc;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
 
 import org.projectfloodlight.openflow.protocol.OFFeaturesReply;
@@ -71,12 +70,6 @@ public class SwitchResourceBase extends ServerResource {
 	 * @return
 	 */
 	@SuppressWarnings("unchecked")
-	@LogMessageDoc(level="ERROR",
-	message="Failure retrieving statistics from switch {switch}",
-	explanation="An error occurred while retrieving statistics" +
-			"from the switch",
-			recommendation=LogMessageDoc.CHECK_SWITCH + " " +
-					LogMessageDoc.GENERIC_ACTION)
 	protected List<OFStatsReply> getSwitchStatistics(DatapathId switchId,
 			OFStatsType statType) {
 		IOFSwitchService switchService = (IOFSwitchService) getContext().getAttributes().get(IOFSwitchService.class.getCanonicalName());

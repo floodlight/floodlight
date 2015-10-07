@@ -86,6 +86,7 @@ public interface ILinkDiscovery {
             this.operation = oper;
             this.src = switchId;
             this.srcType = stype;
+            this.latency = U64.ZERO;
         }
 
         // For port up or port down; and tunnel port added and removed.
@@ -93,6 +94,7 @@ public interface ILinkDiscovery {
             this.src = sw;
             this.srcPort = port;
             this.operation = operation;
+            this.latency = U64.ZERO;
         }
 
         public DatapathId getSrc() {

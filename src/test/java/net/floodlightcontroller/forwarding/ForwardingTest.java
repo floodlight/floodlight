@@ -23,8 +23,10 @@ import static org.junit.Assert.*;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
@@ -269,9 +271,9 @@ public class ForwardingTest extends FloodlightTestCase {
 				.setXid(15)
 				.build();
 
-		// Mock Packet-out with OFPP_FLOOD action
+		// Mock Packet-out with OFPP_FLOOD action (list of ports to flood)
 		poactions = new ArrayList<OFAction>();
-		poactions.add(factory.actions().output(OFPort.FLOOD, Integer.MAX_VALUE));
+		poactions.add(factory.actions().output(OFPort.of(10), Integer.MAX_VALUE));
 		packetOutFlooded = factory.buildPacketOut()
 				.setBufferId(this.packetIn.getBufferId())
 				.setInPort(packetIn.getMatch().get(MatchField.IN_PORT))
@@ -459,6 +461,8 @@ public class ForwardingTest extends FloodlightTestCase {
 		expect(topology.isAttachmentPointPort(DatapathId.of(1L),  OFPort.of(1))).andReturn(true).anyTimes();
 		expect(topology.isAttachmentPointPort(DatapathId.of(2L),  OFPort.of(3))).andReturn(true).anyTimes();
 		expect(topology.isIncomingBroadcastAllowed(DatapathId.of(anyLong()), OFPort.of(anyShort()))).andReturn(true).anyTimes();
+		expect(topology.isEdge(DatapathId.of(1L), OFPort.of(1))).andReturn(true).anyTimes();
+		expect(topology.isEdge(DatapathId.of(2L), OFPort.of(3))).andReturn(true).anyTimes();
 
 		// Reset mocks, trigger the packet in, and validate results
 		replay(sw1, sw2, routingEngine, topology);
@@ -529,7 +533,9 @@ public class ForwardingTest extends FloodlightTestCase {
 		expect(topology.isAttachmentPointPort(DatapathId.of(1L),  OFPort.of(1))).andReturn(true).anyTimes();
 		expect(topology.isAttachmentPointPort(DatapathId.of(2L),  OFPort.of(3))).andReturn(true).anyTimes();
 		expect(topology.isIncomingBroadcastAllowed(DatapathId.of(anyLong()), OFPort.of(anyShort()))).andReturn(true).anyTimes();
-
+		expect(topology.isEdge(DatapathId.of(1L), OFPort.of(1))).andReturn(true).anyTimes();
+		expect(topology.isEdge(DatapathId.of(2L), OFPort.of(3))).andReturn(true).anyTimes();
+		
 		// Reset mocks, trigger the packet in, and validate results
 		replay(sw1, sw2, routingEngine, topology);
 		forwarding.receive(sw1, this.packetInIPv6, cntx);
@@ -592,8 +598,10 @@ public class ForwardingTest extends FloodlightTestCase {
 		reset(topology);
 		expect(topology.isIncomingBroadcastAllowed(DatapathId.of(anyLong()), OFPort.of(anyShort()))).andReturn(true).anyTimes();
 		expect(topology.getL2DomainId(DatapathId.of(1L))).andReturn(DatapathId.of(1L)).anyTimes();
-		expect(topology.isAttachmentPointPort(DatapathId.of(1L),  OFPort.of(1))).andReturn(true).anyTimes();
-		expect(topology.isAttachmentPointPort(DatapathId.of(1L),  OFPort.of(3))).andReturn(true).anyTimes();
+		expect(topology.isAttachmentPointPort(DatapathId.of(1L), OFPort.of(1))).andReturn(true).anyTimes();
+		expect(topology.isAttachmentPointPort(DatapathId.of(1L), OFPort.of(3))).andReturn(true).anyTimes();
+		expect(topology.isEdge(DatapathId.of(1L), OFPort.of(1))).andReturn(true).anyTimes();
+		expect(topology.isEdge(DatapathId.of(1L), OFPort.of(3))).andReturn(true).anyTimes();
 
 		// Reset mocks, trigger the packet in, and validate results
 		replay(sw1, sw2, routingEngine, topology);
@@ -648,7 +656,9 @@ public class ForwardingTest extends FloodlightTestCase {
 		expect(topology.getL2DomainId(DatapathId.of(1L))).andReturn(DatapathId.of(1L)).anyTimes();
 		expect(topology.isAttachmentPointPort(DatapathId.of(1L),  OFPort.of(1))).andReturn(true).anyTimes();
 		expect(topology.isAttachmentPointPort(DatapathId.of(1L),  OFPort.of(3))).andReturn(true).anyTimes();
-
+		expect(topology.isEdge(DatapathId.of(1L), OFPort.of(1))).andReturn(true).anyTimes();
+		expect(topology.isEdge(DatapathId.of(1L), OFPort.of(3))).andReturn(true).anyTimes();
+		
 		// Reset mocks, trigger the packet in, and validate results
 		replay(sw1, sw2, routingEngine, topology);
 		forwarding.receive(sw1, this.packetInIPv6, cntx);
@@ -729,17 +739,18 @@ public class ForwardingTest extends FloodlightTestCase {
 		// expect no Flow-mod but expect the packet to be flooded
 
 		Capture<OFMessage> wc1 = new Capture<OFMessage>(CaptureType.ALL);
+		
+		Set<OFPort> bcastPorts = new HashSet<OFPort>();
+		bcastPorts.add(OFPort.of(10));
 
 		// Reset mocks, trigger the packet in, and validate results
 		reset(topology);
-		expect(topology.isIncomingBroadcastAllowed(DatapathId.of(1L), OFPort.of(1))).andReturn(true).anyTimes();
+		expect(topology.getSwitchBroadcastPorts(DatapathId.of(1L))).andReturn(bcastPorts).once();
 		expect(topology.isAttachmentPointPort(DatapathId.of(anyLong()),
 				OFPort.of(anyShort())))
 				.andReturn(true)
 				.anyTimes();
-		expect(sw1.hasAttribute(IOFSwitch.PROP_SUPPORTS_OFPP_FLOOD))
-		.andReturn(true).anyTimes();
-		// Reset XID to expected (dependent on prior unit tests)
+		expect(sw1.hasAttribute(IOFSwitch.PROP_SUPPORTS_OFPP_FLOOD)).andReturn(true).anyTimes();
 		sw1.write(capture(wc1));
 		expectLastCall().once();
 		replay(sw1, sw2, routingEngine, topology);
@@ -760,10 +771,13 @@ public class ForwardingTest extends FloodlightTestCase {
 		// expect no Flow-mod but expect the packet to be flooded
 
 		Capture<OFMessage> wc1 = new Capture<OFMessage>(CaptureType.ALL);
+		
+		Set<OFPort> bcastPorts = new HashSet<OFPort>();
+		bcastPorts.add(OFPort.of(10));
 
 		// Reset mocks, trigger the packet in, and validate results
 		reset(topology);
-		expect(topology.isIncomingBroadcastAllowed(DatapathId.of(1L), OFPort.of(1))).andReturn(true).anyTimes();
+		expect(topology.getSwitchBroadcastPorts(DatapathId.of(1L))).andReturn(bcastPorts).once();
 		expect(topology.isAttachmentPointPort(DatapathId.of(anyLong()),
 				OFPort.of(anyShort())))
 				.andReturn(true)

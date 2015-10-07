@@ -16,9 +16,6 @@
 
 package net.floodlightcontroller.packetstreamer;
 
-import net.floodlightcontroller.core.annotations.LogMessageCategory;
-import net.floodlightcontroller.core.annotations.LogMessageDoc;
-import net.floodlightcontroller.core.annotations.LogMessageDocs;
 import net.floodlightcontroller.packetstreamer.thrift.*;
 
 import java.nio.ByteBuffer;
@@ -35,7 +32,6 @@ import org.slf4j.LoggerFactory;
 /**
  * The PacketStreamer handler class that implements the service APIs.
  */
-@LogMessageCategory("OpenFlow Message Tracing")
 public class PacketStreamerHandler implements PacketStreamer.Iface {
 
 	/**
@@ -85,18 +81,6 @@ public class PacketStreamerHandler implements PacketStreamer.Iface {
      * @return A list of packets associated with the session
      */
     @Override
-    @LogMessageDocs({
-        @LogMessageDoc(level="ERROR",
-                message="Interrupted while waiting for session start",
-                explanation="The thread was interrupted waiting " +
-                     "for the packet streamer session to start",
-                recommendation=LogMessageDoc.CHECK_CONTROLLER),
-        @LogMessageDoc(level="ERROR",
-                message="Interrupted while waiting for packets",
-                explanation="The thread was interrupted waiting " +
-                        "for packets",
-                recommendation=LogMessageDoc.CHECK_CONTROLLER)
-    })
     public List<ByteBuffer> getPackets(String sessionid)
             throws org.apache.thrift.TException {
         List<ByteBuffer> packets = new ArrayList<ByteBuffer>();
@@ -134,18 +118,6 @@ public class PacketStreamerHandler implements PacketStreamer.Iface {
      * @throws TException
      */
     @Override
-    @LogMessageDocs({
-        @LogMessageDoc(level="ERROR",
-                message="Could not push empty message",
-                explanation="An empty message was sent to the packet streamer",
-                recommendation=LogMessageDoc.REPORT_CONTROLLER_BUG),
-        @LogMessageDoc(level="ERROR",
-                message="queue for session {sessionId} is null",
-                explanation="The queue for the packet streamer session " +
-                		"is missing",
-                recommendation=LogMessageDoc.REPORT_CONTROLLER_BUG)
-    })
-
     public int pushMessageSync(Message msg)
             throws org.apache.thrift.TException {
 
