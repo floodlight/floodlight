@@ -305,7 +305,6 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 	// ILinkDiscoveryListener
 	// **********************
 
-
 	@Override
 	public void linkDiscoveryUpdate(List<LDUpdate> updateList) {
 		if (log.isTraceEnabled()) {
@@ -322,15 +321,9 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 		ldUpdates.add(update);
 	}
 
-
-
 	// ****************
 	// ITopologyService
 	// ****************
-
-	//
-	// ITopologyService interface methods
-	//
 
 	@Override
 	public Map<DatapathId, Set<Link>> getAllLinks(){
@@ -922,8 +915,7 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 		newInstanceTask = new SingletonTask(ses, new UpdateTopologyWorker());
 
 		if (role != HARole.STANDBY)
-			newInstanceTask.reschedule(TOPOLOGY_COMPUTE_INTERVAL_MS,
-					TimeUnit.MILLISECONDS);
+			newInstanceTask.reschedule(TOPOLOGY_COMPUTE_INTERVAL_MS, TimeUnit.MILLISECONDS);
 
 		linkDiscoveryService.addListener(this);
 		floodlightProviderService.addOFMessageListener(OFType.PACKET_IN, this);
@@ -1384,29 +1376,30 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 	}
 
 	/**
-	 * Add the given link to the data structure.  Returns true if a link was
-	 * added.
+	 * Add the given link to the data structure.
 	 * @param s
 	 * @param l
-	 * @return
 	 */
-	private boolean addLinkToStructure(Map<NodePortTuple,
-			Set<Link>> s, Link l) {
-		boolean result1 = false, result2 = false;
-
+	private void addLinkToStructure(Map<NodePortTuple, Set<Link>> s, Link l) {
 		NodePortTuple n1 = new NodePortTuple(l.getSrc(), l.getSrcPort());
 		NodePortTuple n2 = new NodePortTuple(l.getDst(), l.getDstPort());
 
 		if (s.get(n1) == null) {
 			s.put(n1, new HashSet<Link>());
-		}
+		} 
 		if (s.get(n2) == null) {
 			s.put(n2, new HashSet<Link>());
 		}
-		result1 = s.get(n1).add(l);
-		result2 = s.get(n2).add(l);
-
-		return (result1 || result2);
+		/* 
+		 * Since we don't include latency in .equals(), we need
+		 * to explicitly remove the existing link (if present).
+		 * Otherwise, new latency values for existing links will
+		 * never be accepted.
+		 */
+		s.get(n1).remove(l);
+		s.get(n2).remove(l);
+		s.get(n1).add(l);
+		s.get(n2).add(l);
 	}
 
 	/**

@@ -378,8 +378,8 @@ IFloodlightModule, IInfoProvider {
 		 */
 		long time = System.currentTimeMillis();
 		long swLatency = iofSwitch.getLatency().getValue();
-		if (log.isDebugEnabled()) {
-			log.debug("SETTING LLDP LATENCY TLV: Current Time {}; {} control plane latency {}; sum {}", new Object[] { time, iofSwitch.getId(), swLatency, time + swLatency });
+		if (log.isTraceEnabled()) {
+			log.trace("SETTING LLDP LATENCY TLV: Current Time {}; {} control plane latency {}; sum {}", new Object[] { time, iofSwitch.getId(), swLatency, time + swLatency });
 		}
 		byte[] timestampTLVValue = ByteBuffer.allocate(Long.SIZE / 8 + 4)
 				.put((byte) 0x00)
@@ -702,8 +702,8 @@ IFloodlightModule, IInfoProvider {
 				ByteBuffer tsBB = ByteBuffer.wrap(lldptlv.getValue()); /* skip OpenFlow OUI (4 bytes above) */
 				long swLatency = iofSwitch.getLatency().getValue();
 				timestamp = tsBB.getLong(4); /* include the RX switch latency to "subtract" it */
-				if (log.isDebugEnabled()) {
-					log.debug("RECEIVED LLDP LATENCY TLV: Got timestamp of {}; Switch {} latency of {}", new Object[] { timestamp, iofSwitch.getId(), iofSwitch.getLatency().getValue() }); 
+				if (log.isTraceEnabled()) {
+					log.trace("RECEIVED LLDP LATENCY TLV: Got timestamp of {}; Switch {} latency of {}", new Object[] { timestamp, iofSwitch.getId(), iofSwitch.getLatency().getValue() }); 
 				}
 				timestamp = timestamp + swLatency;
 			} else if (lldptlv.getType() == 12 && lldptlv.getLength() == 8) {
@@ -783,8 +783,8 @@ IFloodlightModule, IInfoProvider {
 		// routingEngine
 		long time = System.currentTimeMillis();
 		U64 latency = (timestamp != 0 && (time - timestamp) > 0) ? U64.of(time - timestamp) : U64.ZERO;
-		if (log.isDebugEnabled()) {
-			log.debug("COMPUTING FINAL DATAPLANE LATENCY: Current time {}; Dataplane+{} latency {}; Overall latency from {} to {} is {}", 
+		if (log.isTraceEnabled()) {
+			log.trace("COMPUTING FINAL DATAPLANE LATENCY: Current time {}; Dataplane+{} latency {}; Overall latency from {} to {} is {}", 
 					new Object[] { time, iofSwitch.getId(), timestamp, remoteSwitch.getId(), iofSwitch.getId(), String.valueOf(latency.getValue()) });
 		}
 		Link lt = new Link(remoteSwitch.getId(), remotePort,
@@ -1386,7 +1386,7 @@ IFloodlightModule, IInfoProvider {
 			lk.setLatency(latencyToUse);
 			linkChanged = true;
 		} else {
-			log.debug("No need to update link {} latency", lk.toString());
+			log.trace("No need to update link latency {}", lk.toString());
 		}
 
 		return linkChanged;
@@ -1443,7 +1443,7 @@ IFloodlightModule, IInfoProvider {
 					updateOperation = UpdateOperation.LINK_UPDATED;
 					LinkType linkType = getLinkType(lt, newInfo);
 					if (linkType == ILinkDiscovery.LinkType.DIRECT_LINK) {
-						log.info("Inter-switch link updated: {}", lt);
+						log.debug("Inter-switch link updated: {}", lt);
 						eventCategory.newEventNoFlush(new DirectLinkEvent(lt.getSrc(),
 								lt.getSrcPort(), lt.getDst(), lt.getDstPort(),
 								"link-port-state-updated::rcvd LLDP"));

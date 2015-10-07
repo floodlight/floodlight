@@ -231,15 +231,15 @@ public class TopologyInstance {
     }
 
     public void printTopology() {
-        log.info("-----------------Topology-----------------------");
-        log.info("All Links: {}", allLinks);
-		log.info("Broadcast Tree: {}", finiteBroadcastTree);
-        log.info("Broadcast Domain Ports: {}", broadcastDomainPorts);
-        log.info("Tunnel Ports: {}", tunnelPorts);
-        log.info("Clusters: {}", clusters);
-        log.info("Destination Rooted Full Trees: {}", destinationRootedFullTrees);
-        log.info("Broadcast Node Ports: {}", broadcastNodePorts);
-        log.info("-----------------------------------------------");  
+        log.debug("-----------------Topology-----------------------");
+        log.debug("All Links: {}", allLinks);
+		log.debug("Broadcast Tree: {}", finiteBroadcastTree);
+        log.debug("Broadcast Domain Ports: {}", broadcastDomainPorts);
+        log.debug("Tunnel Ports: {}", tunnelPorts);
+        log.debug("Clusters: {}", clusters);
+        log.debug("Destination Rooted Full Trees: {}", destinationRootedFullTrees);
+        log.debug("Broadcast Node Ports: {}", broadcastNodePorts);
+        log.debug("-----------------------------------------------");  
     }
 
     protected void addLinksToOpenflowDomains() {
