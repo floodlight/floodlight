@@ -270,16 +270,17 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 		@Override
 		public void run() {
 			try {
-				if (ldUpdates.peek() != null)
+				if (ldUpdates.peek() != null) {
 					updateTopology();
+				}
 				handleMiscellaneousPeriodicEvents();
 			}
 			catch (Exception e) {
 				log.error("Error in topology instance task thread", e);
 			} finally {
-				if (floodlightProviderService.getRole() != HARole.STANDBY)
-					newInstanceTask.reschedule(TOPOLOGY_COMPUTE_INTERVAL_MS,
-							TimeUnit.MILLISECONDS);
+				if (floodlightProviderService.getRole() != HARole.STANDBY) {
+					newInstanceTask.reschedule(TOPOLOGY_COMPUTE_INTERVAL_MS, TimeUnit.MILLISECONDS);
+				}
 			}
 		}
 	}
@@ -914,8 +915,9 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 		ScheduledExecutorService ses = threadPoolService.getScheduledExecutor();
 		newInstanceTask = new SingletonTask(ses, new UpdateTopologyWorker());
 
-		if (role != HARole.STANDBY)
+		if (role != HARole.STANDBY) {
 			newInstanceTask.reschedule(TOPOLOGY_COMPUTE_INTERVAL_MS, TimeUnit.MILLISECONDS);
+		}
 
 		linkDiscoveryService.addListener(this);
 		floodlightProviderService.addOFMessageListener(OFType.PACKET_IN, this);
@@ -1138,8 +1140,8 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 			} catch (Exception e) {
 				log.error("Error reading link discovery update.", e);
 			}
-			if (log.isTraceEnabled()) {
-				log.trace("Applying update: {}", update);
+			if (log.isDebugEnabled()) {
+				log.debug("Applying update: {}", update);
 			}
 
 			switch (update.getOperation()) {
@@ -1403,14 +1405,13 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 	}
 
 	/**
-	 * Delete the given link from the data strucure.  Returns true if the
+	 * Delete the given link from the data structure.  Returns true if the
 	 * link was deleted.
 	 * @param s
 	 * @param l
 	 * @return
 	 */
-	private boolean removeLinkFromStructure(Map<NodePortTuple,
-			Set<Link>> s, Link l) {
+	private boolean removeLinkFromStructure(Map<NodePortTuple, Set<Link>> s, Link l) {
 
 		boolean result1 = false, result2 = false;
 		NodePortTuple n1 = new NodePortTuple(l.getSrc(), l.getSrcPort());

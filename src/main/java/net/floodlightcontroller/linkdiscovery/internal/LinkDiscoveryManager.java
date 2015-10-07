@@ -903,13 +903,13 @@ IFloodlightModule, IInfoProvider {
 			}
 
 			if (linkDiscoveryAware != null && !updateList.isEmpty()) {
-				if (log.isTraceEnabled()) {
-					log.trace("Dispatching link discovery update {} {} {} {} {} {}ms for {}",
+				if (log.isDebugEnabled()) {
+					log.debug("Dispatching link discovery update {} {} {} {} {} {}ms for {}",
 							new Object[] {
 							update.getOperation(),
-							update.getSrc().toString(),
+							update.getSrc(),
 							update.getSrcPort(),
-							update.getDst().toString(),
+							update.getDst(),
 							update.getDstPort(),
 							update.getLatency().getValue(),
 							linkDiscoveryAware });
@@ -1347,13 +1347,13 @@ IFloodlightModule, IInfoProvider {
 		 */
 		if (existingInfo.getMulticastValidTime() == null && newInfo.getMulticastValidTime() != null) {
 			if (existingInfo.getUnicastValidTime() == null) { /* unicast must be null to go to multicast */
-				log.warn("Link is BDDP. Changed.");
+				log.debug("Link is BDDP. Changed.");
 				linkChanged = true; /* detected BDDP */
 			} else {
 				ignoreBDDP_haveLLDPalready = true;
 			}
 		} else if (existingInfo.getUnicastValidTime() == null && newInfo.getUnicastValidTime() != null) {
-			log.warn("Link is LLDP. Changed.");
+			log.debug("Link is LLDP. Changed.");
 			linkChanged = true; /* detected LLDP */
 		}
 
@@ -1382,7 +1382,7 @@ IFloodlightModule, IInfoProvider {
 		if (currentLatency == null) {
 			/* no-op; already 'changed' as this is a new link */
 		} else if (!latencyToUse.equals(currentLatency) && !ignoreBDDP_haveLLDPalready) {
-			log.warn("Updating link {} latency to {}ms", lk.toKeyString(), latencyToUse.getValue());
+			log.debug("Updating link {} latency to {}ms", lk.toKeyString(), latencyToUse.getValue());
 			lk.setLatency(latencyToUse);
 			linkChanged = true;
 		} else {
@@ -1452,11 +1452,6 @@ IFloodlightModule, IInfoProvider {
 				}
 			}
 
-			// Write changes to storage. This will always write the updated
-			// valid time, plus the port states if they've changed (i.e. if
-			// they weren't set to null in the previous block of code.
-			writeLinkToStorage(lt, newInfo);
-
 			if (linkChanged) {
 				// find out if the link was added or removed here.
 				updates.add(new LDUpdate(lt.getSrc(), lt.getSrcPort(),
@@ -1464,7 +1459,22 @@ IFloodlightModule, IInfoProvider {
 						lt.getLatency(),
 						getLinkType(lt, newInfo),
 						updateOperation));
+				/* Update link structure (FIXME shouldn't have to do this, since it should be the same object) */
+				Iterator<Entry<Link, LinkInfo>> it = links.entrySet().iterator();
+				while (it.hasNext()) {
+					Entry<Link, LinkInfo> entry = it.next();
+					if (entry.getKey().equals(lt)) {
+						entry.getKey().setLatency(lt.getLatency());
+						break;
+					}
+				}
 			}
+			
+			// Write changes to storage. This will always write the updated
+			// valid time, plus the port states if they've changed (i.e. if
+			// they weren't set to null in the previous block of code.
+			writeLinkToStorage(lt, newInfo);
+			
 		} finally {
 			lock.writeLock().unlock();
 		}
@@ -1601,38 +1611,41 @@ IFloodlightModule, IInfoProvider {
 	protected void timeoutLinks() {
 		List<Link> eraseList = new ArrayList<Link>();
 		Long curTime = System.currentTimeMillis();
-		boolean linkChanged = false;
-
-		// reentrant required here because deleteLink also write locks
+		boolean unicastTimedOut = false;
+		
+		/* Reentrant required here because deleteLink also write locks. */
 		lock.writeLock().lock();
 		try {
-			Iterator<Entry<Link, LinkInfo>> it = this.links.entrySet()
-					.iterator();
+			Iterator<Entry<Link, LinkInfo>> it = this.links.entrySet().iterator();
 			while (it.hasNext()) {
 				Entry<Link, LinkInfo> entry = it.next();
 				Link lt = entry.getKey();
 				LinkInfo info = entry.getValue();
 
-				// Timeout the unicast and multicast LLDP valid times
-				// independently.
+				/* Timeout the unicast and multicast LLDP valid times independently. */
 				if ((info.getUnicastValidTime() != null)
 						&& (info.getUnicastValidTime().getTime()
 								+ (this.LINK_TIMEOUT * 1000) < curTime)) {
+					unicastTimedOut = true;
 					info.setUnicastValidTime(null);
-					linkChanged = true;
 				}
 				if ((info.getMulticastValidTime() != null)
 						&& (info.getMulticastValidTime().getTime()
 								+ (this.LINK_TIMEOUT * 1000) < curTime)) {
 					info.setMulticastValidTime(null);
-					linkChanged = true;
 				}
-				// Add to the erase list only if the unicast
-				// time is null.
-				if (info.getUnicastValidTime() == null
+				/* 
+				 * Add to the erase list only if the unicast time is null
+				 * and the multicast time is null as well. Otherwise, if
+				 * only the unicast time is null and we just set it to 
+				 * null (meaning it just timed out), then we transition
+				 * from unicast to multicast.
+				 */
+				if (info.getUnicastValidTime() == null 
 						&& info.getMulticastValidTime() == null) {
 					eraseList.add(entry.getKey());
-				} else if (linkChanged) {
+				} else if (unicastTimedOut) {
+					/* Just moved from unicast to multicast. */
 					updates.add(new LDUpdate(lt.getSrc(), lt.getSrcPort(),
 							lt.getDst(), lt.getDstPort(), lt.getLatency(),
 							getLinkType(lt, info),
@@ -1640,8 +1653,7 @@ IFloodlightModule, IInfoProvider {
 				}
 			}
 
-			// if any link was deleted or any link was changed.
-			if ((eraseList.size() > 0) || linkChanged) {
+			if (!eraseList.isEmpty()) {
 				deleteLinks(eraseList, "LLDP timeout");
 			}
 		} finally {
