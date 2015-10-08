@@ -234,8 +234,8 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
 
 				Match m = createMatchFromPacket(sw, inPort, cntx);
 				log.debug("Cretaing flow rules on the route, match rule: {}", m);
-				pushRoute(route, m, pi, sw.getId(), cookie,
-						cntx, requestFlowRemovedNotifn, false,
+				pushRoute(route, m, pi, sw.getId(), cookie, 
+						cntx, requestFlowRemovedNotifn,
 						OFFlowModCommand.ADD);	
 			} else {
 				log.error("Could not compute route between {} and {}. Dropping packet", srcDevice, dstDevice);
