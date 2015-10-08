@@ -471,7 +471,7 @@ public class LoadBalancerTest extends FloodlightTestCase {
 		// Build topology
 		reset(topology);
 		expect(topology.isIncomingBroadcastAllowed(DatapathId.of(anyLong()), OFPort.of(anyShort()))).andReturn(true).anyTimes();
-		expect(topology.getL2DomainId(DatapathId.of(1L))).andReturn(DatapathId.of(1L)).anyTimes();
+		expect(topology.getOpenflowDomainId(DatapathId.of(1L))).andReturn(DatapathId.of(1L)).anyTimes();
 		expect(topology.isAttachmentPointPort(DatapathId.of(1L), OFPort.of(1))).andReturn(true).anyTimes();
 		expect(topology.isAttachmentPointPort(DatapathId.of(1L), OFPort.of(2))).andReturn(true).anyTimes();
 		expect(topology.isAttachmentPointPort(DatapathId.of(1L), OFPort.of(3))).andReturn(true).anyTimes();
