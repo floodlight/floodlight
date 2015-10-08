@@ -118,32 +118,32 @@ public class TopologyInstance {
                             Set<NodePortTuple> blockedPorts,
                             Map<NodePortTuple, Set<Link>> switchPortLinks,
                             Set<NodePortTuple> broadcastDomainPorts,
-                            Set<NodePortTuple> tunnelPorts, Map<NodePortTuple, Set<Link>> allLinks, Map<DatapathId, Set<OFPort>> allPorts){
-
-        // copy these structures
+                            Set<NodePortTuple> tunnelPorts, 
+                            Map<NodePortTuple, Set<Link>> allLinks, 
+                            Map<DatapathId, Set<OFPort>> allPorts) {
 	
         this.switches = new HashSet<DatapathId>(switchPorts.keySet());
         this.switchPorts = new HashMap<DatapathId, Set<OFPort>>();
-        for(DatapathId sw: switchPorts.keySet()) {
+        for (DatapathId sw : switchPorts.keySet()) {
             this.switchPorts.put(sw, new HashSet<OFPort>(switchPorts.get(sw)));
         }
 		
 		this.allPorts = new HashMap<DatapathId, Set<OFPort>>();
-		for(DatapathId sw: allPorts.keySet()) {
+		for (DatapathId sw : allPorts.keySet()) {
             this.allPorts.put(sw, new HashSet<OFPort>(allPorts.get(sw)));
         }
 
         this.blockedPorts = new HashSet<NodePortTuple>(blockedPorts);
         this.switchPortLinks = new HashMap<NodePortTuple, Set<Link>>();
-        for(NodePortTuple npt: switchPortLinks.keySet()) {
-            this.switchPortLinks.put(npt,
-                                     new HashSet<Link>(switchPortLinks.get(npt)));
+        for (NodePortTuple npt : switchPortLinks.keySet()) {
+            this.switchPortLinks.put(npt, new HashSet<Link>(switchPortLinks.get(npt)));
         }
+        
 		this.allLinks = new HashMap<NodePortTuple, Set<Link>>();
-        for(NodePortTuple npt: allLinks.keySet()) {
-            this.allLinks.put(npt,
-                                     new HashSet<Link>(allLinks.get(npt)));
+        for (NodePortTuple npt : allLinks.keySet()) {
+            this.allLinks.put(npt, new HashSet<Link>(allLinks.get(npt)));
         }
+        
         this.broadcastDomainPorts = new HashSet<NodePortTuple>(broadcastDomainPorts);
         this.tunnelPorts = new HashSet<NodePortTuple>(tunnelPorts);
 
@@ -226,8 +226,8 @@ public class TopologyInstance {
 	 * Returns broadcast ports for the given DatapathId
 	 */
     public Set<OFPort> swBroadcastPorts(DatapathId sw){
-	
-		return this.broadcastPortMap.get(sw);
+    	return this.broadcastPortMap.get(sw);
+
     }
 
     public void printTopology() {
@@ -281,22 +281,22 @@ public class TopologyInstance {
 
         if (switches == null) return;
 
-        for (DatapathId key: switches) {
+        for (DatapathId key : switches) {
             ClusterDFS cdfs = new ClusterDFS();
             dfsList.put(key, cdfs);
         }
+        
         Set<DatapathId> currSet = new HashSet<DatapathId>();
 
-        for (DatapathId sw: switches) {
+        for (DatapathId sw : switches) {
             ClusterDFS cdfs = dfsList.get(sw);
             if (cdfs == null) {
                 log.error("No DFS object for switch {} found.", sw);
-            }else if (!cdfs.isVisited()) {
+            } else if (!cdfs.isVisited()) {
                 dfsTraverse(0, 1, sw, dfsList, currSet);
             }
         }
     }
-
 
     /**
      * @author Srinivasan Ramasubramanian
@@ -327,11 +327,10 @@ public class TopologyInstance {
      * @return long: DSF index to be used when a new node is visited
      */
     private long dfsTraverse (long parentIndex, long currIndex, DatapathId currSw,
-                              Map<DatapathId, ClusterDFS> dfsList, Set <DatapathId> currSet) {
+                              Map<DatapathId, ClusterDFS> dfsList, Set<DatapathId> currSet) {
 
         //Get the DFS object corresponding to the current switch
         ClusterDFS currDFS = dfsList.get(currSw);
-        // Get all the links corresponding to this switch
 
         Set<DatapathId> nodesInMyCluster = new HashSet<DatapathId>();
         Set<DatapathId> myCurrSet = new HashSet<DatapathId>();
@@ -344,10 +343,10 @@ public class TopologyInstance {
 
         // Traverse the graph through every outgoing link.
         if (switchPorts.get(currSw) != null){
-            for(OFPort p: switchPorts.get(currSw)) {
+            for (OFPort p : switchPorts.get(currSw)) {
                 Set<Link> lset = switchPortLinks.get(new NodePortTuple(currSw, p));
                 if (lset == null) continue;
-                for(Link l:lset) {
+                for (Link l : lset) {
                     DatapathId dstSw = l.getDst();
 
                     // ignore incoming links.
@@ -368,19 +367,22 @@ public class TopologyInstance {
 
                     if (dstDFS.getDfsIndex() < currDFS.getDfsIndex()) {
                         // could be a potential lowpoint
-                        if (dstDFS.getDfsIndex() < currDFS.getLowpoint())
+                        if (dstDFS.getDfsIndex() < currDFS.getLowpoint()) {
                             currDFS.setLowpoint(dstDFS.getDfsIndex());
-
+                        }
                     } else if (!dstDFS.isVisited()) {
                         // make a DFS visit
-                        currIndex = dfsTraverse(currDFS.getDfsIndex(), currIndex, dstSw,
-                                                dfsList, myCurrSet);
+                        currIndex = dfsTraverse(
+                        		currDFS.getDfsIndex(), 
+                        		currIndex, dstSw, 
+                        		dfsList, myCurrSet);
 
                         if (currIndex < 0) return -1;
 
                         // update lowpoint after the visit
-                        if (dstDFS.getLowpoint() < currDFS.getLowpoint())
+                        if (dstDFS.getLowpoint() < currDFS.getLowpoint()) {
                             currDFS.setLowpoint(dstDFS.getLowpoint());
+                        }
 
                         nodesInMyCluster.addAll(myCurrSet);
                         myCurrSet.clear();
@@ -403,7 +405,7 @@ public class TopologyInstance {
             // create a new switch cluster and the switches in the current
             // set to the switch cluster.
             Cluster sc = new Cluster();
-            for(DatapathId sw: currSet){
+            for (DatapathId sw : currSet) {
                 sc.add(sw);
                 switchClusterMap.put(sw, sc);
             }
@@ -517,48 +519,57 @@ public class TopologyInstance {
     protected BroadcastTree clusterDijkstra(Cluster c, DatapathId root,
                                      Map<Link, Integer> linkCost,
                                      boolean isDstRooted) {
+    	
         HashMap<DatapathId, Link> nexthoplinks = new HashMap<DatapathId, Link>();
-        //HashMap<Long, Long> nexthopnodes = new HashMap<Long, Long>();
         HashMap<DatapathId, Integer> cost = new HashMap<DatapathId, Integer>();
         int w;
 
-        for (DatapathId node: c.links.keySet()) {
+        for (DatapathId node : c.links.keySet()) {
             nexthoplinks.put(node, null);
-            //nexthopnodes.put(node, null);
             cost.put(node, MAX_PATH_WEIGHT);
         }
 
         HashMap<DatapathId, Boolean> seen = new HashMap<DatapathId, Boolean>();
         PriorityQueue<NodeDist> nodeq = new PriorityQueue<NodeDist>();
+        
         nodeq.add(new NodeDist(root, 0));
         cost.put(root, 0);
+        
         while (nodeq.peek() != null) {
             NodeDist n = nodeq.poll();
             DatapathId cnode = n.getNode();
+            
             int cdist = n.getDist();
             if (cdist >= MAX_PATH_WEIGHT) break;
             if (seen.containsKey(cnode)) continue;
+            
             seen.put(cnode, true);
 
-            for (Link link: c.links.get(cnode)) {
+            for (Link link : c.links.get(cnode)) {
                 DatapathId neighbor;
 
-                if (isDstRooted == true) neighbor = link.getSrc();
-                else neighbor = link.getDst();
+                if (isDstRooted == true) {
+                	neighbor = link.getSrc();
+                } else {
+                	neighbor = link.getDst();
+                }
 
                 // links directed toward cnode will result in this condition
                 if (neighbor.equals(cnode)) continue;
 
                 if (seen.containsKey(neighbor)) continue;
 
-                if (linkCost == null || linkCost.get(link)==null) w = 1;
-                else w = linkCost.get(link);
+                if (linkCost == null || linkCost.get(link) == null) {
+                	w = 1;
+                } else {
+                	w = linkCost.get(link);
+                }
 
                 int ndist = cdist + w; // the weight of the link, always 1 in current version of floodlight.
                 if (ndist < cost.get(neighbor)) {
                     cost.put(neighbor, ndist);
                     nexthoplinks.put(neighbor, link);
-                    //nexthopnodes.put(neighbor, cnode);
+                    
                     NodeDist ndTemp = new NodeDist(neighbor, ndist);
                     // Remove an object that's already in there.
                     // Note that the comparison is based on only the node id,
@@ -574,11 +585,9 @@ public class TopologyInstance {
         return ret;
     }
     
-	
 	/*
 	 * Dijkstra that calculates destination rooted trees over the entire topology.
 	*/
-    
     protected BroadcastTree dijkstra(Map<DatapathId, Set<Link>> links, DatapathId root,
             Map<Link, Integer> linkCost,
             boolean isDstRooted) {
@@ -586,7 +595,7 @@ public class TopologyInstance {
     	HashMap<DatapathId, Integer> cost = new HashMap<DatapathId, Integer>();
     	int w;
     	
-    	for (DatapathId node: links.keySet()) {
+    	for (DatapathId node : links.keySet()) {
     		nexthoplinks.put(node, null);
     		cost.put(node, MAX_PATH_WEIGHT);
     	}
@@ -595,31 +604,41 @@ public class TopologyInstance {
     	PriorityQueue<NodeDist> nodeq = new PriorityQueue<NodeDist>();
     	nodeq.add(new NodeDist(root, 0));
     	cost.put(root, 0);
+    	
     	while (nodeq.peek() != null) {
     		NodeDist n = nodeq.poll();
     		DatapathId cnode = n.getNode();
     		int cdist = n.getDist();
+    		
     		if (cdist >= MAX_PATH_WEIGHT) break;
     		if (seen.containsKey(cnode)) continue;
     		seen.put(cnode, true);
 
-    		for (Link link: links.get(cnode)) {
+    		for (Link link : links.get(cnode)) {
     			DatapathId neighbor;
 
-    			if (isDstRooted == true) neighbor = link.getSrc();
-    			else neighbor = link.getDst();
+    			if (isDstRooted == true) {
+    				neighbor = link.getSrc();
+    			} else {
+    				neighbor = link.getDst();
+    			}
         
     			// links directed toward cnode will result in this condition
     			if (neighbor.equals(cnode)) continue;
 
     			if (seen.containsKey(neighbor)) continue;
 
-    			if (linkCost == null || linkCost.get(link)==null) w = 1;
-    			else w = linkCost.get(link);
+    			if (linkCost == null || linkCost.get(link) == null) {
+    				w = 1;
+    			} else {
+    				w = linkCost.get(link);
+    			}
+    			
     			int ndist = cdist + w; // the weight of the link, always 1 in current version of floodlight.
     			if (ndist < cost.get(neighbor)) {
     				cost.put(neighbor, ndist);
     				nexthoplinks.put(neighbor, link);
+    				
     				NodeDist ndTemp = new NodeDist(neighbor, ndist);
     				// Remove an object that's already in there.
     				// Note that the comparison is based on only the node id,
@@ -645,22 +664,22 @@ public class TopologyInstance {
     	Map<Link, Integer> linkCost = new HashMap<Link, Integer>();
         int tunnel_weight = switchPorts.size() + 1;
 		
-        for(NodePortTuple npt : tunnelPorts) {
+        for (NodePortTuple npt : tunnelPorts) {
             if (allLinks.get(npt) == null) continue;
-            for(Link link : allLinks.get(npt)) {
+            for (Link link : allLinks.get(npt)) {
                 if (link == null) continue;
                 linkCost.put(link, tunnel_weight);
             }
         }
         
         Map<DatapathId, Set<Link>> linkDpidMap = new HashMap<DatapathId, Set<Link>>();
-        for(DatapathId s : switches) {
+        for (DatapathId s : switches) {
             if (switchPorts.get(s) == null) continue;
-            for (OFPort p: switchPorts.get(s)) {
+            for (OFPort p : switchPorts.get(s)) {
                 NodePortTuple np = new NodePortTuple(s, p);
                 if (allLinks.get(np) == null) continue;
-                for(Link l: allLinks.get(np)) {
-                	if(linkDpidMap.containsKey(s)) {
+                for (Link l : allLinks.get(np)) {
+                	if (linkDpidMap.containsKey(s)) {
                 		linkDpidMap.get(s).add(l);
                 	}
                 	else {
@@ -674,9 +693,10 @@ public class TopologyInstance {
         	BroadcastTree tree = dijkstra(linkDpidMap, node, linkCost, true);
             destinationRootedFullTrees.put(node, tree);
         }
+        
 		//finiteBroadcastTree is randomly chosen in this implementation
         if (this.destinationRootedFullTrees.size() > 0) {
-			this.finiteBroadcastTree =  destinationRootedFullTrees.values().iterator().next();
+			this.finiteBroadcastTree = destinationRootedFullTrees.values().iterator().next();
         }         	
     }
 
@@ -684,18 +704,18 @@ public class TopologyInstance {
         pathcache.invalidateAll();
         destinationRootedTrees.clear();
 
-        Map <Link, Integer> linkCost = new HashMap<Link, Integer>();
+        Map<Link, Integer> linkCost = new HashMap<Link, Integer>();
         int tunnel_weight = switchPorts.size() + 1;
 
-        for(NodePortTuple npt: tunnelPorts) {
+        for (NodePortTuple npt : tunnelPorts) {
             if (switchPortLinks.get(npt) == null) continue;
-            for(Link link: switchPortLinks.get(npt)) {
+            for (Link link : switchPortLinks.get(npt)) {
                 if (link == null) continue;
                 linkCost.put(link, tunnel_weight);
             }
         }
 
-        for(Cluster c: clusters) {
+        for (Cluster c : clusters) {
             for (DatapathId node : c.links.keySet()) {
                 BroadcastTree tree = clusterDijkstra(c, node, linkCost, true);
                 destinationRootedTrees.put(node, tree);
@@ -717,10 +737,10 @@ public class TopologyInstance {
 	
     protected void calculateAllBroadcastNodePorts() {
 		if (this.destinationRootedFullTrees.size() > 0) {
-			this.finiteBroadcastTree=destinationRootedFullTrees.values().iterator().next();
+			this.finiteBroadcastTree = destinationRootedFullTrees.values().iterator().next();
 			Map<DatapathId, Link> links = finiteBroadcastTree.getLinks();
 			if (links == null) return;
-			for(DatapathId nodeId: links.keySet()) {
+			for (DatapathId nodeId : links.keySet()) {
 				Link l = links.get(nodeId);
 				if (l == null) continue;
 				NodePortTuple npt1 = new NodePortTuple(l.getSrc(), l.getSrcPort());
@@ -733,7 +753,6 @@ public class TopologyInstance {
 
     protected void calculateBroadcastPortMap(){
 		this.broadcastPortMap.clear();
-		if (destinationRootedFullTrees.size() == 0) return;
 
 		for (DatapathId sw : this.switches) {
 			for (OFPort p : this.allPorts.get(sw)){
@@ -741,9 +760,8 @@ public class TopologyInstance {
 				if (isEdge(sw, p) || broadcastNodePorts.contains(npt)) { 
 					if (broadcastPortMap.containsKey(sw)) {
                 		broadcastPortMap.get(sw).add(p);
-                	}
-                	else {
-                		broadcastPortMap.put(sw,new HashSet<OFPort>(Arrays.asList(p)));
+                	} else {
+                		broadcastPortMap.put(sw, new HashSet<OFPort>(Arrays.asList(p)));
                 	}
 				}      		
 			}
@@ -755,7 +773,7 @@ public class TopologyInstance {
         
         calculateBroadcastTreeInClusters();
 
-        for(Cluster c: clusters) {
+        for (Cluster c : clusters) {
             // c.id is the smallest node that's in the cluster
             BroadcastTree tree = clusterBroadcastTrees.get(c.id);
             //log.info("Broadcast Tree {}", tree);
@@ -763,7 +781,7 @@ public class TopologyInstance {
             Set<NodePortTuple> nptSet = new HashSet<NodePortTuple>();
             Map<DatapathId, Link> links = tree.getLinks();
             if (links == null) continue;
-            for (DatapathId nodeId: links.keySet()) {
+            for (DatapathId nodeId : links.keySet()) {
                 Link l = links.get(nodeId);
                 if (l == null) continue;
                 NodePortTuple npt1 = new NodePortTuple(l.getSrc(), l.getSrcPort());
@@ -825,7 +843,7 @@ public class TopologyInstance {
     protected int getCost(DatapathId srcId, DatapathId dstId) {
         BroadcastTree bt = destinationRootedTrees.get(dstId);
         if (bt == null) return -1;
-        return (bt.getCost(srcId));
+        return bt.getCost(srcId);
     }
     
     protected Set<Cluster> getClusters() {
@@ -847,13 +865,16 @@ public class TopologyInstance {
             DatapathId dstId, OFPort dstPort, U64 cookie) {
         // Return null if the route source and destination are the
         // same switch ports.
-        if (srcId.equals(dstId) && srcPort.equals(dstPort))
+        if (srcId.equals(dstId) && srcPort.equals(dstPort)) {
             return null;
+        }
 
         List<NodePortTuple> nptList;
         NodePortTuple npt;
         Route r = getRoute(srcId, dstId, U64.of(0));
-        if (r == null && !srcId.equals(dstId)) return null;
+        if (r == null && !srcId.equals(dstId)) {
+        	return null;
+        }
 
         if (r != null) {
             nptList= new ArrayList<NodePortTuple>(r.getPath());
@@ -1003,7 +1024,7 @@ public class TopologyInstance {
     public Set<OFPort> getBroadcastPorts(DatapathId targetSw, DatapathId src, OFPort srcPort) {
         Set<OFPort> result = new HashSet<OFPort>();
         DatapathId clusterId = getOpenflowDomainId(targetSw);
-        for(NodePortTuple npt: clusterPorts.get(clusterId)) {
+        for (NodePortTuple npt : clusterPorts.get(clusterId)) {
             if (npt.getNodeId().equals(targetSw)) {
                 result.add(npt.getPortId());
             }
