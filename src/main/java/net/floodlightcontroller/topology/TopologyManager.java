@@ -1148,7 +1148,12 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 	}
 
 	protected void addOrUpdateSwitch(DatapathId sw) {
-		// nothing to do here for the time being.
+		/*TODO react appropriately
+		addSwitch(sw);
+		for (OFPortDesc p : switchService.getSwitch(sw).getPorts()) {
+			addPortToSwitch(sw, p.getPortNo());
+		}
+		*/
 		return;
 	}
 
