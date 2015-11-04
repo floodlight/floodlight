@@ -444,11 +444,11 @@ public class MatchUtils {
 				break;
 			case STR_DL_VLAN:
 				if (dataMask.length == 1) {
-					mb.setExact(MatchField.VLAN_VID, OFVlanVidMatch.ofVlan(dataMask[0].contains("0x") ? Integer.valueOf(dataMask[0].replaceFirst("0x", ""), 16) : Integer.valueOf(dataMask[0])));
+					mb.setExact(MatchField.VLAN_VID, OFVlanVidMatch.ofRawVid(dataMask[0].contains("0x") ? Short.valueOf(dataMask[0].replaceFirst("0x", ""), 16) : Short.valueOf(dataMask[0])));
 				} else {
 					mb.setMasked(MatchField.VLAN_VID, OFVlanVidMatchWithMask.of(
-						OFVlanVidMatch.ofVlan(dataMask[0].contains("0x") ? Integer.valueOf(dataMask[0].replaceFirst("0x", ""), 16) : Integer.valueOf(dataMask[0])), 
-						OFVlanVidMatch.ofVlan(dataMask[1].contains("0x") ? Integer.valueOf(dataMask[1].replaceFirst("0x", ""), 16) : Integer.valueOf(dataMask[1]))));
+						OFVlanVidMatch.ofRawVid(dataMask[0].contains("0x") ? Short.valueOf(dataMask[0].replaceFirst("0x", ""), 16) : Short.valueOf(dataMask[0])), 
+						OFVlanVidMatch.ofRawVid(dataMask[1].contains("0x") ? Short.valueOf(dataMask[1].replaceFirst("0x", ""), 16) : Short.valueOf(dataMask[1]))));
 				}
 				break;
 			case STR_DL_VLAN_PCP:
