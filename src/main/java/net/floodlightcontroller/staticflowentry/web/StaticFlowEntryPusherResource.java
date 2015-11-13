@@ -20,7 +20,7 @@ package net.floodlightcontroller.staticflowentry.web;
 import java.io.IOException;
 import java.util.Map;
 
-
+import org.projectfloodlight.openflow.types.DatapathId;
 import org.restlet.resource.Delete;
 import org.restlet.resource.Post;
 import org.restlet.resource.ServerResource;
@@ -211,9 +211,17 @@ public class StaticFlowEntryPusherResource extends ServerResource {
 			state = 7;    
 			return state;
 		}
-
+		
+		if (rows.containsKey(StaticFlowEntryPusher.COLUMN_SWITCH)) {
+			try {
+				DatapathId.of((String) rows.get(StaticFlowEntryPusher.COLUMN_SWITCH));
+			} catch (Exception e) {
+				state = 9;
+			}
+		} else {
+			state = 8;
+		}
 		return state;
-
 	}
 
 	/**
@@ -311,6 +319,12 @@ public class StaticFlowEntryPusherResource extends ServerResource {
 				log.error(status);
 			} else if (state == 7) {
 				status = "Warning! IPv4 & IPv6 fields cannot be specified in the same flow! The flow has been discarded.";
+				log.error(status);
+			} else if (state == 8) {
+				status = "Warning! Must specify switch DPID in flow. The flow has been discarded.";
+				log.error(status);
+			} else if (state == 9) {
+				status = "Warning! Switch DPID invalid! The flow has been discarded.";
 				log.error(status);
 			} else if (state == 0) {
 				status = "Entry pushed";            
