@@ -42,6 +42,7 @@ import net.floodlightcontroller.routing.Route;
 import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.topology.NodePortTuple;
 import net.floodlightcontroller.util.MatchUtils;
+import net.floodlightcontroller.util.OFDPAUtils;
 import net.floodlightcontroller.util.OFMessageDamper;
 import net.floodlightcontroller.util.TimedCache;
 
@@ -253,7 +254,7 @@ public abstract class ForwardingBase implements IOFMessageListener {
 			.setCookie(cookie)
 			.setOutPort(outPort)
 			.setPriority(FLOWMOD_DEFAULT_PRIORITY);
-
+			
 			try {
 				if (log.isTraceEnabled()) {
 					log.trace("Pushing Route flowmod routeIndx={} " +
@@ -263,7 +264,18 @@ public abstract class ForwardingBase implements IOFMessageListener {
 							fmb.getMatch().get(MatchField.IN_PORT),
 							outPort });
 				}
-				messageDamper.write(sw, fmb.build());
+				
+				if (OFDPAUtils.isOFDPASwitch(sw)) {
+					OFDPAUtils.addLearningSwitchFlow(sw, cookie, 
+							FLOWMOD_DEFAULT_PRIORITY, 
+							FLOWMOD_DEFAULT_HARD_TIMEOUT,
+							FLOWMOD_DEFAULT_IDLE_TIMEOUT,
+							fmb.getMatch(), 
+							null, /* TODO how to determine output VLAN for lookup of L2 interface group */
+							outPort);
+				} else {
+					messageDamper.write(sw, fmb.build());
+				}
 
 				/* Push the packet out the first hop switch */
 				if (sw.getId().equals(pinSwitch) &&
