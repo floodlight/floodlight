@@ -226,13 +226,13 @@ public class LoadBalancer implements IFloodlightModule,
                     }
                     
                     LBVip vip = vips.get(vipIpToId.get(destIpAddress));
-                    if (vip == null)			// fix deference violations           
+                    if (vip == null)			// fix dereference violations           
                     	return Command.CONTINUE;
                     LBPool pool = pools.get(vip.pickPool(client));
-                    if (pool == null)			// fix deference violations
+                    if (pool == null)			// fix dereference violations
                     	return Command.CONTINUE;
                     LBMember member = members.get(pool.pickMember(client));
-                    if(member == null)			//fix deference violations
+                    if(member == null)			//fix dereference violations
                     	return Command.CONTINUE;
                     
                     // for chosen member, check device manager and find and push routes, in both directions                    
@@ -511,6 +511,7 @@ public class LoadBalancer implements IFloodlightModule,
                fmb.setCookie(U64.of(0));  
                fmb.setPriority(FlowModUtils.PRIORITY_MAX);
                
+               
                if (inBound) {
                    entryName = "inbound-vip-"+ member.vipId+"-client-"+client.ipAddress
                 		   +"-srcport-"+client.srcPort+"-dstport-"+client.targetPort
@@ -543,7 +544,13 @@ public class LoadBalancer implements IFloodlightModule,
                     	   actions.add(pinSwitch.getOFFactory().actions().output(path.get(i+1).getPortId(), Integer.MAX_VALUE));
                        }
                    } else {
-                	   actions.add(switchService.getSwitch(path.get(i+1).getNodeId()).getOFFactory().actions().output(path.get(i+1).getPortId(), Integer.MAX_VALUE));
+                	   //fix concurrency errors
+                	   try{
+                		   actions.add(switchService.getSwitch(path.get(i+1).getNodeId()).getOFFactory().actions().output(path.get(i+1).getPortId(), Integer.MAX_VALUE));
+                	   }
+                	   catch(NullPointerException e){
+                		   log.error("Fail to install loadbalancer flow rules to offline switch {}.", path.get(i+1).getNodeId());
+                	   }
                    }
                } else {
                    entryName = "outbound-vip-"+ member.vipId+"-client-"+client.ipAddress
@@ -576,10 +583,17 @@ public class LoadBalancer implements IFloodlightModule,
                     	   actions.add(pinSwitch.getOFFactory().actions().output(path.get(i+1).getPortId(), Integer.MAX_VALUE));
                        }
                    } else {
-                	   actions.add(switchService.getSwitch(path.get(i+1).getNodeId()).getOFFactory().actions().output(path.get(i+1).getPortId(), Integer.MAX_VALUE));
+                	   //fix concurrency errors
+                	   try{
+                		   actions.add(switchService.getSwitch(path.get(i+1).getNodeId()).getOFFactory().actions().output(path.get(i+1).getPortId(), Integer.MAX_VALUE));
+                	   }
+                	   catch(NullPointerException e){
+                		   log.error("Fail to install loadbalancer flow rules to offline switches {}.", path.get(i+1).getNodeId());
+                	   }
                    }
                    
                }
+               
                
                fmb.setActions(actions);
                fmb.setPriority(U16.t(LB_PRIORITY));
@@ -670,7 +684,7 @@ public class LoadBalancer implements IFloodlightModule,
         LBPool pool;
         if (pools != null) {
             pool = pools.get(poolId);
-            if (pool == null)	// fix deference violations
+            if (pool == null)	// fix dereference violations
             	return -1;
             if (pool.vipId != null)
                 vips.get(pool.vipId).pools.remove(poolId);
