@@ -71,7 +71,7 @@ public class OFDPAUtils {
 	public static final int DLF_PRIORITY = 0;
 	public static final int HARD_TIMEOUT = 0;
 	public static final int IDLE_TIMEOUT = 0;
-	public static final U64 APP_COOKIE = U64.of(Long.parseLong("0x00FFDDBBAA", 16)); /* OF-DPA sub B for P :-) */
+	public static final U64 APP_COOKIE = U64.of(Long.parseLong("00FFDDBBAA", 16)); /* OF-DPA sub B for P :-) */
 
 	private static class OFDPAGroupType {
 		private static final int L2_INTERFACE = 0;				/* 0 */
