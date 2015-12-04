@@ -268,7 +268,7 @@ public class OFDPAUtils {
 			for (OFPortModeTuple p : ports) {
 				if (sw.getOFFactory().getVersion().equals(OFVersion.OF_10) && (sw.getPort(p.getPort()) == null || p.getPort().getShortPortNumber() > 0xFF00)) {
 					throw new IllegalArgumentException("Port " + p.getPort().getPortNumber() + " is not a valid port on switch " + sw.getId().toString());
-				} else if (!sw.getOFFactory().getVersion().equals(OFVersion.OF_10) && (sw.getPort(p.getPort()) == null || p.getPort().getPortNumber() > 0xffFFff00)) {
+				} else if (!sw.getOFFactory().getVersion().equals(OFVersion.OF_10) && (sw.getPort(p.getPort()) == null || U32.of(p.getPort().getPortNumber()).compareTo(U32.of(0xffFFff00)) != -1)) {
 					throw new IllegalArgumentException("Port " + p.getPort().getPortNumber() + " is not a valid port on switch " + sw.getId().toString());
 				}
 			}
@@ -285,7 +285,7 @@ public class OFDPAUtils {
 			actions.add(sw.getOFFactory().actions().output(p.getPort(), 0xffFFffFF));
 
 			OFGroupAdd ga = sw.getOFFactory().buildGroupAdd()
-					.setGroup(GroupIds.createL2Interface(p.getPort(), (vlan.equals(VlanVid.ZERO) ? VlanVid.ofVlan(1) : vlan)))
+					.setGroup(GroupIds.createL2Interface(p.getPort(), vlan.equals(VlanVid.ZERO) ? VlanVid.ofVlan(1) : vlan))
 					.setGroupType(OFGroupType.INDIRECT)
 					.setBuckets(Collections.singletonList(
 							sw.getOFFactory().buildBucket()
@@ -302,14 +302,11 @@ public class OFDPAUtils {
 		List<OFBucket> bucketList = new ArrayList<OFBucket>(ports.size());
 		for (OFPortModeTuple p : ports) {
 			List<OFAction> actions = new ArrayList<OFAction>();
-			if (vlan.equals(VlanVid.ZERO) || p.getMode() == OFPortMode.ACCESS) {
-				actions.add(sw.getOFFactory().actions().popVlan());
-			}
-			actions.add(sw.getOFFactory().actions().output(p.getPort(), 0xffFFffFF));
+			actions.add(sw.getOFFactory().actions().group(GroupIds.createL2Interface(p.getPort(), vlan.equals(VlanVid.ZERO) ? VlanVid.ofVlan(1) : vlan)));
 			bucketList.add(sw.getOFFactory().buildBucket().setActions(actions).build());
 		}
 		OFGroupAdd ga = sw.getOFFactory().buildGroupAdd() /* use the VLAN ID as the group ID */
-				.setGroup(GroupIds.createL2Flood(U16.of(vlan.getVlan()), vlan.equals(VlanVid.ZERO) ? VlanVid.ofVlan(1) : vlan))
+				.setGroup(GroupIds.createL2Flood(U16.of((vlan.equals(VlanVid.ZERO) ? VlanVid.ofVlan(1) : vlan).getVlan()), vlan.equals(VlanVid.ZERO) ? VlanVid.ofVlan(1) : vlan))
 				.setGroupType(OFGroupType.ALL)
 				.setBuckets(bucketList)
 				.build();
@@ -352,7 +349,7 @@ public class OFDPAUtils {
 			for (OFPortModeTuple p : ports) {
 				if (sw.getOFFactory().getVersion().equals(OFVersion.OF_10) && (sw.getPort(p.getPort()) == null || p.getPort().getShortPortNumber() > 0xFF00)) {
 					throw new IllegalArgumentException("Port " + p.getPort().getPortNumber() + " is not a valid port on switch " + sw.getId().toString());
-				} else if (!sw.getOFFactory().getVersion().equals(OFVersion.OF_10) && (sw.getPort(p.getPort()) == null || p.getPort().getPortNumber() > 0xffFFff00)) {
+				} else if (!sw.getOFFactory().getVersion().equals(OFVersion.OF_10) && (sw.getPort(p.getPort()) == null || U32.of(p.getPort().getPortNumber()).compareTo(U32.of(0xffFFff00)) != -1)) {
 					throw new IllegalArgumentException("Port " + p.getPort().getPortNumber() + " is not a valid port on switch " + sw.getId().toString());
 				}
 			}
@@ -441,13 +438,15 @@ public class OFDPAUtils {
 		/*
 		 * We will insert a DLF flow to send to controller in the bridging table (50).
 		 */
-		writeActions.add(sw.getOFFactory().actions().group(OFDPAUtils.GroupIds.createL2Flood(U16.of(vlan.getVlan()) /* ID */, vlan))); /* bogus action */
+		writeActions.add(sw.getOFFactory().actions().group(OFDPAUtils.GroupIds.createL2Flood(
+				U16.of((vlan.equals(VlanVid.ZERO) ? VlanVid.ofVlan(1) : vlan).getVlan()) /* ID */, 
+				vlan.equals(VlanVid.ZERO) ? VlanVid.ofVlan(1) : vlan))); /* bogus action */
 		applyActions.add(sw.getOFFactory().actions().output(OFPort.CONTROLLER, 0xffFFffFF)); /* real, intended action */
 		instructions.add(sw.getOFFactory().instructions().writeActions(writeActions));
 		instructions.add(sw.getOFFactory().instructions().applyActions(applyActions));
 		instructions.add(sw.getOFFactory().instructions().gotoTable(Tables.POLICY_ACL)); /* must go to policy ACL otherwise dropped; bogus though */
 		fab = fab.setMatch(sw.getOFFactory().buildMatch()
-				.setExact(MatchField.VLAN_VID, OFVlanVidMatch.ofVlanVid(vlan)) /* must match on just VLAN; dst MAC wildcarded */
+				.setExact(MatchField.VLAN_VID, OFVlanVidMatch.ofVlanVid(vlan.equals(VlanVid.ZERO) ? VlanVid.ofVlan(1) : vlan)) /* must match on just VLAN; dst MAC wildcarded */
 				.build())
 				.setInstructions(instructions)
 				.setPriority(DLF_PRIORITY) /* lower priority */
@@ -526,10 +525,7 @@ public class OFDPAUtils {
 		 */
 		ArrayList<OFInstruction> instructions = new ArrayList<OFInstruction>();
 		ArrayList<OFAction> actions = new ArrayList<OFAction>();
-
-		if (outVlan.equals(VlanVid.ZERO)) {
-			actions.add(sw.getOFFactory().actions().popVlan());
-		}
+		
 		actions.add(sw.getOFFactory().actions().group(GroupIds.createL2Interface(outPort, (outVlan.equals(VlanVid.ZERO) ? VlanVid.ofVlan(1) : outVlan))));
 		instructions.add(sw.getOFFactory().instructions().writeActions(actions));
 		instructions.add(sw.getOFFactory().instructions().gotoTable(Tables.POLICY_ACL)); /* must go here or dropped */
