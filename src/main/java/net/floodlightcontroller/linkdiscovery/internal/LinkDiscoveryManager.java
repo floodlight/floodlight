@@ -970,20 +970,28 @@ public class LinkDiscoveryManager implements IOFMessageListener,
 
         while (count < BDDP_TASK_SIZE && quarantineQueue.peek() != null) {
             NodePortTuple npt;
-            npt = quarantineQueue.remove();
-            sendDiscoveryMessage(npt.getNodeId(), npt.getPortId(), false,
+            try {
+            	npt = quarantineQueue.remove();
+            	sendDiscoveryMessage(npt.getNodeId(), npt.getPortId(), false,
                                  false);
-            nptList.add(npt);
-            count++;
+            	nptList.add(npt);
+            	count++;
+            } catch (Exception e){
+            	log.error("Multiple removals in quarantineQueue.");
+            }
         }
 
         count = 0;
         while (count < BDDP_TASK_SIZE && maintenanceQueue.peek() != null) {
             NodePortTuple npt;
-            npt = maintenanceQueue.remove();
-            sendDiscoveryMessage(npt.getNodeId(), npt.getPortId(), false,
+            try {
+            	npt = maintenanceQueue.remove();
+            	sendDiscoveryMessage(npt.getNodeId(), npt.getPortId(), false,
                                  false);
-            count++;
+            	count++;
+            } catch (Exception e){
+            	log.error("Multiple removals in maintenanceQueue.");
+            }
         }
 
         for (NodePortTuple npt : nptList) {
