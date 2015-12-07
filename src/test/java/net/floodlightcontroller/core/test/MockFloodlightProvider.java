@@ -29,6 +29,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -40,6 +41,7 @@ import org.jboss.netty.util.Timer;
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.HAListenerTypeMarker;
 import net.floodlightcontroller.core.HARole;
+import net.floodlightcontroller.core.IControllerCompletionListener;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IHAListener;
 import net.floodlightcontroller.core.IInfoProvider;
@@ -79,6 +81,8 @@ public class MockFloodlightProvider implements IFloodlightModule, IFloodlightPro
     private final boolean useAsyncUpdates;
     private volatile ExecutorService executorService;
     private volatile Future<?> mostRecentUpdateFuture;
+    // paag
+    private ConcurrentLinkedQueue<IControllerCompletionListener> completionListeners;
 
     /**
      *
@@ -158,6 +162,9 @@ public class MockFloodlightProvider implements IFloodlightModule, IFloodlightPro
                 result = it.next().receive(sw, msg, bc);
             }
         }
+		// paag
+        for (IControllerCompletionListener listener:completionListeners)
+        	listener.onMessageConsumed(sw, msg, bc);
     }
 
     @Override
@@ -422,4 +429,16 @@ public class MockFloodlightProvider implements IFloodlightModule, IFloodlightPro
     public int getWorkerThreads() {
         return 0;
     }
+
+    // paag
+	@Override
+	public void addCompletionListener(IControllerCompletionListener listener) {
+		completionListeners.add(listener);
+	}
+
+	// paag
+	@Override
+	public void removeCompletionListener(IControllerCompletionListener listener) {
+		completionListeners.remove(listener);
+	}
 }

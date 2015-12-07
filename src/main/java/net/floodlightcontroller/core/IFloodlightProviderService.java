@@ -238,5 +238,19 @@ public interface IFloodlightProviderService extends
     */
    public int getWorkerThreads();
 
+   // paag
+   /**
+    * Add a completion listener to the controller
+    * 
+    * @param listener
+    */
+   void addCompletionListener(IControllerCompletionListener listener);
+
+   /**
+    * Remove a completion listener from the controller
+    * 
+    * @param listener
+    */
+   void removeCompletionListener(IControllerCompletionListener listener);
 }
 

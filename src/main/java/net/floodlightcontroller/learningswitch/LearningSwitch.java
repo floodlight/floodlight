@@ -40,6 +40,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import net.floodlightcontroller.core.FloodlightContext;
+import net.floodlightcontroller.core.IControllerCompletionListener;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
@@ -77,8 +78,9 @@ import org.projectfloodlight.openflow.util.LRULinkedHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+// paag: with IControllerCompletionListener that logswhen an input event has been consumed
 public class LearningSwitch
-implements IFloodlightModule, ILearningSwitchService, IOFMessageListener {
+implements IFloodlightModule, ILearningSwitchService, IOFMessageListener, IControllerCompletionListener {
 	protected static Logger log = LoggerFactory.getLogger(LearningSwitch.class);
 
 	// Module dependencies
@@ -565,6 +567,9 @@ implements IFloodlightModule, ILearningSwitchService, IOFMessageListener {
 
 	@Override
 	public void startUp(FloodlightModuleContext context) {
+		// paag: register the IControllerCompletionListener
+		floodlightProviderService.addCompletionListener(this);
+		
 		floodlightProviderService.addOFMessageListener(OFType.PACKET_IN, this);
 		floodlightProviderService.addOFMessageListener(OFType.FLOW_REMOVED, this);
 		floodlightProviderService.addOFMessageListener(OFType.ERROR, this);
@@ -607,5 +612,12 @@ implements IFloodlightModule, ILearningSwitchService, IOFMessageListener {
 		debugCounterService.registerModule(this.getName());
 		counterFlowMod = debugCounterService.registerCounter(this.getName(), "flow-mods-written", "Flow mods written to switches by LearningSwitch", MetaData.WARN);
 		counterPacketOut = debugCounterService.registerCounter(this.getName(), "packet-outs-written", "Packet outs written to switches by LearningSwitch", MetaData.WARN);
+	}
+
+	// paag: to show the IControllerCompletion concept
+	// CAVEAT: extremely noisy
+	@Override
+	public void onMessageConsumed(IOFSwitch sw, OFMessage msg, FloodlightContext cntx) {
+		log.debug("Learning switch: ended processing packet {}",msg.toString());
 	}
 }

@@ -31,6 +31,7 @@ import java.util.Set;
 import java.util.Stack;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.LinkedBlockingQueue;
 
@@ -41,6 +42,7 @@ import net.floodlightcontroller.core.ControllerId;
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.HAListenerTypeMarker;
 import net.floodlightcontroller.core.HARole;
+import net.floodlightcontroller.core.IControllerCompletionListener;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IHAListener;
 import net.floodlightcontroller.core.IInfoProvider;
@@ -66,6 +68,7 @@ import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.protocol.OFType;
 import org.projectfloodlight.openflow.types.DatapathId;
+import org.python.modules.synchronize;
 
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.perfmon.IPktInProcessingTimeService;
@@ -100,6 +103,9 @@ public class Controller implements IFloodlightProviderService, IStorageSourceLis
     static final String ERROR_DATABASE = "The controller could not communicate with the system database.";
 
     protected ConcurrentMap<OFType, ListenerDispatcher<OFType,IOFMessageListener>> messageListeners;
+    
+    // paag
+    protected ConcurrentLinkedQueue<IControllerCompletionListener> completionListeners;
     
     // The controllerNodeIPsCache maps Controller IDs to their IP address.
     // It's only used by handleControllerNodeIPsChanged
@@ -489,7 +495,12 @@ public class Controller implements IFloodlightProviderService, IStorageSourceLis
                     else
                         log.debug("Received a Barrier Reply, no listeners for it");
                 }
-
+                // paag
+                // And just before we exit the controller loop we see if anyone
+                // is interested in knowing that we are exiting the loop
+                for (IControllerCompletionListener listener:completionListeners)
+                	listener.onMessageConsumed(sw, m, bc);
+                
                 if ((bContext == null) && (bc != null)) flcontext_free(bc);
         }
     }
@@ -521,6 +532,24 @@ public class Controller implements IFloodlightProviderService, IStorageSourceLis
         return openFlowPort;
     }
 
+    // paag
+    @Override
+    public synchronized void addCompletionListener(IControllerCompletionListener listener) {
+    	completionListeners.add(listener);
+    }
+    
+    //paag
+    @Override
+    public synchronized void removeCompletionListener(IControllerCompletionListener listener) {
+    	String listenerName = listener.getName();
+    	if (completionListeners.remove(listener)) {
+    		log.debug("Removing completion listener {}" , listenerName);
+    	} else {
+    		log.warn("Trying to remove unknown completion listener {}" , listenerName);
+    	}
+    	listenerName=null; // help gc
+    }
+    
     @Override
     public synchronized void addOFMessageListener(OFType type, IOFMessageListener listener) {
         ListenerDispatcher<OFType, IOFMessageListener> ldd =
