@@ -31,6 +31,7 @@ import java.util.Set;
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.core.SwitchDescription;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.test.MockThreadPoolService;
@@ -67,6 +68,7 @@ import org.projectfloodlight.openflow.protocol.OFFeaturesReply;
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
 import org.projectfloodlight.openflow.protocol.match.Match;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
+import org.projectfloodlight.openflow.protocol.OFDescStatsReply;
 import org.projectfloodlight.openflow.protocol.OFFactories;
 import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFMessage;
@@ -99,6 +101,7 @@ public class ForwardingTest extends FloodlightTestCase {
 	protected MockThreadPoolService threadPool;
 	protected IOFSwitch sw1, sw2;
 	protected OFFeaturesReply swFeatures;
+	protected OFDescStatsReply swDescription;
 	protected IDevice srcDevice, dstDevice1, dstDevice2; /* reuse for IPv4 and IPv6 */
 	protected OFPacketIn packetIn;
 	protected OFPacketIn packetInIPv6;
@@ -162,6 +165,7 @@ public class ForwardingTest extends FloodlightTestCase {
 		entityClassifier.startUp(fmc);
 		verify(topology);
 
+		swDescription = factory.buildDescStatsReply().build();
 		swFeatures = factory.buildFeaturesReply().setNBuffers(1000).build();
 		// Mock switches
 		sw1 = EasyMock.createMock(IOFSwitch.class);
@@ -177,6 +181,9 @@ public class ForwardingTest extends FloodlightTestCase {
 		expect(sw1.hasAttribute(IOFSwitch.PROP_SUPPORTS_OFPP_TABLE)).andReturn(true).anyTimes();
 
 		expect(sw2.hasAttribute(IOFSwitch.PROP_SUPPORTS_OFPP_TABLE)).andReturn(true).anyTimes();
+		
+		expect(sw1.getSwitchDescription()).andReturn(new SwitchDescription(swDescription)).anyTimes();
+		expect(sw2.getSwitchDescription()).andReturn(new SwitchDescription(swDescription)).anyTimes();
 
 		// Load the switch map
 		Map<DatapathId, IOFSwitch> switches = new HashMap<DatapathId, IOFSwitch>();
