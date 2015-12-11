@@ -13,4 +13,6 @@ public interface IStatisticsService extends IFloodlightService {
 	public SwitchPortBandwidth getBandwidthConsumption(DatapathId dpid, OFPort p);
 		
 	public Map<NodePortTuple, SwitchPortBandwidth> getBandwidthConsumption();
+	
+	public void collectStatistics(boolean collect);
 }

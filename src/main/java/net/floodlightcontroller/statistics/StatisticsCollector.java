@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
 import org.projectfloodlight.openflow.protocol.OFPortStatsEntry;
@@ -47,10 +48,16 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
 	private static IThreadPoolService threadPoolService;
 	private static IRestApiService restApiService;
 
+	private static boolean isEnabled = false;
+	
 	private static int portStatsInterval = 10;
+	private static ScheduledFuture<?> portStatsCollector;
 
 	private static final long BITS_PER_BYTE = 8;
 	private static final long MILLIS_PER_SEC = 1000;
+	
+	private static final String INTERVAL_PORT_STATS_STR = "collectionIntervalPortStatsSeconds";
+	private static final String ENABLED_STR = "enable";
 
 	private static final HashMap<NodePortTuple, SwitchPortBandwidth> portStats = new HashMap<NodePortTuple, SwitchPortBandwidth>();
 	private static final HashMap<NodePortTuple, SwitchPortBandwidth> tentativePortStats = new HashMap<NodePortTuple, SwitchPortBandwidth>();
@@ -168,14 +175,33 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
 		threadPoolService = context.getServiceImpl(IThreadPoolService.class);
 		restApiService = context.getServiceImpl(IRestApiService.class);
 
-		//TODO Map<String, String> config = context.getConfigParams(this);
+		Map<String, String> config = context.getConfigParams(this);
+		if (config.containsKey(ENABLED_STR)) {
+			try {
+				isEnabled = Boolean.parseBoolean(config.get(ENABLED_STR).trim());
+			} catch (Exception e) {
+				log.error("Could not parse '{}'. Using default of {}", ENABLED_STR, isEnabled);
+			}
+		}
+		log.info("Statistics collection {}", isEnabled ? "enabled" : "disabled");
+
+		if (config.containsKey(INTERVAL_PORT_STATS_STR)) {
+			try {
+				portStatsInterval = Integer.parseInt(config.get(INTERVAL_PORT_STATS_STR).trim());
+			} catch (Exception e) {
+				log.error("Could not parse '{}'. Using default of {}", INTERVAL_PORT_STATS_STR, portStatsInterval);
+			}
+		}
+		log.info("Port statistics collection interval set to {}s", portStatsInterval);
 	}
 
 	@Override
 	public void startUp(FloodlightModuleContext context)
 			throws FloodlightModuleException {
-		threadPoolService.getScheduledExecutor().scheduleAtFixedRate(new PortStatsCollector(), portStatsInterval, portStatsInterval, TimeUnit.SECONDS);
 		restApiService.addRestletRoutable(new SwitchStatisticsWebRoutable());
+		if (isEnabled) {
+			startStatisticsCollection();
+		}
 	}
 
 	@Override
@@ -187,6 +213,32 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
 	@Override
 	public Map<NodePortTuple, SwitchPortBandwidth> getBandwidthConsumption() {
 		return Collections.unmodifiableMap(portStats);
+	}
+	
+	@Override
+	public synchronized void collectStatistics(boolean collect) {
+		if (collect && !isEnabled) {
+			startStatisticsCollection();
+			isEnabled = true;
+		} else if (!collect && isEnabled) {
+			stopStatisticsCollection();
+			isEnabled = false;
+		} 
+		/* otherwise, state is not changing; no-op */
+	}
+	
+	private void startStatisticsCollection() {
+		portStatsCollector = threadPoolService.getScheduledExecutor().scheduleAtFixedRate(new PortStatsCollector(), portStatsInterval, portStatsInterval, TimeUnit.SECONDS);
+		tentativePortStats.clear(); /* must clear out, otherwise might have huge BW result if present and wait a long time before re-enabling stats */
+		log.warn("Statistics collection thread(s) started");
+	}
+	
+	private void stopStatisticsCollection() {
+		if (!portStatsCollector.cancel(false)) {
+			log.error("Could not cancel port stats thread");
+		} else {
+			log.warn("Statistics collection thread(s) stopped");
+		}
 	}
 
 	private Map<DatapathId, List<OFStatsReply>> getSwitchStatistics(Set<DatapathId> dpids, OFStatsType statsType) {
