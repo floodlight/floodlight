@@ -50,7 +50,7 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
 
 	private static boolean isEnabled = false;
 	
-	private static int portStatsInterval = 10;
+	private static int portStatsInterval = 10; /* could be set by REST API, so not final */
 	private static ScheduledFuture<?> portStatsCollector;
 
 	private static final long BITS_PER_BYTE = 8;
@@ -62,6 +62,25 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
 	private static final HashMap<NodePortTuple, SwitchPortBandwidth> portStats = new HashMap<NodePortTuple, SwitchPortBandwidth>();
 	private static final HashMap<NodePortTuple, SwitchPortBandwidth> tentativePortStats = new HashMap<NodePortTuple, SwitchPortBandwidth>();
 
+	/**
+	 * Run periodically to collect all port statistics. This only collects
+	 * bandwidth stats right now, but it could be expanded to record other
+	 * information as well. The difference between the most recent and the
+	 * current RX/TX bytes is used to determine the "elapsed" bytes. A 
+	 * timestamp is saved each time stats results are saved to compute the
+	 * bits per second over the elapsed time. There isn't a better way to
+	 * compute the precise bandwidth unless the switch were to include a
+	 * timestamp in the stats reply message, which would be nice but isn't
+	 * likely to happen. It would be even better if the switch recorded 
+	 * bandwidth and reported bandwidth directly.
+	 * 
+	 * Stats are not reported unless at least two iterations have occurred
+	 * for a single switch's reply. This must happen to compare the byte 
+	 * counts and to get an elapsed time.
+	 * 
+	 * @author Ryan Izard, ryan.izard@bigswitch.com, rizard@g.clemson.edu
+	 *
+	 */
 	private class PortStatsCollector implements Runnable {
 
 		@Override
@@ -117,6 +136,13 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
 		}
 	}
 
+	/**
+	 * Single thread for collecting switch statistics and
+	 * containing the reply.
+	 * 
+	 * @author Ryan Izard, ryan.izard@bigswitch.com, rizard@g.clemson.edu
+	 *
+	 */
 	private class GetStatisticsThread extends Thread {
 		private List<OFStatsReply> statsReply;
 		private DatapathId switchId;
@@ -141,6 +167,10 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
 			statsReply = getSwitchStatistics(switchId, statType);
 		}
 	}
+	
+	/*
+	 * IFloodlightModule implementation
+	 */
 	
 	@Override
 	public Collection<Class<? extends IFloodlightService>> getModuleServices() {
@@ -204,6 +234,10 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
 		}
 	}
 
+	/*
+	 * IStatisticsService implementation
+	 */
+	
 	@Override
 	public SwitchPortBandwidth getBandwidthConsumption(DatapathId dpid, OFPort p) {
 		return portStats.get(new NodePortTuple(dpid, p));
@@ -227,12 +261,22 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
 		/* otherwise, state is not changing; no-op */
 	}
 	
+	/*
+	 * Helper functions
+	 */
+	
+	/**
+	 * Start all stats threads.
+	 */
 	private void startStatisticsCollection() {
 		portStatsCollector = threadPoolService.getScheduledExecutor().scheduleAtFixedRate(new PortStatsCollector(), portStatsInterval, portStatsInterval, TimeUnit.SECONDS);
 		tentativePortStats.clear(); /* must clear out, otherwise might have huge BW result if present and wait a long time before re-enabling stats */
 		log.warn("Statistics collection thread(s) started");
 	}
 	
+	/**
+	 * Stop all stats threads.
+	 */
 	private void stopStatisticsCollection() {
 		if (!portStatsCollector.cancel(false)) {
 			log.error("Could not cancel port stats thread");
@@ -241,6 +285,12 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
 		}
 	}
 
+	/**
+	 * Retrieve the statistics from all switches in parallel.
+	 * @param dpids
+	 * @param statsType
+	 * @return
+	 */
 	private Map<DatapathId, List<OFStatsReply>> getSwitchStatistics(Set<DatapathId> dpids, OFStatsType statsType) {
 		HashMap<DatapathId, List<OFStatsReply>> model = new HashMap<DatapathId, List<OFStatsReply>>();
 
@@ -253,10 +303,11 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
 			t.start();
 		}
 
-		// Join all the threads after the timeout. Set a hard timeout
-		// of 12 seconds for the threads to finish. If the thread has not
-		// finished the switch has not replied yet and therefore we won't
-		// add the switch's stats to the reply.
+		/* Join all the threads after the timeout. Set a hard timeout
+		 * of 12 seconds for the threads to finish. If the thread has not
+		 * finished the switch has not replied yet and therefore we won't
+		 * add the switch's stats to the reply.
+		 */
 		for (int iSleepCycles = 0; iSleepCycles < portStatsInterval; iSleepCycles++) {
 			for (GetStatisticsThread curThread : activeThreads) {
 				if (curThread.getState() == State.TERMINATED) {
@@ -265,19 +316,19 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
 				}
 			}
 
-			// remove the threads that have completed the queries to the switches
+			/* remove the threads that have completed the queries to the switches */
 			for (GetStatisticsThread curThread : pendingRemovalThreads) {
 				activeThreads.remove(curThread);
 			}
-			// clear the list so we don't try to double remove them
+			
+			/* clear the list so we don't try to double remove them */
 			pendingRemovalThreads.clear();
 
-			// if we are done finish early so we don't always get the worst case
+			/* if we are done finish early */
 			if (activeThreads.isEmpty()) {
 				break;
 			}
 
-			// sleep for 1 s here
 			try {
 				Thread.sleep(1000);
 			} catch (InterruptedException e) {
@@ -288,6 +339,12 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
 		return model;
 	}
 
+	/**
+	 * Get statistics from a switch.
+	 * @param switchId
+	 * @param statsType
+	 * @return
+	 */
 	@SuppressWarnings("unchecked")
 	protected List<OFStatsReply> getSwitchStatistics(DatapathId switchId, OFStatsType statsType) {
 		IOFSwitch sw = switchService.getSwitch(switchId);
@@ -325,7 +382,6 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
 				.build();
 				break;
 			case DESC:
-				// pass - nothing todo besides set the type above
 				req = sw.getOFFactory().buildDescStatsRequest()
 				.build();
 				break;
