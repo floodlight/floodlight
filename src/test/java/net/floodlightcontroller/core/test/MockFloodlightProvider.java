@@ -35,8 +35,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
-import org.jboss.netty.util.Timer;
-
+import io.netty.util.Timer;
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.HAListenerTypeMarker;
 import net.floodlightcontroller.core.HARole;
@@ -59,6 +58,8 @@ import net.floodlightcontroller.core.util.ListenerDispatcher;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.OFType;
+import org.projectfloodlight.openflow.types.IPv4Address;
+import org.projectfloodlight.openflow.types.TransportPort;
 
 import net.floodlightcontroller.packet.Ethernet;
 
@@ -74,8 +75,8 @@ public class MockFloodlightProvider implements IFloodlightModule, IFloodlightPro
     protected ConcurrentMap<OFType, ListenerDispatcher<OFType,IOFMessageListener>> listeners;
     protected ListenerDispatcher<HAListenerTypeMarker, IHAListener> haListeners;
     private HARole role;
-    private final String openFlowHostname = "127.0.0.1";
-    private final int openFlowPort = 6653;
+    private final Set<IPv4Address> openFlowHostname = Collections.singleton(IPv4Address.of("127.0.0.1"));
+    private final TransportPort openFlowPort = TransportPort.of(6653);
     private final boolean useAsyncUpdates;
     private volatile ExecutorService executorService;
     private volatile Future<?> mostRecentUpdateFuture;
@@ -378,12 +379,12 @@ public class MockFloodlightProvider implements IFloodlightModule, IFloodlightPro
     }
 
     @Override
-    public String getOFHostname() {
+    public Set<IPv4Address> getOFAddresses() {
         return openFlowHostname;
     }
 
     @Override
-    public int getOFPort() {
+    public TransportPort getOFPort() {
         return openFlowPort;
     }
 

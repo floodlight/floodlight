@@ -11,7 +11,7 @@ import java.util.concurrent.TimeUnit;
 
 import javax.annotation.Nonnull;
 
-import org.jboss.netty.util.Timer;
+import io.netty.util.Timer;
 
 import net.floodlightcontroller.core.HARole;
 import net.floodlightcontroller.core.IOFConnection;

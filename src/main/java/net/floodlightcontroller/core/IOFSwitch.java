@@ -40,6 +40,7 @@ import org.projectfloodlight.openflow.types.U64;
 import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.ListenableFuture;
 
+import net.floodlightcontroller.core.internal.OFConnection;
 import net.floodlightcontroller.core.internal.TableFeatures;
 import net.floodlightcontroller.core.web.serializers.IOFSwitchSerializer;
 

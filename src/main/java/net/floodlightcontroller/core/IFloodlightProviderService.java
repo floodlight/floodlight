@@ -23,9 +23,7 @@ import java.util.Map;
 
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.packet.Ethernet;
-
-import org.jboss.netty.util.Timer;
-
+import io.netty.util.Timer;
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.HARole;
 import net.floodlightcontroller.core.IHAListener;
@@ -36,10 +34,12 @@ import net.floodlightcontroller.core.RoleInfo;
 import net.floodlightcontroller.core.internal.RoleManager;
 import net.floodlightcontroller.core.internal.Controller.IUpdate;
 import net.floodlightcontroller.core.internal.Controller.ModuleLoaderState;
-
 import net.floodlightcontroller.core.FloodlightContextStore;
+
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFType;
+import org.projectfloodlight.openflow.types.IPv4Address;
+import org.projectfloodlight.openflow.types.TransportPort;
 /**
  * The interface exposed by the core bundle that allows you to interact
  * with connected switches.
@@ -115,16 +115,16 @@ public interface IFloodlightProviderService extends
     public String getControllerId();
 
     /**
-     * Gets the controller hostname
-     * @return the controller hostname
+     * Gets the controller addresses
+     * @return the controller addresses
      */
-    public String getOFHostname();
+    public Set<IPv4Address> getOFAddresses();
 
     /**
      * Gets the controller's openflow port
      * @return the controller's openflow port
      */
-    public int getOFPort();
+    public TransportPort getOFPort();
 
     /**
      * Set the role of the controller

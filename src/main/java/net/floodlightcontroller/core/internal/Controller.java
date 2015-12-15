@@ -22,6 +22,7 @@ import java.lang.management.RuntimeMXBean;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -34,9 +35,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.LinkedBlockingQueue;
 
-import org.jboss.netty.util.HashedWheelTimer;
-import org.jboss.netty.util.Timer;
-
+import io.netty.util.HashedWheelTimer;
+import io.netty.util.Timer;
 import net.floodlightcontroller.core.ControllerId;
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.HAListenerTypeMarker;
@@ -66,6 +66,8 @@ import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.protocol.OFType;
 import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.IPv4Address;
+import org.projectfloodlight.openflow.types.TransportPort;
 
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.perfmon.IPktInProcessingTimeService;
@@ -129,8 +131,8 @@ public class Controller implements IFloodlightProviderService, IStorageSourceLis
     private IShutdownService shutdownService;
 
     // Configuration options
-    protected int openFlowPort = 6653; // new registered OF port number
-    private String openFlowHostname = null;
+    private static TransportPort openFlowPort = TransportPort.of(6653); // new registered OF port number
+	private static Set<IPv4Address> openFlowAddresses = new HashSet<IPv4Address>();
     protected int workerThreads = 0;
     
     // The id for this controller node. Should be unique for each controller
@@ -513,11 +515,12 @@ public class Controller implements IFloodlightProviderService, IStorageSourceLis
     }
     
     @Override
-    public String getOFHostname() {
-        return openFlowHostname;
+    public Set<IPv4Address> getOFAddresses() {
+        return Collections.unmodifiableSet(openFlowAddresses);
     }
+    
     @Override
-    public int getOFPort() {
+    public TransportPort getOFPort() {
         return openFlowPort;
     }
 
@@ -677,22 +680,33 @@ public class Controller implements IFloodlightProviderService, IStorageSourceLis
     }
     
     private void setConfigParams(Map<String, String> configParams) throws FloodlightModuleException {
-        String ofPort = configParams.get("openflowPort");
+        String ofPort = configParams.get("openFlowPort");
         if (!Strings.isNullOrEmpty(ofPort)) {
             try {
-                this.openFlowPort = Integer.parseInt(ofPort);
-            } catch (NumberFormatException e) {
-                log.error("invalid openflow port specifier", e);
-                throw new FloodlightModuleException("invalid port specifier in cofig");
+                openFlowPort = TransportPort.of(Integer.parseInt(ofPort));
+            } catch (Exception e) {
+                log.error("Invalid OpenFlow port {}, {}", ofPort, e);
+                throw new FloodlightModuleException("Invalid OpenFlow port of " + ofPort + " in config");
             }
-            log.debug("OpenFlow port set to {}", this.openFlowPort);
         }
+        log.info("OpenFlow port set to {}", openFlowPort);
 
-        String threads = configParams.get("workerthreads");
+        String threads = configParams.get("workerThreads");
         if (!Strings.isNullOrEmpty(threads)) {
             this.workerThreads = Integer.parseInt(threads);
         }
-        log.debug("Number of worker threads set to {}", this.workerThreads);
+        log.info("Number of worker threads set to {}", this.workerThreads);
+        
+        String addresses = configParams.get("openFlowAddresses");
+        if (!Strings.isNullOrEmpty(ofPort)) {
+            try {
+                openFlowAddresses = Collections.singleton(IPv4Address.of(addresses)); //TODO support list of addresses for multi-honed controllers
+            } catch (Exception e) {
+                log.error("Invalid OpenFlow address {}, {}", addresses, e);
+                throw new FloodlightModuleException("Invalid OpenFlow address of " + addresses + " in config");
+            }
+            log.info("OpenFlow addresses set to {}", openFlowAddresses);
+        }
     }
 
     /**

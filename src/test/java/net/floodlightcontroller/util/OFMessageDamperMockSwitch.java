@@ -28,8 +28,8 @@ import java.util.Set;
 import net.floodlightcontroller.core.IOFConnection;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.LogicalOFMessageCategory;
-import net.floodlightcontroller.core.OFConnection;
 import net.floodlightcontroller.core.SwitchDescription;
+import net.floodlightcontroller.core.internal.OFConnection;
 import net.floodlightcontroller.core.internal.TableFeatures;
 
 import org.projectfloodlight.openflow.protocol.OFActionType;

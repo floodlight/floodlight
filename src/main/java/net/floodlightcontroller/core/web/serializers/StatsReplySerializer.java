@@ -409,7 +409,7 @@ public class StatsReplySerializer extends JsonSerializer<StatsReply> {
 		jGen.writeStringField("version", meterConfigReply.getVersion().toString()); //return the enum name
 		jGen.writeFieldName("meterConfig");
 		jGen.writeStartArray();
-		for(OFMeterBand band : meterConfigReply.getEntries()) {
+		for (OFMeterBand band : meterConfigReply.getEntries()) {
 			jGen.writeStartObject();
 			short type = (short)band.getType();
 			jGen.writeNumberField("bandType",type);
