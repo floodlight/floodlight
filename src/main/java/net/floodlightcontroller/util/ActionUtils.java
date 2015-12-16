@@ -1179,7 +1179,7 @@ public class ActionUtils {
 		if (n.matches()) {
 			if (n.group(1) != null) {
 				try {
-					TransportPort portnum = TransportPort.of(get_short(n.group(1)));
+					TransportPort portnum = TransportPort.of(get_int(n.group(1)));
 					OFActionSetTpSrc.Builder ab = OFFactories.getFactory(version).actions().buildSetTpSrc();
 					ab.setTpPort(portnum);
 					log.debug("action {}", ab.build());
@@ -1213,7 +1213,7 @@ public class ActionUtils {
 		if (n.matches()) {
 			if (n.group(1) != null) {
 				try {
-					TransportPort portnum = TransportPort.of(get_short(n.group(1)));
+					TransportPort portnum = TransportPort.of(get_int(n.group(1)));
 					OFActionSetTpDst.Builder ab = OFFactories.getFactory(version).actions().buildSetTpDst();
 					ab.setTpPort(portnum);
 					log.debug("action {}", ab.build());
