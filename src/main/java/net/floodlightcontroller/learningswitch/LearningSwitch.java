@@ -618,6 +618,7 @@ implements IFloodlightModule, ILearningSwitchService, IOFMessageListener, IContr
 	// CAVEAT: extremely noisy
 	@Override
 	public void onMessageConsumed(IOFSwitch sw, OFMessage msg, FloodlightContext cntx) {
+		sw.flush();
 		log.debug("Learning switch: ended processing packet {}",msg.toString());
 	}
 }
