@@ -8,10 +8,9 @@ import java.util.Map.Entry;
 
 import net.floodlightcontroller.debugcounter.IDebugCounter;
 
-import org.jboss.netty.channel.Channel;
-import org.jboss.netty.channel.ChannelHandlerContext;
-import org.jboss.netty.channel.ChannelStateEvent;
-import org.jboss.netty.channel.MessageEvent;
+import io.netty.channel.Channel;
+import io.netty.channel.ChannelHandlerContext;
+
 import org.sdnplatform.sync.IClosableIterator;
 import org.sdnplatform.sync.IStoreClient;
 import org.sdnplatform.sync.IVersion;
@@ -61,14 +60,12 @@ public class RPCChannelHandler extends AbstractRPCChannelHandler {
     // ****************************
 
     @Override
-    public void channelOpen(ChannelHandlerContext ctx,
-                            ChannelStateEvent e) throws Exception {
-        rpcService.cg.add(ctx.getChannel());
+    public void channelActive(ChannelHandlerContext ctx) throws Exception {
+        rpcService.getChannelGroup().add(ctx.channel());
     }
 
     @Override
-    public void channelDisconnected(ChannelHandlerContext ctx,
-                                    ChannelStateEvent e) throws Exception {
+    public void channelInactive(ChannelHandlerContext ctx) throws Exception {
         if (remoteNode != null) {
             rpcService.disconnectNode(remoteNode.getNodeId());
         }
@@ -77,12 +74,6 @@ public class RPCChannelHandler extends AbstractRPCChannelHandler {
     // ******************************************
     // AbstractRPCChannelHandler message handlers
     // ******************************************
-
-    @Override
-    public void messageReceived(ChannelHandlerContext ctx,
-                                MessageEvent e) throws Exception {
-        super.messageReceived(ctx, e);
-    }
 
     @Override
     protected void handleHello(HelloMessage hello, Channel channel) {

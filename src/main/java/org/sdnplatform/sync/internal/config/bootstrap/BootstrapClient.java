@@ -2,16 +2,23 @@ package org.sdnplatform.sync.internal.config.bootstrap;
 
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.jboss.netty.bootstrap.ClientBootstrap;
-import org.jboss.netty.channel.Channel;
-import org.jboss.netty.channel.ChannelFuture;
-import org.jboss.netty.channel.group.ChannelGroup;
-import org.jboss.netty.channel.group.DefaultChannelGroup;
-import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
+import io.netty.bootstrap.Bootstrap;
+import io.netty.channel.Channel;
+import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelOption;
+import io.netty.channel.EventLoopGroup;
+import io.netty.channel.group.ChannelGroup;
+import io.netty.channel.group.DefaultChannelGroup;
+import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.channel.socket.nio.NioSocketChannel;
+import io.netty.handler.timeout.TimeoutException;
+import io.netty.util.HashedWheelTimer;
+import io.netty.util.Timer;
+import io.netty.util.concurrent.GlobalEventExecutor;
+import net.floodlightcontroller.core.util.NettyUtils;
+
 import org.sdnplatform.sync.error.SyncException;
 import org.sdnplatform.sync.internal.SyncManager;
 import org.sdnplatform.sync.internal.config.AuthScheme;
@@ -27,14 +34,14 @@ import com.google.common.net.HostAndPort;
  * local system store
  * @author readams
  */
-public class Bootstrap {
+public class BootstrapClient {
     protected static final Logger logger =
-            LoggerFactory.getLogger(Bootstrap.class);
+            LoggerFactory.getLogger(BootstrapClient.class);
     
     /**
      * Channel group that will hold all our channels
      */
-    protected ChannelGroup cg;
+    private ChannelGroup cg;
 
     /**
      * Transaction ID used in message headers in the RPC protocol
@@ -49,15 +56,16 @@ public class Bootstrap {
     protected final String keyStorePath;
     protected final String keyStorePassword;
     
-    ExecutorService bossExecutor = null;
-    ExecutorService workerExecutor = null;
-    ClientBootstrap bootstrap = null;
-    BootstrapPipelineFactory pipelineFactory;
+    EventLoopGroup workerExecutor = null;
+    Bootstrap bootstrap = null;
+    BootstrapChannelInitializer pipelineFactory;
     
     protected Node localNode;
     protected volatile boolean succeeded = false;
+    
+    private Timer timer;
 
-    public Bootstrap(SyncManager syncManager, AuthScheme authScheme,
+    public BootstrapClient(SyncManager syncManager, AuthScheme authScheme,
                      String keyStorePath, String keyStorePassword) {
         super();
         this.syncManager = syncManager;
@@ -67,25 +75,23 @@ public class Bootstrap {
     }
 
     public void init() throws SyncException {
-        cg = new DefaultChannelGroup("Cluster Bootstrap");
+        cg = new DefaultChannelGroup("Cluster Bootstrap", GlobalEventExecutor.INSTANCE);
 
-        bossExecutor = Executors.newCachedThreadPool();
-        workerExecutor = Executors.newCachedThreadPool();
-
-        bootstrap =
-                new ClientBootstrap(new NioClientSocketChannelFactory(bossExecutor,
-                                                                      workerExecutor));
-        bootstrap.setOption("child.reuseAddr", true);
-        bootstrap.setOption("child.keepAlive", true);
-        bootstrap.setOption("child.tcpNoDelay", true);
-        bootstrap.setOption("child.sendBufferSize", 
-                            RPCService.SEND_BUFFER_SIZE);
-        bootstrap.setOption("child.receiveBufferSize", 
-                            RPCService.SEND_BUFFER_SIZE);
-        bootstrap.setOption("child.connectTimeoutMillis", 
-                            RPCService.CONNECT_TIMEOUT);
-        pipelineFactory = new BootstrapPipelineFactory(this);
-        bootstrap.setPipelineFactory(pipelineFactory);
+        workerExecutor = new NioEventLoopGroup();
+        timer = new HashedWheelTimer();
+        
+        bootstrap = new Bootstrap()
+        .group(workerExecutor)
+        .channel(NioSocketChannel.class)
+        .option(ChannelOption.SO_REUSEADDR, true)
+        .option(ChannelOption.SO_KEEPALIVE, true)
+        .option(ChannelOption.TCP_NODELAY, true)
+        .option(ChannelOption.SO_SNDBUF, RPCService.SEND_BUFFER_SIZE)
+        .option(ChannelOption.SO_RCVBUF, RPCService.SEND_BUFFER_SIZE)
+        .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, RPCService.CONNECT_TIMEOUT);
+        
+        pipelineFactory = new BootstrapChannelInitializer(timer, this);
+        bootstrap.handler(pipelineFactory);
     }
     
     public void shutdown() {
@@ -93,18 +99,20 @@ public class Bootstrap {
             cg.close().awaitUninterruptibly();
             cg = null;
         }
-        if (bootstrap != null)
-            bootstrap.releaseExternalResources();
         bootstrap = null;
-        if (pipelineFactory != null)
-            pipelineFactory.releaseExternalResources();
         pipelineFactory = null;
-        if (workerExecutor != null)
-            workerExecutor.shutdown();
-        workerExecutor = null;
-        if (bossExecutor != null)
-            bossExecutor.shutdown();
-        bossExecutor = null;
+        if (workerExecutor != null) {
+            try {
+				NettyUtils.shutdownAndWait("Sync BootstrapClient", workerExecutor);
+			} catch (InterruptedException | TimeoutException e) {
+				logger.warn("Error waiting for gracefull shutdown of BootstrapClient {}", e);
+			}
+            workerExecutor = null;
+        }
+        if (timer != null) {
+        	timer.stop();
+        	timer = null;
+        }
     }
     
     public boolean bootstrap(HostAndPort seed, 
@@ -116,20 +124,24 @@ public class Bootstrap {
         ChannelFuture future = bootstrap.connect(sa);
         future.awaitUninterruptibly();
         if (!future.isSuccess()) {
-            logger.debug("Could not connect to " + seed, future.getCause());
+            logger.debug("Could not connect to " + seed, future.cause());
             return false;
         }
-        Channel channel = future.getChannel();
+        Channel channel = future.channel();
         logger.debug("[{}] Connected to {}", 
                      localNode != null ? localNode.getNodeId() : null,
                      seed);
         
         try {
-            channel.getCloseFuture().await();
+            channel.closeFuture().await();
         } catch (InterruptedException e) {
             logger.debug("Interrupted while waiting for bootstrap");
             return succeeded;
         }
         return succeeded;
+    }
+    
+    public ChannelGroup getChannelGroup() {
+    	return cg;
     }
 }

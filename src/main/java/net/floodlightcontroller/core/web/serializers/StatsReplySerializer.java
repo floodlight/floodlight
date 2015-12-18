@@ -42,6 +42,7 @@ import org.projectfloodlight.openflow.protocol.OFGroupFeaturesStatsReply;
 import org.projectfloodlight.openflow.protocol.OFGroupStatsEntry;
 import org.projectfloodlight.openflow.protocol.OFGroupStatsReply;
 import org.projectfloodlight.openflow.protocol.OFMeterBandStats;
+import org.projectfloodlight.openflow.protocol.OFMeterConfig;
 import org.projectfloodlight.openflow.protocol.OFMeterConfigStatsReply;
 import org.projectfloodlight.openflow.protocol.OFMeterFeatures;
 import org.projectfloodlight.openflow.protocol.OFMeterFeaturesStatsReply;
@@ -409,37 +410,46 @@ public class StatsReplySerializer extends JsonSerializer<StatsReply> {
 		jGen.writeStringField("version", meterConfigReply.getVersion().toString()); //return the enum name
 		jGen.writeFieldName("meterConfig");
 		jGen.writeStartArray();
-		for (OFMeterBand band : meterConfigReply.getEntries()) {
+		for (OFMeterConfig config : meterConfigReply.getEntries()) {
 			jGen.writeStartObject();
-			short type = (short)band.getType();
-			jGen.writeNumberField("bandType",type);
+			jGen.writeNumberField("meterId", config.getMeterId());
+			jGen.writeNumberField("flags", config.getFlags());
+			jGen.writeFieldName("meterBands");
+			jGen.writeStartArray();
+			for (OFMeterBand band : config.getEntries()) {
+				jGen.writeStartObject();
+				short type = (short)band.getType();
+				jGen.writeNumberField("bandType",type);
 
-			switch (type) {
-			case OFMeterBandTypeSerializerVer13.DROP_VAL:
-				OFMeterBandDrop bandDrop = (OFMeterBandDrop) band;
-				jGen.writeNumberField("rate", bandDrop.getRate());
-				jGen.writeNumberField("burstSize", bandDrop.getBurstSize());
-				break;
+				switch (type) {
+				case OFMeterBandTypeSerializerVer13.DROP_VAL:
+					OFMeterBandDrop bandDrop = (OFMeterBandDrop) band;
+					jGen.writeNumberField("rate", bandDrop.getRate());
+					jGen.writeNumberField("burstSize", bandDrop.getBurstSize());
+					break;
 
-			case OFMeterBandTypeSerializerVer13.DSCP_REMARK_VAL:
-				OFMeterBandDscpRemark bandDscp = (OFMeterBandDscpRemark) band;
-				jGen.writeNumberField("rate", bandDscp.getRate());
-				jGen.writeNumberField("burstSize", bandDscp.getBurstSize());
-				jGen.writeNumberField("precLevel", bandDscp.getPrecLevel());
-				break;
+				case OFMeterBandTypeSerializerVer13.DSCP_REMARK_VAL:
+					OFMeterBandDscpRemark bandDscp = (OFMeterBandDscpRemark) band;
+					jGen.writeNumberField("rate", bandDscp.getRate());
+					jGen.writeNumberField("burstSize", bandDscp.getBurstSize());
+					jGen.writeNumberField("precLevel", bandDscp.getPrecLevel());
+					break;
 
-			case OFMeterBandTypeSerializerVer13.EXPERIMENTER_VAL:
-				OFMeterBandExperimenter bandExp = (OFMeterBandExperimenter) band;
-				jGen.writeNumberField("rate", bandExp.getRate());
-				jGen.writeNumberField("burstSize", bandExp.getBurstSize());
-				jGen.writeNumberField("experimenter", bandExp.getExperimenter());
-				break;
+				case OFMeterBandTypeSerializerVer13.EXPERIMENTER_VAL:
+					OFMeterBandExperimenter bandExp = (OFMeterBandExperimenter) band;
+					jGen.writeNumberField("rate", bandExp.getRate());
+					jGen.writeNumberField("burstSize", bandExp.getBurstSize());
+					jGen.writeNumberField("experimenter", bandExp.getExperimenter());
+					break;
 
-			default:
-				// shouldn't ever get here
-				break;            		
-			}//end of Switch Case
+				default:
+					// shouldn't ever get here
+					break;            		
+				}//end of Switch Case
 
+				jGen.writeEndObject();
+			}//end of for loop
+			jGen.writeEndArray();
 			jGen.writeEndObject();
 		}//end of for loop
 		jGen.writeEndArray();

@@ -18,18 +18,16 @@ package org.sdnplatform.sync.internal.config.bootstrap;
 
 import java.util.concurrent.TimeUnit;
 
-import org.jboss.netty.channel.ChannelHandlerContext;
-import org.jboss.netty.channel.ChannelStateEvent;
-import org.jboss.netty.channel.SimpleChannelUpstreamHandler;
-import org.jboss.netty.util.Timeout;
-import org.jboss.netty.util.Timer;
-import org.jboss.netty.util.TimerTask;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelInboundHandlerAdapter;
+import io.netty.util.Timeout;
+import io.netty.util.Timer;
+import io.netty.util.TimerTask;
 
 /**
  * Trigger a timeout if the bootstrap process stalls
  */
-public class BootstrapTimeoutHandler 
-    extends SimpleChannelUpstreamHandler {
+public class BootstrapTimeoutHandler extends ChannelInboundHandlerAdapter {
     
     final Timer timer;
     final long timeoutNanos;
@@ -44,22 +42,23 @@ public class BootstrapTimeoutHandler
     }
     
     @Override
-    public void channelOpen(ChannelHandlerContext ctx, ChannelStateEvent e)
+    public void channelActive(ChannelHandlerContext ctx)
             throws Exception {
         if (timeoutNanos > 0) {
             timeout = timer.newTimeout(new HandshakeTimeoutTask(ctx), 
                                        timeoutNanos, TimeUnit.NANOSECONDS);
         }
-        ctx.sendUpstream(e);
+        super.channelActive(ctx);
     }
     
     @Override
-    public void channelClosed(ChannelHandlerContext ctx, ChannelStateEvent e)
+    public void channelInactive(ChannelHandlerContext ctx)
             throws Exception {
         if (timeout != null) {
             timeout.cancel();
             timeout = null;
         }
+        super.channelInactive(ctx);
     }
     
     private final class HandshakeTimeoutTask implements TimerTask {
@@ -76,10 +75,10 @@ public class BootstrapTimeoutHandler
                 return;
             }
 
-            if (!ctx.getChannel().isOpen()) {
+            if (!ctx.channel().isOpen()) {
                 return;
             }
-            ctx.getChannel().disconnect();
+            ctx.channel().disconnect();
         }
     }
 }

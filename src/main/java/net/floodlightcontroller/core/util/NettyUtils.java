@@ -10,7 +10,7 @@ import org.slf4j.LoggerFactory;
 import io.netty.channel.EventLoopGroup;
 import io.netty.util.concurrent.Future;
 
-/** Collection of static utilitiy functions for netty.
+/** Collection of static utility functions for netty.
  *
  * @author Andreas Wundsam <andreas.wundsam@bigswitch.com>
  */
