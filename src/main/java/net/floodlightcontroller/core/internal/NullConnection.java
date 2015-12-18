@@ -78,11 +78,6 @@ public class NullConnection implements IOFConnectionBackend, IOFMessageWriter {
     }
 
     @Override
-    public void flush() {
-        // noop
-    }
-
-    @Override
     public <R extends OFMessage> ListenableFuture<R> writeRequest(OFRequest<R> request) {
         return Futures.immediateFailedFuture(new SwitchDisconnectedException(getDatapathId()));
     }

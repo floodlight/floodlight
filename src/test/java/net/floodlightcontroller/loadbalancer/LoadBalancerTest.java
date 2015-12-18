@@ -448,8 +448,6 @@ public class LoadBalancerTest extends FloodlightTestCase {
 		expect(sw1.getOFFactory()).andReturn(factory).anyTimes();
 		sw1.write(capture(wc1));
 		expectLastCall().anyTimes();
-		sw1.flush();
-		expectLastCall().anyTimes();
 		
 		replay(sw1);
 		sfp.switchAdded(DatapathId.of(1L));

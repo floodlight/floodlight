@@ -207,8 +207,6 @@ public class StaticFlowTests extends FloodlightTestCase {
 		expectLastCall().anyTimes();
 		mockSwitch.write(capture(writeCaptureList));
 		expectLastCall().anyTimes();
-		mockSwitch.flush();
-		expectLastCall().anyTimes();
 		expect(mockSwitch.getOFFactory()).andReturn(factory).anyTimes();
 		replay(mockSwitch);
 
@@ -252,8 +250,6 @@ public class StaticFlowTests extends FloodlightTestCase {
 		mockSwitch.write(capture(writeCapture));
 		expectLastCall().anyTimes();
 		mockSwitch.write(capture(writeCaptureList));
-		expectLastCall().anyTimes();
-		mockSwitch.flush();
 		expectLastCall().anyTimes();
 		expect(mockSwitch.getOFFactory()).andReturn(factory).anyTimes();
 		expect(mockSwitch.getId()).andReturn(DatapathId.of(dpid)).anyTimes();

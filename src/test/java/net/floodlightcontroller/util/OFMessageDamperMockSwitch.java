@@ -161,11 +161,6 @@ public class OFMessageDamperMockSwitch implements IOFSwitch {
     }
 
     @Override
-    public void flush() {
-        assertTrue("Unexpected method call", false);
-    }
-
-    @Override
     public long getBuffers() {
         fail("Unexpected method call");
         return 0;

@@ -1219,7 +1219,6 @@ IFloodlightModule, IInfoProvider {
 		// send
 		// no more try-catch. switch will silently fail
 		iofSwitch.write(pob.build());
-		iofSwitch.flush();
 	}
 
 	/**

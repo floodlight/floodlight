@@ -291,13 +291,6 @@ public interface IOFSwitch extends IOFMessageWriter {
     OFFactory getOFFactory();
 
     /**
-     * Flush all flows queued for this switch on all connections that were written by the current thread.
-     *
-     *
-     */
-    void flush();
-
-    /**
      * Gets the OF connections for this switch instance
      * @return Collection of IOFConnection
      */

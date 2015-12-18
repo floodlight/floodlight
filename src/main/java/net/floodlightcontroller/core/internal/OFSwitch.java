@@ -39,7 +39,6 @@ import javax.annotation.Nonnull;
 
 import net.floodlightcontroller.core.IOFConnection;
 import net.floodlightcontroller.core.IOFConnectionBackend;
-import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.IOFSwitchBackend;
 import net.floodlightcontroller.core.LogicalOFMessageCategory;
 import net.floodlightcontroller.core.PortChangeEvent;
@@ -48,7 +47,6 @@ import net.floodlightcontroller.core.SwitchDescription;
 import net.floodlightcontroller.core.SwitchDriverSubHandshakeAlreadyStarted;
 import net.floodlightcontroller.core.SwitchDriverSubHandshakeCompleted;
 import net.floodlightcontroller.core.SwitchDriverSubHandshakeNotStarted;
-import net.floodlightcontroller.core.IOFSwitch.SwitchStatus;
 import net.floodlightcontroller.core.util.AppCookie;
 import net.floodlightcontroller.core.util.URIUtil;
 
@@ -730,17 +728,6 @@ public class OFSwitch implements IOFSwitchBackend {
 		this.connections.remove(connection.getAuxId());
 	}
 
-	@Override
-	public void write(OFMessage m) {
-		log.trace("Channel: {}, Connected: {}", connections.get(OFAuxId.MAIN).getRemoteInetAddress(), connections.get(OFAuxId.MAIN).isConnected());
-		if (isActive()) {
-			connections.get(OFAuxId.MAIN).write(m);
-			switchManager.handleOutgoingMessage(this, m);
-		} else {
-			log.warn("Attempted to write to switch {} that is SLAVE.", this.getId().toString());
-		}
-	}
-
 	/**
 	 * Gets a connection specified by aux Id.
 	 * @param auxId the specified aux id for the connection desired.
@@ -764,21 +751,32 @@ public class OFSwitch implements IOFSwitchBackend {
 	}
 
 	@Override
-	public void write(OFMessage m, LogicalOFMessageCategory category) {
+	public void write(OFMessage m) {
+		this.write(Collections.singletonList(m));
+	}
+	
+	@Override
+	public void write(Iterable<OFMessage> msglist) {
 		if (isActive()) {
-			this.getConnection(category).write(m);
-			switchManager.handleOutgoingMessage(this, m);
+			connections.get(OFAuxId.MAIN).write(msglist);
+			for (OFMessage m : msglist) {
+				switchManager.handleOutgoingMessage(this, m);
+			}
 		} else {
 			log.warn("Attempted to write to switch {} that is SLAVE.", this.getId().toString());
 		}
+	}
+	
+	@Override
+	public void write(OFMessage m, LogicalOFMessageCategory category) {
+		this.write(Collections.singletonList(m), category);
 	}
 
 	@Override
 	public void write(Iterable<OFMessage> msglist, LogicalOFMessageCategory category) {
 		if (isActive()) {
 			this.getConnection(category).write(msglist);
-
-			for(OFMessage m : msglist) {
+			for (OFMessage m : msglist) {
 				switchManager.handleOutgoingMessage(this, m);				
 			}
 		} else {
@@ -802,23 +800,9 @@ public class OFSwitch implements IOFSwitchBackend {
 	}
 
 	@Override
-	public void write(Iterable<OFMessage> msglist) {
-		if (isActive()) {
-			connections.get(OFAuxId.MAIN).write(msglist);
-
-			for(OFMessage m : msglist) {
-				switchManager.handleOutgoingMessage(this, m);
-			}
-		} else {
-			log.warn("Attempted to write to switch {} that is SLAVE.", this.getId().toString());
-		}
-	}
-
-	@Override
 	public void disconnect() {
-
 		// Iterate through connections and perform cleanup
-		for(Entry<OFAuxId, IOFConnectionBackend> entry : this.connections.entrySet()){
+		for (Entry<OFAuxId, IOFConnectionBackend> entry : this.connections.entrySet()) {
 			entry.getValue().disconnect();
 			this.connections.remove(entry.getKey());
 		}
@@ -953,12 +937,9 @@ public class OFSwitch implements IOFSwitchBackend {
 		return datapathId;
 	}
 
-	/* (non-Javadoc)
-	 * @see java.lang.Object#toString()
-	 */
 	@Override
 	public String toString() {
-		return "OFSwitchBase DPID[" + ((datapathId != null) ? datapathId.toString() : "?") + "]";
+		return "OFSwitch DPID[" + ((datapathId != null) ? datapathId.toString() : "?") + "]";
 	}
 
 	@Override
@@ -1065,13 +1046,6 @@ public class OFSwitch implements IOFSwitchBackend {
 	@Override
 	public void setControllerRole(OFControllerRole role) {
 		this.role = role;
-	}
-
-	@Override
-	public void flush() {
-		for(Entry<OFAuxId, IOFConnectionBackend> entry : this.connections.entrySet()){
-			entry.getValue().flush();
-		}
 	}
 
 	/**

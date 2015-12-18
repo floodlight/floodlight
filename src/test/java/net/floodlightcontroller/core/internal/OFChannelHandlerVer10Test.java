@@ -23,11 +23,14 @@ import java.util.Set;
 import org.easymock.Capture;
 import org.easymock.CaptureType;
 import org.easymock.EasyMock;
+import org.easymock.IAnswer;
 import org.hamcrest.CoreMatchers;
 
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPipeline;
+import io.netty.channel.ChannelPromise;
+import io.netty.channel.DefaultChannelPromise;
 import io.netty.util.HashedWheelTimer;
 import io.netty.util.Timer;
 
@@ -38,6 +41,7 @@ import org.junit.Test;
 import net.floodlightcontroller.core.IOFConnectionBackend;
 import net.floodlightcontroller.core.internal.OFChannelInitializer.PipelineHandler;
 import net.floodlightcontroller.core.internal.OFChannelInitializer.PipelineHandshakeTimeout;
+import net.floodlightcontroller.core.test.TestEventLoop;
 import net.floodlightcontroller.debugcounter.DebugCounterServiceImpl;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
 
@@ -90,6 +94,8 @@ public class OFChannelHandlerVer10Test {
     private INewOFConnectionListener newConnectionListener;
     private Capture<IOFConnectionBackend> newConnection;
     private Capture<OFFeaturesReply> newFeaturesReply;
+    
+    private TestEventLoop eventLoop;
 
     public void setUpFeaturesReply() {
        portDesc = factory.buildPortDesc()
@@ -115,6 +121,7 @@ public class OFChannelHandlerVer10Test {
         newConnectionListener = createMock(INewOFConnectionListener.class);
         newConnection = new Capture<IOFConnectionBackend>();
         newFeaturesReply = new Capture<OFFeaturesReply>();
+        eventLoop = new TestEventLoop();
 
         ctx = createMock(ChannelHandlerContext.class);
         channel = createMock(Channel.class);
@@ -176,6 +183,14 @@ public class OFChannelHandlerVer10Test {
     /** Reset the channel mock and set basic method call expectations */
     void resetChannel() {
         reset(channel);
+        expect(channel.newPromise()).andAnswer(new IAnswer<ChannelPromise>() {
+			@Override
+			public ChannelPromise answer() throws Throwable {
+				return new DefaultChannelPromise(channel);
+			}
+		}).anyTimes();
+		eventLoop = new TestEventLoop();
+		expect(channel.eventLoop()).andReturn(eventLoop).anyTimes();
         expect(channel.pipeline()).andReturn(pipeline).anyTimes();
         expect(channel.remoteAddress()).andReturn(InetSocketAddress.createUnresolved("1.1.1.1", 80)).anyTimes();
     }

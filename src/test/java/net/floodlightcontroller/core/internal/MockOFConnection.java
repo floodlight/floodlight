@@ -125,11 +125,6 @@ public class MockOFConnection implements IOFConnectionBackend {
     }
 
     @Override
-    public void flush() {
-        // no op
-    }
-
-    @Override
     public DatapathId getDatapathId() {
         return this.id;
     }

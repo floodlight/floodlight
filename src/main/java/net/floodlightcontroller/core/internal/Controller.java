@@ -133,7 +133,8 @@ public class Controller implements IFloodlightProviderService, IStorageSourceLis
     // Configuration options
     private static TransportPort openFlowPort = TransportPort.of(6653); // new registered OF port number
 	private static Set<IPv4Address> openFlowAddresses = new HashSet<IPv4Address>();
-    protected int workerThreads = 0;
+	public static final int SEND_BUFFER_SIZE = 4 * 1024 * 1024;
+    protected int workerThreads = 16;
     
     // The id for this controller node. Should be unique for each controller
     // node in a controller cluster.
@@ -143,8 +144,7 @@ public class Controller implements IFloodlightProviderService, IStorageSourceLis
     // if they should operate in ACTIVE / STANDBY
     protected volatile HARole notifiedRole;
 
-    private static final String
-            INITIAL_ROLE_CHANGE_DESCRIPTION = "Controller startup.";
+    private static final String INITIAL_ROLE_CHANGE_DESCRIPTION = "Controller startup.";
     /**
      * NOTE: roleManager is not 'final' because it's initialized at run time
      * based on parameters that are only available in init()
@@ -176,10 +176,6 @@ public class Controller implements IFloodlightProviderService, IStorageSourceLis
             FLOW_COLUMN_ACCESS_PRIORITY,
             FLOW_COLUMN_CORE_PRIORITY
     };
-    
-    // Perf. related configuration
-    protected static final int SEND_BUFFER_SIZE = 128 * 1024;
-    public static final int BATCH_MAX_SIZE = 1; //TODO @Ryan this was 100. Causes packet_out messages to stall until 100 accumulated...
     protected static final boolean ALWAYS_DECODE_ETH = true;
 
     // Set of port name prefixes that will be classified as uplink ports,
@@ -590,7 +586,6 @@ public class Controller implements IFloodlightProviderService, IStorageSourceLis
         if (m == null)
             throw new NullPointerException("OFMessage must not be null");
 
-        // FIXME floodlight context not supported any more
         FloodlightContext bc = new FloodlightContext();
 
         List<IOFMessageListener> listeners = null;
