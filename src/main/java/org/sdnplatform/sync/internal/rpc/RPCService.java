@@ -31,6 +31,7 @@ import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
+import io.netty.util.Timer;
 import io.netty.util.concurrent.GlobalEventExecutor;
 
 import org.sdnplatform.sync.internal.SyncManager;
@@ -67,27 +68,22 @@ public class RPCService {
     /**
      * {@link EventLoopGroup} used for netty boss threads
      */
-    protected EventLoopGroup bossExecutor;
+    protected EventLoopGroup bossGroup;
     
     /**
      * {@link EventLoopGroup} used for netty worker threads
      */
-    protected EventLoopGroup workerExecutor;
+    protected EventLoopGroup workerGroup;
 
     /**
      * Netty {@link ClientBootstrap} used for creating client connections 
      */
     protected Bootstrap clientBootstrap;
-    
-    /**
-     * Netty {@link ServerBootstrap} used for creating server connections 
-     */
-    protected ServerBootstrap serverBootstrap;
 
     /**
      * {@link RPCChannelInitializer} for creating connections 
      */
-    protected RPCChannelInitializer pipelineFactory;
+    protected RPCChannelInitializer channelInitializer;
 
     /**
      * Node connections
@@ -125,6 +121,11 @@ public class RPCService {
      * Task to periodically ensure that connections are active
      */
     protected SingletonTask reconnectTask;
+    
+    /**
+     * Timer used for timeouts
+     */
+    private final Timer timer;
     
     /**
      * If we want to rate-limit certain types of messages, we can do
@@ -166,10 +167,12 @@ public class RPCService {
     protected static final int MAX_PENDING_MESSAGES = 500;
 
     public RPCService(SyncManager syncManager, 
-                      IDebugCounterService debugCounter) {
+                      IDebugCounterService debugCounter,
+                      Timer timer) {
         super();
         this.syncManager = syncManager;
         this.debugCounter = debugCounter;
+        this.timer = timer;
 
         messageWindows = new ConcurrentHashMap<Short, MessageWindow>();
     }
@@ -209,13 +212,13 @@ public class RPCService {
             }
         };
         
-        bossExecutor = new NioEventLoopGroup(0, f2);
-        workerExecutor = new NioEventLoopGroup(0, f2);
+        bossGroup = new NioEventLoopGroup(0, f2);
+        workerGroup = new NioEventLoopGroup(0, f2);
 
-        pipelineFactory = new RPCChannelInitializer(syncManager, this);
+        channelInitializer = new RPCChannelInitializer(syncManager, this, timer);
 
-        startServer(pipelineFactory);
-        startClients(pipelineFactory);
+        startServer(channelInitializer);
+        startClients(channelInitializer);
     }
 
     /**
@@ -230,14 +233,13 @@ public class RPCService {
             }
 
             clientBootstrap = null;
-            serverBootstrap = null;
-            pipelineFactory = null;
-            if (bossExecutor != null)
-            	NettyUtils.shutdownAndWait("boss group", bossExecutor);
-            bossExecutor = null;
-            if (workerExecutor != null)
-            	NettyUtils.shutdownAndWait("worker group", workerExecutor);
-            workerExecutor = null;
+            channelInitializer = null;
+            if (bossGroup != null)
+            	NettyUtils.shutdownAndWait("Sync RPC Service boss group", bossGroup);
+            bossGroup = null;
+            if (workerGroup != null)
+            	NettyUtils.shutdownAndWait("Sync RPC Service worker group", workerGroup);
+            workerGroup = null;
         } catch (InterruptedException e) {
             logger.warn("Interrupted while shutting down RPC server");
         }
@@ -267,7 +269,7 @@ public class RPCService {
         NodeConnection nc = connections.get(nodeId);
         if (nc != null && nc.state == NodeConnectionState.CONNECTED) {
             waitForMessageWindow(bsm.getType(), nodeId, 0);
-            nc.nodeChannel.write(bsm);
+            nc.nodeChannel.writeAndFlush(bsm);
             return true;
         }
         return false;
@@ -423,7 +425,7 @@ public class RPCService {
      */
     protected void startServer(RPCChannelInitializer channelInitializer) {
         final ServerBootstrap bootstrap = new ServerBootstrap();
-        bootstrap.group(bossExecutor, workerExecutor)
+        bootstrap.group(bossGroup, workerGroup)
         .channel(NioServerSocketChannel.class)
         .option(ChannelOption.SO_REUSEADDR, true)
         .option(ChannelOption.SO_KEEPALIVE, true)
@@ -445,8 +447,6 @@ public class RPCService {
         ChannelFuture bindFuture = bootstrap.bind(sa);
         cg.add(bindFuture.channel());
         
-        serverBootstrap = bootstrap;
-
         logger.info("Listening for internal floodlight RPC on {}", sa);
     }
 
@@ -513,7 +513,7 @@ public class RPCService {
      */
     protected void startClients(RPCChannelInitializer channelInitializer) {
         final Bootstrap bootstrap = new Bootstrap();
-        bootstrap.group(workerExecutor)
+        bootstrap.group(workerGroup)
         .channel(NioSocketChannel.class)
         .option(ChannelOption.SO_REUSEADDR, true)
         .option(ChannelOption.SO_KEEPALIVE, true)

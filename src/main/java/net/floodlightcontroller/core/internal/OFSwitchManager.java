@@ -1009,7 +1009,7 @@ public class OFSwitchManager implements IOFSwitchManager, INewOFConnectionListen
 
 			Set<InetSocketAddress> addrs = new HashSet<InetSocketAddress>();
 			if (floodlightProvider.getOFAddresses().isEmpty()) {
-				cg.add(bootstrap.bind(addrs.iterator().next()).channel());
+				cg.add(bootstrap.bind(new InetSocketAddress(InetAddress.getByAddress(IPv4Address.NONE.getBytes()), floodlightProvider.getOFPort().getPort())).channel());
 			} else {
 				for (IPv4Address ip : floodlightProvider.getOFAddresses()) {
 					addrs.add(new InetSocketAddress(InetAddress.getByAddress(ip.getBytes()), floodlightProvider.getOFPort().getPort()));

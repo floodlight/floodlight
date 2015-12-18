@@ -70,6 +70,10 @@ public class BootstrapTest {
                     new File(dbFolder.getRoot(), 
                              "server" + i).getAbsolutePath();
             fmc.addConfigParam(syncManager, "dbPath", dbPath);
+            /*fmc.addConfigParam(syncManager, "keystorePath", keyStorePath);
+            fmc.addConfigParam(syncManager, "keystorePassword", keyStorePassword);
+            fmc.addConfigParam(syncManager, "authScheme", dbPath);
+            fmc.addConfigParam(syncManager, "port", dbPath);*/
 
             tp.init(fmc);
             syncManager.init(fmc);

@@ -698,7 +698,7 @@ public class Controller implements IFloodlightProviderService, IStorageSourceLis
         log.info("Number of worker threads set to {}", this.workerThreads);
         
         String addresses = configParams.get("openFlowAddresses");
-        if (!Strings.isNullOrEmpty(ofPort)) {
+        if (!Strings.isNullOrEmpty(addresses)) {
             try {
                 openFlowAddresses = Collections.singleton(IPv4Address.of(addresses)); //TODO support list of addresses for multi-honed controllers
             } catch (Exception e) {
@@ -706,6 +706,8 @@ public class Controller implements IFloodlightProviderService, IStorageSourceLis
                 throw new FloodlightModuleException("Invalid OpenFlow address of " + addresses + " in config");
             }
             log.info("OpenFlow addresses set to {}", openFlowAddresses);
+        } else {
+        	openFlowAddresses.add(IPv4Address.NONE);
         }
     }
 

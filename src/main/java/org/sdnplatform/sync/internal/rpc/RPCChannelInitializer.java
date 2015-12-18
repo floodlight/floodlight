@@ -5,7 +5,6 @@ import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelPipeline;
 import io.netty.handler.timeout.IdleStateHandler;
 import io.netty.handler.timeout.ReadTimeoutHandler;
-import io.netty.util.HashedWheelTimer;
 import io.netty.util.Timer;
 
 import org.sdnplatform.sync.internal.SyncManager;
@@ -25,12 +24,12 @@ public class RPCChannelInitializer extends ChannelInitializer<Channel> {
     private static final int maxFrameSize = 512 * 1024;
     
     public RPCChannelInitializer(SyncManager syncManager,
-                              RPCService rpcService) {
+                              RPCService rpcService,
+                              Timer timer) {
         super();
         this.syncManager = syncManager;
         this.rpcService = rpcService;
-
-        this.timer = new HashedWheelTimer();
+        this.timer = timer;
     }
 
     @Override
