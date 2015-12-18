@@ -16,7 +16,6 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.LinkedTransferQueue;
 
-import net.floodlightcontroller.core.util.NettyUtils;
 import net.floodlightcontroller.core.util.SingletonTask;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
 import io.netty.bootstrap.Bootstrap;
@@ -235,10 +234,10 @@ public class RPCService {
             clientBootstrap = null;
             channelInitializer = null;
             if (bossGroup != null)
-            	NettyUtils.shutdownAndWait("Sync RPC Service boss group", bossGroup);
+            	bossGroup.shutdownGracefully();
             bossGroup = null;
             if (workerGroup != null)
-            	NettyUtils.shutdownAndWait("Sync RPC Service worker group", workerGroup);
+            	workerGroup.shutdownGracefully();
             workerGroup = null;
         } catch (InterruptedException e) {
             logger.warn("Interrupted while shutting down RPC server");

@@ -44,7 +44,6 @@ import org.slf4j.LoggerFactory;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightService;
-import net.floodlightcontroller.core.util.NettyUtils;
 
 /**
  * Implementation of a sync service that passes its functionality off to a
@@ -165,7 +164,7 @@ public class RemoteSyncManager extends AbstractSyncManager {
             clientBootstrap = null;
             pipelineFactory = null;
             if (workerExecutor != null) {
-            	NettyUtils.shutdownAndWait("worker group", workerExecutor);
+            	workerExecutor.shutdownGracefully();
             	workerExecutor = null;
             }
             if (timer != null) {

@@ -17,7 +17,6 @@ import io.netty.handler.timeout.TimeoutException;
 import io.netty.util.HashedWheelTimer;
 import io.netty.util.Timer;
 import io.netty.util.concurrent.GlobalEventExecutor;
-import net.floodlightcontroller.core.util.NettyUtils;
 
 import org.sdnplatform.sync.error.SyncException;
 import org.sdnplatform.sync.internal.SyncManager;
@@ -103,8 +102,8 @@ public class BootstrapClient {
         pipelineFactory = null;
         if (workerExecutor != null) {
             try {
-				NettyUtils.shutdownAndWait("Sync BootstrapClient", workerExecutor);
-			} catch (InterruptedException | TimeoutException e) {
+				workerExecutor.shutdownGracefully();
+			} catch (TimeoutException e) {
 				logger.warn("Error waiting for gracefull shutdown of BootstrapClient {}", e);
 			}
             workerExecutor = null;
