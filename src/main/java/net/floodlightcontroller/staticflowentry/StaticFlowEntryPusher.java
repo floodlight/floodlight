@@ -610,7 +610,6 @@ implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService, 
 				log.debug("Sending {} new entries to {}", messages.size(), dpid);
 			}
 			ofswitch.write(messages);
-			ofswitch.flush();
 		}
 	}
 
@@ -626,7 +625,6 @@ implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService, 
 				log.debug("Sending 1 new entries to {}", dpid.toString());
 			}
 			ofswitch.write(message);
-			ofswitch.flush();
 		}
 	}
 
@@ -654,7 +652,6 @@ implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService, 
 	 */
 	private void writeFlowModToSwitch(IOFSwitch sw, OFFlowMod flowMod) {
 		sw.write(flowMod);
-		sw.flush();
 	}
 	@Override
 	public String getName() {

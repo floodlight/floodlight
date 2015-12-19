@@ -29,12 +29,13 @@ import java.util.List;
 import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
+
 import net.floodlightcontroller.core.IOFSwitchBackend;
-import net.floodlightcontroller.core.OFSwitch;
 import net.floodlightcontroller.core.SwitchDriverSubHandshakeAlreadyStarted;
 import net.floodlightcontroller.core.SwitchDriverSubHandshakeCompleted;
 import net.floodlightcontroller.core.SwitchDriverSubHandshakeNotStarted;
 import net.floodlightcontroller.core.util.URIUtil;
+
 import org.projectfloodlight.openflow.protocol.OFBsnControllerConnection;
 import org.projectfloodlight.openflow.protocol.OFBsnControllerConnectionState;
 import org.projectfloodlight.openflow.protocol.OFBsnControllerConnectionsReply;

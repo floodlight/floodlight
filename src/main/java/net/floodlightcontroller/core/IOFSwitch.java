@@ -40,6 +40,7 @@ import org.projectfloodlight.openflow.types.U64;
 import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.ListenableFuture;
 
+import net.floodlightcontroller.core.internal.OFConnection;
 import net.floodlightcontroller.core.internal.TableFeatures;
 import net.floodlightcontroller.core.web.serializers.IOFSwitchSerializer;
 
@@ -288,13 +289,6 @@ public interface IOFSwitch extends IOFMessageWriter {
      * @return
      */
     OFFactory getOFFactory();
-
-    /**
-     * Flush all flows queued for this switch on all connections that were written by the current thread.
-     *
-     *
-     */
-    void flush();
 
     /**
      * Gets the OF connections for this switch instance
