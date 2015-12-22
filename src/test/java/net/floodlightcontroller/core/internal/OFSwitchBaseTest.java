@@ -59,6 +59,8 @@ import net.floodlightcontroller.debugcounter.IDebugCounterService;
 import org.projectfloodlight.openflow.protocol.OFControllerRole;
 import org.projectfloodlight.openflow.protocol.OFFactories;
 import org.projectfloodlight.openflow.protocol.OFFactory;
+import org.projectfloodlight.openflow.protocol.OFFlowAdd;
+import org.projectfloodlight.openflow.protocol.OFFlowStatsRequest;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFPortConfig;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
@@ -145,7 +147,7 @@ public class OFSwitchBaseTest {
 
         IOFConnectionBackend conn = EasyMock.createNiceMock(IOFConnectionBackend.class);
         capturedMessage = new Capture<Iterable<OFMessage>>();
-        expect(conn.write(EasyMock.capture(capturedMessage))).andReturn(Collections.<OFMessage>emptyList()).once();
+        expect(conn.write(EasyMock.capture(capturedMessage))).andReturn(Collections.<OFMessage>emptyList()).atLeastOnce();
         expect(conn.getOFFactory()).andReturn(factory).anyTimes();
         expect(conn.getAuxId()).andReturn(OFAuxId.MAIN).anyTimes();
         EasyMock.replay(conn);
@@ -1413,4 +1415,34 @@ public class OFSwitchBaseTest {
         verify(switchManager);
     }
 
+
+	@Test
+	public void testMasterSlaveWrites() {
+		OFFactory factory = OFFactories.getFactory(OFVersion.OF_13);
+		OFFlowAdd fa = factory.buildFlowAdd().build();
+		OFFlowStatsRequest fsr = factory.buildFlowStatsRequest().build();
+		List<OFMessage> msgList = new ArrayList<OFMessage>();
+		msgList.add(fa);
+		msgList.add(fsr);
+		
+		reset(switchManager);
+        expect(switchManager.isCategoryRegistered(LogicalOFMessageCategory.MAIN)).andReturn(true).times(6);
+        switchManager.handleOutgoingMessage(sw, fa);
+        expectLastCall().times(2);
+        switchManager.handleOutgoingMessage(sw, fsr);
+        expectLastCall().times(4);
+        replay(switchManager);
+
+		/* test master -- both messages should be written */
+		sw.setControllerRole(OFControllerRole.ROLE_MASTER);
+		assertTrue(sw.write(fa));
+		assertTrue(sw.write(fsr));
+		assertEquals(Collections.<OFMessage>emptyList(), sw.write(msgList));
+		
+		/* test slave -- flow-add (mod op) should fail each time; flow stats (read op) should pass */
+		sw.setControllerRole(OFControllerRole.ROLE_SLAVE);
+		assertFalse(sw.write(fa)); /* flow-add should be stopped (mod op) */
+		assertTrue(sw.write(fsr)); /* stats request makes it (read op) */
+		assertEquals(Collections.<OFMessage>singletonList(fa), sw.write(msgList)); /* return bad flow-add */
+	}
 }

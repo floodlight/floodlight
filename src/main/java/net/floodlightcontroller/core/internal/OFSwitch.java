@@ -682,29 +682,39 @@ public class OFSwitch implements IOFSwitchBackend {
 	}
 
 	protected static class SwitchRoleMessageValidator {
-		private static final Map<OFVersion, Set<OFType>> validSlaveMsgsByOFVersion;
+		private static final Map<OFVersion, Set<OFType>> invalidSlaveMsgsByOFVersion;
 		static {
 			Map<OFVersion, Set<OFType>> m = new HashMap<OFVersion, Set<OFType>>();
 			Set<OFType> s = new HashSet<OFType>();
-			s.add(OFType.ROLE_REQUEST);
-			s.add(OFType.SET_ASYNC);
-			s.add(OFType.SET_CONFIG);
-			s.add(OFType.GET_ASYNC_REQUEST);
-			s.add(OFType.ECHO_REQUEST);
-			s.add(OFType.GET_CONFIG_REQUEST);
-			s.add(OFType.STATS_REQUEST);
-			s.add(OFType.FEATURES_REQUEST);
+			s.add(OFType.PACKET_OUT);
+			s.add(OFType.FLOW_MOD);
+			s.add(OFType.PORT_MOD);
+			s.add(OFType.TABLE_MOD);
+			s.add(OFType.BARRIER_REQUEST);
 			m.put(OFVersion.OF_10, Collections.unmodifiableSet(s));
+			
 			s = new HashSet<OFType>();
+			s.addAll(m.get(OFVersion.OF_10));
+			s.add(OFType.GROUP_MOD);
+			s.add(OFType.TABLE_MOD);
 			m.put(OFVersion.OF_11, Collections.unmodifiableSet(s));
+			
 			s = new HashSet<OFType>();
+			s.addAll(m.get(OFVersion.OF_11));
 			m.put(OFVersion.OF_12, Collections.unmodifiableSet(s));
+			
 			s = new HashSet<OFType>();
+			s.addAll(m.get(OFVersion.OF_12));
+			s.add(OFType.METER_MOD);
 			m.put(OFVersion.OF_13, Collections.unmodifiableSet(s));
+			
 			s = new HashSet<OFType>();
+			s.addAll(m.get(OFVersion.OF_13));
+			s.add(OFType.BUNDLE_ADD_MESSAGE);
+			s.add(OFType.BUNDLE_CONTROL);
 			m.put(OFVersion.OF_14, Collections.unmodifiableSet(s));
 
-			validSlaveMsgsByOFVersion = Collections.unmodifiableMap(m);
+			invalidSlaveMsgsByOFVersion = Collections.unmodifiableMap(m);
 		}
 
 		/**
@@ -724,12 +734,12 @@ public class OFSwitch implements IOFSwitchBackend {
 				valid.addAll(IterableUtils.toCollection(msgList));
 				return Collections.emptyList();
 			} else { /* slave */
-				Set<OFType> validSlaveMsgs = validSlaveMsgsByOFVersion.get(swVersion);
+				Set<OFType> invalidSlaveMsgs = invalidSlaveMsgsByOFVersion.get(swVersion);
 				List<OFMessage> invalid = new ArrayList<OFMessage>();
 				Iterator<OFMessage> itr = msgList.iterator();
 				while (itr.hasNext()) {
 					OFMessage m = itr.next();
-					if (!validSlaveMsgs.contains(m.getType())) {
+					if (invalidSlaveMsgs.contains(m.getType())) {
 						invalid.add(m);
 					} else {
 						valid.add(m);
