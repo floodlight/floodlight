@@ -19,6 +19,7 @@ package net.floodlightcontroller.core.internal;
 
 import java.net.SocketAddress;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -42,6 +43,7 @@ import net.floodlightcontroller.core.IOFConnection;
 import net.floodlightcontroller.core.IOFConnectionBackend;
 import net.floodlightcontroller.core.SwitchDisconnectedException;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
+import net.floodlightcontroller.util.IterableUtils;
 
 import org.projectfloodlight.openflow.protocol.OFErrorMsg;
 import org.projectfloodlight.openflow.protocol.OFFactory;
@@ -148,27 +150,39 @@ public class OFConnection implements IOFConnection, IOFConnectionBackend{
 
 	/**
 	 * All write methods chain into this write() to use WriteMessageTask.
+	 * 
+	 * Write the list of messages to the switch
+	 * 
+	 * @param msgList list of messages to write
+	 * @return list of failed messages; can only fail if channel disconnected
 	 */
 	@Override
-	public void write(final Iterable<OFMessage> msgList) {
+	public Collection<OFMessage> write(final Iterable<OFMessage> msgList) {
 		if (!isConnected()) {
 			if (logger.isDebugEnabled())
 				logger.debug(this.toString() + " : not connected - dropping {} element msglist {} ",
 						Iterables.size(msgList),
 						String.valueOf(msgList).substring(0, 80));
-			return;
+			return IterableUtils.toCollection(msgList);
 		}
-		for (OFMessage m : msgList) {
-			if (logger.isTraceEnabled())
+		for (OFMessage m : msgList) {			
+			if (logger.isTraceEnabled()) {
 				logger.trace("{}: send {}", this, m);
-			counters.updateWriteStats(m);
+				counters.updateWriteStats(m);
+			}
 		}
 		this.channel.eventLoop().execute(new WriteMessageTask(msgList));
+		return Collections.emptyList();
 	}
 
+	/**
+	 * Write the single message to the channel
+	 * @param m
+	 * @return true upon success; false upon failure; can only fail if channel disconnected
+	 */
 	@Override
-	public void write(OFMessage m) {
-		this.write(Collections.singletonList(m));
+	public boolean write(OFMessage m) {
+		return this.write(Collections.singletonList(m)).isEmpty();
 	}
 
 	@Override

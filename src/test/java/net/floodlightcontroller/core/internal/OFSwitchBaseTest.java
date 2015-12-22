@@ -122,7 +122,7 @@ public class OFSwitchBaseTest {
             new PortChangeEvent(portBar1, PortChangeType.DELETE);
     private final PortChangeEvent portBar2Del =
             new PortChangeEvent(portBar2, PortChangeType.DELETE);
-    private Capture<OFMessage> capturedMessage;
+    private Capture<Iterable<OFMessage>> capturedMessage;
     private OFFactory factory;
 
     @Before
@@ -144,9 +144,8 @@ public class OFSwitchBaseTest {
                 .build();
 
         IOFConnectionBackend conn = EasyMock.createNiceMock(IOFConnectionBackend.class);
-        capturedMessage = new Capture<OFMessage>();
-        conn.write(EasyMock.capture(capturedMessage));
-        expectLastCall().anyTimes();
+        capturedMessage = new Capture<Iterable<OFMessage>>();
+        expect(conn.write(EasyMock.capture(capturedMessage))).andReturn(Collections.<OFMessage>emptyList()).once();
         expect(conn.getOFFactory()).andReturn(factory).anyTimes();
         expect(conn.getAuxId()).andReturn(OFAuxId.MAIN).anyTimes();
         EasyMock.replay(conn);
@@ -154,6 +153,7 @@ public class OFSwitchBaseTest {
         IOFConnectionBackend auxConn = EasyMock.createNiceMock(IOFConnectionBackend.class);
         expect(auxConn.getOFFactory()).andReturn(factory).anyTimes();
         expect(auxConn.getAuxId()).andReturn(OFAuxId.of(1)).anyTimes();
+        expect(auxConn.write(EasyMock.capture(capturedMessage))).andReturn(Collections.<OFMessage>emptyList()).once();
         EasyMock.replay(auxConn);
 
         sw = new OFSwitchTest(conn, switchManager);
@@ -1405,9 +1405,9 @@ public class OFSwitchBaseTest {
         reset(switchManager);
         expect(switchManager.isCategoryRegistered(category)).andReturn(true);
         switchManager.handleOutgoingMessage(sw, testMessage);
-        expectLastCall();
+        expectLastCall().once();
         replay(switchManager);
-
+        
         sw.write(testMessage, category);
 
         verify(switchManager);

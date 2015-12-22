@@ -1,12 +1,14 @@
 package net.floodlightcontroller.core.internal;
 
 import java.net.SocketAddress;
+import java.util.Collection;
 import java.util.List;
 import java.util.Date;
 
 import net.floodlightcontroller.core.IOFConnectionBackend;
 import net.floodlightcontroller.core.IOFMessageWriter;
 import net.floodlightcontroller.core.SwitchDisconnectedException;
+import net.floodlightcontroller.util.IterableUtils;
 
 import org.projectfloodlight.openflow.protocol.OFFactories;
 import org.projectfloodlight.openflow.protocol.OFFactory;
@@ -42,13 +44,15 @@ public class NullConnection implements IOFConnectionBackend, IOFMessageWriter {
     }
 
     @Override
-    public void write(OFMessage m) {
+    public boolean write(OFMessage m) {
         warn();
+        return false;
     }
 
     @Override
-    public void write(Iterable<OFMessage> msglist) {
+    public Collection<OFMessage> write(Iterable<OFMessage> msgList) {
         warn();
+        return IterableUtils.toCollection(msgList);
     }
 
     @Override

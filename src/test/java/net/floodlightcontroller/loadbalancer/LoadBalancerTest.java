@@ -446,8 +446,7 @@ public class LoadBalancerTest extends FloodlightTestCase {
 		expect(sw1.getId()).andReturn(DatapathId.of(1L)).anyTimes();
 		expect(sw1.hasAttribute(IOFSwitch.PROP_SUPPORTS_OFPP_TABLE)).andReturn(true).anyTimes();
 		expect(sw1.getOFFactory()).andReturn(factory).anyTimes();
-		sw1.write(capture(wc1));
-		expectLastCall().anyTimes();
+		expect(sw1.write(capture(wc1))).andReturn(true).anyTimes();
 		
 		replay(sw1);
 		sfp.switchAdded(DatapathId.of(1L));

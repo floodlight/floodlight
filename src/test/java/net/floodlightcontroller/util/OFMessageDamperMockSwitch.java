@@ -20,6 +20,7 @@ import static org.junit.Assert.*;
 
 import java.net.SocketAddress;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -203,14 +204,14 @@ public class OFMessageDamperMockSwitch implements IOFSwitch {
     }
 
 	@Override
-	public void write(OFMessage m) {
+	public boolean write(OFMessage m) {
 		writtenMessage = m;
-		// TODO Auto-generated method stub	
+		return true;
 	}
 
 	@Override
-	public void write(Iterable<OFMessage> msglist) {
-		// TODO Auto-generated method stub
+	public Collection<OFMessage> write(Iterable<OFMessage> msgList) {
+		return Collections.emptyList();
 	}
 
 	@Override
@@ -282,16 +283,14 @@ public class OFMessageDamperMockSwitch implements IOFSwitch {
 	}
 
 	@Override
-	public void write(OFMessage m, LogicalOFMessageCategory category) {
-		// TODO Auto-generated method stub
-		
+	public boolean write(OFMessage m, LogicalOFMessageCategory category) {
+		return true;
 	}
 
 	@Override
-	public void write(Iterable<OFMessage> msglist,
+	public Collection<OFMessage> write(Iterable<OFMessage> msgList,
 			LogicalOFMessageCategory category) {
-		// TODO Auto-generated method stub
-		
+		return Collections.emptyList();
 	}
 
 	@Override

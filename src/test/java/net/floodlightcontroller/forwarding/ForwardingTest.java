@@ -184,6 +184,9 @@ public class ForwardingTest extends FloodlightTestCase {
 		
 		expect(sw1.getSwitchDescription()).andReturn(new SwitchDescription(swDescription)).anyTimes();
 		expect(sw2.getSwitchDescription()).andReturn(new SwitchDescription(swDescription)).anyTimes();
+		
+		expect(sw1.isActive()).andReturn(true).anyTimes();
+		expect(sw2.isActive()).andReturn(true).anyTimes();
 
 		// Load the switch map
 		Map<DatapathId, IOFSwitch> switches = new HashMap<DatapathId, IOFSwitch>();
@@ -457,10 +460,8 @@ public class ForwardingTest extends FloodlightTestCase {
 				.build();
 		OFFlowMod fm2 = fm1.createBuilder().build();
 
-		sw1.write(capture(wc1));
-		expectLastCall().anyTimes();
-		sw2.write(capture(wc2));
-		expectLastCall().anyTimes();
+		expect(sw1.write(capture(wc1))).andReturn(true).anyTimes();
+		expect(sw2.write(capture(wc2))).andReturn(true).anyTimes();
 
 		reset(topology);
 		expect(topology.getOpenflowDomainId(DatapathId.of(1L))).andReturn(DatapathId.of(1L)).anyTimes();
@@ -529,10 +530,8 @@ public class ForwardingTest extends FloodlightTestCase {
 				.build();
 		OFFlowMod fm2 = fm1.createBuilder().build();
 
-		sw1.write(capture(wc1));
-		expectLastCall().anyTimes();
-		sw2.write(capture(wc2));
-		expectLastCall().anyTimes();
+		expect(sw1.write(capture(wc1))).andReturn(true).anyTimes();
+		expect(sw2.write(capture(wc2))).andReturn(true).anyTimes();
 
 		reset(topology);
 		expect(topology.getOpenflowDomainId(DatapathId.of(1L))).andReturn(DatapathId.of(1L)).anyTimes();
@@ -597,10 +596,8 @@ public class ForwardingTest extends FloodlightTestCase {
 				.build();
 
 		// Record expected packet-outs/flow-mods
-		sw1.write(capture(wc1));
-		expectLastCall().once();
-		sw1.write(capture(wc2));
-		expectLastCall().once();
+		expect(sw1.write(capture(wc1))).andReturn(true).once();
+		expect(sw1.write(capture(wc2))).andReturn(true).once();
 
 		reset(topology);
 		expect(topology.isIncomingBroadcastAllowed(DatapathId.of(anyLong()), OFPort.of(anyShort()))).andReturn(true).anyTimes();
@@ -653,10 +650,8 @@ public class ForwardingTest extends FloodlightTestCase {
 				.build();
 
 		// Record expected packet-outs/flow-mods
-		sw1.write(capture(wc1));
-		expectLastCall().once();
-		sw1.write(capture(wc2));
-		expectLastCall().once();
+		expect(sw1.write(capture(wc1))).andReturn(true).once();
+		expect(sw1.write(capture(wc2))).andReturn(true).once();
 
 		reset(topology);
 		expect(topology.isIncomingBroadcastAllowed(DatapathId.of(anyLong()), OFPort.of(anyShort()))).andReturn(true).anyTimes();
@@ -758,8 +753,7 @@ public class ForwardingTest extends FloodlightTestCase {
 				.andReturn(true)
 				.anyTimes();
 		expect(sw1.hasAttribute(IOFSwitch.PROP_SUPPORTS_OFPP_FLOOD)).andReturn(true).anyTimes();
-		sw1.write(capture(wc1));
-		expectLastCall().once();
+		expect(sw1.write(capture(wc1))).andReturn(true).once();
 		replay(sw1, sw2, routingEngine, topology);
 		forwarding.receive(sw1, this.packetIn, cntx);
 		verify(sw1, sw2, routingEngine);
@@ -792,8 +786,7 @@ public class ForwardingTest extends FloodlightTestCase {
 		expect(sw1.hasAttribute(IOFSwitch.PROP_SUPPORTS_OFPP_FLOOD))
 		.andReturn(true).anyTimes();
 		// Reset XID to expected (dependent on prior unit tests)
-		sw1.write(capture(wc1));
-		expectLastCall().once();
+		expect(sw1.write(capture(wc1))).andReturn(true).once();
 		replay(sw1, sw2, routingEngine, topology);
 		forwarding.receive(sw1, this.packetInIPv6, cntx);
 		verify(sw1, sw2, routingEngine);
