@@ -27,9 +27,11 @@ import java.util.concurrent.TimeUnit;
 import org.easymock.EasyMock;
 import org.hamcrest.CoreMatchers;
 import org.hamcrest.Matchers;
+
 import io.netty.util.Timeout;
 import io.netty.util.Timer;
 import io.netty.util.TimerTask;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -521,10 +523,8 @@ public abstract class OFSwitchHandlerTestBase {
 		// TODO: hmmm. While it's not incorrect that we set the attribute
 		// again it looks odd. Maybe change
 		expect(sw.getOFFactory()).andReturn(factory).anyTimes();
-		sw.write(anyObject(OFMessage.class));
-		expectLastCall().anyTimes();
-		sw.write(anyObject(Iterable.class));
-		expectLastCall().anyTimes();
+		expect(sw.write(anyObject(OFMessage.class))).andReturn(true).anyTimes();
+		expect(sw.write(anyObject(Iterable.class))).andReturn(Collections.EMPTY_LIST).anyTimes();
 		expect(sw.getNumTables()).andStubReturn((short)0);
 		sw.setAttribute(IOFSwitch.SWITCH_SUPPORTS_NX_ROLE, supportsNxRole);
 		expectLastCall().anyTimes();
@@ -599,10 +599,8 @@ public abstract class OFSwitchHandlerTestBase {
 		// prepare mocks and inject the role reply message
 		reset(sw);
 		expect(sw.getOFFactory()).andReturn(factory).anyTimes();
-		sw.write(anyObject(OFMessage.class));
-		expectLastCall().anyTimes();
-		sw.write(anyObject(Iterable.class));
-		expectLastCall().anyTimes();
+		expect(sw.write(anyObject(OFMessage.class))).andReturn(true).anyTimes();
+		expect(sw.write(anyObject(Iterable.class))).andReturn(Collections.EMPTY_LIST).anyTimes();
 		expect(sw.getTables()).andStubReturn(Collections.EMPTY_LIST);
 		expect(sw.getNumTables()).andStubReturn((short) 0);
 		sw.setAttribute(IOFSwitch.SWITCH_SUPPORTS_NX_ROLE, true);
@@ -695,10 +693,8 @@ public abstract class OFSwitchHandlerTestBase {
 		// prepare mocks and inject the role reply message
 		reset(sw);
 		expect(sw.getOFFactory()).andReturn(factory).anyTimes();
-		sw.write(anyObject(OFMessage.class));
-		expectLastCall().anyTimes();
-		sw.write(anyObject(Iterable.class));
-		expectLastCall().anyTimes();
+		expect(sw.write(anyObject(OFMessage.class))).andReturn(true).anyTimes();
+		expect(sw.write(anyObject(Iterable.class))).andReturn(Collections.EMPTY_LIST).anyTimes();
 		expect(sw.getNumTables()).andStubReturn((short)0);
 		sw.setAttribute(IOFSwitch.SWITCH_SUPPORTS_NX_ROLE, false);
 		expectLastCall().once();
@@ -758,10 +754,8 @@ public abstract class OFSwitchHandlerTestBase {
 		// prepare mocks and inject the role reply message
 		reset(sw);
 		expect(sw.getOFFactory()).andReturn(factory).anyTimes();
-		sw.write(anyObject(OFMessage.class));
-		expectLastCall().anyTimes();
-		sw.write(anyObject(Iterable.class));
-		expectLastCall().anyTimes();
+		expect(sw.write(anyObject(OFMessage.class))).andReturn(true).anyTimes();
+		expect(sw.write(anyObject(Iterable.class))).andReturn(Collections.EMPTY_LIST).anyTimes();
 		expect(sw.getNumTables()).andStubReturn((short)0);
 		sw.setAttribute(IOFSwitch.SWITCH_SUPPORTS_NX_ROLE, false);
 		expectLastCall().once();
@@ -922,10 +916,8 @@ public abstract class OFSwitchHandlerTestBase {
 		// prepare mocks and inject the role reply message
 		reset(sw);
 		expect(sw.getOFFactory()).andReturn(factory).anyTimes();
-		sw.write(anyObject(OFMessage.class));
-		expectLastCall().anyTimes();
-		sw.write(anyObject(Iterable.class));
-		expectLastCall().anyTimes();
+		expect(sw.write(anyObject(OFMessage.class))).andReturn(true).anyTimes();
+		expect(sw.write(anyObject(Iterable.class))).andReturn(Collections.EMPTY_LIST).anyTimes();
 		expect(sw.getNumTables()).andStubReturn((short)0);
 		sw.setAttribute(IOFSwitch.SWITCH_SUPPORTS_NX_ROLE, true);
 		expectLastCall().once();

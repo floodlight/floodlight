@@ -300,15 +300,17 @@ public interface IOFSwitch extends IOFMessageWriter {
      * Writes a message to the connection specified by the logical OFMessage category
      * @param m an OF Message
      * @param category the category of the OF Message to be sent
+     * @return true upon success; false upon failure
      */
-    void write(OFMessage m, LogicalOFMessageCategory category);
+    boolean write(OFMessage m, LogicalOFMessageCategory category);
 
     /**
      * Writes a message list to the connection specified by the logical OFMessage category
      * @param msglist an OF Message list
      * @param category the category of the OF Message list to be sent
+     * @return list of failed messages, if any; success denoted by empty list
      */
-    void write(Iterable<OFMessage> msglist, LogicalOFMessageCategory category);
+    Iterable<OFMessage> write(Iterable<OFMessage> msglist, LogicalOFMessageCategory category);
 
     /**
      * Get a connection specified by the logical OFMessage category

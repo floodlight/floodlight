@@ -17,6 +17,7 @@
 
 package net.floodlightcontroller.core;
 
+import java.util.Collection;
 import java.util.List;
 
 import org.projectfloodlight.openflow.protocol.OFMessage;
@@ -33,25 +34,24 @@ import com.google.common.util.concurrent.ListenableFuture;
 
 public interface IOFMessageWriter{
 
-    /**
-     * Writes to the OFMessage to the output stream.
-     *
-     * <p><b>Note:</b> this method has fire-and-forget semantics. When the connection is
-     * not currently connected, it will silently discard the messages.
+	/**
+     * Writes the OFMessage to the output stream.
      *
      * @param m
+     * @return true upon success; false if message could not be written
      */
-    void write(OFMessage m);
+    boolean write(OFMessage m);
 
     /**
      * Writes the list of messages to the output stream.
      *
-     * <p><b>Note:</b> this method has fire-and-forget semantics. When the connection is
-     * not currently connected, it will silently discard the messages.
+     * Any messages that could not be written due to channel disconnect
+     * will be returned.
      *
      * @param msglist
+     * @return list of messages that could not be written
      */
-    void write(Iterable<OFMessage> msglist);
+    Collection<OFMessage> write(Iterable<OFMessage> msgList);
     
     /** write an OpenFlow Request message, register for a single corresponding reply message
      *  or error message.

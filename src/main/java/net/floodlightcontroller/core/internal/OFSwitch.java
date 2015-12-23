@@ -27,6 +27,8 @@ import java.util.Comparator;
 import java.util.Date;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -71,6 +73,7 @@ import org.projectfloodlight.openflow.protocol.OFStatsReply;
 import org.projectfloodlight.openflow.protocol.OFStatsRequest;
 import org.projectfloodlight.openflow.protocol.OFTableFeatures;
 import org.projectfloodlight.openflow.protocol.OFTableFeaturesStatsReply;
+import org.projectfloodlight.openflow.protocol.OFType;
 import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFAuxId;
@@ -78,6 +81,7 @@ import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.TableId;
 import org.projectfloodlight.openflow.types.U64;
 
+import net.floodlightcontroller.util.IterableUtils;
 import net.floodlightcontroller.util.LinkedHashSetWrapper;
 import net.floodlightcontroller.util.OrderedCollection;
 
@@ -677,6 +681,76 @@ public class OFSwitch implements IOFSwitchBackend {
 		}
 	}
 
+	protected static class SwitchRoleMessageValidator {
+		private static final Map<OFVersion, Set<OFType>> invalidSlaveMsgsByOFVersion;
+		static {
+			Map<OFVersion, Set<OFType>> m = new HashMap<OFVersion, Set<OFType>>();
+			Set<OFType> s = new HashSet<OFType>();
+			s.add(OFType.PACKET_OUT);
+			s.add(OFType.FLOW_MOD);
+			s.add(OFType.PORT_MOD);
+			s.add(OFType.TABLE_MOD);
+			s.add(OFType.BARRIER_REQUEST);
+			m.put(OFVersion.OF_10, Collections.unmodifiableSet(s));
+			
+			s = new HashSet<OFType>();
+			s.addAll(m.get(OFVersion.OF_10));
+			s.add(OFType.GROUP_MOD);
+			s.add(OFType.TABLE_MOD);
+			m.put(OFVersion.OF_11, Collections.unmodifiableSet(s));
+			
+			s = new HashSet<OFType>();
+			s.addAll(m.get(OFVersion.OF_11));
+			m.put(OFVersion.OF_12, Collections.unmodifiableSet(s));
+			
+			s = new HashSet<OFType>();
+			s.addAll(m.get(OFVersion.OF_12));
+			s.add(OFType.METER_MOD);
+			m.put(OFVersion.OF_13, Collections.unmodifiableSet(s));
+			
+			s = new HashSet<OFType>();
+			s.addAll(m.get(OFVersion.OF_13));
+			s.add(OFType.BUNDLE_ADD_MESSAGE);
+			s.add(OFType.BUNDLE_CONTROL);
+			m.put(OFVersion.OF_14, Collections.unmodifiableSet(s));
+
+			invalidSlaveMsgsByOFVersion = Collections.unmodifiableMap(m);
+		}
+
+		/**
+		 * Sorts any invalid messages by moving them from the msgList. The net result
+		 * is a new list returned containing the invalid messages and a pruned msgList
+		 * containing only those messages that are valid for the given role of the controller
+		 * and OpenFlow version of the switch.
+		 * 
+		 * @param msgList the list of messages to sort
+		 * @param valid the list of valid messages (caller must allocate)
+		 * @param swVersion the OFVersion of the switch
+		 * @param isSlave true if controller is slave; false otherwise
+		 * @return list of messages that are not valid, removed from input parameter msgList
+		 */
+		protected static Collection<OFMessage> pruneInvalidMessages(Iterable<OFMessage> msgList, Collection<OFMessage> valid, OFVersion swVersion, boolean isActive) {
+			if (isActive) { /* master or equal/other support all */
+				valid.addAll(IterableUtils.toCollection(msgList));
+				return Collections.emptyList();
+			} else { /* slave */
+				Set<OFType> invalidSlaveMsgs = invalidSlaveMsgsByOFVersion.get(swVersion);
+				List<OFMessage> invalid = new ArrayList<OFMessage>();
+				Iterator<OFMessage> itr = msgList.iterator();
+				while (itr.hasNext()) {
+					OFMessage m = itr.next();
+					if (invalidSlaveMsgs.contains(m.getType())) {
+						invalid.add(m);
+					} else {
+						valid.add(m);
+					}
+				}
+
+				return invalid;
+			}
+		}
+	}
+
 	@Override
 	public boolean attributeEquals(String name, Object other) {
 		Object attr = this.attributes.get(name);
@@ -735,14 +809,14 @@ public class OFSwitch implements IOFSwitchBackend {
 	 */
 	public IOFConnection getConnection(OFAuxId auxId) {
 		IOFConnection connection = this.connections.get(auxId);
-		if(connection == null){
+		if (connection == null) {
 			throw new IllegalArgumentException("OF Connection for " + this + " with " + auxId + " does not exist.");
 		}
 		return connection;
 	}
 
 	public IOFConnection getConnection(LogicalOFMessageCategory category) {
-		if(switchManager.isCategoryRegistered(category)){
+		if (switchManager.isCategoryRegistered(category)) {
 			return getConnection(category.getAuxId());
 		}
 		else{
@@ -750,37 +824,72 @@ public class OFSwitch implements IOFSwitchBackend {
 		}
 	}
 
+	/**
+	 * Write a single message to the switch
+	 * 
+	 * @param m the message to write
+	 * @return true upon success; false upon failure;
+	 * failure can occur either from sending a message not supported in the current role, or
+	 * from the channel being disconnected
+	 */
 	@Override
-	public void write(OFMessage m) {
-		this.write(Collections.singletonList(m));
+	public boolean write(OFMessage m) {
+		return this.write(Collections.singletonList(m)).isEmpty();
 	}
-	
+
+
+	/**
+	 * Write a list of messages to the switch
+	 * 
+	 * @param msglist list of messages to write
+	 * @return list of failed messages; messages can fail if sending the messages is not supported
+	 * in the current role, or from the channel becoming disconnected
+	 */
 	@Override
-	public void write(Iterable<OFMessage> msglist) {
-		if (isActive()) {
-			connections.get(OFAuxId.MAIN).write(msglist);
-			for (OFMessage m : msglist) {
-				switchManager.handleOutgoingMessage(this, m);
-			}
-		} else {
-			log.warn("Attempted to write to switch {} that is SLAVE.", this.getId().toString());
-		}
-	}
-	
-	@Override
-	public void write(OFMessage m, LogicalOFMessageCategory category) {
-		this.write(Collections.singletonList(m), category);
+	public Collection<OFMessage> write(Iterable<OFMessage> msglist) {
+		return this.write(msglist, LogicalOFMessageCategory.MAIN);
 	}
 
 	@Override
-	public void write(Iterable<OFMessage> msglist, LogicalOFMessageCategory category) {
-		if (isActive()) {
-			this.getConnection(category).write(msglist);
-			for (OFMessage m : msglist) {
-				switchManager.handleOutgoingMessage(this, m);				
+	public boolean write(OFMessage m, LogicalOFMessageCategory category) {
+		return this.write(Collections.singletonList(m), category).isEmpty();
+	}
+
+	@Override
+	public Collection<OFMessage> write(Iterable<OFMessage> msgList, LogicalOFMessageCategory category) {
+		IOFConnection conn = this.getConnection(category); /* do first to check for supported category */
+		Collection<OFMessage> validMsgs = new ArrayList<OFMessage>();
+		Collection<OFMessage> invalidMsgs = SwitchRoleMessageValidator.pruneInvalidMessages(
+				msgList, validMsgs, this.getOFFactory().getVersion(), this.isActive());
+		if (log.isDebugEnabled()) {
+			log.debug("MESSAGES: {}, VALID: {}, INVALID: {}", new Object[] { msgList, validMsgs, invalidMsgs});
+		}
+		/* Try to write all valid messages */
+		Collection<OFMessage> unsent = conn.write(validMsgs);
+		for (OFMessage m : validMsgs) {
+			if (!unsent.contains(m)) {
+				switchManager.handleOutgoingMessage(this, m);
 			}
+		}
+		
+		/* Collect invalid and unsent messages */
+		Collection<OFMessage> ret = null;
+		if (!unsent.isEmpty()) {
+			log.warn("Could not send messages {} due to channel disconnection on switch {}", unsent, this.getId());
+			ret = IterableUtils.toCollection(unsent);
+		}
+		if (!invalidMsgs.isEmpty()) {
+			log.warn("Could not send messages {} while in SLAVE role on switch {}", invalidMsgs, this.getId());
+			if (ret == null) {
+				ret = IterableUtils.toCollection(invalidMsgs);
+			} else {
+				ret.addAll(IterableUtils.toCollection(invalidMsgs));
+			}
+		}
+		if (ret == null) {
+			return Collections.emptyList();
 		} else {
-			log.warn("Attempted to write to switch {} that is SLAVE.", this.getId().toString());
+			return ret;
 		}
 	}
 
@@ -796,7 +905,7 @@ public class OFSwitch implements IOFSwitchBackend {
 
 	@Override
 	public <R extends OFMessage> ListenableFuture<R> writeRequest(OFRequest<R> request) {
-		return connections.get(OFAuxId.MAIN).writeRequest(request);
+		return writeRequest(request, LogicalOFMessageCategory.MAIN);
 	}
 
 	@Override

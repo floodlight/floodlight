@@ -4,6 +4,8 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -72,13 +74,15 @@ public class MockOFConnection implements IOFConnectionBackend {
     }
 
     @Override
-    public void write(OFMessage m) {
+    public boolean write(OFMessage m) {
         messages.add(m);
+        return true;
     }
 
     @Override
-    public void write(Iterable<OFMessage> msglist) {
+    public Collection<OFMessage> write(Iterable<OFMessage> msglist) {
         Iterables.addAll(messages, msglist);
+        return Collections.emptyList();
     }
 
     static class RequestAndFuture<R extends OFMessage> {
