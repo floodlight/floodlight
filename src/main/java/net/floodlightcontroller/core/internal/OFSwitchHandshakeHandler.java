@@ -3,6 +3,7 @@ package net.floodlightcontroller.core.internal;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -12,7 +13,6 @@ import java.util.concurrent.TimeUnit;
 import javax.annotation.Nonnull;
 
 import io.netty.util.Timer;
-
 import net.floodlightcontroller.core.HARole;
 import net.floodlightcontroller.core.IOFConnection;
 import net.floodlightcontroller.core.IOFConnectionBackend;
@@ -68,6 +68,7 @@ import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.actionid.OFActionId;
 import org.projectfloodlight.openflow.protocol.errormsg.OFBadRequestErrorMsg;
 import org.projectfloodlight.openflow.protocol.errormsg.OFFlowModFailedErrorMsg;
+import org.projectfloodlight.openflow.protocol.instruction.OFInstruction;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFAuxId;
 import org.projectfloodlight.openflow.types.OFGroup;
@@ -518,7 +519,7 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 								OFFlowAdd defaultFlow = this.factory.buildFlowAdd()
 										.setTableId(tid)
 										.setPriority(0)
-										.setActions(actions)
+										.setInstructions(Collections.singletonList((OFInstruction) this.factory.instructions().buildApplyActions().setActions(actions).build()))
 										.build();
 								flows.add(defaultFlow);
 								break; /* Stop searching for actions and go to the next table in the list */
