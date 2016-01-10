@@ -1,5 +1,10 @@
 package net.floodlightcontroller.util;
 
+import java.util.Collections;
+import java.util.List;
+
+import net.floodlightcontroller.core.IOFSwitch;
+
 import org.projectfloodlight.openflow.protocol.OFFactories;
 import org.projectfloodlight.openflow.protocol.OFFlowAdd;
 import org.projectfloodlight.openflow.protocol.OFFlowDelete;
@@ -8,6 +13,8 @@ import org.projectfloodlight.openflow.protocol.OFFlowMod;
 import org.projectfloodlight.openflow.protocol.OFFlowModify;
 import org.projectfloodlight.openflow.protocol.OFFlowModifyStrict;
 import org.projectfloodlight.openflow.protocol.OFVersion;
+import org.projectfloodlight.openflow.protocol.action.OFAction;
+import org.projectfloodlight.openflow.protocol.instruction.OFInstruction;
 
 /**
  * Convert an OFFlowMod to a specific OFFlowMod-OFFlowModCommand.
@@ -219,6 +226,25 @@ public class FlowModUtils {
 					.setTableId(fm.getTableId())
 					.setXid(fm.getXid())
 					.build();
+		}
+	}
+	
+	/**
+	 * Sets the actions in fmb according to the sw version.
+	 * 
+	 * @param fmb the FlowMod Builder that is being built
+	 * @param actions the actions to set
+	 * @param sw the switch that will receive the FlowMod
+	 */
+	public static void setActions(OFFlowMod.Builder fmb,
+			List<OFAction> actions, IOFSwitch sw) {
+		if (sw.getOFFactory().getVersion().compareTo(OFVersion.OF_11) >= 0) {
+			// Instructions are used starting in OF 1.1
+			fmb.setInstructions(Collections.singletonList((OFInstruction) sw
+					.getOFFactory().instructions().applyActions(actions)));
+		} else {
+			// OF 1.0 only supports actions
+			fmb.setActions(actions);
 		}
 	}
 }

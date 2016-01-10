@@ -41,6 +41,7 @@ import net.floodlightcontroller.routing.IRoutingDecision;
 import net.floodlightcontroller.routing.Route;
 import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.topology.NodePortTuple;
+import net.floodlightcontroller.util.FlowModUtils;
 import net.floodlightcontroller.util.MatchUtils;
 import net.floodlightcontroller.util.OFDPAUtils;
 import net.floodlightcontroller.util.OFMessageDamper;
@@ -247,13 +248,14 @@ public abstract class ForwardingBase implements IOFMessageListener {
 			}
 			
 			fmb.setMatch(mb.build())
-			.setActions(actions)
 			.setIdleTimeout(FLOWMOD_DEFAULT_IDLE_TIMEOUT)
 			.setHardTimeout(FLOWMOD_DEFAULT_HARD_TIMEOUT)
 			.setBufferId(OFBufferId.NO_BUFFER)
 			.setCookie(cookie)
 			.setOutPort(outPort)
 			.setPriority(FLOWMOD_DEFAULT_PRIORITY);
+			
+			FlowModUtils.setActions(fmb, actions, sw);
 			
 			try {
 				if (log.isTraceEnabled()) {
@@ -445,8 +447,9 @@ public abstract class ForwardingBase implements IOFMessageListener {
 		.setIdleTimeout(FLOWMOD_DEFAULT_IDLE_TIMEOUT)
 		.setPriority(FLOWMOD_DEFAULT_PRIORITY)
 		.setBufferId(OFBufferId.NO_BUFFER)
-		.setMatch(mb.build())
-		.setActions(actions);
+		.setMatch(mb.build());
+		
+		FlowModUtils.setActions(fmb, actions, sw);
 
 		log.debug("write drop flow-mod sw={} match={} flow-mod={}",
 					new Object[] { sw, mb.build(), fmb.build() });
