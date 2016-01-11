@@ -51,6 +51,7 @@ import net.floodlightcontroller.routing.IRoutingService;
 import net.floodlightcontroller.routing.Route;
 import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.topology.NodePortTuple;
+import net.floodlightcontroller.util.FlowModUtils;
 import net.floodlightcontroller.util.OFDPAUtils;
 import net.floodlightcontroller.util.OFPortMode;
 import net.floodlightcontroller.util.OFPortModeTuple;
@@ -139,8 +140,9 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 		.setIdleTimeout(FLOWMOD_DEFAULT_IDLE_TIMEOUT)
 		.setBufferId(OFBufferId.NO_BUFFER)
 		.setMatch(m)
-		.setActions(actions) // empty list
 		.setPriority(FLOWMOD_DEFAULT_PRIORITY);
+		
+		FlowModUtils.setActions(fmb, actions, sw);
 
 		try {
 			if (log.isDebugEnabled()) {
