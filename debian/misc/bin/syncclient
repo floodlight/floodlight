@@ -1,3 +1,0 @@
-#!/bin/sh
-
-exec java -cp '/usr/share/floodlight/java/*' org.sdnplatform.sync.client.SyncClient "$@"

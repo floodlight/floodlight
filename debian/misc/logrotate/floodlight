@@ -1,9 +1,0 @@
-/var/log/floodlight/floodlight.log {
-    daily 
-    copytruncate
-    missingok
-    rotate 7
-    compress
-    delaycompress
-    notifempty
-}
