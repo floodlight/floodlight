@@ -1,0 +1,12 @@
+# Floodlight build and test via Travis-CI
+
+language: java
+
+jdk:
+ - oraclejdk7
+ - openjdk7
+
+notifications:
+  email:
+    recipients:
+      - ryan.izard@bigswitch.com
