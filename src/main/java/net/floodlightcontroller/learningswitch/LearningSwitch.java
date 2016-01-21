@@ -114,6 +114,10 @@ implements IFloodlightModule, ILearningSwitchService, IOFMessageListener, IContr
 	// normally, setup reverse flow as well. Disable only for using cbench for comparison with NOX etc.
 	protected static final boolean LEARNING_SWITCH_REVERSE_FLOW = true;
 
+	// set this flag to true if you want to see the completion messages and
+	// have the switch flushed
+	protected final boolean flushAtCompletion = false;
+	
 	/**
 	 * @param floodlightProvider the floodlightProvider to set
 	 */
@@ -615,10 +619,12 @@ implements IFloodlightModule, ILearningSwitchService, IOFMessageListener, IContr
 	}
 
 	// paag: to show the IControllerCompletion concept
-	// CAVEAT: extremely noisy
+	// CAVEAT: extremely noisy when tracking enabled
 	@Override
 	public void onMessageConsumed(IOFSwitch sw, OFMessage msg, FloodlightContext cntx) {
-		sw.flush();
-		log.debug("Learning switch: ended processing packet {}",msg.toString());
+		if (this.flashAtCompletion) {
+			sw.flush();
+			log.debug("Learning switch: ended processing packet {}",msg.toString());
+		}
 	}
 }
