@@ -18,7 +18,6 @@ import org.hamcrest.Matchers;
 import org.junit.Test;
 
 import net.floodlightcontroller.core.IOFSwitchBackend;
-import net.floodlightcontroller.core.OFConnection;
 import net.floodlightcontroller.core.SwitchDescription;
 import net.floodlightcontroller.core.internal.OFSwitchHandshakeHandler.WaitAppHandshakeState;
 import net.floodlightcontroller.core.internal.OFSwitchHandshakeHandler.WaitTableFeaturesReplyState;

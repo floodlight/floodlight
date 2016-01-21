@@ -11,15 +11,12 @@ import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import javax.xml.bind.DatatypeConverter;
 
-import org.jboss.netty.channel.Channel;
-import org.jboss.netty.channel.ChannelHandlerContext;
-import org.jboss.netty.channel.ChannelStateEvent;
-import org.jboss.netty.channel.Channels;
-import org.jboss.netty.channel.ExceptionEvent;
-import org.jboss.netty.channel.MessageEvent;
-import org.jboss.netty.handler.timeout.IdleStateAwareChannelHandler;
-import org.jboss.netty.handler.timeout.IdleStateEvent;
-import org.jboss.netty.handler.timeout.ReadTimeoutException;
+import io.netty.channel.Channel;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelInboundHandlerAdapter;
+import io.netty.handler.timeout.IdleStateEvent;
+import io.netty.handler.timeout.ReadTimeoutException;
+
 import org.sdnplatform.sync.error.AuthException;
 import org.sdnplatform.sync.error.HandshakeTimeoutException;
 import org.sdnplatform.sync.error.SyncException;
@@ -61,8 +58,7 @@ import org.slf4j.LoggerFactory;
  * a {@link SyncMessage} which will provide specific type information. 
  * @author readams
  */
-public abstract class AbstractRPCChannelHandler 
-    extends IdleStateAwareChannelHandler {
+public abstract class AbstractRPCChannelHandler extends ChannelInboundHandlerAdapter {
     protected static final Logger logger =
             LoggerFactory.getLogger(AbstractRPCChannelHandler.class);
     protected String currentChallenge;
@@ -84,8 +80,7 @@ public abstract class AbstractRPCChannelHandler
     // ****************************
 
     @Override
-    public void channelConnected(ChannelHandlerContext ctx,
-                                 ChannelStateEvent e) throws Exception {
+    public void channelActive(ChannelHandlerContext ctx) throws Exception {
         channelState = ChannelState.CONNECTED;
 
         HelloMessage m = new HelloMessage();
@@ -110,12 +105,18 @@ public abstract class AbstractRPCChannelHandler
         }
         SyncMessage bsm = new SyncMessage(MessageType.HELLO);
         bsm.setHello(m);
-        ctx.getChannel().write(bsm);
+        ctx.channel().writeAndFlush(bsm);
+    }
+    
+    @Override
+    public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
+    	if (evt instanceof IdleStateEvent) {
+    		channelIdle(ctx, (IdleStateEvent) evt);
+    	}
+    	super.userEventTriggered(ctx, evt);
     }
 
-    @Override
-    public void channelIdle(ChannelHandlerContext ctx,
-                            IdleStateEvent e) throws Exception {
+    public void channelIdle(ChannelHandlerContext ctx, IdleStateEvent e) throws Exception {
         // send an echo request
         EchoRequestMessage m = new EchoRequestMessage();
         AsyncMessageHeader header = new AsyncMessageHeader();
@@ -123,53 +124,50 @@ public abstract class AbstractRPCChannelHandler
         m.setHeader(header);
         SyncMessage bsm = new SyncMessage(MessageType.ECHO_REQUEST);
         bsm.setEchoRequest(m);
-        ctx.getChannel().write(bsm);
+        ctx.channel().writeAndFlush(bsm);
     }
 
     @Override
-    public void exceptionCaught(ChannelHandlerContext ctx,
-                                ExceptionEvent e) throws Exception {
-        if (e.getCause() instanceof ReadTimeoutException) {
+    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+        if (cause instanceof ReadTimeoutException) {
             // read timeout
             logger.error("[{}->{}] Disconnecting RPC node due to read timeout",
                          getLocalNodeIdString(), getRemoteNodeIdString());
-            ctx.getChannel().close();
-        } else if (e.getCause() instanceof HandshakeTimeoutException) {
+            ctx.channel().close();
+        } else if (cause instanceof HandshakeTimeoutException) {
             // read timeout
             logger.error("[{}->{}] Disconnecting RPC node due to " +
                     "handshake timeout",
                     getLocalNodeIdString(), getRemoteNodeIdString());
-            ctx.getChannel().close();
-        } else if (e.getCause() instanceof ConnectException ||
-                   e.getCause() instanceof IOException) {
+            ctx.channel().close();
+        } else if (cause instanceof ConnectException ||
+        		cause instanceof IOException) {
             logger.debug("[{}->{}] {}: {}", 
                          new Object[] {getLocalNodeIdString(),
                                        getRemoteNodeIdString(), 
-                                       e.getCause().getClass().getName(),
-                                       e.getCause().getMessage()});
+                                       cause.getClass().getName(),
+                                       cause.getMessage()});
         } else {
             logger.error("[{}->{}] An error occurred on RPC channel",
                          new Object[]{getLocalNodeIdString(), 
                                       getRemoteNodeIdString(),
-                                      e.getCause()});
-            ctx.getChannel().close();
+                                      cause});
+            ctx.channel().close();
         }
     }
 
     @Override
-    public void messageReceived(ChannelHandlerContext ctx,
-                                MessageEvent e) throws Exception {
-        Object message = e.getMessage();
+    public void channelRead(ChannelHandlerContext ctx, Object message) throws Exception {
         if (message instanceof SyncMessage) {
-            handleSyncMessage((SyncMessage)message, ctx.getChannel());
+            handleSyncMessage((SyncMessage)message, ctx.channel());
         } else if (message instanceof List) {
             for (Object i : (List<?>)message) {
                 if (i instanceof SyncMessage) {
                     try {
                         handleSyncMessage((SyncMessage)i,
-                                             ctx.getChannel());
+                                             ctx.channel());
                     } catch (Exception ex) {
-                        Channels.fireExceptionCaught(ctx, ex);
+                        ctx.fireExceptionCaught(ex);
                     }
                 }
             }
@@ -323,7 +321,7 @@ public abstract class AbstractRPCChannelHandler
                         new Object[]{getLocalNodeIdString(), 
                                      getRemoteNodeIdString(), 
                                      e.getMessage()});
-            channel.write(getError(request.getHeader().getTransactionId(), 
+            channel.writeAndFlush(getError(request.getHeader().getTransactionId(), 
                                    e, MessageType.HELLO));
             channel.close();
         }
@@ -355,7 +353,7 @@ public abstract class AbstractRPCChannelHandler
             AuthChallengeResponse reply = new AuthChallengeResponse();
             reply.setResponse(generateResponse(cr.getChallenge()));
             m.setAuthChallengeResponse(reply);
-            channel.write(bsm);
+            channel.writeAndFlush(bsm);
         } else {
             throw new AuthException("No authentication data in " + 
                     "handshake message");
@@ -382,7 +380,7 @@ public abstract class AbstractRPCChannelHandler
         m.setHeader(header);
         SyncMessage bsm = new SyncMessage(MessageType.ECHO_REPLY);
         bsm.setEchoReply(m);
-        channel.write(bsm);
+        channel.writeAndFlush(bsm);
     }
 
     protected void handleGetRequest(GetRequestMessage request,
@@ -548,7 +546,7 @@ public abstract class AbstractRPCChannelHandler
                     new Object[]{getLocalNodeIdString(), 
                                  getRemoteNodeIdString(),
                                  message});
-        channel.write(getError(transactionId, 
+        channel.writeAndFlush(getError(transactionId, 
                                new SyncException(message), type));
     }
     

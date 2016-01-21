@@ -22,12 +22,6 @@ public interface IOFConnection extends IOFMessageWriter {
      */
     Date getConnectedSince();
 
-    /**
-     * Flush all flows queued for this switch in the current thread.
-     * NOTE: The contract is limited to the current thread
-     */
-    void flush();
-
     /** @return the DatapathId of the switch associated with the connection */
     DatapathId getDatapathId();
 

@@ -21,7 +21,6 @@ import static org.easymock.EasyMock.capture;
 import static org.easymock.EasyMock.createMock;
 import static org.easymock.EasyMock.createNiceMock;
 import static org.easymock.EasyMock.expect;
-import static org.easymock.EasyMock.expectLastCall;
 import static org.easymock.EasyMock.replay;
 import static org.easymock.EasyMock.verify;
 import static org.junit.Assert.*;
@@ -497,8 +496,7 @@ public class LinkDiscoveryManagerTest extends FloodlightTestCase {
         expect(sw1.getPort(OFPort.of(EasyMock.anyInt()))).andReturn(ofpp).anyTimes();
         expect(sw1.getOFFactory()).andReturn(OFFactories.getFactory(OFVersion.OF_13)).anyTimes();
         expect(sw1.getLatency()).andReturn(U64.ZERO).anyTimes();
-        sw1.write(capture(wc));
-        expectLastCall().anyTimes();
+        expect(sw1.write(capture(wc))).andReturn(true).anyTimes();
         replay(sw1);
 
         linkDiscovery.switchActivated(sw1.getId());

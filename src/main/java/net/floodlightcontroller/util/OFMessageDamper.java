@@ -114,24 +114,8 @@ public class OFMessageDamper {
      * @throws IOException
      */
     public boolean write(IOFSwitch sw, OFMessage msg) throws IOException {
-        return write(sw, msg, false);
-    }
-    
-    /**
-     * write the message to the switch according to our dampening settings
-     * @param sw
-     * @param msg
-     * @param flush true to flush the packet immediately
-     * @return true if the message was written to the switch, false if
-     * the message was dampened. 
-     * @throws IOException
-     */
-    public boolean write(IOFSwitch sw, OFMessage msg, boolean flush) throws IOException {
         if (!msgTypesToCache.contains(msg.getType())) {
             sw.write(msg);
-            if (flush) {
-                sw.flush();
-            }
             return true;
         }
         
@@ -141,9 +125,6 @@ public class OFMessageDamper {
             return false; 
         } else {
             sw.write(msg);
-            if (flush) {
-                sw.flush();
-            }
             return true;
         }
     }

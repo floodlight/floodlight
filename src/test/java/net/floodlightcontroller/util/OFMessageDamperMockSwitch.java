@@ -20,6 +20,7 @@ import static org.junit.Assert.*;
 
 import java.net.SocketAddress;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -28,8 +29,8 @@ import java.util.Set;
 import net.floodlightcontroller.core.IOFConnection;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.LogicalOFMessageCategory;
-import net.floodlightcontroller.core.OFConnection;
 import net.floodlightcontroller.core.SwitchDescription;
+import net.floodlightcontroller.core.internal.OFConnection;
 import net.floodlightcontroller.core.internal.TableFeatures;
 
 import org.projectfloodlight.openflow.protocol.OFActionType;
@@ -161,11 +162,6 @@ public class OFMessageDamperMockSwitch implements IOFSwitch {
     }
 
     @Override
-    public void flush() {
-        assertTrue("Unexpected method call", false);
-    }
-
-    @Override
     public long getBuffers() {
         fail("Unexpected method call");
         return 0;
@@ -208,14 +204,14 @@ public class OFMessageDamperMockSwitch implements IOFSwitch {
     }
 
 	@Override
-	public void write(OFMessage m) {
+	public boolean write(OFMessage m) {
 		writtenMessage = m;
-		// TODO Auto-generated method stub	
+		return true;
 	}
 
 	@Override
-	public void write(Iterable<OFMessage> msglist) {
-		// TODO Auto-generated method stub
+	public Collection<OFMessage> write(Iterable<OFMessage> msgList) {
+		return Collections.emptyList();
 	}
 
 	@Override
@@ -287,16 +283,14 @@ public class OFMessageDamperMockSwitch implements IOFSwitch {
 	}
 
 	@Override
-	public void write(OFMessage m, LogicalOFMessageCategory category) {
-		// TODO Auto-generated method stub
-		
+	public boolean write(OFMessage m, LogicalOFMessageCategory category) {
+		return true;
 	}
 
 	@Override
-	public void write(Iterable<OFMessage> msglist,
+	public Collection<OFMessage> write(Iterable<OFMessage> msgList,
 			LogicalOFMessageCategory category) {
-		// TODO Auto-generated method stub
-		
+		return Collections.emptyList();
 	}
 
 	@Override

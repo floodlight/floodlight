@@ -28,6 +28,8 @@ import java.util.Set;
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.core.IOFSwitchListener;
+import net.floodlightcontroller.core.PortChangeType;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
@@ -49,11 +51,17 @@ import net.floodlightcontroller.routing.IRoutingService;
 import net.floodlightcontroller.routing.Route;
 import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.topology.NodePortTuple;
+import net.floodlightcontroller.util.FlowModUtils;
+import net.floodlightcontroller.util.OFDPAUtils;
+import net.floodlightcontroller.util.OFPortMode;
+import net.floodlightcontroller.util.OFPortModeTuple;
 
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
 import org.projectfloodlight.openflow.protocol.OFFlowModCommand;
+import org.projectfloodlight.openflow.protocol.OFGroupType;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.OFPacketOut;
+import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.match.Match;
@@ -65,14 +73,16 @@ import org.projectfloodlight.openflow.types.IPv6Address;
 import org.projectfloodlight.openflow.types.IpProtocol;
 import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFBufferId;
+import org.projectfloodlight.openflow.types.OFGroup;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.OFVlanVidMatch;
+import org.projectfloodlight.openflow.types.TableId;
 import org.projectfloodlight.openflow.types.U64;
 import org.projectfloodlight.openflow.types.VlanVid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class Forwarding extends ForwardingBase implements IFloodlightModule {
+public class Forwarding extends ForwardingBase implements IFloodlightModule, IOFSwitchListener {
 	protected static Logger log = LoggerFactory.getLogger(Forwarding.class);
 
 	@Override
@@ -130,8 +140,9 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
 		.setIdleTimeout(FLOWMOD_DEFAULT_IDLE_TIMEOUT)
 		.setBufferId(OFBufferId.NO_BUFFER)
 		.setMatch(m)
-		.setActions(actions) // empty list
 		.setPriority(FLOWMOD_DEFAULT_PRIORITY);
+		
+		FlowModUtils.setActions(fmb, actions, sw);
 
 		try {
 			if (log.isDebugEnabled()) {
@@ -509,5 +520,57 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule {
 	@Override
 	public void startUp(FloodlightModuleContext context) {
 		super.startUp();
+		switchService.addOFSwitchListener(this);
+	}
+
+	@Override
+	public void switchAdded(DatapathId switchId) {
+	}
+
+	@Override
+	public void switchRemoved(DatapathId switchId) {		
+	}
+
+	@Override
+	public void switchActivated(DatapathId switchId) {
+		IOFSwitch sw = switchService.getSwitch(switchId);
+		if (sw == null) {
+			log.warn("Switch {} was activated but had no switch object in the switch service. Perhaps it quickly disconnected", switchId);
+			return;
+		}
+		if (OFDPAUtils.isOFDPASwitch(sw)) {
+			sw.write(sw.getOFFactory().buildFlowDelete()
+					.setTableId(TableId.ALL)
+					.build()
+					);
+			sw.write(sw.getOFFactory().buildGroupDelete()
+					.setGroup(OFGroup.ANY)
+					.setGroupType(OFGroupType.ALL)
+					.build()
+					);
+			sw.write(sw.getOFFactory().buildGroupDelete()
+					.setGroup(OFGroup.ANY)
+					.setGroupType(OFGroupType.INDIRECT)
+					.build()
+					);
+			sw.write(sw.getOFFactory().buildBarrierRequest().build());
+			
+			List<OFPortModeTuple> portModes = new ArrayList<OFPortModeTuple>();
+			for (OFPortDesc p : sw.getPorts()) {
+				portModes.add(OFPortModeTuple.of(p.getPortNo(), OFPortMode.ACCESS));
+			}
+			if (log.isWarnEnabled()) {
+				log.warn("For OF-DPA switch {}, initializing VLAN {} on ports {}", new Object[] { switchId, VlanVid.ZERO, portModes});
+			}
+			OFDPAUtils.addLearningSwitchPrereqs(sw, VlanVid.ZERO, portModes);
+		}
+	}
+
+	@Override
+	public void switchPortChanged(DatapathId switchId, OFPortDesc port, PortChangeType type) {		
+	}
+
+	@Override
+	public void switchChanged(DatapathId switchId) {
 	}
 }

@@ -19,6 +19,7 @@ package net.floodlightcontroller.hub;
 
 import static org.easymock.EasyMock.createMock;
 import static org.easymock.EasyMock.replay;
+import static org.easymock.EasyMock.expect;
 import static org.easymock.EasyMock.verify;
 import static org.easymock.EasyMock.capture;
 import static org.junit.Assert.*;
@@ -122,7 +123,7 @@ public class HubTest extends FloodlightTestCase {
         
         Capture<OFMessage> wc1 = new Capture<OFMessage>(CaptureType.ALL);
         
-        mockSwitch.write(capture(wc1));
+        expect(mockSwitch.write(capture(wc1))).andReturn(true).anyTimes();
 
         // Start recording the replay on the mocks
         replay(mockSwitch);
@@ -163,7 +164,7 @@ public class HubTest extends FloodlightTestCase {
         IOFSwitch mockSwitch = createMock(IOFSwitch.class);
         EasyMock.expect(mockSwitch.getOFFactory()).andReturn(OFFactories.getFactory(OFVersion.OF_13)).anyTimes();
         Capture<OFPacketOut> wc1 = new Capture<OFPacketOut>(CaptureType.ALL);
-        mockSwitch.write(capture(wc1));
+        expect(mockSwitch.write(capture(wc1))).andReturn(true).anyTimes();
 
         // Start recording the replay on the mocks
         replay(mockSwitch);

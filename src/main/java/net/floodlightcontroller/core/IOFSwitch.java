@@ -40,6 +40,7 @@ import org.projectfloodlight.openflow.types.U64;
 import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.ListenableFuture;
 
+import net.floodlightcontroller.core.internal.OFConnection;
 import net.floodlightcontroller.core.internal.TableFeatures;
 import net.floodlightcontroller.core.web.serializers.IOFSwitchSerializer;
 
@@ -290,13 +291,6 @@ public interface IOFSwitch extends IOFMessageWriter {
     OFFactory getOFFactory();
 
     /**
-     * Flush all flows queued for this switch on all connections that were written by the current thread.
-     *
-     *
-     */
-    void flush();
-
-    /**
      * Gets the OF connections for this switch instance
      * @return Collection of IOFConnection
      */
@@ -306,15 +300,17 @@ public interface IOFSwitch extends IOFMessageWriter {
      * Writes a message to the connection specified by the logical OFMessage category
      * @param m an OF Message
      * @param category the category of the OF Message to be sent
+     * @return true upon success; false upon failure
      */
-    void write(OFMessage m, LogicalOFMessageCategory category);
+    boolean write(OFMessage m, LogicalOFMessageCategory category);
 
     /**
      * Writes a message list to the connection specified by the logical OFMessage category
      * @param msglist an OF Message list
      * @param category the category of the OF Message list to be sent
+     * @return list of failed messages, if any; success denoted by empty list
      */
-    void write(Iterable<OFMessage> msglist, LogicalOFMessageCategory category);
+    Iterable<OFMessage> write(Iterable<OFMessage> msglist, LogicalOFMessageCategory category);
 
     /**
      * Get a connection specified by the logical OFMessage category
