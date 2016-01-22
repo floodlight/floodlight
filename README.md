@@ -1,6 +1,20 @@
+Floodlight OpenFlow Controller (OSS)
+====================================
+
+Build Status:
+-------------
+
+[![Build Status](https://travis-ci.org/floodlight/floodlight.svg?branch=master)](https://travis-ci.org/floodlight/floodlight)
+
+Floodlight Wiki
+---------------
+
 First, the Floodlight wiki has moved. Please visit us at our new site hosted by Atlassian:
 
 https://floodlight.atlassian.net/wiki/display/floodlightcontroller/Floodlight+Documentation
+
+What is Floodlight?
+-------------------
 
 Floodlight is the leading open source SDN controller. It is supported by a community of developers including a number of engineers from Big Switch Networks (http://www.bigswitch.com/).
 
@@ -9,7 +23,7 @@ OpenFlow is a open standard managed by Open Networking Foundation. It specifies 
 The v1.1 Floodlight release builds upon the improvements made in v1.0, with emphasis on new security features, the inclusion of a new proactive Access Control List module (or ACL) written by Pengfei (Alex) Lu – thanks Alex!, bug fixes to the Static Flow Pusher, REST API improvements, more sophisticated flow checking for the Static Flow Pusher – thanks Sanjivini and Naveen!, a reworked Firewall REST API – thanks electricjay!, support for dynamic switch role changes through the REST API and within modules, a new included DHCP server, and many bug fixes and optimizations.
 
 
-Floodlight v1.1 has full support for OpenFlow 1.0 and 1.3 along with experimental support for OpenFlow 1.1, 1.2, and 1.4. Here are the highlights of what Floodlight v1.0 has to offer and how you can get your hands on it:
+Floodlight v1.1 has full support for OpenFlow 1.0 and 1.3 along with experimental support for OpenFlow 1.1, 1.2, and 1.4. Here are the highlights of what Floodlight v1.1 has to offer and how you can get your hands on it:
 
 At it's core is the OpenFlowJ-Loxigen (or OpenFlowJ-Loxi for short) generated Java library, which among many powerful things abstracts the OpenFlow version behind a common API. Loxigen works by parsing OpenFlow concepts defined as structures in a set of input files. It then generates a set of Java, Python, and C libraries for use in OpenFlow applications. The Loxigen-generated libraries abstract away low-level details and provide a far more pleasant and high-level programming experience for developers. It is straightforward to define each OpenFlow version in Loxigen's input files, and each OpenFlow version is exposed through a common API, which results in few if not zero application code changes when adding OpenFlow versions. In other words, Loxigen provides a fairly future-proof API for the many OpenFlow versions to come. The Loxigen project is open source and can be found on GitHub here (http://github.com/floodlight/loxigen/wiki/OpenFlowJ-Loxi).
 
