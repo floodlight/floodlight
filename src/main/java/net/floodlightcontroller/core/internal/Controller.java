@@ -748,7 +748,8 @@ public class Controller implements IFloodlightProviderService, IStorageSourceLis
         this.controllerNodeIPsCache = new HashMap<String, String>();
         this.updates = new LinkedBlockingQueue<IUpdate>();
         this.providerMap = new HashMap<String, List<IInfoProvider>>();
-       
+        this.completionListeners = new ConcurrentLinkedQueue<IControllerCompletionListener>();
+        
         setConfigParams(configParams);
 
         HARole initialRole = getInitialRole(configParams);

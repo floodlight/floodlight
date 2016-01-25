@@ -1,7 +1,6 @@
 package net.floodlightcontroller.core;
 
 import org.projectfloodlight.openflow.protocol.OFMessage;
-// import net.floodlightcontroller.core.IListener.Command;
 
 public interface IControllerCompletionListener {
 

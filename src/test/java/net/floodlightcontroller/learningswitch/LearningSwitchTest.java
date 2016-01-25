@@ -171,7 +171,7 @@ public class LearningSwitchTest extends FloodlightTestCase {
         this.learningSwitch.startUp(fmc);
                 
         this.mockFloodlightProvider.addOFMessageListener(OFType.PACKET_IN, learningSwitch);
-
+        this.mockFloodlightProvider.addCompletionListener(learningSwitch);
     }
 
     @Test

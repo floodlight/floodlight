@@ -93,7 +93,8 @@ public class MockFloodlightProvider implements IFloodlightModule, IFloodlightPro
                                    IOFMessageListener>>();
         haListeners =
                 new ListenerDispatcher<HAListenerTypeMarker, IHAListener>();
-
+        completionListeners = 
+        		new ConcurrentLinkedQueue<IControllerCompletionListener>();
         role = null;
         this.useAsyncUpdates = useAsyncUpdates;
     }

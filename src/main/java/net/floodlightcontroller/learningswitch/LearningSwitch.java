@@ -573,7 +573,6 @@ implements IFloodlightModule, ILearningSwitchService, IOFMessageListener, IContr
 	public void startUp(FloodlightModuleContext context) {
 		// paag: register the IControllerCompletionListener
 		floodlightProviderService.addCompletionListener(this);
-		
 		floodlightProviderService.addOFMessageListener(OFType.PACKET_IN, this);
 		floodlightProviderService.addOFMessageListener(OFType.FLOW_REMOVED, this);
 		floodlightProviderService.addOFMessageListener(OFType.ERROR, this);
