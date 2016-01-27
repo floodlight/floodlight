@@ -24,6 +24,7 @@ import java.util.Set;
 import java.util.Date;
 
 import org.projectfloodlight.openflow.protocol.OFActionType;
+import org.projectfloodlight.openflow.protocol.OFBundleAddMsg;
 import org.projectfloodlight.openflow.protocol.OFCapabilities;
 import org.projectfloodlight.openflow.protocol.OFControllerRole;
 import org.projectfloodlight.openflow.protocol.OFFactory;
@@ -365,4 +366,5 @@ public interface IOFSwitch extends IOFMessageWriter {
 	 * @return milliseconds
 	 */
 	public U64 getLatency();
+
 }

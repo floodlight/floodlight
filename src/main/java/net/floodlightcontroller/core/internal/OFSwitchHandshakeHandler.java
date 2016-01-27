@@ -1611,6 +1611,8 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 	public void beginHandshake() {
 		Preconditions.checkState(state instanceof InitState, "must be in InitState");
 
+		log.info("### Features reply: {} ", this.featuresReply.toString());
+		
 		if (this.featuresReply.getNTables() > 1) {
 			log.debug("Have {} table(s) for switch {}", this.featuresReply.getNTables(),
 					getSwitchInfoString());

@@ -35,6 +35,9 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import javax.annotation.Nonnull;
@@ -56,6 +59,7 @@ import org.projectfloodlight.openflow.protocol.OFActionType;
 import org.projectfloodlight.openflow.protocol.OFBsnControllerConnection;
 import org.projectfloodlight.openflow.protocol.OFBsnControllerConnectionState;
 import org.projectfloodlight.openflow.protocol.OFBsnControllerConnectionsReply;
+import org.projectfloodlight.openflow.protocol.OFBundleCtrlMsg;
 import org.projectfloodlight.openflow.protocol.OFCapabilities;
 import org.projectfloodlight.openflow.protocol.OFControllerRole;
 import org.projectfloodlight.openflow.protocol.OFFactory;
@@ -83,6 +87,7 @@ import org.projectfloodlight.openflow.types.U64;
 
 import net.floodlightcontroller.util.IterableUtils;
 import net.floodlightcontroller.util.LinkedHashSetWrapper;
+import net.floodlightcontroller.util.OFBundle;
 import net.floodlightcontroller.util.OrderedCollection;
 
 import org.slf4j.Logger;
@@ -90,6 +95,8 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Sets;
+import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.MoreExecutors;
 
@@ -138,6 +145,15 @@ public class OFSwitch implements IOFSwitchBackend {
 	public static final int OFSWITCH_APP_ID = ident(5);
 
 	private TableId maxTableToGetTableMissFlow = TableId.of(4); /* this should cover most HW switches that have a couple SW flow tables */
+	
+	private final ScheduledExecutorService scheduler;
+	
+	private static final Set<OFType> BUNDLE_VALID_MSG = Sets.immutableEnumSet(
+			OFType.FLOW_MOD, 
+			OFType.TABLE_MOD, 
+			//OFType.GROUP_MOD, // TODO: ovs nao suporta OFGroupDeleteVer14
+			OFType.PORT_MOD, 
+			OFType.METER_MOD);
 
 	static {
 		AppCookie.registerApp(OFSwitch.OFSWITCH_APP_ID, "switch");
@@ -178,6 +194,40 @@ public class OFSwitch implements IOFSwitchBackend {
 
 		this.tableFeaturesByTableId = new HashMap<TableId, TableFeatures>();
 		this.tables = new ArrayList<TableId>();
+		currentBundle = null;
+		scheduler = Executors.newScheduledThreadPool(1);
+	}
+	
+	private class BundleCommiter implements Runnable {
+
+		private final OFBundle b;
+		private final OFSwitch sw;
+		public BundleCommiter(OFSwitch sw, OFBundle b) {
+			this.sw = sw;
+			this.b = b;
+		}
+		
+		@Override
+		public void run() {
+			log.info("BundleCommiter activated. Commiting bundle {}", b.getBundleId());
+			b.closeAndCommit(new FutureCallback<OFBundleCtrlMsg>() {
+				
+				@Override
+				public void onSuccess(OFBundleCtrlMsg arg0) {
+					log.info("Received commit reply message for bundle {}", b.getBundleId());
+					/*for (OFMessage m : b.getMsgsInBundle()) {
+						switchManager.handleOutgoingMessage(sw, m);
+					}*/
+				}
+				
+				@Override
+				public void onFailure(Throwable arg0) {
+					log.error("Received failed commit reply message for bundle {}", b.getBundleId());
+				}
+			});
+			
+		}
+		
 	}
 
 	private static int ident(int i) {
@@ -680,9 +730,12 @@ public class OFSwitch implements IOFSwitchBackend {
 			}
 		}
 	}
+	
+	
 
 	protected static class SwitchRoleMessageValidator {
 		private static final Map<OFVersion, Set<OFType>> invalidSlaveMsgsByOFVersion;
+		
 		static {
 			Map<OFVersion, Set<OFType>> m = new HashMap<OFVersion, Set<OFType>>();
 			Set<OFType> s = new HashSet<OFType>();
@@ -864,6 +917,29 @@ public class OFSwitch implements IOFSwitchBackend {
 		if (log.isDebugEnabled()) {
 			log.debug("MESSAGES: {}, VALID: {}, INVALID: {}", new Object[] { msgList, validMsgs, invalidMsgs});
 		}
+		
+		if (this.getOFFactory().getVersion().compareTo(OFVersion.OF_14) >= 0) {
+			
+			Collection<OFMessage> writeMsgs = new ArrayList<OFMessage>();
+			Collection<OFMessage> readMsgs = new ArrayList<OFMessage>();
+			
+			splitWriteReadMsgs(validMsgs, readMsgs, writeMsgs);
+			
+			if (writeMsgs.size() > 0) {
+				
+				StringBuilder sb = new StringBuilder();
+				System.out.println();
+				sb.append(" Messages to be sent to the switch: ");
+				for (OFMessage m : msgList)
+					sb.append(m.getType()+ " ");
+				
+				log.info(sb.toString());
+				addToCurrentBundle(writeMsgs);
+			}
+			
+			validMsgs = readMsgs;
+		}
+		
 		/* Try to write all valid messages */
 		Collection<OFMessage> unsent = conn.write(validMsgs);
 		for (OFMessage m : validMsgs) {
@@ -886,10 +962,57 @@ public class OFSwitch implements IOFSwitchBackend {
 				ret.addAll(IterableUtils.toCollection(invalidMsgs));
 			}
 		}
+		
 		if (ret == null) {
 			return Collections.emptyList();
 		} else {
 			return ret;
+		}
+	}
+	
+	private OFBundle currentBundle;
+	
+	private void addToCurrentBundle(Collection<OFMessage> msgs) {
+		if (currentBundle == null || currentBundle.isClosed() || currentBundle.isCommited()) {
+			currentBundle = new OFBundle(this);
+			// commit the bundle in 1 second
+			scheduler.schedule(new BundleCommiter(this, currentBundle), 1L, TimeUnit.SECONDS);
+			log.info("## BundleCommiter scheduled ##");
+		}
+		// TODO: passar aqui LogicalOFMessageCategory.MAIN para abstrair no OFBundle
+		Collection<OFMessage> unsent = currentBundle.add(msgs);
+		
+		if (unsent == null) {
+			log.error("Bundle already commited! Opening new bundle.");
+			currentBundle = null;
+			addToCurrentBundle(msgs);
+			return;
+		} else if (!unsent.isEmpty()) {
+			log.error("Could not add these messages to the bundle: {}", unsent.toString());
+			// handle any msgs sent
+			for (OFMessage m : msgs) {
+				if (!unsent.contains(m)) {
+					switchManager.handleOutgoingMessage(this, m);
+				}
+			}
+		} else {
+			if (log.isDebugEnabled())		
+				log.info("All messages added to the bundle: {}", msgs);
+			// handle all sent msgs
+			for (OFMessage m : msgs) {
+				switchManager.handleOutgoingMessage(this, m);
+			}
+		}
+	}
+
+	public static void splitWriteReadMsgs(Collection<OFMessage> msgs,
+			Collection<OFMessage> readMsgs, Collection<OFMessage> writeMsgs) {
+		for (OFMessage m : msgs) {
+			if (BUNDLE_VALID_MSG.contains(m.getType())) {
+				writeMsgs.add(m);
+			} else {
+				readMsgs.add(m);
+			}
 		}
 	}
 

@@ -43,6 +43,7 @@ import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.topology.NodePortTuple;
 import net.floodlightcontroller.util.FlowModUtils;
 import net.floodlightcontroller.util.MatchUtils;
+import net.floodlightcontroller.util.OFBundle;
 import net.floodlightcontroller.util.OFDPAUtils;
 import net.floodlightcontroller.util.OFMessageDamper;
 import net.floodlightcontroller.util.TimedCache;
@@ -81,9 +82,9 @@ public abstract class ForwardingBase implements IOFMessageListener {
 	public static int FLOWMOD_DEFAULT_IDLE_TIMEOUT = 5; // in seconds
 	public static int FLOWMOD_DEFAULT_HARD_TIMEOUT = 0; // infinite
 	public static int FLOWMOD_DEFAULT_PRIORITY = 1; // 0 is the default table-miss flow in OF1.3+, so we need to use 1
-	
+
 	protected static boolean FLOWMOD_DEFAULT_SET_SEND_FLOW_REM_FLAG = false;
-	
+
 	protected static boolean FLOWMOD_DEFAULT_MATCH_VLAN = true;
 	protected static boolean FLOWMOD_DEFAULT_MATCH_MAC = true;
 	protected static boolean FLOWMOD_DEFAULT_MATCH_IP_ADDR = true;
@@ -91,7 +92,7 @@ public abstract class ForwardingBase implements IOFMessageListener {
 
 	protected static final short FLOWMOD_DEFAULT_IDLE_TIMEOUT_CONSTANT = 5;
 	protected static final short FLOWMOD_DEFAULT_HARD_TIMEOUT_CONSTANT = 0;
-	
+
 	protected static boolean FLOOD_ALL_ARP_PACKETS = false;
 
 	protected IFloodlightProviderService floodlightProviderService;
@@ -206,7 +207,7 @@ public abstract class ForwardingBase implements IOFMessageListener {
 				}
 				return packetOutSent;
 			}
-			
+
 			// need to build flow mod based on what type it is. Cannot set command later
 			OFFlowMod.Builder fmb;
 			switch (flowModCommand) {
@@ -228,11 +229,11 @@ public abstract class ForwardingBase implements IOFMessageListener {
 				fmb = sw.getOFFactory().buildFlowModifyStrict();
 				break;			
 			}
-			
+
 			OFActionOutput.Builder aob = sw.getOFFactory().actions().buildOutput();
 			List<OFAction> actions = new ArrayList<OFAction>();	
- 			Match.Builder mb = MatchUtils.convertToVersion(match, sw.getOFFactory().getVersion());
- 			
+			Match.Builder mb = MatchUtils.convertToVersion(match, sw.getOFFactory().getVersion());
+
 			// set input and output ports on the switch
 			OFPort outPort = switchPortList.get(indx).getPortId();
 			OFPort inPort = switchPortList.get(indx - 1).getPortId();
@@ -240,13 +241,13 @@ public abstract class ForwardingBase implements IOFMessageListener {
 			aob.setPort(outPort);
 			aob.setMaxLen(Integer.MAX_VALUE);
 			actions.add(aob.build());
-			
+
 			if (FLOWMOD_DEFAULT_SET_SEND_FLOW_REM_FLAG || requestFlowRemovedNotification) {
 				Set<OFFlowModFlags> flags = new HashSet<>();
 				flags.add(OFFlowModFlags.SEND_FLOW_REM);
 				fmb.setFlags(flags);
 			}
-			
+
 			fmb.setMatch(mb.build())
 			.setIdleTimeout(FLOWMOD_DEFAULT_IDLE_TIMEOUT)
 			.setHardTimeout(FLOWMOD_DEFAULT_HARD_TIMEOUT)
@@ -254,9 +255,9 @@ public abstract class ForwardingBase implements IOFMessageListener {
 			.setCookie(cookie)
 			.setOutPort(outPort)
 			.setPriority(FLOWMOD_DEFAULT_PRIORITY);
-			
+
 			FlowModUtils.setActions(fmb, actions, sw);
-			
+
 			try {
 				if (log.isTraceEnabled()) {
 					log.trace("Pushing Route flowmod routeIndx={} " +
@@ -266,7 +267,7 @@ public abstract class ForwardingBase implements IOFMessageListener {
 							fmb.getMatch().get(MatchField.IN_PORT),
 							outPort });
 				}
-				
+
 				if (OFDPAUtils.isOFDPASwitch(sw)) {
 					OFDPAUtils.addLearningSwitchFlow(sw, cookie, 
 							FLOWMOD_DEFAULT_PRIORITY, 
@@ -276,7 +277,13 @@ public abstract class ForwardingBase implements IOFMessageListener {
 							null, // TODO how to determine output VLAN for lookup of L2 interface group
 							outPort);
 				} else {
-					messageDamper.write(sw, fmb.build());
+					/*if (sw.getOFFactory().getVersion().compareTo(OFVersion.OF_14) >= 0) {
+						OFBundle b = new OFBundle(sw, OFBundle.ORDERED_BUNDLE_FLAGS);
+						b.add(fmb.build());
+						b.closeAndCommit();
+					} else {*/
+						messageDamper.write(sw, fmb.build());
+					/*}*/
 				}
 
 				/* Push the packet out the first hop switch */
@@ -294,7 +301,7 @@ public abstract class ForwardingBase implements IOFMessageListener {
 
 		return packetOutSent;
 	}
-	
+
 	/**
 	 * Pushes a packet-out to a switch. The assumption here is that
 	 * the packet-in was also generated from the same switch. Thus, if the input
@@ -448,14 +455,14 @@ public abstract class ForwardingBase implements IOFMessageListener {
 		.setPriority(FLOWMOD_DEFAULT_PRIORITY)
 		.setBufferId(OFBufferId.NO_BUFFER)
 		.setMatch(mb.build());
-		
+
 		FlowModUtils.setActions(fmb, actions, sw);
 
 		log.debug("write drop flow-mod sw={} match={} flow-mod={}",
-					new Object[] { sw, mb.build(), fmb.build() });
+				new Object[] { sw, mb.build(), fmb.build() });
 		// TODO: can't use the message damper since this method is static
 		sw.write(fmb.build());
-		
+
 		return true;
 	}
 
