@@ -60,7 +60,7 @@ public class OFBundle {
 
 	protected static Logger log = LoggerFactory.getLogger(OFBundle.class);
 
-	private static AtomicInteger currentBundleId = new AtomicInteger(0);
+	private static AtomicInteger currentBundleId = new AtomicInteger(10);
 
 	private final int id;
 	private final Set<OFBundleFlags> flags;
@@ -119,7 +119,7 @@ public class OFBundle {
 			throws IllegalArgumentException {
 
 		if (flags == null)
-			flags = NO_FLAGS;
+			flags = ORDERED_BUNDLE_FLAGS;
 
 		if (sw == null) {
 			throw new IllegalArgumentException("sw cannot be null");
@@ -156,7 +156,7 @@ public class OFBundle {
 			Futures.addCallback(future, callback);
 		} else {
 			Futures.addCallback(future, new DebugReplies(
-					OFBundleCtrlType.OPEN_REQUEST, null));
+					OFBundleCtrlType.OPEN_REQUEST, this.id));
 		}
 
 		log.info("Sent Open Request for Bundle " + getBundleId()
@@ -281,7 +281,7 @@ public class OFBundle {
 					Futures.addCallback(future, callback);
 				} else {
 					Futures.addCallback(future, new DebugReplies(
-							OFBundleCtrlType.CLOSE_REQUEST, this));
+							OFBundleCtrlType.CLOSE_REQUEST, getBundleId()));
 				}
 			} else { // send commit when close reply arrives
 				Futures.addCallback(future,
@@ -342,19 +342,19 @@ public class OFBundle {
 	private class DebugReplies implements FutureCallback<OFBundleCtrlMsg> {
 		private String switchId;
 		private OFBundleCtrlType type;
-		private OFBundle bundle;
+		private int bundleId;
 
-		private DebugReplies(OFBundleCtrlType type, OFBundle bundle) {
+		private DebugReplies(OFBundleCtrlType type, int bundleId) {
 			this.switchId = sw.getId().toString();
 			this.type = type;
-			this.bundle = bundle;
+			this.bundleId = bundleId;
 		}
 
 		@Override
 		public void onFailure(Throwable arg0) {
-			log.error("Failed to receive reply for " + type + " in bundle "
-					+ bundle.getBundleId() + "from switch " + switchId
-					+ ". Original request: " + arg0.toString());
+			log.error("Failed to receive reply for " + type + " for bundle "
+					+ bundleId + " from switch " + switchId
+					+ ". Original request: " + arg0);
 		}
 
 		@Override

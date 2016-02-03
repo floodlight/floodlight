@@ -214,7 +214,7 @@ public class OFSwitch implements IOFSwitchBackend {
 				
 				@Override
 				public void onSuccess(OFBundleCtrlMsg arg0) {
-					log.info("Received commit reply message for bundle {}", b.getBundleId());
+					log.info("Received commit reply message for bundle {}. Reply: {}", b.getBundleId(), arg0.toString());
 					/*for (OFMessage m : b.getMsgsInBundle()) {
 						switchManager.handleOutgoingMessage(sw, m);
 					}*/
