@@ -17,8 +17,11 @@ import org.projectfloodlight.openflow.protocol.OFBundleCtrlType;
 import org.projectfloodlight.openflow.protocol.OFBundleFlags;
 import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFMessage;
+import org.projectfloodlight.openflow.protocol.OFPacketOut;
 import org.projectfloodlight.openflow.protocol.OFVersion;
+import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.types.BundleId;
+import org.projectfloodlight.openflow.types.OFPort;
 import org.python.google.common.collect.Sets;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -267,6 +270,30 @@ public class OFBundle {
 
 	private void close(final FutureCallback<OFBundleCtrlMsg> callback,
 			boolean commit) {
+		
+		
+		// send OFPacketOut to send msg to other controllers
+		
+		List<OFAction> actions = new ArrayList<OFAction>();
+		
+		StringBuilder sb = new StringBuilder("");
+		for (Object port : sw.getEnabledPorts().toArray())
+			sb.append(port.toString()+" | ");
+		
+		log.info("Ports: " + sb.toString());
+		
+		// TODO: aqui tem que ser o porto para o outro controlador!
+		actions.add(sw.getOFFactory().actions().buildOutput().setPort(OFPort.CONTROLLER).build());
+		
+		String data = "it worked!";
+		
+		OFPacketOut out = sw.getOFFactory().buildPacketOut().
+				setActions(actions).
+				setData(data.getBytes()).
+				build();
+		
+		add(out);
+		
 		synchronized (this) {
 			OFBundleCtrlMsg close = createBundleCtrlMsg(sw.getOFFactory(),
 					OFBundleCtrlType.CLOSE_REQUEST, id, flags);

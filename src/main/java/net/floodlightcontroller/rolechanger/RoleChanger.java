@@ -42,8 +42,10 @@ import org.projectfloodlight.openflow.protocol.OFAsyncSet;
 import org.projectfloodlight.openflow.protocol.OFBarrierReply;
 import org.projectfloodlight.openflow.protocol.OFBarrierRequest;
 import org.projectfloodlight.openflow.protocol.OFControllerRole;
+import org.projectfloodlight.openflow.protocol.OFExperimenter;
 import org.projectfloodlight.openflow.protocol.OFGetConfigReply;
 import org.projectfloodlight.openflow.protocol.OFMessage;
+import org.projectfloodlight.openflow.protocol.OFPacketOut;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.protocol.OFRoleReply;
 import org.projectfloodlight.openflow.protocol.OFRoleRequest;
@@ -96,10 +98,10 @@ public class RoleChanger implements IFloodlightModule, IOFMessageListener,
 			IOFSwitch sw, OFMessage msg, FloodlightContext cntx) {
 		switch (msg.getType()) {
 		case PACKET_IN:
-			/*
-			 * log.info("Received Packet_In from switch {} ({})", sw.getId()
-			 * .toString(), sw.getControllerRole().toString());
-			 */
+
+			log.info("Received Packet_In from switch {} ({})", sw.getId()
+					.toString(), sw.getControllerRole().toString());
+			
 			return Command.CONTINUE;
 		case BARRIER_REPLY:
 			log.info("---- Received BARRIER_REPLY ----");
@@ -177,7 +179,7 @@ public class RoleChanger implements IFloodlightModule, IOFMessageListener,
 			public void onFailure(Throwable arg0) {
 				log.error("Failed to receive ROLE_REPLY from switch {}", sw
 						.getId().toString());
-				//sem.release();
+				// sem.release();
 			}
 
 			@Override
@@ -337,7 +339,7 @@ public class RoleChanger implements IFloodlightModule, IOFMessageListener,
 
 			sendRoleRequest(sw, currentRole, sem);
 			try {
-				
+
 				sendBarrier(sw, sem); // sem = 1 after receive
 
 				// sem unlocked means barrier reply was received
@@ -347,11 +349,11 @@ public class RoleChanger implements IFloodlightModule, IOFMessageListener,
 
 				// sem unlocked means async reply was received
 				sem.acquire(); // sem = 0
-				
+
 				sendSetAsync(sw, lastAsyncGetReply);
-				
+
 				sendGetAsyncRequest(sw, sem); // sem = 1 after receive
-				
+
 			} catch (InterruptedException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
