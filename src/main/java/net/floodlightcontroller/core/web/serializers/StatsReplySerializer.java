@@ -749,6 +749,7 @@ public class StatsReplySerializer extends JsonSerializer<StatsReply> {
 				jGen.writeNumberField("packetCount", entry.getPacketCount().getValue());
 				jGen.writeNumberField("byteCount", entry.getByteCount().getValue());
 				jGen.writeNumberField("durationSeconds", entry.getDurationSec());
+				jGen.writeNumberField("durationNSeconds", entry.getDurationNsec());
 				jGen.writeNumberField("priority", entry.getPriority());
 				jGen.writeNumberField("idleTimeoutSec", entry.getIdleTimeout());
 				jGen.writeNumberField("hardTimeoutSec", entry.getHardTimeout());
