@@ -351,7 +351,11 @@ public class ACL implements IACLService, IFloodlightModule, IDeviceListener {
 
 	@Override
 	public void deviceAdded(IDevice device) {
-		SwitchPort[] switchPort = device.getAttachmentPoints();
+		SwitchPort[] switchPort = device.getAttachmentPoints(); 
+		if (switchPort.length == 0) {
+                        //Device manager does not yet know an attachment point for a device (Bug Fix) 
+                        return;
+                }
 		IPv4Address[] ips = device.getIPv4Addresses();
 		if (ips.length == 0) {
 			// A new no-ip device added
