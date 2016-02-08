@@ -5,7 +5,7 @@ import org.projectfloodlight.openflow.protocol.OFMessage;
 /**
  * Copyright (c) 2014, NetIDE Consortium (Create-Net (CN), Telefonica Investigacion Y Desarrollo SA (TID), Fujitsu 
  * Technology Solutions GmbH (FTS), Thales Communications & Security SAS (THALES), Fundacion Imdea Networks (IMDEA),
- * Universitaet Paderborn (UPB), Intel Research & Innovation Ireland Ltd (IRIIL), Fraunhofer-Institut für 
+ * Universitaet Paderborn (UPB), Intel Research & Innovation Ireland Ltd (IRIIL), Fraunhofer-Institut fur 
  * Produktionstechnologie (IPT), Telcaria Ideas SL (TELCA) )
  *
  * All rights reserved. This program and the accompanying materials
@@ -14,7 +14,7 @@ import org.projectfloodlight.openflow.protocol.OFMessage;
  * http://www.eclipse.org/legal/epl-v10.html
  *
  * Authors:
- *     Pedro A. Aranda Gutiérrez, pedroa.aranda@telefonica.com
+ *     Pedro A. Aranda Gutierrez, pedroa.aranda@telefonica.com
  */
 
 
