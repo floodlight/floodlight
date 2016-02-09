@@ -1663,7 +1663,7 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 				// We need to count here after all the possible "continue"
 				// statements in this branch
 				cntNewEntity.increment();
-				if (changedFields.size() > 0) {
+				if (!changedFields.isEmpty()) {
 					cntDeviceChanged.increment();
 					deviceUpdates =
 							updateUpdates(deviceUpdates,
@@ -1966,7 +1966,7 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 						 toKeep.add(e);
 					 }
 				 }
-				 if (toRemove.size() == 0) {
+				 if (toRemove.isEmpty()) {
 					 break;
 				 }
 
@@ -1975,7 +1975,7 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 					 removeEntity(e, d.getEntityClass(), d.getDeviceKey(), toKeep);
 				 }
 
-				 if (toKeep.size() > 0) {
+				 if (!toKeep.isEmpty()) {
 					 Device newDevice = allocateDevice(d.getDeviceKey(),
 							 d.getDHCPClientName(),
 							 d.oldAPs,
@@ -1989,7 +1989,7 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 						 changedFields.addAll(findChangedFields(newDevice, e));
 					 }
 					 DeviceUpdate update = null;
-					 if (changedFields.size() > 0) {
+					 if (!changedFields.isEmpty()) {
 						 update = new DeviceUpdate(d, CHANGE, changedFields);
 					 }
 

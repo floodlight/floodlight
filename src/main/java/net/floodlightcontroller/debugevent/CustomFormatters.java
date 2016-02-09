@@ -26,7 +26,7 @@ class CustomFormatterCollectionAttachmentPoint implements
                          EventResourceBuilder edb) {
         if (aps2 != null) {
             StringBuilder apsStr2 = new StringBuilder();
-            if (aps2.size() == 0) {
+            if (aps2.isEmpty()) {
                 apsStr2.append("--");
             } else {
                 for (SwitchPort ap : aps2) {
@@ -71,7 +71,7 @@ class CustomFormatterCollectionObject implements
                          EventResourceBuilder edb) {
         if (obl2 != null) {
             StringBuilder sbldr2 = new StringBuilder();
-            if (obl2.size() == 0) {
+            if (obl2.isEmpty()) {
                 sbldr2.append("--");
             } else {
                 for (Object o : obl2) {
@@ -167,7 +167,7 @@ class CustomFormatterSrefCollectionObject implements
             Collection<Object> ol2 = srefCollectionObj2.get();
             if (ol2 != null) {
                 StringBuilder sb = new StringBuilder();
-                if (ol2.size() == 0) {
+                if (ol2.isEmpty()) {
                     sb.append("--");
                 } else {
                     for (Object o : ol2) {

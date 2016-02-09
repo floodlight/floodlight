@@ -292,7 +292,7 @@ public class FlowReconcileManager implements IFloodlightModule, IFlowReconcileSe
 
 		// Run the flow through all the flow reconcile listeners
 		IFlowReconcileListener.Command retCmd;
-		if (ofmRcList.size() > 0) {
+		if (!ofmRcList.isEmpty()) {
 			List<IFlowReconcileListener> listeners =
 					flowReconcileListeners.getOrderedListeners();
 			if (listeners == null) {

@@ -138,7 +138,7 @@ public class DefaultStoreClient<K, V> extends AbstractStoreClient<K, V> {
                                           Versioned<V> defaultValue,
                                           List<Versioned<V>> items)
              throws InconsistentDataException {
-        if(items.size() == 0)
+        if(items.isEmpty())
             return defaultValue(defaultValue);
         else if(items.size() == 1)
             return items.get(0);

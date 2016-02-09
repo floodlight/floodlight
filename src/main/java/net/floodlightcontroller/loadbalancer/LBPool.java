@@ -63,7 +63,7 @@ public class LBPool {
     
     public String pickMember(IPClient client) {
         // simple round robin for now; add different lbmethod later
-        if (members.size() > 0) {
+        if (!members.isEmpty()) {
             previousMemberIndex = (previousMemberIndex + 1) % members.size();
             return members.get(previousMemberIndex);
         } else {

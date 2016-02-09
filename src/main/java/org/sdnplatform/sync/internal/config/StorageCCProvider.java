@@ -131,7 +131,7 @@ public class StorageCCProvider
             if (res != null) res.close();
         }
 
-        if (nodes.size() == 0)
+        if (nodes.isEmpty())
             throw new SyncException("No valid nodes found");
         if (thisNodeId < 0)
             throw new SyncException("Could not find a node for the local node");

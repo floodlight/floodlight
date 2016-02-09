@@ -495,7 +495,7 @@ public class LoadBalancer implements IFloodlightModule,
      */
     public void pushStaticVipRoute(boolean inBound, Route route, IPClient client, LBMember member, IOFSwitch pinSwitch) {
         List<NodePortTuple> path = route.getPath();
-        if (path.size() > 0) {
+        if (!path.isEmpty()) {
            for (int i = 0; i < path.size(); i+=2) {
                DatapathId sw = path.get(i).getNodeId();
                String entryName;

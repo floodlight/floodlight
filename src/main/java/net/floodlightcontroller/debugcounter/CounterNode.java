@@ -84,7 +84,7 @@ class CounterNode implements Iterable<DebugCounterImpl> {
 
     /** verify that this node is the root */
     private void verifyIsRoot() {
-        if (hierarchyElements.size() != 0) {
+        if (hierarchyElements.isEmpty() != 0) {
             throw new IllegalStateException("This is not the root. Can "
                     + "only call addCounter() on the root node. Current node: "
                     + hierarchy);

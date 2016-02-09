@@ -71,7 +71,7 @@ public class LBVip {
     
     public String pickPool(IPClient client) {
         // for now, return the first pool; consider different pool choice policy later
-        if (pools.size() > 0)
+        if (!pools.isEmpty())
             return pools.get(0);
         else
             return null;
