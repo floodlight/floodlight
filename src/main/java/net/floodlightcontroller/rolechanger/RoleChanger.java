@@ -101,8 +101,16 @@ public class RoleChanger implements IFloodlightModule, IOFMessageListener,
 
 			log.info("Received Packet_In from switch {} ({})", sw.getId()
 					.toString(), sw.getControllerRole().toString());
-			
+
 			return Command.CONTINUE;
+
+		case PACKET_OUT:
+			System.out.println();
+			OFPacketOut pout = (OFPacketOut) msg;
+			log.info("---- Received packet out: {}", pout.toString());
+			log.info("Data: {}", new String(pout.getData()).toString());
+			return Command.CONTINUE;
+
 		case BARRIER_REPLY:
 			log.info("---- Received BARRIER_REPLY ----");
 			log.info("Barrier reply xid: {}", msg.getXid());
@@ -305,6 +313,7 @@ public class RoleChanger implements IFloodlightModule, IOFMessageListener,
 				this);
 		floodlightProviderService.addOFMessageListener(OFType.ROLE_REPLY, this);
 		floodlightProviderService.addOFMessageListener(OFType.PACKET_IN, this);
+		floodlightProviderService.addOFMessageListener(OFType.PACKET_OUT, this);
 		floodlightProviderService.addOFMessageListener(OFType.GET_ASYNC_REPLY,
 				this);
 		floodlightProviderService.addOFMessageListener(OFType.GET_CONFIG_REPLY,
