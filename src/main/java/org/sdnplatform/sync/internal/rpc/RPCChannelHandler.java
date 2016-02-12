@@ -335,7 +335,7 @@ public class RPCChannelHandler extends AbstractRPCChannelHandler {
                 ByteArray keyArray = new ByteArray(key.array());
                 List<Versioned<byte[]>> values =
                         store.get(keyArray);
-                if (values == null || values.size() == 0) continue;
+                if (values == null || values.isEmpty()) continue;
                 KeyedValues kv =
                         TProtocolUtil.getTKeyedValues(keyArray, values);
                 svm.addToValues(kv);

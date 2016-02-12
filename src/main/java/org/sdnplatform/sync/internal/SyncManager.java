@@ -320,7 +320,7 @@ public class SyncManager extends AbstractSyncManager {
 		if (store == null) return true;
 
 		List<Versioned<byte[]>> values = store.get(new ByteArray(key));
-		if (values == null || values.size() == 0) return true;
+		if (values == null || values.isEmpty()) return true;
 
 		// check whether any of the versions are not older than what we have
 		for (VectorClock vc : versions) {

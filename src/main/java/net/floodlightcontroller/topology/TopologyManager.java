@@ -1295,7 +1295,7 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 			}
 		}
 
-		if (additionalNpt.size() > 0) {
+		if (!additionalNpt.isEmpty()) {
 			log.warn("The following switch ports have multiple " +
 					"links incident on them, so these ports will be treated " +
 					" as braodcast domain ports. {}", additionalNpt);

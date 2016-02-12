@@ -80,7 +80,7 @@ public class ListenerDispatcher<U, T extends IListener<U>> {
             }
         }
 
-        if (terminals.size() == 0) {
+        if (terminals.isEmpty()) {
             logger.error("No listener dependency solution: " +
                          "No listeners without incoming dependencies");
             listeners = newlisteners;

@@ -312,7 +312,7 @@ public class Device implements IDevice {
 				expiredAPs.add(ap);
 			}
 		}
-		if (expiredAPs.size() > 0) {
+		if (!expiredAPs.isEmpty()) {
 			apList.removeAll(expiredAPs);
 			return true;
 		} else

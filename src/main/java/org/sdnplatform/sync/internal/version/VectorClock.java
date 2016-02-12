@@ -147,7 +147,7 @@ public class VectorClock implements IVersion, Serializable, Cloneable {
     public String toString() {
         StringBuilder builder = new StringBuilder();
         builder.append("version(");
-        if(this.versions.size() > 0) {
+        if(!this.versions.isEmpty()) {
             for(int i = 0; i < this.versions.size() - 1; i++) {
                 builder.append(this.versions.get(i));
                 builder.append(", ");

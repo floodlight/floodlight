@@ -323,7 +323,7 @@ public class FloodlightModuleLoader {
                 if (m == null) {
                     Collection<IFloodlightModule> mods = serviceMap.get(c);
                     // Make sure only one module is loaded
-                    if ((mods == null) || (mods.size() == 0)) {
+                    if ((mods == null) || mode.isEmpty()) {
                         throw new FloodlightModuleException("ERROR! Could not " +
                                 "find an IFloodlightModule that provides service " +
                                 c.toString());
