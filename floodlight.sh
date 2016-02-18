@@ -33,4 +33,4 @@ JVM_OPTS="$JVM_OPTS -Dpython.security.respectJavaAccessibility=false"
 EOF_LOGBACK
 
 echo "Starting floodlight server ..."
-java ${JVM_OPTS} -Dlogback.configurationFile=${FL_LOGBACK} -jar ${FL_JAR}
+java ${JVM_OPTS} -Dlogback.configurationFile=${FL_LOGBACK} -jar ${FL_JAR} "$@"
