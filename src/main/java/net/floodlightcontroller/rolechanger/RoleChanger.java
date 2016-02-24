@@ -16,9 +16,16 @@
 
 package net.floodlightcontroller.rolechanger;
 
+import java.io.UnsupportedEncodingException;
+import java.net.InetAddress;
+import java.net.NetworkInterface;
+import java.net.SocketException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Semaphore;
 
@@ -33,6 +40,11 @@ import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
+import net.floodlightcontroller.packet.Data;
+import net.floodlightcontroller.packet.Ethernet;
+import net.floodlightcontroller.packet.IPacket;
+import net.floodlightcontroller.packet.IPv4;
+import net.floodlightcontroller.packet.UDP;
 import net.floodlightcontroller.restserver.IRestApiService;
 
 import org.projectfloodlight.openflow.protocol.OFAsyncConfigPropPacketInSlave;
@@ -45,12 +57,24 @@ import org.projectfloodlight.openflow.protocol.OFControllerRole;
 import org.projectfloodlight.openflow.protocol.OFExperimenter;
 import org.projectfloodlight.openflow.protocol.OFGetConfigReply;
 import org.projectfloodlight.openflow.protocol.OFMessage;
+import org.projectfloodlight.openflow.protocol.OFPacketIn;
+import org.projectfloodlight.openflow.protocol.OFPacketInReason;
 import org.projectfloodlight.openflow.protocol.OFPacketOut;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.protocol.OFRoleReply;
 import org.projectfloodlight.openflow.protocol.OFRoleRequest;
 import org.projectfloodlight.openflow.protocol.OFType;
+import org.projectfloodlight.openflow.protocol.OFVersion;
+import org.projectfloodlight.openflow.protocol.action.OFAction;
+import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.EthType;
+import org.projectfloodlight.openflow.types.IPv4Address;
+import org.projectfloodlight.openflow.types.IpProtocol;
+import org.projectfloodlight.openflow.types.MacAddress;
+import org.projectfloodlight.openflow.types.OFBufferId;
+import org.projectfloodlight.openflow.types.OFPort;
+import org.projectfloodlight.openflow.types.TransportPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -98,34 +122,47 @@ public class RoleChanger implements IFloodlightModule, IOFMessageListener,
 			IOFSwitch sw, OFMessage msg, FloodlightContext cntx) {
 		switch (msg.getType()) {
 		case PACKET_IN:
-
-			log.info("Received Packet_In from switch {} ({})", sw.getId()
-					.toString(), sw.getControllerRole().toString());
-
+			OFPacketIn ofpi = (OFPacketIn) msg;
+			log.info("Received " + getPacketInString(ofpi, sw));
+			if (ofpi.getReason() == OFPacketInReason.PACKET_OUT) {
+				log.info("####        Received Packet-In from Packet-Out        ###");
+			} else {
+				String s = "test string";
+				try {
+					sendTestPacketOut(sw, s.getBytes());
+				} catch (UnsupportedEncodingException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
 			return Command.CONTINUE;
-
 		case PACKET_OUT:
-			System.out.println();
 			OFPacketOut pout = (OFPacketOut) msg;
-			log.info("---- Received packet out: {}", pout.toString());
-			log.info("Data: {}", new String(pout.getData()).toString());
+			log.info("Received {}", getPacketOutString(pout, sw));
 			return Command.CONTINUE;
-
 		case BARRIER_REPLY:
-			log.info("---- Received BARRIER_REPLY ----");
+			log.info("Received BARRIER_REPLY");
 			log.info("Barrier reply xid: {}", msg.getXid());
+
+			try {
+				sendTestPacketOut(sw, "test string 2".getBytes());
+			} catch (UnsupportedEncodingException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+
 			return Command.CONTINUE;
 		case ROLE_REPLY:
-			log.info("---- Received ROLE_REPLY ----");
+			log.info("Received ROLE_REPLY");
 			// sendBarrier(sw);
 			return Command.CONTINUE;
 		case GET_ASYNC_REPLY:
-			log.info("---- Received GET_ASYNC_REPLY ----");
+			log.info("Received GET_ASYNC_REPLY");
 			OFAsyncGetReply asyncReply = (OFAsyncGetReply) msg;
 			log.info("{}", asyncReply.toString());
 			return Command.CONTINUE;
 		case GET_CONFIG_REPLY:
-			log.info("---- Received GET_CONFIG_REPLY ----");
+			log.info("Received GET_CONFIG_REPLY");
 			OFGetConfigReply configReply = (OFGetConfigReply) msg;
 			log.info("{}", configReply.toString());
 			return Command.CONTINUE;
@@ -135,6 +172,86 @@ public class RoleChanger implements IFloodlightModule, IOFMessageListener,
 		}
 		log.warn("Received unexpected message {}", msg);
 		return Command.CONTINUE;
+	}
+
+	public OFPort getInPort(OFPacketIn pi) {
+		return (pi.getVersion().compareTo(OFVersion.OF_12) < 0 ? pi.getInPort()
+				: pi.getMatch().get(MatchField.IN_PORT));
+	}
+
+	public String getControllerRole(IOFSwitch sw) {
+		int last_ = sw.getControllerRole().name().lastIndexOf('_');
+		return sw.getControllerRole().name().charAt(last_ + 1) + "";
+	}
+
+	public String getPacketOutString(OFPacketOut po, IOFSwitch sw) {
+		Ethernet eth = new Ethernet();
+		eth.deserialize(po.getData(), 0, po.getData().length);
+		
+		return "" + po.getType() + " | In " + po.getInPort() + " | "
+				+ po.getActions() + " | From " + sw.getId() + " ("
+				+ getControllerRole(sw) + ")" + " | Eth: " + eth.toString()
+				;
+	}
+
+	public String getPacketInString(OFPacketIn pi, IOFSwitch sw) {
+		Ethernet eth = new Ethernet();
+		eth.deserialize(pi.getData(), 0, pi.getData().length);
+		return "" + pi.getType() + " | In " + getInPort(pi) + " | "
+				+ pi.getReason() + " | " + pi.getMatch() + " | From "
+				+ sw.getId() + " (" + getControllerRole(sw) + ") | " + "\nEth: "
+				+ eth.toString();
+	}
+
+	static void displayInterfaceInformation(NetworkInterface netint)
+			throws SocketException {
+		log.info("Display name: {}", netint.getDisplayName());
+		log.info("Name: {}", netint.getName());
+		Enumeration<InetAddress> inetAddresses = netint.getInetAddresses();
+		for (InetAddress inetAddress : Collections.list(inetAddresses)) {
+			log.info("InetAddress: {}", inetAddress);
+		}
+	}
+
+	private boolean once = true;
+
+	private void sendTestPacketOut(IOFSwitch sw, byte[] data) throws UnsupportedEncodingException {
+
+		List<OFAction> actions = new ArrayList<OFAction>();
+		actions.add(sw.getOFFactory().actions().buildOutput()
+				.setPort(OFPort.CONTROLLER)
+				.setMaxLen(OFBufferId.NO_BUFFER.getInt()) // !!!!
+				.build());
+
+		Ethernet l2 = new Ethernet();
+		l2.setEtherType(EthType.of(65535)); // reserved type
+		// set ethernet headers
+		l2.setSourceMACAddress(MacAddress.of("00:00:00:00:00:01"));
+		l2.setDestinationMACAddress(MacAddress.BROADCAST);
+		Data packetData = new Data();
+		String dataString = new String(data, "UTF-8");
+		log.info("String a meter na Data: " + dataString);
+		packetData.setData(dataString.getBytes());
+		l2.setPayload(packetData); // set payload for ethernet packet
+
+		OFPacketOut out = sw.getOFFactory().buildPacketOut()
+				.setBufferId(OFBufferId.NO_BUFFER).setInPort(OFPort.CONTROLLER)
+				.setActions(actions).setData(l2.serialize()).build();
+
+		sw.write(out);
+
+		
+		// out.toString().replace("data=\\([^()]*\\)|[*+ ]+", "");
+
+		log.info("" + getOutGoingPacketOut(sw, out));
+	}
+
+	private String getOutGoingPacketOut(IOFSwitch sw, OFPacketOut out) {
+		String spo = out.toString().replaceAll("data=\\[.*?\\]", "");
+		String s = "Enviei Packet-Out para o switch " + sw.getId().toString()
+				+ ": " + spo + " |\ndata: " + new String(out.getData())
+				+ "; length " + out.getData().length + "";
+		return s;
 	}
 
 	public static void sendBarrier(final IOFSwitch sw, final Semaphore sem) {

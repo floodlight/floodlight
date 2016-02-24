@@ -433,6 +433,7 @@ public class Controller implements IFloodlightProviderService, IStorageSourceLis
 
                 if (pi.getData().length <= 0) {
                     log.error("Ignoring PacketIn (Xid = " + pi.getXid() + ") because the data field is empty.");
+                    log.info("»» " + pi.toString());
                     return;
                 }
 

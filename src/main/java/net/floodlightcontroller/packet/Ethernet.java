@@ -419,7 +419,7 @@ public class Ethernet extends BasePacket {
     @Override
     public String toString() {
 
-        StringBuffer sb = new StringBuffer("\n");
+        StringBuffer sb = new StringBuffer("");
 
         IPacket pkt = this.getPayload();
 
@@ -435,24 +435,24 @@ public class Ethernet extends BasePacket {
             sb.append("dhcp");
         else  sb.append(this.getEtherType().toString());
 
-        sb.append("\ndl_vlan: ");
+        sb.append("dl_vlan: ");
         if (this.getVlanID() == Ethernet.VLAN_UNTAGGED)
             sb.append("untagged");
         else
             sb.append(this.getVlanID());
-        sb.append("\ndl_vlan_pcp: ");
+        sb.append("; dl_vlan_pcp: ");
         sb.append(this.getPriorityCode());
-        sb.append("\ndl_src: ");
+        sb.append("; dl_src: ");
         sb.append(this.getSourceMACAddress().toString());
-        sb.append("\ndl_dst: ");
+        sb.append("; dl_dst: ");
         sb.append(this.getDestinationMACAddress().toString());
-
+        sb.append("\n");
 
         if (pkt instanceof ARP) {
             ARP p = (ARP) pkt;
-            sb.append("\nnw_src: ");
+            sb.append("nw_src: ");
             sb.append(p.getSenderProtocolAddress().toString());
-            sb.append("\nnw_dst: ");
+            sb.append("; nw_dst: ");
             sb.append(p.getTargetProtocolAddress().toString());
         }
         else if (pkt instanceof LLDP) {
@@ -460,46 +460,52 @@ public class Ethernet extends BasePacket {
         }
         else if (pkt instanceof ICMP) {
             ICMP icmp = (ICMP) pkt;
-            sb.append("\nicmp_type: ");
+            sb.append("icmp_type: ");
             sb.append(icmp.getIcmpType());
-            sb.append("\nicmp_code: ");
+            sb.append("; icmp_code: ");
             sb.append(icmp.getIcmpCode());
         }
         else if (pkt instanceof IPv4) {
             IPv4 p = (IPv4) pkt;
-            sb.append("\nnw_src: ");
+            sb.append("nw_src: ");
             sb.append(p.getSourceAddress().toString());
-            sb.append("\nnw_dst: ");
+            sb.append("; nw_dst: ");
             sb.append(p.getDestinationAddress().toString());
-            sb.append("\nnw_tos: ");
+            sb.append("; nw_tos: ");
             sb.append(p.getDiffServ());
-            sb.append("\nnw_proto: ");
+            sb.append("; nw_proto: ");
             sb.append(p.getProtocol());
         }
         else if (pkt instanceof IPv6) {
         	IPv6 p = (IPv6) pkt;
-        	sb.append("\nnw_src: ");
+        	sb.append("nw_src: ");
             sb.append(p.getSourceAddress().toString());
-            sb.append("\nnw_dst: ");
+            sb.append("; nw_dst: ");
             sb.append(p.getDestinationAddress().toString());
-            sb.append("\nnw_tclass: ");
+            sb.append("; nw_tclass: ");
             sb.append(p.getTrafficClass());
-            sb.append("\nnw_proto: ");
+            sb.append("; nw_proto: ");
             sb.append(p.getNextHeader().toString());
         }
         else if (pkt instanceof DHCP) {
-            sb.append("\ndhcp packet");
+            sb.append("dhcp packet");
         }
         else if (pkt instanceof Data) {
-            sb.append("\ndata packet");
+            sb.append("data packet: ");
+            Data d = (Data) pkt;
+            sb.append(d.toString());
         }
         else if (pkt instanceof LLC) {
-            sb.append("\nllc packet");
+            sb.append("llc packet");
         }
         else if (pkt instanceof BPDU) {
-            sb.append("\nbpdu packet");
+            sb.append("bpdu packet");
         }
-        else sb.append("\nunknown packet");
+        else if (pkt instanceof BSN) {
+        	BSN p = (BSN) pkt;
+        	sb.append(p.toString());
+        }
+        else sb.append("unknown packet: " + pkt.toString());
 
         return sb.toString();
     }

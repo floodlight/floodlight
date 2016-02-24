@@ -91,4 +91,9 @@ public class Data extends BasePacket {
             return false;
         return true;
     }
+    
+    @Override
+    public String toString() {
+    	return new String(this.data);
+    }
 }
