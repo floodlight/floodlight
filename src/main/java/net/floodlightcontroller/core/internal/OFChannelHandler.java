@@ -79,7 +79,7 @@ class OFChannelHandler extends SimpleChannelInboundHandler<Iterable<OFMessage>> 
 	 * We will count down
 	 */
 	private long handshakeTransactionIds = 0x00FFFFFFFFL;
-	private boolean sendHello = false;
+
 	private volatile long echoSendTime;
 	private volatile long featuresLatency;
 
@@ -355,16 +355,19 @@ class OFChannelHandler extends SimpleChannelInboundHandler<Iterable<OFMessage>> 
 			else {
 				log.info("Negotiated down to controller OpenFlow version of {} for {} using lesser hello header algorithm.", factory.getVersion().toString(), channel.remoteAddress());
 			}
-			sendHello = true;
+			
 			sendHelloMessage();
-			sendHello = false;
 			setState(new WaitFeaturesReplyState());
 			
 		}
 
 		@Override
 		void enterState() throws IOException {
-			sendHelloMessage();
+			/**
+			 * Not all switches are able to choose right version,
+			 * when controller send OF version higher than it supports
+			 **/
+			//sendHelloMessage();
 		}
 	}
 
@@ -799,7 +802,6 @@ class OFChannelHandler extends SimpleChannelInboundHandler<Iterable<OFMessage>> 
 	 */
 	private void sendHelloMessage() throws IOException {
 		// Send initial hello message
-		if(sendHello){
 		OFHello.Builder builder = factory.buildHello();
 
 		/* Our highest-configured OFVersion does support version bitmaps, so include it */
@@ -816,7 +818,7 @@ class OFChannelHandler extends SimpleChannelInboundHandler<Iterable<OFMessage>> 
 
 		write(m);
 		log.debug("Send hello: {}", m); 
-		}
+		
 	}
 
 	private void sendEchoRequest() {
