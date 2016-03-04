@@ -39,6 +39,7 @@ import org.projectfloodlight.openflow.protocol.OFHelloElem;
 import org.projectfloodlight.openflow.protocol.OFHelloElemVersionbitmap;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFPortStatus;
+import org.projectfloodlight.openflow.protocol.OFRoleStatus;
 import org.projectfloodlight.openflow.protocol.OFType;
 import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.protocol.ver13.OFHelloElemTypeSerializerVer13;
@@ -687,7 +688,7 @@ class OFChannelHandler extends SimpleChannelInboundHandler<Iterable<OFMessage>> 
 
 	@Override
 	public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
-		log.debug("channelIdle on OFChannelHandler {}", String.format("%08x", System.identityHashCode(this)));
+		//log.debug("channelIdle on OFChannelHandler {}", String.format("%08x", System.identityHashCode(this)));
 		OFChannelHandler handler = ctx.pipeline().get(OFChannelHandler.class);
 		handler.sendEchoRequest();
 	}
@@ -831,7 +832,7 @@ class OFChannelHandler extends SimpleChannelInboundHandler<Iterable<OFMessage>> 
 				.build();
 		write(reply);
 	}
-	
+
 	private void write(OFMessage m) {
 		channel.writeAndFlush(Collections.singletonList(m));
 	}

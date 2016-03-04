@@ -117,6 +117,11 @@ public class OFSwitchManager implements IOFSwitchManager, INewOFConnectionListen
 	private ConcurrentHashMap<DatapathId, OFSwitchHandshakeHandler> switchHandlers;
 	private ConcurrentHashMap<DatapathId, IOFSwitchBackend> switches;
 	private ConcurrentHashMap<DatapathId, IOFSwitch> syncedSwitches;
+	
+	/**
+	 * Tulio Ribeiro
+	 */
+	protected static Map<DatapathId, OFControllerRole> switchInitialRole;
 
 	private ISwitchDriverRegistry driverRegistry;
 
@@ -728,6 +733,16 @@ public class OFSwitchManager implements IOFSwitchManager, INewOFConnectionListen
 			log.info("Clear switch flow tables on each transition to master: TRUE");
 			OFSwitchManager.clearTablesOnEachTransitionToMaster = true;
 		}
+		
+		
+		/**
+		 * Tulio Ribeiro
+		 */
+		//Define initial role per switch		
+		String switchesInitialState = configParams.get("switchesInitialState");
+		switchInitialRole = jsonToSwitchInitialRoleMap(switchesInitialState);
+		
+		log.debug("SwitchInitialRole: {}", switchInitialRole.entrySet());
 
 		/*
 		 * Get default max table for forward to controller flows. 
@@ -1169,4 +1184,63 @@ public class OFSwitchManager implements IOFSwitchManager, INewOFConnectionListen
             addUpdateToQueue(update);
         }*/
 	}
+	
+	
+	/**
+	 * Tulio Ribeiro
+	 * @param String json
+	 * @return Map<DatapathId, OFControllerRole>
+	 */
+	private static Map<DatapathId, OFControllerRole> jsonToSwitchInitialRoleMap(String json) {
+		MappingJsonFactory f = new MappingJsonFactory();
+		JsonParser jp;
+		Map<DatapathId, OFControllerRole> retValue = new HashMap<DatapathId, OFControllerRole>();
+
+		if (json == null || json.isEmpty()) {
+			return retValue;
+		}
+
+		try {
+			try {
+				jp = f.createParser(json);
+			} catch (JsonParseException e) {
+				throw new IOException(e);
+			}
+
+			jp.nextToken();
+			if (jp.getCurrentToken() != JsonToken.START_OBJECT) {
+				throw new IOException("Expected START_OBJECT");
+			}
+
+			while (jp.nextToken() != JsonToken.END_OBJECT) {
+				if (jp.getCurrentToken() != JsonToken.FIELD_NAME) {
+					throw new IOException("Expected FIELD_NAME");
+				}
+
+				String n = jp.getCurrentName();
+				jp.nextToken();
+				if (jp.getText().equals("")) {
+					continue;
+				}
+
+				DatapathId dpid;
+				OFControllerRole ofcr=OFControllerRole.ROLE_NOCHANGE;
+
+				try {
+					n = n.trim();
+					dpid = DatapathId.of(n);
+					ofcr = OFControllerRole.valueOf(jp.getText());
+					retValue.put(dpid, ofcr);
+
+				} catch (NumberFormatException e) {
+					log.error("Invalid DPID format: {}, or OFControllerRole: {}", n, ofcr);
+				}
+			}
+		} catch (IOException e) {
+			log.error("Problem: {}", e);
+		}
+		return retValue;
+	}
+	
+	
 }
