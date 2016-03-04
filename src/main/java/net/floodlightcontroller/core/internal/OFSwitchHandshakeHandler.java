@@ -1454,9 +1454,9 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 			long role = m.getRole();
 			if(role==3){
 				sendRoleRequest(OFControllerRole.ROLE_SLAVE);
-				OFSwitchManager.switchInitialRole.remove(mainConnection.getDatapathId());
+				/*OFSwitchManager.switchInitialRole.remove(mainConnection.getDatapathId());
 				OFSwitchManager.switchInitialRole.put(mainConnection.getDatapathId(), 
-						OFControllerRole.ROLE_SLAVE);
+						OFControllerRole.ROLE_SLAVE);*/
 			}
 			else if (role==2)
 				sendRoleRequest(OFControllerRole.ROLE_MASTER);
