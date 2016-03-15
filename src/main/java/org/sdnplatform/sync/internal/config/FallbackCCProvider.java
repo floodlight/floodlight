@@ -1,14 +1,23 @@
 package org.sdnplatform.sync.internal.config;
 
+import java.io.IOException;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 
+import org.projectfloodlight.openflow.protocol.OFControllerRole;
+import org.projectfloodlight.openflow.types.DatapathId;
 import org.sdnplatform.sync.error.SyncException;
 import org.sdnplatform.sync.internal.SyncManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonToken;
+import com.fasterxml.jackson.databind.MappingJsonFactory;
 
 
 /**
@@ -22,6 +31,7 @@ public class FallbackCCProvider implements IClusterConfigProvider {
     AuthScheme authScheme;
     String keyStorePath;
     String keyStorePassword;
+    
     int syncPort = 6642;
     
     public FallbackCCProvider() throws SyncException {
@@ -47,11 +57,16 @@ public class FallbackCCProvider implements IClusterConfigProvider {
                                                         keyStorePassword);
     }
 
+    
+    
     @Override
     public void init(SyncManager syncManager, FloodlightModuleContext context) {
         Map<String, String> config = context.getConfigParams(syncManager);
         keyStorePath = config.get("keyStorePath");
         keyStorePassword = config.get("keyStorePassword");
+        
+       
+        
         authScheme = AuthScheme.NO_AUTH;
         try {
             authScheme = AuthScheme.valueOf(config.get("authScheme"));

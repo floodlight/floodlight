@@ -127,6 +127,8 @@ public class SyncStoreCCProvider
         }
 
         Short localNodeId = getLocalNodeId();
+        //Short localNodeId = 2;
+        
         if (localNodeId == null) {
             String seedStr = 
                     unsyncStoreClient.getValue(SyncStoreCCProvider.SEEDS);

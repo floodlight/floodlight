@@ -15,14 +15,14 @@
   <logger name="LogService" level="DEBUG"></logger> <!-- Restlet access logging -->
   <logger name="net.floodlightcontroller" level="INFO"/>
   <logger name="org.sdnplatform" level="INFO"></logger>
-  <logger name="net.floodlightcontroller.devicemanager" level="TRACE"></logger>
-  <logger name="net.floodlightcontroller.linkdiscovery" level="DEBUG"></logger>
-  <logger name="net.floodlightcontroller.forwarding" level="TRACE"></logger>
-  <logger name="net.floodlightcontroller.simpleft.FaultTolerance" level="TRACE"></logger>
+  <logger name="net.floodlightcontroller.devicemanager" level="INFO"></logger>
+  <logger name="net.floodlightcontroller.linkdiscovery" level="INFO"></logger>
+  <logger name="net.floodlightcontroller.forwarding" level="INFO"></logger>
+  <logger name="net.floodlightcontroller.simpleft.FT" level="TRACE"></logger>
   <logger name="net.floodlightcontroller.core" level="INFO"></logger>
   <logger name="net.floodlightcontroller.topology" level="TRACE" ></logger>
   <logger name="org.projectfloodlight.openflow" level="INFO" ></logger>
-  <logger name="net.floodlightcontroller.core.internal.OFSwitchManager" level="TRACE"></logger>
-  <logger name="net.floodlightcontroller.core.internal.OFSwitchHandshakeHandler" level="TRACE"></logger>
-  <logger name="net.floodlightcontroller.core.internal.OFChannelHandler" level="TRACE"></logger>
+  <logger name="net.floodlightcontroller.core.internal.OFSwitchManager" level="INFO"></logger>
+  <logger name="net.floodlightcontroller.core.internal.OFSwitchHandshakeHandler" level="INFO"></logger>
+  <logger name="net.floodlightcontroller.core.internal.OFChannelHandler" level="INFO"></logger>
 </configuration>

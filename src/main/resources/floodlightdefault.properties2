@@ -12,13 +12,14 @@ net.floodlightcontroller.linkdiscovery.internal.LinkDiscoveryManager,\
 net.floodlightcontroller.ui.web.StaticWebRoutable,\
 net.floodlightcontroller.loadbalancer.LoadBalancer,\
 net.floodlightcontroller.firewall.Firewall,\
+net.floodlightcontroller.simpleft.FT,\
 net.floodlightcontroller.devicemanager.internal.DeviceManagerImpl,\
 net.floodlightcontroller.accesscontrollist.ACL,\
 net.floodlightcontroller.statistics.StatisticsCollector
 org.sdnplatform.sync.internal.SyncManager.authScheme=CHALLENGE_RESPONSE
 org.sdnplatform.sync.internal.SyncManager.keyStorePath=/etc/floodlight/auth_credentials.jceks
 org.sdnplatform.sync.internal.SyncManager.dbPath=/var/lib/floodlight2/
-org.sdnplatform.sync.internal.SyncManager.port=7742
+org.sdnplatform.sync.internal.SyncManager.port=6642
 net.floodlightcontroller.forwarding.Forwarding.match=vlan, mac, ip, transport
 net.floodlightcontroller.forwarding.Forwarding.flood-arp=NO
 net.floodlightcontroller.core.internal.FloodlightProvider.openFlowPort=7753
@@ -35,6 +36,6 @@ net.floodlightcontroller.core.internal.OFSwitchManager.keyStorePath=/path/to/you
 net.floodlightcontroller.core.internal.OFSwitchManager.keyStorePassword=your-keystore-password
 net.floodlightcontroller.core.internal.OFSwitchManager.useSsl=NO
 net.floodlightcontroller.core.internal.OFSwitchManager.supportedOpenFlowVersions=1.0, 1.1, 1.2, 1.3, 1.4
-net.floodlightcontroller.core.internal.OFSwitchManager.switchesInitialState={"00:00:00:00:00:00:00:01":"ROLE_SLAVE","00:00:00:00:00:00:00:02":"ROLE_SLAVE", "00:00:00:00:00:00:00:03":"ROLE_SLAVE", "00:00:00:00:00:00:00:04":"ROLE_MASTER","00:00:00:00:00:00:00:05":"ROLE_SLAVE"}
+net.floodlightcontroller.core.internal.OFSwitchManager.switchesInitialState={"00:00:00:00:00:00:00:01":"ROLE_SLAVE","00:00:00:00:00:00:00:02":"ROLE_SLAVE", "00:00:00:00:00:00:00:03":"ROLE_SLAVE", "00:00:00:00:00:00:00:04":"ROLE_MASTER","00:00:00:00:00:00:00:05":"ROLE_MASTER"}
 net.floodlightcontroller.statistics.StatisticsCollector.enable=FALSE
 net.floodlightcontroller.statistics.StatisticsCollector.collectionIntervalPortStatsSeconds=10
