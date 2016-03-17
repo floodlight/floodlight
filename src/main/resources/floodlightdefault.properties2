@@ -19,13 +19,15 @@ net.floodlightcontroller.statistics.StatisticsCollector
 org.sdnplatform.sync.internal.SyncManager.authScheme=CHALLENGE_RESPONSE
 org.sdnplatform.sync.internal.SyncManager.keyStorePath=/etc/floodlight/auth_credentials.jceks
 org.sdnplatform.sync.internal.SyncManager.dbPath=/var/lib/floodlight2/
-org.sdnplatform.sync.internal.SyncManager.port=6642
+org.sdnplatform.sync.internal.SyncManager.port=6643
+org.sdnplatform.sync.internal.SyncManager.nodeId=2
+org.sdnplatform.sync.internal.SyncManager.clusterNodes={"1":"192.168.1.131:6642","2":"192.168.1.131:6643"}
 net.floodlightcontroller.forwarding.Forwarding.match=vlan, mac, ip, transport
 net.floodlightcontroller.forwarding.Forwarding.flood-arp=NO
 net.floodlightcontroller.core.internal.FloodlightProvider.openFlowPort=7753
 net.floodlightcontroller.core.internal.FloodlightProvider.role=ACTIVE
 net.floodlightcontroller.core.internal.FloodlightProvider.workerThreads=8
-net.floodlightcontroller.core.internal.FloodlightProvider.controllerId=C2
+net.floodlightcontroller.core.internal.FloodlightProvider.controllerId=2
 net.floodlightcontroller.linkdiscovery.internal.LinkDiscoveryManager.latency-history-size=10
 net.floodlightcontroller.linkdiscovery.internal.LinkDiscoveryManager.latency-update-threshold=0.5
 net.floodlightcontroller.core.internal.OFSwitchManager.defaultMaxTablesToReceiveTableMissFlow=1

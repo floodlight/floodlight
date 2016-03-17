@@ -44,6 +44,9 @@ public class PropertyCCProvider implements IClusterConfigProvider {
             List<Node> nodes = 
                     mapper.readValue(config.get("nodes"),
                                      new TypeReference<List<Node>>() { });
+            //nodes.add(new Node("192.168.1.131",6642,(short)1,(short)1));
+            //nodes.add(new Node("192.168.1.131",6643,(short)2,(short)2));
+            
             return new ClusterConfig(nodes, thisNodeId, 
                                      authScheme, 
                                      keyStorePath, 

@@ -88,7 +88,7 @@ public class RemoteSyncManager extends AbstractSyncManager {
     /**
      * The hostname of the server to connect to
      */
-    protected String hostname = "localhost";
+    protected String hostname = "192.168.1.131";
     
     /**
      * Port to connect to

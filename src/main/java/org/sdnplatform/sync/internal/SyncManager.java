@@ -32,6 +32,7 @@ import org.sdnplatform.sync.error.UnknownStoreException;
 import org.sdnplatform.sync.internal.StoreRegistry.Hint;
 import org.sdnplatform.sync.internal.config.ClusterConfig;
 import org.sdnplatform.sync.internal.config.DelegatingCCProvider;
+import org.sdnplatform.sync.internal.config.FTCCProvider;
 import org.sdnplatform.sync.internal.config.FallbackCCProvider;
 import org.sdnplatform.sync.internal.config.IClusterConfigProvider;
 import org.sdnplatform.sync.internal.config.Node;
@@ -465,10 +466,16 @@ public class SyncManager extends AbstractSyncManager {
 		storeRegistry = new StoreRegistry(this, config.get("dbPath"));
 
 		String[] configProviders =
-			{PropertyCCProvider.class.getName(),
-				SyncStoreCCProvider.class.getName(),
-				StorageCCProvider.class.getName(),
+			{
+				/**
+				 * Tulio Ribeiro
+				 */
+				FTCCProvider.class.getName(),
+				//PropertyCCProvider.class.getName(),
+				//SyncStoreCCProvider.class.getName(),
+				//StorageCCProvider.class.getName(),
 				FallbackCCProvider.class.getName()};
+		
 		try {
 			if (config.containsKey("persistenceEnabled")) {
 				persistenceEnabled =
@@ -476,12 +483,14 @@ public class SyncManager extends AbstractSyncManager {
 			}
 			if (config.containsKey("configProviders")) {
 				configProviders = config.get("configProviders").split(",");
+				logger.info("configProviders: ",configProviders);
 			}
 			DelegatingCCProvider dprovider = new DelegatingCCProvider();
 			for (String configProvider : configProviders) {
 				Class<?> cClass = Class.forName(configProvider);
 				IClusterConfigProvider provider =
 						(IClusterConfigProvider) cClass.newInstance();
+				logger.info("Adding provider: {}",provider);
 				dprovider.addProvider(provider);
 			}
 			dprovider.init(this, context);

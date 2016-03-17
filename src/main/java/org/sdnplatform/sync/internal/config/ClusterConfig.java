@@ -9,6 +9,8 @@ import java.util.List;
 
 import org.sdnplatform.sync.error.SyncException;
 
+import sun.util.logging.resources.logging;
+
 
 /**
  * Represent the configuration of a cluster in the sync manager
@@ -201,6 +203,7 @@ public class ClusterConfig {
             this.authScheme = AuthScheme.NO_AUTH;
         this.keyStorePath = keyStorePath;
         this.keyStorePassword = keyStorePassword;
+        
     }
 
     @Override

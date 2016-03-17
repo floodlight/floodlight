@@ -31,7 +31,8 @@ public class StorageCCProvider
 
     private IStorageSourceService storageSource;
     
-    HashMap<Short, Node> clusterNode;
+	private List<Node> clusterInitialNode;
+
     String thisControllerID;
     AuthScheme authScheme;
     String keyStorePath;
@@ -68,15 +69,10 @@ public class StorageCCProvider
 
         Map<String, String> config =
                 context.getConfigParams(FloodlightProvider.class);
-        
-        
         thisControllerID = config.get("controllerId");
         config = context.getConfigParams(SyncManager.class);
-        String clusterNodes = config.get("clusterNodes");
-        clusterNode = jsonToNodeMap(clusterNodes, thisControllerID);
-        logger.info("Initial Cluster Nodes: {}",clusterNode);
         
-        logger.info("ControllerId at: {}", thisControllerID);
+        logger.info("ControllerId: {}", thisControllerID);
         
         keyStorePath = config.get("keyStorePath");
         keyStorePassword = config.get("keyStorePassword");
@@ -84,6 +80,11 @@ public class StorageCCProvider
         try {
             authScheme = AuthScheme.valueOf(config.get("authScheme"));
         } catch (Exception e) {}
+        String clusterNodes = config.get("clusterNodes");
+		clusterInitialNode = jsonToNodeMap(clusterNodes, config.get("nodeId"));
+		logger.info("Initial Cluster Node: {} {}",config.get("nodeId"),clusterInitialNode);
+
+    
     }
 
     @Override
@@ -149,11 +150,16 @@ public class StorageCCProvider
             if (res != null) res.close();
         }
 
+        nodes.add(new Node("192.168.1.131", 6642, (short)1, (short)1));
+        nodes.add(new Node("192.168.1.131", 6643, (short)2, (short)2));
+       
+       
         if (nodes.size() == 0)
             throw new SyncException("No valid nodes found");
         if (thisNodeId < 0)
             throw new SyncException("Could not find a node for the local node");
 
+        logger.info("Nodes: {}",nodes);
         return new ClusterConfig(nodes, thisNodeId, authScheme, 
                                  keyStorePath, keyStorePassword);
     }
@@ -190,18 +196,19 @@ public class StorageCCProvider
         }
     }
 
+    
     /**
-	 * Tulio Ribeiro
-	 * @param String json
+	 * @param String org.sdnplatform.sync.internal.SyncManager.clusterNodes foodlightdefault.properties.
+	 * @param String controllerId
 	 * @return Map<String, Node>
 	 */
-	private static HashMap<Short, Node> jsonToNodeMap(String json, String controllerId) {
+	private static List<Node> jsonToNodeMap(String json, String controllerId) {
 		MappingJsonFactory f = new MappingJsonFactory();
 		JsonParser jp;
-		HashMap<Short, Node> retValue = new HashMap<Short, Node>();
+		List<Node> nodes = new ArrayList<Node>();
 
 		if (json == null || json.isEmpty()) {
-			return retValue;
+			return nodes;
 		}
 
 		try {
@@ -222,39 +229,40 @@ public class StorageCCProvider
 				}
 
 				String nodeId = jp.getCurrentName();
-				
+
 				String host=null;
 				String domainId = controllerId;
 				String [] aux;
 				int port;
 				Node node=null;
-				
+
 				jp.nextToken();
 				if (jp.getText().equals("")) {
 					continue;
 				}
 				host = jp.getValueAsString();
-				
+
 				aux= host.split(":");
 				host = aux[0];
 				port = Integer.parseInt(aux[1]);
 				try {
-					logger.info("Initialize node: {}:{} {} {}", 
+					logger.debug("Creating node: {}:{} {} {}", 
 							new Object[]{host, port, nodeId, nodeId}
-					);
+							);
 					node = new Node(host, port, Short.parseShort(nodeId), Short.parseShort(nodeId));
-					retValue.put(Short.parseShort(nodeId), node);
-					//logger.info("Parsing JSON controllerId:{}, node:{}", controllerId, host+":"+port);
+					nodes.add(node);
 				} catch(Exception e){
 					e.printStackTrace();
 				}
-				
+
 			}
 		} catch (IOException e) {
 			logger.error("Problem: {}", e);
 		}
-		return retValue;
+		return nodes;
 	}
 
+
+   
 
 }
