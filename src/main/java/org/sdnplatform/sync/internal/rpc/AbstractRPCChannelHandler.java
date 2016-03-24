@@ -310,7 +310,6 @@ public abstract class AbstractRPCChannelHandler extends ChannelInboundHandlerAda
         try {
             switch (getAuthScheme()) {
                 case CHALLENGE_RESPONSE:
-                	logger.info("Request: {}", request);
                     handshakeChallengeResponse(request, channel);
                     break;
                 case NO_AUTH:
@@ -336,17 +335,13 @@ public abstract class AbstractRPCChannelHandler extends ChannelInboundHandlerAda
             throw new AuthException("No authentication data in " + 
                     "handshake message");
         }
-        logger.info("AuthChallengeResponse: {}, HelloMessage: {}", 
-        		cr, 
-        		request);
+        
         if (cr.isSetResponse()) {
-        	logger.info("cr.isSetResponse(): {}",cr.isSetResponse());
             authenticateResponse(currentChallenge, cr.getResponse());
             currentChallenge = null;
             channelState = ChannelState.AUTHENTICATED;
             handleHello(request, channel);
         } else if (cr.isSetChallenge()) {
-        	logger.info("cr.isSetChallenge(): {}", cr.isSetChallenge());
             HelloMessage m = new HelloMessage();
             if (getLocalNodeId() != null)
                 m.setNodeId(getLocalNodeId());
@@ -355,13 +350,9 @@ public abstract class AbstractRPCChannelHandler extends ChannelInboundHandlerAda
             m.setHeader(header);
             SyncMessage bsm = new SyncMessage(MessageType.HELLO);
             bsm.setHello(m); 
-            logger.info("AQUI CHEGA 1 ");
             AuthChallengeResponse reply = new AuthChallengeResponse();
-            logger.info("AQUI CHEGA 2 cr.getChallenge(): {} ",cr.getChallenge());
             reply.setResponse(generateResponse(cr.getChallenge()));
-            logger.info("AQUI CHEGA 3");
             m.setAuthChallengeResponse(reply);
-            logger.info("AQUI CHEGA 4");
             channel.writeAndFlush(bsm);
         } else {
             throw new AuthException("No authentication data in " + 
