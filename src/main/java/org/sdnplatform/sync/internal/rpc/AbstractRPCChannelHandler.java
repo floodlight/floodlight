@@ -631,28 +631,22 @@ public abstract class AbstractRPCChannelHandler extends ChannelInboundHandlerAda
     }
     
     private String generateResponse(String challenge) throws AuthException {
-    	logger.info("gererateR 00: ");
     	byte[] secretBytes = getSharedSecret();
-        logger.info("gererateR 0: ");
         if (secretBytes == null) return null;
 
         SecretKeySpec signingKey = 
                 new SecretKeySpec(secretBytes, "HmacSHA1");
         Mac mac;
-        logger.info("gererateR 1: ");
         try {
             mac = Mac.getInstance("HmacSHA1");
-            logger.info("gererateR 2: ");
         } catch (NoSuchAlgorithmException e) {
-            throw new AuthException("Could not initialize HmacSHA1 algorithm", 
-                                    e);
+            throw new AuthException("Could not initialize HmacSHA1 algorithm", e);
         }
         
         try {
             mac.init(signingKey);
             byte[] output = 
                     mac.doFinal(DatatypeConverter.parseBase64Binary(challenge));
-            logger.info("gererateR 3: ");
             return DatatypeConverter.printBase64Binary(output);            
         } catch (InvalidKeyException e) {
             throw new AuthException("Invalid shared secret; could not " +
