@@ -16,6 +16,9 @@
   <logger name="net.floodlightcontroller" level="INFO"/>
   <logger name="org.sdnplatform" level="INFO"></logger>
   <logger name="org.sdnplatform.sync.internal.config.SyncStoreCCProvider" level="TRACE"></logger>
+  <logger name="org.sdnplatform.sync.internal.SyncManager" level="TRACE"></logger>
+  <logger name="org.sdnplatform.sync.internal.config.StorageCCProvider" level="TRACE"></logger>
+  <logger name="org.sdnplatform.sync.internal.config.PropertyCCProvider" level="TRACE"></logger>
   <logger name="net.floodlightcontroller.devicemanager" level="INFO"></logger>
   <logger name="net.floodlightcontroller.linkdiscovery" level="INFO"></logger>
   <logger name="net.floodlightcontroller.forwarding" level="INFO"></logger>

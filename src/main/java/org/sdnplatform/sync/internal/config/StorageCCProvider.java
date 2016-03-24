@@ -3,21 +3,14 @@ package org.sdnplatform.sync.internal.config;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
-import org.python.antlr.PythonParser.print_stmt_return;
 import org.sdnplatform.sync.error.SyncException;
 import org.sdnplatform.sync.internal.SyncManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.fasterxml.jackson.core.JsonParseException;
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.core.JsonToken;
-import com.fasterxml.jackson.databind.MappingJsonFactory;
 
 import net.floodlightcontroller.core.internal.FloodlightProvider;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
@@ -30,8 +23,6 @@ public class StorageCCProvider
             LoggerFactory.getLogger(StorageCCProvider.class.getName());
 
     private IStorageSourceService storageSource;
-    
-	private List<Node> clusterInitialNode;
 
     String thisControllerID;
     AuthScheme authScheme;
@@ -39,7 +30,7 @@ public class StorageCCProvider
     String keyStorePassword;
 
     protected static final String CONTROLLER_TABLE_NAME = "controller_controller";
-    protected static final String CONTROLLER_ID = "controllerId";
+    protected static final String CONTROLLER_ID = "id";
     protected static final String CONTROLLER_SYNC_ID = "sync_id";
     protected static final String CONTROLLER_SYNC_DOMAIN_ID = "sync_domain_id";
     protected static final String CONTROLLER_SYNC_PORT = "sync_port";
@@ -50,11 +41,8 @@ public class StorageCCProvider
     protected static final String CONTROLLER_INTERFACE_TYPE = "type";
     protected static final String CONTROLLER_INTERFACE_NUMBER = "number";
 
-    //protected static final String BOOT_CONFIG =
-      //      "/opt/bigswitch/run/boot-config";
-
-    protected static final String BOOT_CONFIG = 
-    		"/src/main/resources/floodlight/storageBootstrap.properties";
+    protected static final String BOOT_CONFIG =
+            "/opt/bigswitch/run/boot-config";
 
     // **********************
     // IClusterConfigProvider
@@ -65,26 +53,19 @@ public class StorageCCProvider
                      FloodlightModuleContext context) {
         storageSource = context.getServiceImpl(IStorageSourceService.class);
 
-        //storageSource.addListener(CONTROLLER_TABLE_NAME, this);
+        // storageSource.addListener(CONTROLLER_TABLE_NAME, this);
 
         Map<String, String> config =
                 context.getConfigParams(FloodlightProvider.class);
-        thisControllerID = config.get("controllerId");
+        thisControllerID = config.get("controllerid");
+
         config = context.getConfigParams(SyncManager.class);
-        
-        logger.info("ControllerId: {}", thisControllerID);
-        
         keyStorePath = config.get("keyStorePath");
         keyStorePassword = config.get("keyStorePassword");
         authScheme = AuthScheme.NO_AUTH;
         try {
             authScheme = AuthScheme.valueOf(config.get("authScheme"));
         } catch (Exception e) {}
-        String clusterNodes = config.get("clusterNodes");
-		clusterInitialNode = jsonToNodeMap(clusterNodes, config.get("nodeId"));
-		logger.info("Initial Cluster Node: {} {}",config.get("nodeId"),clusterInitialNode);
-
-    
     }
 
     @Override
@@ -95,7 +76,7 @@ public class StorageCCProvider
             try {
                 is = new FileInputStream(BOOT_CONFIG);
                 bootConfig.load(is);
-                thisControllerID = bootConfig.getProperty("controllerId");
+                thisControllerID = bootConfig.getProperty("controller-id");
             } catch (Exception e) {
                 throw new SyncException("No controller ID configured and " +
                                         "could not read " + BOOT_CONFIG);
@@ -110,7 +91,7 @@ public class StorageCCProvider
         if (thisControllerID == null) {
             throw new SyncException("No controller ID configured");
         }
-        logger.info("Using controller ID: {}", thisControllerID);
+        logger.debug("Using controller ID: {}", thisControllerID);
 
         List<Node> nodes = new ArrayList<Node>();
         short thisNodeId = -1;
@@ -150,16 +131,11 @@ public class StorageCCProvider
             if (res != null) res.close();
         }
 
-        nodes.add(new Node("192.168.1.131", 6642, (short)1, (short)1));
-        nodes.add(new Node("192.168.1.131", 6643, (short)2, (short)2));
-       
-       
         if (nodes.size() == 0)
             throw new SyncException("No valid nodes found");
         if (thisNodeId < 0)
             throw new SyncException("Could not find a node for the local node");
 
-        logger.info("Nodes: {}",nodes);
         return new ClusterConfig(nodes, thisNodeId, authScheme, 
                                  keyStorePath, keyStorePassword);
     }
@@ -194,75 +170,6 @@ public class StorageCCProvider
         } finally {
             if (res != null) res.close();
         }
+
     }
-
-    
-    /**
-	 * @param String org.sdnplatform.sync.internal.SyncManager.clusterNodes foodlightdefault.properties.
-	 * @param String controllerId
-	 * @return Map<String, Node>
-	 */
-	private static List<Node> jsonToNodeMap(String json, String controllerId) {
-		MappingJsonFactory f = new MappingJsonFactory();
-		JsonParser jp;
-		List<Node> nodes = new ArrayList<Node>();
-
-		if (json == null || json.isEmpty()) {
-			return nodes;
-		}
-
-		try {
-			try {
-				jp = f.createParser(json);
-			} catch (JsonParseException e) {
-				throw new IOException(e);
-			}
-
-			jp.nextToken();
-			if (jp.getCurrentToken() != JsonToken.START_OBJECT) {
-				throw new IOException("Expected START_OBJECT");
-			}
-
-			while (jp.nextToken() != JsonToken.END_OBJECT) {
-				if (jp.getCurrentToken() != JsonToken.FIELD_NAME) {
-					throw new IOException("Expected FIELD_NAME");
-				}
-
-				String nodeId = jp.getCurrentName();
-
-				String host=null;
-				String domainId = controllerId;
-				String [] aux;
-				int port;
-				Node node=null;
-
-				jp.nextToken();
-				if (jp.getText().equals("")) {
-					continue;
-				}
-				host = jp.getValueAsString();
-
-				aux= host.split(":");
-				host = aux[0];
-				port = Integer.parseInt(aux[1]);
-				try {
-					logger.debug("Creating node: {}:{} {} {}", 
-							new Object[]{host, port, nodeId, nodeId}
-							);
-					node = new Node(host, port, Short.parseShort(nodeId), Short.parseShort(nodeId));
-					nodes.add(node);
-				} catch(Exception e){
-					e.printStackTrace();
-				}
-
-			}
-		} catch (IOException e) {
-			logger.error("Problem: {}", e);
-		}
-		return nodes;
-	}
-
-
-   
-
 }

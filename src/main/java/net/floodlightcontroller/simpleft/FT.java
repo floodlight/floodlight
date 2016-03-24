@@ -264,22 +264,22 @@ IStoreListener<String>
 			public void run() { 
 				Random r = new Random();
 				
-				/*try {
+				try {
 					//storeClient.put("NIB", new String("vl:"+r.nextInt(1000)));
 					storeClient.put("NIB", new String(""+counter++));
 					
 				} catch (SyncException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
-				}*/
+				}
 				
-				try {
+				/*try {
 					Versioned<Object> vObj = storeClient.get("NIB");					
 					logger.info("Versioned: {}",vObj);
 				} catch (SyncException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
-				}
+				}*/
 
 //				IStoreClient<String, Object> storeCliAux;
 //

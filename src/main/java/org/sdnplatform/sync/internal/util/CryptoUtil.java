@@ -3,6 +3,7 @@ package org.sdnplatform.sync.internal.util;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.security.KeyStore;
+import java.security.KeyStore.Entry;
 import java.security.SecureRandom;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
@@ -49,8 +50,12 @@ public class CryptoUtil {
 
         KeyStore ks = readKeyStore(keyStorePath, password);
 
-        KeyStore.SecretKeyEntry entry = (KeyStore.SecretKeyEntry)
-                ks.getEntry(CHALLENGE_RESPONSE_SECRET, protParam);
+        System.out.println(""+CHALLENGE_RESPONSE_SECRET);
+        
+        //KeyStore.SecretKeyEntry entry = (KeyStore.SecretKeyEntry)
+          //      ks.getEntry(CHALLENGE_RESPONSE_SECRET, protParam);
+        Entry entry = ks.getEntry("org.sdnplatform.sync.ChallengeResponseSecret", protParam);
+        
         SecretKey secretKey = entry.getSecretKey();
         return secretKey.getEncoded();
     }

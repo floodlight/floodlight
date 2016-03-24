@@ -310,6 +310,7 @@ public abstract class AbstractRPCChannelHandler extends ChannelInboundHandlerAda
         try {
             switch (getAuthScheme()) {
                 case CHALLENGE_RESPONSE:
+                	logger.info("Request: {}", request);
                     handshakeChallengeResponse(request, channel);
                     break;
                 case NO_AUTH:
@@ -335,12 +336,17 @@ public abstract class AbstractRPCChannelHandler extends ChannelInboundHandlerAda
             throw new AuthException("No authentication data in " + 
                     "handshake message");
         }
+        logger.info("AuthChallengeResponse: {}, HelloMessage: {}", 
+        		cr, 
+        		request);
         if (cr.isSetResponse()) {
+        	logger.info("cr.isSetResponse(): {}",cr.isSetResponse());
             authenticateResponse(currentChallenge, cr.getResponse());
             currentChallenge = null;
             channelState = ChannelState.AUTHENTICATED;
             handleHello(request, channel);
         } else if (cr.isSetChallenge()) {
+        	logger.info("cr.isSetChallenge(): {}", cr.isSetChallenge());
             HelloMessage m = new HelloMessage();
             if (getLocalNodeId() != null)
                 m.setNodeId(getLocalNodeId());
@@ -348,11 +354,14 @@ public abstract class AbstractRPCChannelHandler extends ChannelInboundHandlerAda
             header.setTransactionId(getTransactionId());
             m.setHeader(header);
             SyncMessage bsm = new SyncMessage(MessageType.HELLO);
-            bsm.setHello(m);
-
+            bsm.setHello(m); 
+            logger.info("AQUI CHEGA 1 ");
             AuthChallengeResponse reply = new AuthChallengeResponse();
+            logger.info("AQUI CHEGA 2 cr.getChallenge(): {} ",cr.getChallenge());
             reply.setResponse(generateResponse(cr.getChallenge()));
+            logger.info("AQUI CHEGA 3");
             m.setAuthChallengeResponse(reply);
+            logger.info("AQUI CHEGA 4");
             channel.writeAndFlush(bsm);
         } else {
             throw new AuthException("No authentication data in " + 
@@ -622,22 +631,28 @@ public abstract class AbstractRPCChannelHandler extends ChannelInboundHandlerAda
     }
     
     private String generateResponse(String challenge) throws AuthException {
-        byte[] secretBytes = getSharedSecret();
+    	logger.info("gererateR 00: ");
+    	byte[] secretBytes = getSharedSecret();
+        logger.info("gererateR 0: ");
         if (secretBytes == null) return null;
 
         SecretKeySpec signingKey = 
                 new SecretKeySpec(secretBytes, "HmacSHA1");
         Mac mac;
+        logger.info("gererateR 1: ");
         try {
             mac = Mac.getInstance("HmacSHA1");
+            logger.info("gererateR 2: ");
         } catch (NoSuchAlgorithmException e) {
             throw new AuthException("Could not initialize HmacSHA1 algorithm", 
                                     e);
         }
+        
         try {
             mac.init(signingKey);
             byte[] output = 
                     mac.doFinal(DatatypeConverter.parseBase64Binary(challenge));
+            logger.info("gererateR 3: ");
             return DatatypeConverter.printBase64Binary(output);            
         } catch (InvalidKeyException e) {
             throw new AuthException("Invalid shared secret; could not " +

@@ -558,10 +558,17 @@ public class RPCChannelHandler extends AbstractRPCChannelHandler {
     protected byte[] getSharedSecret() throws AuthException {
         String path = syncManager.getClusterConfig().getKeyStorePath();
         String pass = syncManager.getClusterConfig().getKeyStorePassword();
+        
+        logger.info("getSharedSecret: {}, {}", path, pass);
+        CryptoUtil cu = new CryptoUtil();
+        
         try {
-            return CryptoUtil.getSharedSecret(path, pass);
+        	byte[] b = cu.getSharedSecret(path, pass);
+        	logger.info("CryptoUtil: {}",b.toString());
+            return cu.getSharedSecret(path, pass);
         } catch (Exception e) {
-            throw new AuthException("Could not read challenge/response " +
+        	e.printStackTrace();
+            throw new AuthException("RPCC Could not read challenge/response " +
                     "shared secret from key store " + path, e);
         }
     }
