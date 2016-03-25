@@ -48,13 +48,12 @@ public class ClientTest {
     @Before
     public void setUp() throws Exception {
         keyStoreFile = new File(keyStoreFolder.getRoot(), "keystore.jceks");
-        
         CryptoUtil.writeSharedSecret(keyStoreFile.getAbsolutePath(), 
                                      keyStorePassword, 
                                      CryptoUtil.secureRandom(16));
         
         nodes = new ArrayList<Node>();
-        nodes.add(new Node("localhost", 6642, (short)1, (short)1));
+        nodes.add(new Node("localhost", 40101, (short)1, (short)1));
         nodeString = mapper.writeValueAsString(nodes);
         
         debugCounterService = new MockDebugCounterService();
@@ -68,7 +67,7 @@ public class ClientTest {
         fmc.addService(IDebugEventService.class, new MockDebugEventService());
         
         fmc.addConfigParam(syncManager, "nodes", nodeString);
-        fmc.addConfigParam(syncManager, "thisNode", ""+1);
+        fmc.addConfigParam(syncManager, "thisNodeId", ""+1);
         fmc.addConfigParam(syncManager, "persistenceEnabled", "false");
         fmc.addConfigParam(syncManager, "authScheme", "CHALLENGE_RESPONSE");
         fmc.addConfigParam(syncManager, "keyStorePath", 
@@ -76,8 +75,10 @@ public class ClientTest {
         fmc.addConfigParam(syncManager, "keyStorePassword", keyStorePassword);
         tp.init(fmc);
         syncManager.init(fmc);
+
         tp.startUp(fmc);
         syncManager.startUp(fmc);
+
         syncManager.registerStore("global", Scope.GLOBAL);
     }
 
@@ -96,7 +97,7 @@ public class ClientTest {
     public void testClientBasic() throws Exception {
         SyncClientSettings scs = new SyncClientSettings();
         scs.hostname = "localhost";
-        scs.port = 6642;
+        scs.port = 40101;
         scs.storeName = "global";
         scs.debug = true;
         scs.authScheme = AuthScheme.CHALLENGE_RESPONSE;
@@ -110,7 +111,7 @@ public class ClientTest {
         client.connect();
         client.executeCommandLine("get \"key\"");
         assertEquals("", err.toString());
-        assertEquals("Using remote sync service at localhost:6642\n" +
+        assertEquals("Using remote sync service at localhost:40101\n" +
                 "Getting Key:\n" +
                 "\"key\"\n\n" +
                 "Not found\n",
@@ -180,7 +181,5 @@ public class ClientTest {
         
         client.executeCommandLine("help");
         assert(!"".equals(out.toString()));
-        
-        
     }
 }
