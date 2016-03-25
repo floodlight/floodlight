@@ -1332,10 +1332,11 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 			 * If not defined there, the role will be set as MASTER
 			 */
 			OFControllerRole role = OFControllerRole.ROLE_MASTER;
-			if(OFSwitchManager.switchInitialRole.containsKey(mainConnection.getDatapathId())){
-				role = OFSwitchManager.switchInitialRole.get(mainConnection.getDatapathId());
-				log.info("Defining switch role from config file: {}", role);				
-			}
+			if(OFSwitchManager.switchInitialRole != null)
+				if(OFSwitchManager.switchInitialRole.containsKey(mainConnection.getDatapathId())){
+					role = OFSwitchManager.switchInitialRole.get(mainConnection.getDatapathId());
+					log.info("Defining switch role from config file: {}", role);				
+				}	
 			sendRoleRequest(role);			
 		}
 	}

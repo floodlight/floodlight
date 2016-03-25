@@ -118,9 +118,6 @@ public class OFSwitchManager implements IOFSwitchManager, INewOFConnectionListen
 	private ConcurrentHashMap<DatapathId, IOFSwitchBackend> switches;
 	private ConcurrentHashMap<DatapathId, IOFSwitch> syncedSwitches;
 	
-	/**
-	 * Tulio Ribeiro
-	 */
 	protected static Map<DatapathId, OFControllerRole> switchInitialRole;
 
 	private ISwitchDriverRegistry driverRegistry;
@@ -735,13 +732,9 @@ public class OFSwitchManager implements IOFSwitchManager, INewOFConnectionListen
 		}
 		
 		
-		/**
-		 * Tulio Ribeiro
-		 */
 		//Define initial role per switch		
 		String switchesInitialState = configParams.get("switchesInitialState");
 		switchInitialRole = jsonToSwitchInitialRoleMap(switchesInitialState);
-		
 		log.debug("SwitchInitialRole: {}", switchInitialRole.entrySet());
 
 		/*
