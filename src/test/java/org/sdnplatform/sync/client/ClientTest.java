@@ -76,11 +76,8 @@ public class ClientTest {
         fmc.addConfigParam(syncManager, "keyStorePassword", keyStorePassword);
         tp.init(fmc);
         syncManager.init(fmc);
-        
         tp.startUp(fmc);
-        
         syncManager.startUp(fmc);
-        
         syncManager.registerStore("global", Scope.GLOBAL);
     }
 

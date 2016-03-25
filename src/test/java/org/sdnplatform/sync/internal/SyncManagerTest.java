@@ -77,19 +77,18 @@ public class SyncManagerTest {
         fmc.addService(IDebugEventService.class, new MockDebugEventService());
         fmc.addConfigParam(syncManager, "configProviders", PropertyCCProvider.class.getName());
         fmc.addConfigParam(syncManager, "nodes", nodeString);
-        fmc.addConfigParam(syncManager, "thisNode", ""+thisNode.getNodeId());
+        fmc.addConfigParam(syncManager, "thisNodeId", ""+thisNode.getNodeId());
         fmc.addConfigParam(syncManager, "persistenceEnabled", "false");
         fmc.addConfigParam(syncManager, "authScheme", "CHALLENGE_RESPONSE");
         fmc.addConfigParam(syncManager, "keyStorePath", keyStoreFile.getAbsolutePath());
         fmc.addConfigParam(syncManager, "keyStorePassword", keyStorePassword);
         tp.init(fmc);
         syncManager.init(fmc);
-
         tp.startUp(fmc);
         syncManager.startUp(fmc);
-
         syncManager.registerStore("global", Scope.GLOBAL);
         syncManager.registerStore("local", Scope.LOCAL);
+        
     }
     
     @Before
@@ -102,21 +101,23 @@ public class SyncManagerTest {
 
         tp = new ThreadPool();
         
-        syncManagers = new SyncManager[2];
+        syncManagers = new SyncManager[4];
         moduleContexts = new FloodlightModuleContext[4];
 
         nodes = new ArrayList<Node>();
-        nodes.add(new Node("localhost", 40101, (short)1, (short)1));
-        nodes.add(new Node("localhost", 40102, (short)2, (short)2));
-        nodes.add(new Node("localhost", 40103, (short)3, (short)1));
-        nodes.add(new Node("localhost", 40104, (short)4, (short)2));
+        nodes.add(new Node("localhost", 6642, (short)1, (short)1));
+        nodes.add(new Node("localhost", 6643, (short)2, (short)2));
+        nodes.add(new Node("localhost", 6644, (short)3, (short)1));
+        nodes.add(new Node("localhost", 6645, (short)4, (short)2));
         nodeString = mapper.writeValueAsString(nodes);
 
+        logger.info("Starting: syncManagers and moduleContexts.");
         for(int i = 0; i < 4; i++) {
             moduleContexts[i] = new FloodlightModuleContext();
             syncManagers[i] = new SyncManager();
             setupSyncManager(moduleContexts[i], syncManagers[i], nodes.get(i));
         }
+        
     }
 
     @After
@@ -261,6 +262,7 @@ public class SyncManagerTest {
 
         ArrayList<IStoreClient<String, String>> clients =
                 new ArrayList<IStoreClient<String, String>>(syncManagers.length);
+        
         // write one value to each node's local interface
         for (int i = 0; i < syncManagers.length; i++) {
             IStoreClient<String, String> client =
@@ -273,7 +275,7 @@ public class SyncManagerTest {
         // verify that we see all the values everywhere
         for (int j = 0; j < clients.size(); j++) {
             for (int i = 0; i < syncManagers.length; i++) {
-                waitForValue(clients.get(j), "key" + i, ""+i, 2000, "client"+j);
+                waitForValue(clients.get(j), "key" + i, ""+i, 2000, "client:"+j);
             }
         }
     }
@@ -413,7 +415,7 @@ public class SyncManagerTest {
         waitForValue(client0, "newkey2", "newvalue2", 1000, "client0");
         waitForValue(client0, "key0", "newvalue0", 1000, "client0");
         waitForValue(client0, "key2", "newvalue2", 1000, "client0");
-
+        
         for (int i = 0; i < 500; i++) {
             waitForValue(client0, "largetest" + i, 
                          "largetestvalue", 1000, "client0");
@@ -554,7 +556,7 @@ public class SyncManagerTest {
         client0.put("key", "value");
         waitForValue(client1, "key", "value", 2000, "client1");
         
-        nodes.add(new Node("localhost", 40105, (short)5, (short)5));
+        nodes.add(new Node("localhost", 6646, (short)5, (short)5));
         SyncManager[] sms = Arrays.copyOf(syncManagers, 
                                           syncManagers.length + 1);
         FloodlightModuleContext[] fmcs =
@@ -710,7 +712,7 @@ public class SyncManagerTest {
         tp.init(null);
         tp.startUp(null);
         nodes = new ArrayList<Node>();
-        nodes.add(new Node("localhost", 40101, (short)1, (short)1));
+        nodes.add(new Node("localhost", 6642, (short)1, (short)1));
         nodeString = mapper.writeValueAsString(nodes);
         SyncManager sm = new SyncManager();
         FloodlightModuleContext fmc = new FloodlightModuleContext();
@@ -720,6 +722,8 @@ public class SyncManagerTest {
         //fmc.addConfigParam(st, "iterations", "1");
         st.init(fmc);
         st.startUp(fmc);
+        sm.cleanup();
         Thread.sleep(10000);
+        
     }
 }

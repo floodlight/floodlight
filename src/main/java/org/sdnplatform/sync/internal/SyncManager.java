@@ -146,7 +146,7 @@ public class SyncManager extends AbstractSyncManager {
 	 * Whether to allow persistent stores or to use in-memory even
 	 * when persistence is requested
 	 */
-	private boolean persistenceEnabled = false;
+	private boolean persistenceEnabled = true;
 
 	private static final String PACKAGE =
 			ISyncService.class.getPackage().getName();
