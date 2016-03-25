@@ -49,10 +49,10 @@ public class BootstrapTest {
         FloodlightModuleContext fmc = new FloodlightModuleContext();
         ThreadPool tp = new ThreadPool();
 
-        int curPort = 6699;
+        int curPort = 6642;
         
         String keyStorePath = new File(dbFolder.getRoot(), 
-                                       "keystore.jceks").getAbsolutePath();
+                "keystore.jceks").getAbsolutePath();
         String keyStorePassword = "bootstrapping is fun!";
         CryptoUtil.writeSharedSecret(keyStorePath, 
                                      keyStorePassword, 
@@ -94,10 +94,8 @@ public class BootstrapTest {
             // config
             unsyncStore.put("localNodePort", String.valueOf(curPort));
             unsyncStore.put(SyncStoreCCProvider.KEY_STORE_PATH, keyStorePath);
-            unsyncStore.put(SyncStoreCCProvider.KEY_STORE_PASSWORD, 
-                            keyStorePassword);
-            unsyncStore.put(SyncStoreCCProvider.AUTH_SCHEME, 
-                            AuthScheme.CHALLENGE_RESPONSE.toString());
+            unsyncStore.put(SyncStoreCCProvider.KEY_STORE_PASSWORD, keyStorePassword);
+            unsyncStore.put(SyncStoreCCProvider.AUTH_SCHEME, AuthScheme.CHALLENGE_RESPONSE.toString());
 
             String curSeed = "";
             if (i > 0) {

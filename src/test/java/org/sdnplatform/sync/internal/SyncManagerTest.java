@@ -75,14 +75,12 @@ public class SyncManagerTest {
         fmc.addService(IThreadPoolService.class, tp);
         fmc.addService(IDebugCounterService.class, new MockDebugCounterService());
         fmc.addService(IDebugEventService.class, new MockDebugEventService());
-        fmc.addConfigParam(syncManager, "configProviders", 
-                           PropertyCCProvider.class.getName());
+        fmc.addConfigParam(syncManager, "configProviders", PropertyCCProvider.class.getName());
         fmc.addConfigParam(syncManager, "nodes", nodeString);
         fmc.addConfigParam(syncManager, "thisNode", ""+thisNode.getNodeId());
         fmc.addConfigParam(syncManager, "persistenceEnabled", "false");
         fmc.addConfigParam(syncManager, "authScheme", "CHALLENGE_RESPONSE");
-        fmc.addConfigParam(syncManager, "keyStorePath", 
-                           keyStoreFile.getAbsolutePath());
+        fmc.addConfigParam(syncManager, "keyStorePath", keyStoreFile.getAbsolutePath());
         fmc.addConfigParam(syncManager, "keyStorePassword", keyStorePassword);
         tp.init(fmc);
         syncManager.init(fmc);
@@ -104,7 +102,7 @@ public class SyncManagerTest {
 
         tp = new ThreadPool();
         
-        syncManagers = new SyncManager[4];
+        syncManagers = new SyncManager[2];
         moduleContexts = new FloodlightModuleContext[4];
 
         nodes = new ArrayList<Node>();
@@ -165,7 +163,6 @@ public class SyncManagerTest {
 
         result = testClient.get(k);
         assertEquals(tb2, result.getValue());
-        
     }
 
     @Test
@@ -383,15 +380,11 @@ public class SyncManagerTest {
     @Test
     public void testReconnect() throws Exception {
         IStoreClient<String, String> client0 =
-                syncManagers[0].getStoreClient("global", 
-                                               String.class, 
-                                               String.class);
+                syncManagers[0].getStoreClient("global", String.class, String.class);
         IStoreClient<String, String> client1 =
-                syncManagers[1].getStoreClient("global", 
-                                               String.class, String.class);
+                syncManagers[1].getStoreClient("global", String.class, String.class);
         IStoreClient<String, String> client2 =
-                syncManagers[2].getStoreClient("global", 
-                                               String.class, String.class);
+                syncManagers[2].getStoreClient("global", String.class, String.class);
 
         client0.put("key0", "value0");
         waitForValue(client2, "key0", "value0", 1000, "client0");
