@@ -157,7 +157,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 		ITopologyService mockTopology = createMock(ITopologyService.class);
 		mockTopology.isAttachmentPointPort(DatapathId.of(anyLong()), OFPort.of(anyShort()));
 		expectLastCall().andReturn(true).anyTimes();
-		mockTopology.getL2DomainId(DatapathId.of(anyLong()));
+		mockTopology.getOpenflowDomainId(DatapathId.of(anyLong()));
 		expectLastCall().andReturn(DatapathId.of(1L)).anyTimes();
 		mockTopology.isBroadcastDomainPort(DatapathId.of(anyLong()), OFPort.of(anyShort()));
 		expectLastCall().andReturn(false).anyTimes();
@@ -409,7 +409,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 		deviceManager.startUp(null);
 
 		ITopologyService mockTopology = createMock(ITopologyService.class);
-		expect(mockTopology.getL2DomainId(DatapathId.of(anyLong()))).
+		expect(mockTopology.getOpenflowDomainId(DatapathId.of(anyLong()))).
 		andReturn(DatapathId.of(1L)).anyTimes();
 		expect(mockTopology.isBroadcastDomainPort(DatapathId.of(anyLong()), OFPort.of(anyShort()))).
 		andReturn(false).anyTimes();
@@ -580,7 +580,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 		deviceManager.startUp(null);
 
 		ITopologyService mockTopology = createMock(ITopologyService.class);
-		expect(mockTopology.getL2DomainId(DatapathId.of(anyLong()))).
+		expect(mockTopology.getOpenflowDomainId(DatapathId.of(anyLong()))).
 		andReturn(DatapathId.of(1L)).anyTimes();
 		expect(mockTopology.isBroadcastDomainPort(DatapathId.of(anyLong()), OFPort.of(anyShort()))).
 		andReturn(false).anyTimes();
@@ -790,13 +790,13 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 		reset(mockListener);
 
 		ITopologyService mockTopology = createMock(ITopologyService.class);
-		expect(mockTopology.getL2DomainId(DatapathId.of(1L))).
+		expect(mockTopology.getOpenflowDomainId(DatapathId.of(1L))).
 		andReturn(DatapathId.of(1L)).anyTimes();
-		expect(mockTopology.getL2DomainId(DatapathId.of(5L))).
+		expect(mockTopology.getOpenflowDomainId(DatapathId.of(5L))).
 		andReturn(DatapathId.of(1L)).anyTimes();
-		expect(mockTopology.getL2DomainId(DatapathId.of(10L))).
+		expect(mockTopology.getOpenflowDomainId(DatapathId.of(10L))).
 		andReturn(DatapathId.of(10L)).anyTimes();
-		expect(mockTopology.getL2DomainId(DatapathId.of(50L))).
+		expect(mockTopology.getOpenflowDomainId(DatapathId.of(50L))).
 		andReturn(DatapathId.of(10L)).anyTimes();
 		expect(mockTopology.isBroadcastDomainPort(DatapathId.of(anyLong()), OFPort.of(anyShort()))).
 		andReturn(false).anyTimes();
@@ -907,13 +907,13 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 		reset(mockListener);
 
 		ITopologyService mockTopology = createMock(ITopologyService.class);
-		expect(mockTopology.getL2DomainId(DatapathId.of(1L))).
+		expect(mockTopology.getOpenflowDomainId(DatapathId.of(1L))).
 		andReturn(DatapathId.of(1L)).anyTimes();
-		expect(mockTopology.getL2DomainId(DatapathId.of(2L))).
+		expect(mockTopology.getOpenflowDomainId(DatapathId.of(2L))).
 		andReturn(DatapathId.of(1L)).anyTimes();
-		expect(mockTopology.getL2DomainId(DatapathId.of(3L))).
+		expect(mockTopology.getOpenflowDomainId(DatapathId.of(3L))).
 		andReturn(DatapathId.of(1L)).anyTimes();
-		expect(mockTopology.getL2DomainId(DatapathId.of(4L))).
+		expect(mockTopology.getOpenflowDomainId(DatapathId.of(4L))).
 		andReturn(DatapathId.of(1L)).anyTimes();
 		expect(mockTopology.isBroadcastDomainPort(DatapathId.of(anyLong()), OFPort.of(anyShort())))
 		.andReturn(false).anyTimes();
@@ -1031,13 +1031,13 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 		reset(mockListener);
 
 		ITopologyService mockTopology = createMock(ITopologyService.class);
-		expect(mockTopology.getL2DomainId(DatapathId.of(1L))). /* two different OpenFlow islands, 1 and 10 */
+		expect(mockTopology.getOpenflowDomainId(DatapathId.of(1L))). /* two different OpenFlow islands, 1 and 10 */
 		andReturn(DatapathId.of(1L)).anyTimes();
-		expect(mockTopology.getL2DomainId(DatapathId.of(5L))).
+		expect(mockTopology.getOpenflowDomainId(DatapathId.of(5L))).
 		andReturn(DatapathId.of(1L)).anyTimes();
-		expect(mockTopology.getL2DomainId(DatapathId.of(10L))).
+		expect(mockTopology.getOpenflowDomainId(DatapathId.of(10L))).
 		andReturn(DatapathId.of(10L)).anyTimes();
-		expect(mockTopology.getL2DomainId(DatapathId.of(50L))).
+		expect(mockTopology.getOpenflowDomainId(DatapathId.of(50L))).
 		andReturn(DatapathId.of(10L)).anyTimes();
 		expect(mockTopology.isBroadcastDomainPort(DatapathId.of(anyLong()), OFPort.of(anyShort())))
 		.andReturn(false).anyTimes();
@@ -1137,7 +1137,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 	@Test
 	public void testBDAttachmentPointLearning() throws Exception {
 		ITopologyService mockTopology = createMock(ITopologyService.class);
-		expect(mockTopology.getL2DomainId(DatapathId.of(anyLong()))).andReturn(DatapathId.of(1L)).anyTimes();
+		expect(mockTopology.getOpenflowDomainId(DatapathId.of(anyLong()))).andReturn(DatapathId.of(1L)).anyTimes();
 		expect(mockTopology.isAttachmentPointPort(DatapathId.of(anyLong()), OFPort.of(anyShort()))).
 		andReturn(true).anyTimes();
 		expect(mockTopology.isBroadcastDomainPort(DatapathId.of(1L), OFPort.of(1))).
@@ -1198,7 +1198,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 	@Test
 	public void testLOCALAttachmentPointLearning() throws Exception {
 		ITopologyService mockTopology = createMock(ITopologyService.class);
-		expect(mockTopology.getL2DomainId(DatapathId.of(anyLong()))).
+		expect(mockTopology.getOpenflowDomainId(DatapathId.of(anyLong()))).
 		andReturn(DatapathId.of(1L)).anyTimes();
 		expect(mockTopology.isAttachmentPointPort(DatapathId.of(anyLong()), OFPort.of(anyShort()))).
 		andReturn(true).anyTimes();
@@ -1271,7 +1271,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 				OFPort.of(EasyMock.anyShort())))
 				.andReturn(false)
 				.anyTimes();
-		expect(mockTopology.getL2DomainId(DatapathId.of(anyLong()))).andReturn(DatapathId.of(1L)).anyTimes();
+		expect(mockTopology.getOpenflowDomainId(DatapathId.of(anyLong()))).andReturn(DatapathId.of(1L)).anyTimes();
 		expect(mockTopology.isInSameBroadcastDomain(DatapathId.of(anyLong()),
 				OFPort.of(anyShort()),
 				DatapathId.of(anyLong()),
@@ -1732,8 +1732,8 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 
 		expect(mockTopology.isBroadcastDomainPort(DatapathId.of(1L), OFPort.of(1))).andReturn(false).anyTimes();
 		expect(mockTopology.isBroadcastDomainPort(DatapathId.of(5L), OFPort.of(1))).andReturn(false).anyTimes();
-		expect(mockTopology.getL2DomainId(DatapathId.of(1L))).andReturn(DatapathId.of(1L)).anyTimes(); /* different islands */
-		expect(mockTopology.getL2DomainId(DatapathId.of(5L))).andReturn(DatapathId.of(5L)).anyTimes();
+		expect(mockTopology.getOpenflowDomainId(DatapathId.of(1L))).andReturn(DatapathId.of(1L)).anyTimes(); /* different islands */
+		expect(mockTopology.getOpenflowDomainId(DatapathId.of(5L))).andReturn(DatapathId.of(5L)).anyTimes();
 		expect(mockTopology.isConsistent(DatapathId.of(1L), OFPort.of(1), DatapathId.of(5L), OFPort.of(1))).
 		andReturn(false).anyTimes();
 
@@ -1821,8 +1821,8 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 				OFPort.of(EasyMock.anyShort()))).
 				andReturn(true).
 				anyTimes();
-		expect(mockTopology.getL2DomainId(DatapathId.of(1L))).andReturn(DatapathId.of(1L)).anyTimes();
-		expect(mockTopology.getL2DomainId(DatapathId.of(5L))).andReturn(DatapathId.of(1L)).anyTimes();
+		expect(mockTopology.getOpenflowDomainId(DatapathId.of(1L))).andReturn(DatapathId.of(1L)).anyTimes();
+		expect(mockTopology.getOpenflowDomainId(DatapathId.of(5L))).andReturn(DatapathId.of(1L)).anyTimes();
 		expect(mockTopology.isConsistent(DatapathId.of(EasyMock.anyLong()),
 				OFPort.of(EasyMock.anyShort()),
 				DatapathId.of(EasyMock.anyLong()),
@@ -1968,7 +1968,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 				andReturn(false).anyTimes();
 		expect(mockTopology.isInSameBroadcastDomain(DatapathId.of(anyLong()), OFPort.of(anyShort()),
 				DatapathId.of(anyLong()), OFPort.of(anyShort()))).andReturn(false).anyTimes();
-		expect(mockTopology.getL2DomainId(DatapathId.of(anyLong()))).
+		expect(mockTopology.getOpenflowDomainId(DatapathId.of(anyLong()))).
 		andReturn(DatapathId.of(1L)).anyTimes();
 		expect(mockTopology.isConsistent(DatapathId.of(1L), OFPort.of(1), DatapathId.of(1L), OFPort.of(1))).
 		andReturn(true).anyTimes();
@@ -2058,9 +2058,9 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 				andReturn(false).anyTimes();
 		expect(mockTopology.isInSameBroadcastDomain(DatapathId.of(anyLong()), OFPort.of(anyShort()),
 				DatapathId.of(anyLong()), OFPort.of(anyShort()))).andReturn(false).anyTimes();
-		expect(mockTopology.getL2DomainId(DatapathId.of(1L))).
+		expect(mockTopology.getOpenflowDomainId(DatapathId.of(1L))).
 		andReturn(DatapathId.of(1L)).anyTimes();
-		expect(mockTopology.getL2DomainId(DatapathId.of(5L))).
+		expect(mockTopology.getOpenflowDomainId(DatapathId.of(5L))).
 		andReturn(DatapathId.of(5L)).anyTimes();
 		expect(mockTopology.isConsistent(DatapathId.of(1L), OFPort.of(1), DatapathId.of(1L), OFPort.of(2))).
 		andReturn(false).anyTimes();
@@ -2237,7 +2237,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 		expect(mockTopology.isAttachmentPointPort(DatapathId.of(anyLong()),
 				OFPort.of(anyShort()))).
 				andReturn(true).anyTimes();
-		expect(mockTopology.getL2DomainId(DatapathId.of(EasyMock.anyLong()))).andReturn(DatapathId.of(1L)).anyTimes();
+		expect(mockTopology.getOpenflowDomainId(DatapathId.of(EasyMock.anyLong()))).andReturn(DatapathId.of(1L)).anyTimes();
 		replay(mockTopology);
 		doTestDeviceQuery();
 	}
@@ -2249,7 +2249,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 		expect(mockTopology.isAttachmentPointPort(DatapathId.of(anyLong()),
 				OFPort.of(anyShort()))).
 				andReturn(true).anyTimes();
-		expect(mockTopology.getL2DomainId(DatapathId.of(EasyMock.anyLong()))).andReturn(DatapathId.of(1L)).anyTimes();
+		expect(mockTopology.getOpenflowDomainId(DatapathId.of(EasyMock.anyLong()))).andReturn(DatapathId.of(1L)).anyTimes();
 		replay(mockTopology);
 
 		doTestDeviceQuery();
@@ -2334,7 +2334,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 		expect(mockTopology.isAttachmentPointPort(DatapathId.of(anyLong()),
 				OFPort.of(anyShort()))).
 				andReturn(true).anyTimes();
-		expect(mockTopology.getL2DomainId(DatapathId.of(EasyMock.anyLong()))).andReturn(DatapathId.of(1L)).anyTimes();
+		expect(mockTopology.getOpenflowDomainId(DatapathId.of(EasyMock.anyLong()))).andReturn(DatapathId.of(1L)).anyTimes();
 		replay(mockTopology);
 
 		doTestDeviceClassQuery();
@@ -2346,7 +2346,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 		deviceManager.topology = mockTopology;
 		expect(mockTopology.isAttachmentPointPort(DatapathId.of(anyLong()),
 				OFPort.of(anyShort()))).andReturn(true).anyTimes();
-		expect(mockTopology.getL2DomainId(DatapathId.of(EasyMock.anyLong()))).andReturn(DatapathId.of(1L)).anyTimes();
+		expect(mockTopology.getOpenflowDomainId(DatapathId.of(EasyMock.anyLong()))).andReturn(DatapathId.of(1L)).anyTimes();
 		replay(mockTopology);
 
 		doTestDeviceClassQuery();
@@ -2363,7 +2363,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 		expect(mockTopology.isAttachmentPointPort(DatapathId.of(anyLong()),
 				OFPort.of(anyShort()))).
 				andReturn(true).anyTimes();
-		expect(mockTopology.getL2DomainId(DatapathId.of(EasyMock.anyLong()))).andReturn(DatapathId.of(1L)).anyTimes();
+		expect(mockTopology.getOpenflowDomainId(DatapathId.of(EasyMock.anyLong()))).andReturn(DatapathId.of(1L)).anyTimes();
 		replay(mockTopology);
 
 		Entity entity1 = new Entity(MacAddress.of(1L), VlanVid.ofVlan(1), IPv4Address.of(1), IPv6Address.NONE, DatapathId.of(1L), OFPort.of(1), new Date());
@@ -2497,7 +2497,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 		expect(mockTopology.isAttachmentPointPort(DatapathId.of(anyLong()),
 				OFPort.of(anyShort()))).
 				andReturn(true).anyTimes();
-		expect(mockTopology.getL2DomainId(DatapathId.of(anyLong()))).andReturn(DatapathId.of(1L)).anyTimes();
+		expect(mockTopology.getOpenflowDomainId(DatapathId.of(anyLong()))).andReturn(DatapathId.of(1L)).anyTimes();
 		expect(mockTopology.isConsistent(DatapathId.of(EasyMock.anyLong()),
 				OFPort.of(EasyMock.anyShort()),
 				DatapathId.of(EasyMock.anyLong()),
@@ -2608,7 +2608,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 		expect(mockTopology.isAttachmentPointPort(DatapathId.of(anyLong()),
 				OFPort.of(anyShort()))).
 				andReturn(true).anyTimes();
-		expect(mockTopology.getL2DomainId(DatapathId.of(anyLong()))).andReturn(DatapathId.of(1L)).anyTimes();
+		expect(mockTopology.getOpenflowDomainId(DatapathId.of(anyLong()))).andReturn(DatapathId.of(1L)).anyTimes();
 		expect(mockTopology.isConsistent(DatapathId.of(EasyMock.anyLong()),
 				OFPort.of(EasyMock.anyShort()),
 				DatapathId.of(EasyMock.anyLong()),
@@ -2746,7 +2746,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 		expect(mockTopology.isAttachmentPointPort(DatapathId.of(anyLong()),
 				OFPort.of(anyShort()))).
 				andReturn(true).anyTimes();
-		expect(mockTopology.getL2DomainId(DatapathId.of(anyLong()))).andReturn(DatapathId.of(1L)).anyTimes();
+		expect(mockTopology.getOpenflowDomainId(DatapathId.of(anyLong()))).andReturn(DatapathId.of(1L)).anyTimes();
 		expect(mockTopology.isConsistent(DatapathId.of(EasyMock.anyLong()),
 				OFPort.of(EasyMock.anyShort()),
 				DatapathId.of(EasyMock.anyLong()),

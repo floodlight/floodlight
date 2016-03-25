@@ -24,8 +24,10 @@ import java.util.Set;
 
 import static org.junit.Assert.*;
 import net.floodlightcontroller.core.IFloodlightProviderService;
+import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.test.MockFloodlightProvider;
+import net.floodlightcontroller.core.test.MockSwitchManager;
 import net.floodlightcontroller.core.test.MockThreadPoolService;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
 import net.floodlightcontroller.debugcounter.MockDebugCounterService;
@@ -43,6 +45,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFPort;
+import org.projectfloodlight.openflow.types.U64;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -63,11 +66,12 @@ public class TopologyInstanceTest {
         linkDiscovery = EasyMock.createMock(ILinkDiscoveryService.class);
         mockFloodlightProvider = new MockFloodlightProvider();
         fmc.addService(IFloodlightProviderService.class, mockFloodlightProvider);
+        fmc.addService(IOFSwitchService.class, new MockSwitchManager());
         fmc.addService(ILinkDiscoveryService.class, linkDiscovery);
         fmc.addService(IDebugCounterService.class, new MockDebugCounterService());
         fmc.addService(IDebugEventService.class, new MockDebugEventService());
         MockThreadPoolService tp = new MockThreadPoolService();
-        topologyManager  = new TopologyManager();
+        topologyManager = new TopologyManager();
         fmc.addService(IThreadPoolService.class, tp);
         topologyManager.init(fmc);
         tp.init(fmc);
@@ -153,7 +157,7 @@ public class TopologyInstanceTest {
             else if (r[4] == TUNNEL_LINK)
                 type = ILinkDiscovery.LinkType.TUNNEL;
 
-            topologyManager.addOrUpdateLink(DatapathId.of(r[0]), OFPort.of(r[1]), DatapathId.of(r[2]), OFPort.of(r[3]), type);
+            topologyManager.addOrUpdateLink(DatapathId.of(r[0]), OFPort.of(r[1]), DatapathId.of(r[2]), OFPort.of(r[3]), U64.ZERO, type);
         }
         topologyManager.createNewInstance();
     }
@@ -177,7 +181,6 @@ public class TopologyInstanceTest {
                                          {1,2,3}, 
                                          {4}
             };
-            //tm.recompute();
             createTopologyFromLinks(linkArray);
             verifyClusters(expectedClusters);
         }

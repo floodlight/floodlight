@@ -94,7 +94,7 @@ public class VipsResource extends ServerResource {
         LBVip vip = new LBVip();
         
         try {
-            jp = f.createJsonParser(json);
+            jp = f.createParser(json);
         } catch (JsonParseException e) {
             throw new IOException(e);
         }

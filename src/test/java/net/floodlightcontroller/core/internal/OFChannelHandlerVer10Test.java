@@ -23,23 +23,25 @@ import java.util.Set;
 import org.easymock.Capture;
 import org.easymock.CaptureType;
 import org.easymock.EasyMock;
+import org.easymock.IAnswer;
 import org.hamcrest.CoreMatchers;
-import org.jboss.netty.channel.Channel;
-import org.jboss.netty.channel.ChannelHandlerContext;
-import org.jboss.netty.channel.ChannelPipeline;
-import org.jboss.netty.channel.ChannelStateEvent;
-import org.jboss.netty.channel.ExceptionEvent;
-import org.jboss.netty.channel.MessageEvent;
-import org.jboss.netty.util.HashedWheelTimer;
-import org.jboss.netty.util.Timer;
+
+import io.netty.channel.Channel;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelPipeline;
+import io.netty.channel.ChannelPromise;
+import io.netty.channel.DefaultChannelPromise;
+import io.netty.util.HashedWheelTimer;
+import io.netty.util.Timer;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
 import net.floodlightcontroller.core.IOFConnectionBackend;
-import net.floodlightcontroller.core.OFConnectionCounters;
-import net.floodlightcontroller.core.internal.OpenflowPipelineFactory.PipelineHandler;
-import net.floodlightcontroller.core.internal.OpenflowPipelineFactory.PipelineHandshakeTimeout;
+import net.floodlightcontroller.core.internal.OFChannelInitializer.PipelineHandler;
+import net.floodlightcontroller.core.internal.OFChannelInitializer.PipelineHandshakeTimeout;
+import net.floodlightcontroller.core.test.TestEventLoop;
 import net.floodlightcontroller.debugcounter.DebugCounterServiceImpl;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
 
@@ -67,6 +69,7 @@ import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.U32;
 
+import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableList;
 
 
@@ -78,13 +81,10 @@ public class OFChannelHandlerVer10Test {
     private Channel channel;
     private Timer timer;
     private ChannelHandlerContext ctx;
-    private MessageEvent messageEvent;
-    private ChannelStateEvent channelStateEvent;
     private ChannelPipeline pipeline;
-    // FIXME:LOJI: Currently only use OF 1.0
     private final OFFactory factory = OFFactories.getFactory(OFVersion.OF_10);
 
-    private Capture<ExceptionEvent> exceptionEventCapture;
+    private Capture<Throwable> exceptionEventCapture;
     private Capture<List<OFMessage>> writeCapture;
 
     private OFPortDesc portDesc;
@@ -94,6 +94,8 @@ public class OFChannelHandlerVer10Test {
     private INewOFConnectionListener newConnectionListener;
     private Capture<IOFConnectionBackend> newConnection;
     private Capture<OFFeaturesReply> newFeaturesReply;
+    
+    private TestEventLoop eventLoop;
 
     public void setUpFeaturesReply() {
        portDesc = factory.buildPortDesc()
@@ -119,13 +121,12 @@ public class OFChannelHandlerVer10Test {
         newConnectionListener = createMock(INewOFConnectionListener.class);
         newConnection = new Capture<IOFConnectionBackend>();
         newFeaturesReply = new Capture<OFFeaturesReply>();
+        eventLoop = new TestEventLoop();
 
         ctx = createMock(ChannelHandlerContext.class);
-        channelStateEvent = createMock(ChannelStateEvent.class);
         channel = createMock(Channel.class);
         timer = new HashedWheelTimer();
-        messageEvent = createMock(MessageEvent.class);
-        exceptionEventCapture = new Capture<ExceptionEvent>(CaptureType.ALL);
+        exceptionEventCapture = new Capture<Throwable>(CaptureType.ALL);
         pipeline = createMock(ChannelPipeline.class);
         writeCapture = new Capture<List<OFMessage>>(CaptureType.ALL);
         seenXids = null;
@@ -150,16 +151,14 @@ public class OFChannelHandlerVer10Test {
         replay(switchManager);
 
         // Mock ctx and channelStateEvent
-        expect(ctx.getChannel()).andReturn(channel).anyTimes();
-        expect(channelStateEvent.getChannel()).andReturn(channel).anyTimes();
-        replay(ctx, channelStateEvent);
+        expect(ctx.channel()).andReturn(channel).anyTimes();
+        expect(ctx.fireExceptionCaught(capture(exceptionEventCapture))).andReturn(ctx).anyTimes();
+        replay(ctx);
 
         /* Setup an exception event capture on the channel. Right now
          * we only expect exception events to be send up the channel.
          * However, it's easy to extend to other events if we need it
          */
-        pipeline.sendUpstream(capture(exceptionEventCapture));
-        expectLastCall().anyTimes();
         expect(pipeline.get(OFMessageDecoder.class)).andReturn(new OFMessageDecoder()).anyTimes();
         replay(pipeline);
     }
@@ -168,39 +167,33 @@ public class OFChannelHandlerVer10Test {
     public void tearDown() {
         /* ensure no exception was thrown */
         if (exceptionEventCapture.hasCaptured()) {
-            Throwable ex = exceptionEventCapture.getValue().getCause();
+            Throwable ex = exceptionEventCapture.getValue();
             ex.printStackTrace();
-            throw new AssertionError("Unexpected exception: " +
-                       ex.getClass().getName() + "(" + ex + ")");
+            Throwables.propagate(ex);
         }
         assertFalse("Unexpected messages have been captured",
                     writeCapture.hasCaptured());
         // verify all mocks.
         verify(channel);
-        verify(messageEvent);
         verify(switchManager);
         verify(ctx);
-        verify(channelStateEvent);
         verify(pipeline);
     }
 
     /** Reset the channel mock and set basic method call expectations */
     void resetChannel() {
         reset(channel);
-        expect(channel.getPipeline()).andReturn(pipeline).anyTimes();
-        expect(channel.getRemoteAddress()).andReturn(InetSocketAddress.createUnresolved("1.1.1.1", 80)).anyTimes();
+        expect(channel.newPromise()).andAnswer(new IAnswer<ChannelPromise>() {
+			@Override
+			public ChannelPromise answer() throws Throwable {
+				return new DefaultChannelPromise(channel);
+			}
+		}).anyTimes();
+		eventLoop = new TestEventLoop();
+		expect(channel.eventLoop()).andReturn(eventLoop).anyTimes();
+        expect(channel.pipeline()).andReturn(pipeline).anyTimes();
+        expect(channel.remoteAddress()).andReturn(InetSocketAddress.createUnresolved("1.1.1.1", 80)).anyTimes();
     }
-
-
-    /** reset, setup, and replay the messageEvent mock for the given
-     * messages
-     */
-    void setupMessageEvent(List<OFMessage> messages) {
-        reset(messageEvent);
-        expect(messageEvent.getMessage()).andReturn(messages).atLeastOnce();
-        replay(messageEvent);
-    }
-
 
     /** reset, setup, and replay the messageEvent mock for the given
      * messages, mock controller  send message to channel handler
@@ -209,7 +202,6 @@ public class OFChannelHandlerVer10Test {
      */
     void sendMessageToHandlerWithControllerReset(List<OFMessage> messages)
             throws Exception {
-
         sendMessageToHandlerNoControllerReset(messages);
     }
 
@@ -220,9 +212,7 @@ public class OFChannelHandlerVer10Test {
      */
     void sendMessageToHandlerNoControllerReset(List<OFMessage> messages)
             throws Exception {
-        setupMessageEvent(messages);
-
-        handler.messageReceived(ctx, messageEvent);
+        handler.channelRead(ctx, messages);
     }
 
     /**
@@ -256,7 +246,7 @@ public class OFChannelHandlerVer10Test {
             Class<? extends Throwable> expectedExceptionClass) {
         assertTrue("Excpected exception not thrown",
                    exceptionEventCapture.hasCaptured());
-        Throwable caughtEx = exceptionEventCapture.getValue().getCause();
+        Throwable caughtEx = exceptionEventCapture.getValue();
         assertEquals(expectedExceptionClass, caughtEx.getClass());
         exceptionEventCapture.reset();
     }
@@ -277,16 +267,21 @@ public class OFChannelHandlerVer10Test {
             seenXids.add(xid);
         }
     }
-
+    
+    @Test
+    public void testNullMsg() throws Exception {
+    	reset(ctx);
+    	expect(ctx.fireChannelRead(null)).andReturn(ctx).once();
+    	replay(ctx, channel);
+    	
+    	// null message is not passed to the handler
+    	handler.channelRead(ctx, null);
+    	verify(channel, ctx);
+    }
 
     @Test
     public void testInitState() throws Exception {
-        // Message event needs to be list
-        expect(messageEvent.getMessage()).andReturn(null);
-        replay(channel, messageEvent);
-        handler.messageReceived(ctx, messageEvent);
-        verify(channel, messageEvent);
-        verifyExceptionCaptured(AssertionError.class);
+        replay(channel);
 
         // We don't expect to receive /any/ messages in init state since
         // channelConnected moves us to a different state
@@ -302,13 +297,10 @@ public class OFChannelHandlerVer10Test {
     public void moveToWaitHello() throws Exception {
 
         resetChannel();
-        channel.write(capture(writeCapture));
-        expectLastCall().andReturn(null).once();
+        expect(channel.writeAndFlush(capture(writeCapture))).andReturn(null).once();
         replay(channel);
-        // replay unused mocks
-        replay(messageEvent);
 
-        handler.channelConnected(ctx, channelStateEvent);
+        handler.channelActive(ctx);
 
         List<OFMessage> msgs = getMessagesFromCapture();
         assertEquals(1, msgs.size());
@@ -327,8 +319,7 @@ public class OFChannelHandlerVer10Test {
         moveToWaitHello();
 
         resetChannel();
-        channel.write(capture(writeCapture));
-        expectLastCall().andReturn(null).atLeastOnce();
+        expect(channel.writeAndFlush(capture(writeCapture))).andReturn(null).atLeastOnce();
         replay(channel);
 
         OFMessage hello = factory.buildHello().build();
@@ -387,8 +378,7 @@ public class OFChannelHandlerVer10Test {
         newConnection.getValue().setListener(connectionListener);
 
         resetChannel();
-        channel.write(capture(writeCapture));
-        expectLastCall().andReturn(null).atLeastOnce();
+        expect(channel.writeAndFlush(capture(writeCapture))).andReturn(null).atLeastOnce();
         replay(channel);
 
         // Send echo request. expect reply

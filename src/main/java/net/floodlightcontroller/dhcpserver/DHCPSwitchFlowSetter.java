@@ -77,6 +77,11 @@ public class DHCPSwitchFlowSetter implements IFloodlightModule, IOFSwitchListene
 		 */
 		IOFSwitch sw = switchService.getSwitch(dpid);
 		
+		//fix concurrency flaw
+		if (sw == null){
+			return;
+		}
+		
 		OFFlowAdd.Builder flow = sw.getOFFactory().buildFlowAdd();
 		Match.Builder match = sw.getOFFactory().buildMatch();
 		ArrayList<OFAction> actionList = new ArrayList<OFAction>();

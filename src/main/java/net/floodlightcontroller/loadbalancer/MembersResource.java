@@ -90,7 +90,7 @@ public class MembersResource extends ServerResource {
         LBMember member = new LBMember();
         
         try {
-            jp = f.createJsonParser(json);
+            jp = f.createParser(json);
         } catch (JsonParseException e) {
             throw new IOException(e);
         }

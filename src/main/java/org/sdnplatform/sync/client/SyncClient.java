@@ -143,7 +143,7 @@ public class SyncClient extends SyncClientBase {
             
             StringReader sr = new StringReader(line);
             while (sr.read() != ' ');
-            JsonParser jp = mjf.createJsonParser(sr);
+            JsonParser jp = mjf.createParser(sr);
                      
             JsonNode keyNode = validateJson(jp);
             if (keyNode == null) return false;
@@ -216,8 +216,8 @@ public class SyncClient extends SyncClientBase {
                                Versioned<JsonNode> value) throws Exception {
             if (value.getValue() == null) return;
             ObjectNode n = mapper.createObjectNode();
-            n.put("key", keyNode);
-            n.put("value", value.getValue());
+            n.putPOJO("key", keyNode);
+            n.putPOJO("value", value.getValue());
             out.println(writer.writeValueAsString(n));
         }
         
@@ -244,7 +244,7 @@ public class SyncClient extends SyncClientBase {
 
             StringReader sr = new StringReader(line);
             while (sr.read() != ' ');
-            JsonParser jp = mjf.createJsonParser(sr);
+            JsonParser jp = mjf.createParser(sr);
             
             JsonNode keyNode = validateJson(jp);
             if (keyNode == null) return false;
@@ -286,7 +286,7 @@ public class SyncClient extends SyncClientBase {
 
             StringReader sr = new StringReader(line);
             while (sr.read() != ' ');
-            JsonParser jp = mjf.createJsonParser(sr);
+            JsonParser jp = mjf.createParser(sr);
                      
             JsonNode keyNode = validateJson(jp);
             if (keyNode == null) return false;

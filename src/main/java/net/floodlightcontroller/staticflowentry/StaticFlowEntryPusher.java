@@ -36,8 +36,6 @@ import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.IOFSwitchListener;
 import net.floodlightcontroller.core.PortChangeType;
-import net.floodlightcontroller.core.annotations.LogMessageCategory;
-import net.floodlightcontroller.core.annotations.LogMessageDoc;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
@@ -77,7 +75,6 @@ import org.projectfloodlight.openflow.types.U64;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-@LogMessageCategory("Static Flow Pusher")
 /**
  * This module is responsible for maintaining a set of static flows on
  * switches. This is just a big 'ol dumb list of flows and something external
@@ -309,11 +306,6 @@ implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService, 
 	 *
 	 * @return
 	 */
-	@LogMessageDoc(level="ERROR",
-			message="failed to access storage: {reason}",
-			explanation="Could not retrieve static flows from the system " +
-					"database",
-					recommendation=LogMessageDoc.CHECK_CONTROLLER)
 	private Map<String, Map<String, OFFlowMod>> readEntriesFromStorage() {
 		Map<String, Map<String, OFFlowMod>> entries = new ConcurrentHashMap<String, Map<String, OFFlowMod>>();
 		try {
@@ -575,11 +567,6 @@ implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService, 
 		}
 	}
 
-	@LogMessageDoc(level="ERROR",
-			message="inconsistent internal state: no switch has rule {rule}",
-			explanation="Inconsistent internat state discovered while " +
-					"deleting a static flow rule",
-					recommendation=LogMessageDoc.REPORT_CONTROLLER_BUG)
 	private void deleteStaticFlowEntry(String entryName) {
 		String dpid = entry2dpid.remove(entryName);
 
@@ -616,11 +603,6 @@ implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService, 
 	 * @param dpid The datapath ID of the switch to write to
 	 * @param messages The list of OFMessages to write.
 	 */
-	@LogMessageDoc(level="ERROR",
-			message="Tried to write to switch {switch} but got {error}",
-			explanation="An I/O error occured while trying to write a " +
-					"static flow to a switch",
-					recommendation=LogMessageDoc.CHECK_SWITCH)
 	private void writeOFMessagesToSwitch(DatapathId dpid, List<OFMessage> messages) {
 		IOFSwitch ofswitch = switchService.getSwitch(dpid);
 		if (ofswitch != null) {  // is the switch connected
@@ -628,7 +610,6 @@ implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService, 
 				log.debug("Sending {} new entries to {}", messages.size(), dpid);
 			}
 			ofswitch.write(messages);
-			ofswitch.flush();
 		}
 	}
 
@@ -637,11 +618,6 @@ implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService, 
 	 * @param dpid The datapath ID of the switch to write to
 	 * @param message The OFMessage to write.
 	 */
-	@LogMessageDoc(level="ERROR",
-			message="Tried to write to switch {switch} but got {error}",
-			explanation="An I/O error occured while trying to write a " +
-					"static flow to a switch",
-					recommendation=LogMessageDoc.CHECK_SWITCH)
 	private void writeOFMessageToSwitch(DatapathId dpid, OFMessage message) {
 		IOFSwitch ofswitch = switchService.getSwitch(dpid);
 		if (ofswitch != null) {  // is the switch connected
@@ -649,7 +625,6 @@ implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService, 
 				log.debug("Sending 1 new entries to {}", dpid.toString());
 			}
 			ofswitch.write(message);
-			ofswitch.flush();
 		}
 	}
 
@@ -675,14 +650,8 @@ implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService, 
 	 * @param sw The IOFSwitch to write to
 	 * @param flowMod The OFFlowMod to write
 	 */
-	@LogMessageDoc(level="ERROR",
-			message="Tried to write OFFlowMod to {switch} but got {error}",
-			explanation="An I/O error occured while trying to write a " +
-					"static flow to a switch",
-					recommendation=LogMessageDoc.CHECK_SWITCH)
 	private void writeFlowModToSwitch(IOFSwitch sw, OFFlowMod flowMod) {
 		sw.write(flowMod);
-		sw.flush();
 	}
 	@Override
 	public String getName() {
@@ -777,12 +746,6 @@ implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService, 
 	}
 
 	@Override
-	@LogMessageDoc(level="ERROR",
-	message="Got a FlowRemove message for a infinite " +
-			"timeout flow: {flow} from switch {switch}",
-			explanation="Flows with infinite timeouts should not expire. " +
-					"The switch has expired the flow anyway.",
-					recommendation=LogMessageDoc.REPORT_SWITCH_BUG)
 	public Command receive(IOFSwitch sw, OFMessage msg, FloodlightContext cntx) {
 		switch (msg.getType()) {
 		case FLOW_REMOVED:

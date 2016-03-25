@@ -11,7 +11,6 @@ import javax.annotation.Nonnull;
 import net.floodlightcontroller.core.IOFConnectionBackend;
 import net.floodlightcontroller.core.IOFSwitchBackend;
 import net.floodlightcontroller.core.IOFSwitchDriver;
-import net.floodlightcontroller.core.OFSwitch;
 import net.floodlightcontroller.core.SwitchDescription;
 
 import org.projectfloodlight.openflow.protocol.OFFactory;

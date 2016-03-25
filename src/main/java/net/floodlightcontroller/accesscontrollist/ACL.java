@@ -1,7 +1,7 @@
 /**
  *    Copyright 2015, Big Switch Networks, Inc.
  *    Originally created by Pengfei Lu, Network and Cloud Computing Laboratory, Dalian University of Technology, China 
- *    Advisers: Keqiu Li and Heng Qi 
+ *    Advisers: Keqiu Li, Heng Qi and Haisheng Yu 
  *    This work is supported by the State Key Program of National Natural Science of China(Grant No. 61432002) 
  *    and Prospective Research Project on Future Networks in Jiangsu Future Networks Innovation Institute.
  *    
@@ -351,7 +351,11 @@ public class ACL implements IACLService, IFloodlightModule, IDeviceListener {
 
 	@Override
 	public void deviceAdded(IDevice device) {
-		SwitchPort[] switchPort = device.getAttachmentPoints();
+		SwitchPort[] switchPort = device.getAttachmentPoints(); 
+		if (switchPort.length == 0) {
+                        //Device manager does not yet know an attachment point for a device (Bug Fix) 
+                        return;
+                }
 		IPv4Address[] ips = device.getIPv4Addresses();
 		if (ips.length == 0) {
 			// A new no-ip device added

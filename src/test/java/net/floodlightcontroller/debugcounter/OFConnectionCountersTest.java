@@ -7,7 +7,7 @@ import java.util.ArrayList;
 import org.junit.Before;
 import org.junit.Test;
 
-import net.floodlightcontroller.core.OFConnectionCounters;
+import net.floodlightcontroller.core.internal.OFConnectionCounters;
 
 import org.projectfloodlight.openflow.protocol.OFAsyncGetReply;
 import org.projectfloodlight.openflow.protocol.OFAsyncGetRequest;

@@ -17,33 +17,24 @@
 
 package net.floodlightcontroller.core.internal;
 
-import org.jboss.netty.buffer.ChannelBuffer;
-import org.jboss.netty.buffer.ChannelBuffers;
-import org.jboss.netty.channel.Channel;
-import org.jboss.netty.channel.ChannelHandlerContext;
-import org.jboss.netty.handler.codec.oneone.OneToOneEncoder;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 
+import io.netty.buffer.ByteBuf;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.handler.codec.MessageToByteEncoder;
+
+
 /**
- * Encode an openflow message for output into a ChannelBuffer, for use in a
+ * Encode an iterable of openflow messages for output into a ByteBuf, for use in a
  * netty pipeline
- * @author readams
+ *
+ * @author Andreas Wundsam <andreas.wundsam@bigswitch.com>
  */
-public class OFMessageEncoder extends OneToOneEncoder {
-
+public class OFMessageEncoder extends MessageToByteEncoder<Iterable<OFMessage>> {
     @Override
-    protected Object encode(ChannelHandlerContext ctx, Channel channel,
-                            Object msg) throws Exception {
-        if (!(msg instanceof Iterable))
-            return msg;
-
-        @SuppressWarnings("unchecked")
-        Iterable<OFMessage> msgList = (Iterable<OFMessage>)msg;
-
-        ChannelBuffer buf = ChannelBuffers.dynamicBuffer();
+    protected void encode(ChannelHandlerContext ctx, Iterable<OFMessage> msgList, ByteBuf out) throws Exception {
         for (OFMessage ofm :  msgList) {
-            ofm.writeTo(buf);
+            ofm.writeTo(out);
         }
-        return buf;
     }
 }

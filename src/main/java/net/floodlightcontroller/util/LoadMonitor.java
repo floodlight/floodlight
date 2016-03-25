@@ -27,9 +27,6 @@ import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
 
-import net.floodlightcontroller.core.annotations.LogMessageDocs;
-import net.floodlightcontroller.core.annotations.LogMessageDoc;
-
 public class LoadMonitor implements Runnable {
 
     public enum LoadLevel {
@@ -99,16 +96,6 @@ public class LoadMonitor implements Runnable {
     }
 
     @Override
-    @LogMessageDocs({
-        @LogMessageDoc(
-            message="System under very heavy load, dropping some packet-ins",
-            explanation="We detcted that the system was under very heavy" +
-                        "  load, dropping some packet-ins temporarily"),
-        @LogMessageDoc(
-            message="System under heavy load, dropping some new flows",
-            explanation="We detcted that the system was under heavy load," +
-                        " dropping some new flows temporarily")
-    })
     public void run() {
         if (!isLinux) return;
 
@@ -164,11 +151,7 @@ public class LoadMonitor implements Runnable {
         itersLoaded = 0;
         return;
     }
-
-    @LogMessageDoc(
-        message="Exception in reading load monitor params, using defaults",
-        explanation="There was an error in inializing load monitor's props," +
-                    " using default parameters")
+    
     protected String runcmd(String cmd) {
         String line;
         StringBuilder ret = new StringBuilder();

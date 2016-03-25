@@ -110,7 +110,7 @@ public class BootstrapTest {
             unsyncStore.put("seeds", curSeed);
 
             waitForValue(unsyncStore, "localNodeId", null, 
-                         3000, "unsyncStore" + i);
+                         10000, "unsyncStore" + i);
             short nodeId = 
                     Short.parseShort(unsyncStore.getValue("localNodeId"));
             Node node = nodeStore.getValue(nodeId);

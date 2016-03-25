@@ -22,6 +22,7 @@ import java.lang.management.RuntimeMXBean;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -31,16 +32,17 @@ import java.util.Set;
 import java.util.Stack;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.LinkedBlockingQueue;
 
-import org.jboss.netty.util.HashedWheelTimer;
-import org.jboss.netty.util.Timer;
-
+import io.netty.util.HashedWheelTimer;
+import io.netty.util.Timer;
 import net.floodlightcontroller.core.ControllerId;
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.HAListenerTypeMarker;
 import net.floodlightcontroller.core.HARole;
+import net.floodlightcontroller.core.IControllerCompletionListener;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IHAListener;
 import net.floodlightcontroller.core.IInfoProvider;
@@ -52,8 +54,6 @@ import net.floodlightcontroller.core.IOFSwitchListener;
 import net.floodlightcontroller.core.LogicalOFMessageCategory;
 import net.floodlightcontroller.core.PortChangeType;
 import net.floodlightcontroller.core.RoleInfo;
-import net.floodlightcontroller.core.annotations.LogMessageDoc;
-import net.floodlightcontroller.core.annotations.LogMessageDocs;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.FloodlightModuleLoader;
 import net.floodlightcontroller.core.util.ListenerDispatcher;
@@ -68,6 +68,8 @@ import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.protocol.OFType;
 import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.IPv4Address;
+import org.projectfloodlight.openflow.types.TransportPort;
 
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.perfmon.IPktInProcessingTimeService;
@@ -91,8 +93,6 @@ import org.slf4j.LoggerFactory;
 import com.google.common.base.Optional;
 import com.google.common.base.Strings;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
-
 /**
  * The main controller class.  Handles all setup and network listeners
  */
@@ -104,6 +104,9 @@ public class Controller implements IFloodlightProviderService, IStorageSourceLis
     static final String ERROR_DATABASE = "The controller could not communicate with the system database.";
 
     protected ConcurrentMap<OFType, ListenerDispatcher<OFType,IOFMessageListener>> messageListeners;
+    
+    // paag
+    protected ConcurrentLinkedQueue<IControllerCompletionListener> completionListeners;
     
     // The controllerNodeIPsCache maps Controller IDs to their IP address.
     // It's only used by handleControllerNodeIPsChanged
@@ -133,9 +136,10 @@ public class Controller implements IFloodlightProviderService, IStorageSourceLis
     private IShutdownService shutdownService;
 
     // Configuration options
-    protected int openFlowPort = 6653; // new registered OF port number
-    private String openFlowHostname = null;
-    protected int workerThreads = 0;
+    private static TransportPort openFlowPort = TransportPort.of(6653); // new registered OF port number
+	private static Set<IPv4Address> openFlowAddresses = new HashSet<IPv4Address>();
+	public static final int SEND_BUFFER_SIZE = 4 * 1024 * 1024;
+    protected int workerThreads = 16;
     
     // The id for this controller node. Should be unique for each controller
     // node in a controller cluster.
@@ -145,8 +149,7 @@ public class Controller implements IFloodlightProviderService, IStorageSourceLis
     // if they should operate in ACTIVE / STANDBY
     protected volatile HARole notifiedRole;
 
-    private static final String
-            INITIAL_ROLE_CHANGE_DESCRIPTION = "Controller startup.";
+    private static final String INITIAL_ROLE_CHANGE_DESCRIPTION = "Controller startup.";
     /**
      * NOTE: roleManager is not 'final' because it's initialized at run time
      * based on parameters that are only available in init()
@@ -178,10 +181,6 @@ public class Controller implements IFloodlightProviderService, IStorageSourceLis
             FLOW_COLUMN_ACCESS_PRIORITY,
             FLOW_COLUMN_CORE_PRIORITY
     };
-    
-    // Perf. related configuration
-    protected static final int SEND_BUFFER_SIZE = 128 * 1024;
-    public static final int BATCH_MAX_SIZE = 1; //TODO @Ryan this was 100. Causes packet_out messages to stall until 100 accumulated...
     protected static final boolean ALWAYS_DECODE_ETH = true;
 
     // Set of port name prefixes that will be classified as uplink ports,
@@ -420,20 +419,6 @@ public class Controller implements IFloodlightProviderService, IStorageSourceLis
      * FIXME: this method and the ChannelHandler disagree on which messages
      * should be dispatched and which shouldn't
      */
-    @LogMessageDocs({
-        @LogMessageDoc(level="ERROR",
-                message="Ignoring PacketIn (Xid = {xid}) because the data" +
-                        " field is empty.",
-                explanation="The switch sent an improperly-formatted PacketIn" +
-                        " message",
-                recommendation=LogMessageDoc.CHECK_SWITCH),
-        @LogMessageDoc(level="WARN",
-                message="Unhandled OF Message: {} from {}",
-                explanation="The switch sent a message not handled by " +
-                        "the controller")
-    })
-    @SuppressFBWarnings(value="SF_SWITCH_NO_DEFAULT",
-                        justification="False positive -- has default")
     @Override
     public void handleMessage(IOFSwitch sw, OFMessage m,
                                  FloodlightContext bContext) {
@@ -507,7 +492,12 @@ public class Controller implements IFloodlightProviderService, IStorageSourceLis
                     else
                         log.debug("Received a Barrier Reply, no listeners for it");
                 }
-
+                // paag
+                // And just before we exit the controller loop we see if anyone
+                // is interested in knowing that we are exiting the loop
+                for (IControllerCompletionListener listener:completionListeners)
+                	listener.onMessageConsumed(sw, m, bc);
+                
                 if ((bContext == null) && (bc != null)) flcontext_free(bc);
         }
     }
@@ -531,14 +521,33 @@ public class Controller implements IFloodlightProviderService, IStorageSourceLis
     }
     
     @Override
-    public String getOFHostname() {
-        return openFlowHostname;
+    public Set<IPv4Address> getOFAddresses() {
+        return Collections.unmodifiableSet(openFlowAddresses);
     }
+    
     @Override
-    public int getOFPort() {
+    public TransportPort getOFPort() {
         return openFlowPort;
     }
 
+    // paag
+    @Override
+    public synchronized void addCompletionListener(IControllerCompletionListener listener) {
+    	completionListeners.add(listener);
+    }
+    
+    //paag
+    @Override
+    public synchronized void removeCompletionListener(IControllerCompletionListener listener) {
+    	String listenerName = listener.getName();
+    	if (completionListeners.remove(listener)) {
+    		log.debug("Removing completion listener {}" , listenerName);
+    	} else {
+    		log.warn("Trying to remove unknown completion listener {}" , listenerName);
+    	}
+    	listenerName=null; // help gc
+    }
+    
     @Override
     public synchronized void addOFMessageListener(OFType type, IOFMessageListener listener) {
         ListenerDispatcher<OFType, IOFMessageListener> ldd =
@@ -605,7 +614,6 @@ public class Controller implements IFloodlightProviderService, IStorageSourceLis
         if (m == null)
             throw new NullPointerException("OFMessage must not be null");
 
-        // FIXME floodlight context not supported any more
         FloodlightContext bc = new FloodlightContext();
 
         List<IOFMessageListener> listeners = null;
@@ -646,15 +654,6 @@ public class Controller implements IFloodlightProviderService, IStorageSourceLis
      * @return A valid role if role information is specified in the
      *         config params, otherwise null
      */
-    @LogMessageDocs({
-        @LogMessageDoc(message="Controller role set to {role}",
-                explanation="Setting the initial HA role to "),
-        @LogMessageDoc(level="ERROR",
-                message="Invalid current role value: {role}",
-                explanation="An invalid HA role value was read from the " +
-                            "properties file",
-                recommendation=LogMessageDoc.CHECK_CONTROLLER)
-    })
     protected HARole getInitialRole(Map<String, String> configParams) {
         HARole role = HARole.STANDBY;
         String roleString = configParams.get("role");
@@ -676,19 +675,6 @@ public class Controller implements IFloodlightProviderService, IStorageSourceLis
      * @throws IOException
      */
     @Override
-    @LogMessageDocs({
-        @LogMessageDoc(message="Listening for switch connections on {address}",
-                explanation="The controller is ready and listening for new" +
-                        " switch connections"),
-        @LogMessageDoc(message="Storage exception in controller " +
-                        "updates loop; terminating process",
-                explanation=ERROR_DATABASE,
-                recommendation=LogMessageDoc.CHECK_CONTROLLER),
-        @LogMessageDoc(level="ERROR",
-                message="Exception in controller updates loop",
-                explanation="Failed to dispatch controller event",
-                recommendation=LogMessageDoc.GENERIC_ACTION)
-    })
     public void run() {
         this.moduleLoaderState = ModuleLoaderState.COMPLETE;
 
@@ -717,22 +703,35 @@ public class Controller implements IFloodlightProviderService, IStorageSourceLis
     }
     
     private void setConfigParams(Map<String, String> configParams) throws FloodlightModuleException {
-        String ofPort = configParams.get("openflowPort");
+        String ofPort = configParams.get("openFlowPort");
         if (!Strings.isNullOrEmpty(ofPort)) {
             try {
-                this.openFlowPort = Integer.parseInt(ofPort);
-            } catch (NumberFormatException e) {
-                log.error("invalid openflow port specifier", e);
-                throw new FloodlightModuleException("invalid port specifier in cofig");
+                openFlowPort = TransportPort.of(Integer.parseInt(ofPort));
+            } catch (Exception e) {
+                log.error("Invalid OpenFlow port {}, {}", ofPort, e);
+                throw new FloodlightModuleException("Invalid OpenFlow port of " + ofPort + " in config");
             }
-            log.debug("OpenFlow port set to {}", this.openFlowPort);
         }
+        log.info("OpenFlow port set to {}", openFlowPort);
 
-        String threads = configParams.get("workerthreads");
+        String threads = configParams.get("workerThreads");
         if (!Strings.isNullOrEmpty(threads)) {
             this.workerThreads = Integer.parseInt(threads);
         }
-        log.debug("Number of worker threads set to {}", this.workerThreads);
+        log.info("Number of worker threads set to {}", this.workerThreads);
+        
+        String addresses = configParams.get("openFlowAddresses");
+        if (!Strings.isNullOrEmpty(addresses)) {
+            try {
+                openFlowAddresses = Collections.singleton(IPv4Address.of(addresses)); //TODO support list of addresses for multi-honed controllers
+            } catch (Exception e) {
+                log.error("Invalid OpenFlow address {}, {}", addresses, e);
+                throw new FloodlightModuleException("Invalid OpenFlow address of " + addresses + " in config");
+            }
+            log.info("OpenFlow addresses set to {}", openFlowAddresses);
+        } else {
+        	openFlowAddresses.add(IPv4Address.NONE);
+        }
     }
 
     /**
@@ -749,7 +748,8 @@ public class Controller implements IFloodlightProviderService, IStorageSourceLis
         this.controllerNodeIPsCache = new HashMap<String, String>();
         this.updates = new LinkedBlockingQueue<IUpdate>();
         this.providerMap = new HashMap<String, List<IInfoProvider>>();
-       
+        this.completionListeners = new ConcurrentLinkedQueue<IControllerCompletionListener>();
+        
         setConfigParams(configParams);
 
         HARole initialRole = getInitialRole(configParams);
@@ -772,11 +772,6 @@ public class Controller implements IFloodlightProviderService, IStorageSourceLis
      * Startup all of the controller's components
      * @param floodlightModuleLoader
      */
-    @LogMessageDoc(message="Waiting for storage source",
-                explanation="The system database is not yet ready",
-                recommendation="If this message persists, this indicates " +
-                        "that the system database has failed to start. " +
-                        LogMessageDoc.CHECK_CONTROLLER)
     public void startupComponents(FloodlightModuleLoader floodlightModuleLoader) throws FloodlightModuleException {
 
         this.moduleLoaderState = ModuleLoaderState.STARTUP;
@@ -810,10 +805,6 @@ public class Controller implements IFloodlightProviderService, IStorageSourceLis
         addInfoProvider("summary", this);
     }
     
-    @LogMessageDoc(level="ERROR",
-            message="failed to access storage: {reason}",
-            explanation="Could not retrieve forwarding configuration",
-            recommendation=LogMessageDoc.CHECK_CONTROLLER)
     private void readFlowPriorityConfigurationFromStorage() {
         try {
             Map<String, Object> row;
@@ -961,13 +952,6 @@ public class Controller implements IFloodlightProviderService, IStorageSourceLis
             "Flow priority configuration has changed after " +
             "controller startup. Restart controller for new " +
             "configuration to take effect.";
-    @LogMessageDoc(level="WARN",
-            message=FLOW_PRIORITY_CHANGED_AFTER_STARTUP,
-            explanation="A user has changed the priority with which access " +
-                    "and core flows are installed after controller startup. " +
-                    "Changing this setting will only take affect after a " +
-                    "controller restart",
-            recommendation="Restart controller")
     @Override
     public void rowsModified(String tableName, Set<Object> rowKeys) {
         if (tableName.equals(CONTROLLER_INTERFACE_TABLE_NAME)) {
@@ -1007,11 +991,6 @@ public class Controller implements IFloodlightProviderService, IStorageSourceLis
         return rb.getUptime();
     }
 
-    @LogMessageDoc(level="WARN",
-            message="Failure adding update {} to queue",
-            explanation="The controller tried to add an internal notification" +
-                        " to its message queue but the add failed.",
-            recommendation=LogMessageDoc.REPORT_CONTROLLER_BUG)
     @Override
     public void addUpdateToQueue(IUpdate update) {
         try {

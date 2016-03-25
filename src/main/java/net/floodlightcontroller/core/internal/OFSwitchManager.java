@@ -1,6 +1,7 @@
 package net.floodlightcontroller.core.internal;
 
 import java.io.IOException;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -16,13 +17,6 @@ import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CopyOnWriteArraySet;
-import java.util.concurrent.Executors;
-
-import org.jboss.netty.bootstrap.ServerBootstrap;
-import org.jboss.netty.channel.ChannelPipelineFactory;
-import org.jboss.netty.channel.group.ChannelGroup;
-import org.jboss.netty.channel.group.DefaultChannelGroup;
-import org.jboss.netty.channel.socket.nio.NioServerSocketChannelFactory;
 
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.HAListenerTypeMarker;
@@ -39,8 +33,6 @@ import net.floodlightcontroller.core.LogicalOFMessageCategory;
 import net.floodlightcontroller.core.PortChangeType;
 import net.floodlightcontroller.core.SwitchDescription;
 import net.floodlightcontroller.core.SwitchSyncRepresentation;
-import net.floodlightcontroller.core.annotations.LogMessageDoc;
-import net.floodlightcontroller.core.annotations.LogMessageDocs;
 import net.floodlightcontroller.core.internal.Controller.IUpdate;
 import net.floodlightcontroller.core.internal.Controller.ModuleLoaderState;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
@@ -62,6 +54,7 @@ import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.IPv4Address;
 import org.projectfloodlight.openflow.types.OFAuxId;
 import org.projectfloodlight.openflow.types.TableId;
 import org.projectfloodlight.openflow.types.U32;
@@ -81,6 +74,13 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+
+import io.netty.bootstrap.ServerBootstrap;
+import io.netty.channel.ChannelOption;
+import io.netty.channel.group.DefaultChannelGroup;
+import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.channel.socket.nio.NioServerSocketChannel;
+import io.netty.util.concurrent.GlobalEventExecutor;
 
 /**
  * The Switch Manager class contains most of the code involved with dealing
@@ -104,7 +104,6 @@ public class OFSwitchManager implements IOFSwitchManager, INewOFConnectionListen
 
 	private static String keyStorePassword;
 	private static String keyStore;
-	private static boolean useSsl = false;
 
 	protected static boolean clearTablesOnInitialConnectAsMaster = false;
 	protected static boolean clearTablesOnEachTransitionToMaster = false;
@@ -114,11 +113,10 @@ public class OFSwitchManager implements IOFSwitchManager, INewOFConnectionListen
 
 	protected static List<U32> ofBitmaps;
 	protected static OFFactory defaultFactory;
-	
+
 	private ConcurrentHashMap<DatapathId, OFSwitchHandshakeHandler> switchHandlers;
 	private ConcurrentHashMap<DatapathId, IOFSwitchBackend> switches;
 	private ConcurrentHashMap<DatapathId, IOFSwitch> syncedSwitches;
-	private Set<DatapathId> pastSwitches;
 
 	private ISwitchDriverRegistry driverRegistry;
 
@@ -132,9 +130,13 @@ public class OFSwitchManager implements IOFSwitchManager, INewOFConnectionListen
 	protected Set<IOFSwitchListener> switchListeners;
 
 	// Module Dependencies
-	IFloodlightProviderService floodlightProvider;
-	IDebugEventService debugEventService;
-	IDebugCounterService debugCounterService;
+	private IFloodlightProviderService floodlightProvider;
+	private IDebugEventService debugEventService;
+	private IDebugCounterService debugCounterService;
+
+	private NioEventLoopGroup bossGroup;
+	private NioEventLoopGroup workerGroup;
+	private DefaultChannelGroup cg;
 
 	/** IHAListener Implementation **/
 	@Override
@@ -184,7 +186,7 @@ public class OFSwitchManager implements IOFSwitchManager, INewOFConnectionListen
 			addUpdateToQueue(new SwitchUpdate(dpid, SwitchUpdateType.REMOVED));
 			oldSw.disconnect();
 		}
-		
+
 		/*
 		 * Set some other config options for this switch.
 		 */
@@ -197,27 +199,6 @@ public class OFSwitchManager implements IOFSwitchManager, INewOFConnectionListen
 		}
 	}
 
-	@LogMessageDocs({
-		@LogMessageDoc(level="ERROR",
-				message="Switch {switch} activated but was already active",
-				explanation="A switch that was already activated was " +
-						"activated again. This should not happen.",
-						recommendation=LogMessageDoc.REPORT_CONTROLLER_BUG
-				),
-				@LogMessageDoc(level="WARN",
-				message="New switch added {switch} for already-added switch {switch}",
-				explanation="A switch with the same DPID as another switch " +
-						"connected to the controller.  This can be caused by " +
-						"multiple switches configured with the same DPID, or " +
-						"by a switch reconnected very quickly after " +
-						"disconnecting.",
-						recommendation="If this happens repeatedly, it is likely there " +
-								"are switches with duplicate DPIDs on the network.  " +
-								"Reconfigure the appropriate switches.  If it happens " +
-								"very rarely, then it is likely this is a transient " +
-								"network problem that can be ignored."
-						)
-	})
 	@Override
 	public synchronized void switchStatusChanged(IOFSwitchBackend sw, SwitchStatus oldStatus, SwitchStatus newStatus) {
 		DatapathId dpid = sw.getId();
@@ -504,7 +485,7 @@ public class OFSwitchManager implements IOFSwitchManager, INewOFConnectionListen
 	public IOFSwitchBackend getOFSwitchInstance(IOFConnectionBackend connection,
 			SwitchDescription description,
 			OFFactory factory, DatapathId datapathId) {
-		
+
 		return this.driverRegistry.getOFSwitchInstance(connection, description, factory, datapathId);
 	}
 
@@ -512,7 +493,7 @@ public class OFSwitchManager implements IOFSwitchManager, INewOFConnectionListen
 	public void handleMessage(IOFSwitchBackend sw, OFMessage m, FloodlightContext bContext) {
 		floodlightProvider.handleMessage(sw, m, bContext);
 	}
-	
+
 	@Override
 	public void handleOutgoingMessage(IOFSwitch sw, OFMessage m) {
 		floodlightProvider.handleOutgoingMessage(sw, m);
@@ -677,8 +658,6 @@ public class OFSwitchManager implements IOFSwitchManager, INewOFConnectionListen
 		driverRegistry = new NaiveSwitchDriverRegistry(this);
 
 		this.switchListeners = new CopyOnWriteArraySet<IOFSwitchListener>();
-		
-		this.pastSwitches = new HashSet<DatapathId>();
 
 		/* TODO @Ryan
 		try {
@@ -711,13 +690,11 @@ public class OFSwitchManager implements IOFSwitchManager, INewOFConnectionListen
 						)
 				) {
 			log.warn("SSL disabled. Using unsecure connections between Floodlight and switches.");
-			OFSwitchManager.useSsl = false;
 			OFSwitchManager.keyStore = null;
 			OFSwitchManager.keyStorePassword = null;
 		} else {
 			log.info("SSL enabled. Using secure connections between Floodlight and switches.");
 			log.info("SSL keystore path: {}, password: {}", path, (pass == null ? "" : pass)); 
-			OFSwitchManager.useSsl = true;
 			OFSwitchManager.keyStore = path;
 			OFSwitchManager.keyStorePassword = (pass == null ? "" : pass);
 		}
@@ -788,7 +765,7 @@ public class OFSwitchManager implements IOFSwitchManager, INewOFConnectionListen
 			maxPerDpid = configParams.get("maxTableToReceiveTableMissFlowPerDpid");
 		}
 		forwardToControllerFlowsUpToTableByDpid = jsonToSwitchTableIdMap(maxPerDpid);
-	
+
 		/*
 		 * Get config to determine what versions of OpenFlow we will
 		 * support. The versions will determine the hello's header
@@ -835,7 +812,7 @@ public class OFSwitchManager implements IOFSwitchManager, INewOFConnectionListen
 		defaultFactory = computeInitialFactory(ofVersions);
 		ofBitmaps = computeOurVersionBitmaps(ofVersions);
 	}
-	
+
 	/**
 	 * Find the max version supplied in the supported
 	 * versions list and use it as the default, which
@@ -871,7 +848,7 @@ public class OFSwitchManager implements IOFSwitchManager, INewOFConnectionListen
 		 */
 		return OFFactories.getFactory(highest);
 	}
-	
+
 	/**
 	 * Based on the list of OFVersions provided as input (or from Loxi),
 	 * create a list of bitmaps for use in version negotiation during a
@@ -888,7 +865,7 @@ public class OFSwitchManager implements IOFSwitchManager, INewOFConnectionListen
 		if (ofVersions == null || ofVersions.isEmpty()) {
 			throw new IllegalStateException("OpenFlow version list should never be null or empty at this point. Make sure it's set in the OFSwitchManager.");
 		}
-		
+
 		int pos = 1; /* initial bitmap in list */
 		int size = 32; /* size of a U32 */
 		int tempBitmap = 0; /* maintain the current bitmap we're working on */
@@ -922,7 +899,7 @@ public class OFSwitchManager implements IOFSwitchManager, INewOFConnectionListen
 
 		try {
 			try {
-				jp = f.createJsonParser(json);
+				jp = f.createParser(json);
 			} catch (JsonParseException e) {
 				throw new IOException(e);
 			}
@@ -1004,42 +981,48 @@ public class OFSwitchManager implements IOFSwitchManager, INewOFConnectionListen
 	 */
 	public void bootstrapNetty() {
 		try {
-			final ServerBootstrap bootstrap = createServerBootStrap();
+			bossGroup = new NioEventLoopGroup();
+			workerGroup = new NioEventLoopGroup();
 
-			bootstrap.setOption("reuseAddr", true);
-			bootstrap.setOption("child.keepAlive", true);
-			bootstrap.setOption("child.tcpNoDelay", true);
-			bootstrap.setOption("child.sendBufferSize", Controller.SEND_BUFFER_SIZE);
-			
-			ChannelPipelineFactory pfact = useSsl ? new OpenflowPipelineFactory(this, floodlightProvider.getTimer(), this, debugCounterService, ofBitmaps, defaultFactory, keyStore, keyStorePassword) :
-				new OpenflowPipelineFactory(this, floodlightProvider.getTimer(), this, debugCounterService, ofBitmaps, defaultFactory);
-			
-			bootstrap.setPipelineFactory(pfact);
-			InetSocketAddress sa = new InetSocketAddress(floodlightProvider.getOFPort());
-			final ChannelGroup cg = new DefaultChannelGroup();
-			cg.add(bootstrap.bind(sa));
+			ServerBootstrap bootstrap = new ServerBootstrap()
+			.group(bossGroup, workerGroup)
+			.channel(NioServerSocketChannel.class)
+			.option(ChannelOption.SO_REUSEADDR, true)
+			.option(ChannelOption.SO_KEEPALIVE, true)
+			.option(ChannelOption.TCP_NODELAY, true)
+			.option(ChannelOption.SO_SNDBUF, Controller.SEND_BUFFER_SIZE);
 
-			log.info("Listening for switch connections on {}", sa);
+
+			OFChannelInitializer initializer = new OFChannelInitializer(
+					this, 
+					this, 
+					debugCounterService, 
+					floodlightProvider.getTimer(), 
+					ofBitmaps, 
+					defaultFactory, 
+					keyStore, 
+					keyStorePassword);
+
+			bootstrap.childHandler(initializer);
+
+			cg = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
+
+			Set<InetSocketAddress> addrs = new HashSet<InetSocketAddress>();
+			if (floodlightProvider.getOFAddresses().isEmpty()) {
+				cg.add(bootstrap.bind(new InetSocketAddress(InetAddress.getByAddress(IPv4Address.NONE.getBytes()), floodlightProvider.getOFPort().getPort())).channel());
+			} else {
+				for (IPv4Address ip : floodlightProvider.getOFAddresses()) {
+					addrs.add(new InetSocketAddress(InetAddress.getByAddress(ip.getBytes()), floodlightProvider.getOFPort().getPort()));
+				}
+			}
+			
+			for (InetSocketAddress sa : addrs) {
+				cg.add(bootstrap.bind(sa).channel());
+				log.info("Listening for switch connections on {}", sa);
+			}
+
 		} catch (Exception e) {
 			throw new RuntimeException(e);
-		}
-	}
-
-	/**
-	 * Helper that bootstrapNetty.
-	 * @return
-	 */
-	private ServerBootstrap createServerBootStrap() {
-		if (floodlightProvider.getWorkerThreads() == 0) {
-			return new ServerBootstrap(
-					new NioServerSocketChannelFactory(
-							Executors.newCachedThreadPool(),
-							Executors.newCachedThreadPool()));
-		} else {
-			return new ServerBootstrap(
-					new NioServerSocketChannelFactory(
-							Executors.newCachedThreadPool(),
-							Executors.newCachedThreadPool(), floodlightProvider.getWorkerThreads()));
 		}
 	}
 

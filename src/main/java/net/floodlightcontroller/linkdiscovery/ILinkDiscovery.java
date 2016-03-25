@@ -21,6 +21,7 @@ import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFPort;
+import org.projectfloodlight.openflow.types.U64;
 
 public interface ILinkDiscovery {
 
@@ -52,17 +53,19 @@ public interface ILinkDiscovery {
         protected DatapathId dst;
         protected OFPort dstPort;
         protected SwitchType srcType;
+        protected U64 latency;
         protected LinkType type;
         protected UpdateOperation operation;
 
         public LDUpdate(DatapathId src, OFPort srcPort,
-        		DatapathId dst, OFPort dstPort,
+        		DatapathId dst, OFPort dstPort, U64 latency,
                       ILinkDiscovery.LinkType type,
                       UpdateOperation operation) {
             this.src = src;
             this.srcPort = srcPort;
             this.dst = dst;
             this.dstPort = dstPort;
+            this.latency = latency;
             this.type = type;
             this.operation = operation;
         }
@@ -73,6 +76,7 @@ public interface ILinkDiscovery {
             this.dst = old.dst;
             this.dstPort = old.dstPort;
             this.srcType = old.srcType;
+            this.latency = old.latency;
             this.type = old.type;
             this.operation = old.operation;
         }
@@ -82,6 +86,7 @@ public interface ILinkDiscovery {
             this.operation = oper;
             this.src = switchId;
             this.srcType = stype;
+            this.latency = U64.ZERO;
         }
 
         // For port up or port down; and tunnel port added and removed.
@@ -89,6 +94,7 @@ public interface ILinkDiscovery {
             this.src = sw;
             this.srcPort = port;
             this.operation = operation;
+            this.latency = U64.ZERO;
         }
 
         public DatapathId getSrc() {
@@ -105,6 +111,10 @@ public interface ILinkDiscovery {
 
         public OFPort getDstPort() {
             return dstPort;
+        }
+        
+        public U64 getLatency() {
+        	return latency;
         }
 
         public SwitchType getSrcType() {
@@ -133,6 +143,7 @@ public interface ILinkDiscovery {
                         + ", srcPort=" + srcPort.toString()
                         + ", dst=" + dst.toString()
                         + ", dstPort=" + dstPort.toString()
+                        + ", latency=" + latency.toString()
                         + ", type=" + type + "]";
             case PORT_DOWN:
             case PORT_UP:

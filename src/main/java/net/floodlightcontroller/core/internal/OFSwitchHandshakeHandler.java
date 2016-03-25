@@ -12,8 +12,7 @@ import java.util.concurrent.TimeUnit;
 
 import javax.annotation.Nonnull;
 
-import org.jboss.netty.util.Timer;
-
+import io.netty.util.Timer;
 import net.floodlightcontroller.core.HARole;
 import net.floodlightcontroller.core.IOFConnection;
 import net.floodlightcontroller.core.IOFConnectionBackend;
@@ -22,16 +21,12 @@ import net.floodlightcontroller.core.IOFSwitch.SwitchStatus;
 import net.floodlightcontroller.core.IOFSwitchBackend;
 import net.floodlightcontroller.core.PortChangeEvent;
 import net.floodlightcontroller.core.SwitchDescription;
-import net.floodlightcontroller.core.annotations.LogMessageDoc;
-import net.floodlightcontroller.core.annotations.LogMessageDocs;
 import net.floodlightcontroller.core.internal.OFSwitchAppHandshakePlugin.PluginResultType;
-import net.floodlightcontroller.util.OFDPAUtils;
 
 import org.projectfloodlight.openflow.protocol.OFActionType;
 import org.projectfloodlight.openflow.protocol.OFBadRequestCode;
 import org.projectfloodlight.openflow.protocol.OFBarrierReply;
 import org.projectfloodlight.openflow.protocol.OFBarrierRequest;
-import org.projectfloodlight.openflow.protocol.OFBucket;
 import org.projectfloodlight.openflow.protocol.OFControllerRole;
 import org.projectfloodlight.openflow.protocol.OFDescStatsReply;
 import org.projectfloodlight.openflow.protocol.OFDescStatsRequest;
@@ -48,7 +43,6 @@ import org.projectfloodlight.openflow.protocol.OFFlowModFailedCode;
 import org.projectfloodlight.openflow.protocol.OFFlowRemoved;
 import org.projectfloodlight.openflow.protocol.OFGetConfigReply;
 import org.projectfloodlight.openflow.protocol.OFGetConfigRequest;
-import org.projectfloodlight.openflow.protocol.OFGroupAdd;
 import org.projectfloodlight.openflow.protocol.OFGroupDelete;
 import org.projectfloodlight.openflow.protocol.OFGroupType;
 import org.projectfloodlight.openflow.protocol.OFMessage;
@@ -56,7 +50,6 @@ import org.projectfloodlight.openflow.protocol.OFNiciraControllerRole;
 import org.projectfloodlight.openflow.protocol.OFNiciraControllerRoleReply;
 import org.projectfloodlight.openflow.protocol.OFNiciraControllerRoleRequest;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
-import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.protocol.OFPortDescStatsReply;
 import org.projectfloodlight.openflow.protocol.OFPortStatus;
 import org.projectfloodlight.openflow.protocol.OFQueueGetConfigReply;
@@ -73,21 +66,15 @@ import org.projectfloodlight.openflow.protocol.OFType;
 import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.actionid.OFActionId;
-import org.projectfloodlight.openflow.protocol.actionid.OFActionIdOutput;
 import org.projectfloodlight.openflow.protocol.errormsg.OFBadRequestErrorMsg;
 import org.projectfloodlight.openflow.protocol.errormsg.OFFlowModFailedErrorMsg;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstruction;
-import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFAuxId;
-import org.projectfloodlight.openflow.types.OFBufferId;
 import org.projectfloodlight.openflow.types.OFGroup;
 import org.projectfloodlight.openflow.types.OFPort;
-import org.projectfloodlight.openflow.types.OFVlanVidMatch;
 import org.projectfloodlight.openflow.types.TableId;
-import org.projectfloodlight.openflow.types.U16;
 import org.projectfloodlight.openflow.types.U64;
-import org.projectfloodlight.openflow.types.VlanVid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -230,13 +217,6 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 		 * @param role The role to send to the switch.
 		 * @throws IOException
 		 */
-		@LogMessageDoc(level="WARN",
-				message="Reasserting master role on switch {SWITCH}, " +
-						"likely a configruation error with multiple masters",
-						explanation="The controller keeps getting permission error " +
-								"from switch, likely due to switch connected to another " +
-								"controller also in master mode",
-								recommendation=LogMessageDoc.CHECK_SWITCH)
 		synchronized void sendRoleRequestIfNotPending(OFControllerRole role, long xid)
 				throws IOException {
 			long now = System.nanoTime();
@@ -539,7 +519,7 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 								OFFlowAdd defaultFlow = this.factory.buildFlowAdd()
 										.setTableId(tid)
 										.setPriority(0)
-										.setActions(actions)
+										.setInstructions(Collections.singletonList((OFInstruction) this.factory.instructions().buildApplyActions().setActions(actions).build()))
 										.build();
 								flows.add(defaultFlow);
 								break; /* Stop searching for actions and go to the next table in the list */
@@ -563,142 +543,6 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 			}
 			this.sw.write(flows);
 		}
-	}
-
-	private void addBroadcomOFDPAFlows() {
-		/*
-		 * By default, we'll assume everyone's on the same VLAN,
-		 * and all switch ports are configured as access ports.
-		 * As such, all packets on the wire will be untagged
-		 * and will only be tagged internally in the switch for 
-		 * pipeline processing.
-		 * 
-		 * If you would like to configure trunks on switches, then
-		 * each switch will need to be configured specifically, as
-		 * we won't be able to automatically handle such a topology.
-		 * 
-		 * Ingress port table (0)     = empty --> default to VLAN table
-		 * VLAN table (10)            = match untagged, apply internal tag, goto termination MAC
-		 * Termination MAC table (20) = match vlan tag and dst MAC, goto bridging table (default miss-->bridging)
-		 * 							  	match only vlan tag, goto controller (DLF or Dest Lookup Failure)
-		 * Bridging table (50)        = default send to policy ACL table
-		 * Policy ACL table (60)      = priority=0 go to controller
-		 *                              write action group of forwarding decision
-		 * Group tables
-		 *   One per interface per VLAN
-		 *   One per VLAN (for flooding)
-		 *   
-		 *  TABLE_INGRESS = 0
-		 *  TABLE_VLAN = 10
-		 *  TABLE_MAC = 20
-		 *  TABLE_UNICAST = 30
-		 *  TABLE_MULTICAST = 40
-		 *  TABLE_BRIDGING = 50
-		 *  TABLE_ACL = 60
-		 */
-
-		/*
-		 * Add flow to match all untagged packets from all ports in VLAN table
-		 */
-		List<OFAction> al = new ArrayList<OFAction>(1);
-		/* al.add(factory.actions().pushVlan(EthType.IPv4)); might not need this */
-		al.add(factory.actions().setVlanVid(VlanVid.ofVlan(1))); /* we'll use 1 internally, just because */
-
-		List<OFInstruction> il = new ArrayList<OFInstruction>(2);
-		il.add(factory.instructions().gotoTable(TableId.of(20))); /* 20 is the termination MAC table */
-		il.add(factory.instructions().applyActions(al));
-		OFFlowAdd fa = factory.buildFlowAdd()
-				.setTableId(TableId.of(10))
-				.setOutPort(OFPort.ANY)
-				.setBufferId(OFBufferId.NO_BUFFER)
-				.setCookie(U64.ZERO)
-				.setMatch(factory.buildMatch()
-						.setExact(MatchField.VLAN_VID, OFVlanVidMatch.UNTAGGED) /* this flow handles untagged */
-						/* do we have to match on the in port here? */
-						.build()
-						)
-						.setInstructions(il)
-						.setPriority(1000)
-						.build();
-		sw.write(fa);
-
-		/*
-		 * The termination MAC flow table must proactively forward to controller specific dst MACs,
-		 * so we need to wait to do wildcarded dst MACs in bridging table upon a miss. Send to bridging
-		 * table by default here.
-		 */
-
-		/*
-		 * Add flow to match all vlan=1 packets to forward to controller in bridging table (DLF).
-		 * Default is to send to policy ACL if this does not match.
-		 */
-		al = new ArrayList<OFAction>(1);
-		al.add(factory.actions().output(OFPort.CONTROLLER, 0xffFFffFF));
-
-		il = new ArrayList<OFInstruction>(1);
-		il.add(factory.instructions().applyActions(al));
-		fa = factory.buildFlowAdd()
-				.setTableId(TableId.of(50))
-				.setOutPort(OFPort.ANY)
-				.setBufferId(OFBufferId.NO_BUFFER)
-				.setCookie(U64.ZERO)
-				.setMatch(factory.buildMatch()
-						.setExact(MatchField.VLAN_VID, OFVlanVidMatch.ofVlan(1)) /* this flow handles recently-tagged VLAN=1 */
-						.build()
-						)
-						.setInstructions(il) 
-						.setPriority(1)
-						.build();
-		sw.write(fa);
-
-		/*
-		 * Lastly, add a group for flooding and for each port.
-		 * This group is only for VLAN=1.
-		 * 
-		 * The flood group has buckets with goto group actions
-		 * for each port's individual L2 group for VLAN=1.
-		 * 
-		 * This means we must first add the individual groups.
-		 */
-		ArrayList<OFBucket> buckets = new ArrayList<OFBucket>();
-		for (OFPortDesc pd : this.sw.getPorts()) {
-			OFPort p = pd.getPortNo();
-			if ((p.getShortPortNumber() & 0xFF00) == 0) { /* TODO Is this correct for special ports? */
-				OFGroupAdd ga = factory.buildGroupAdd()
-						.setGroupType(OFGroupType.INDIRECT)
-						.setBuckets(Collections.singletonList(factory.buildBucket()
-								.setActions(
-										Collections.singletonList((OFAction) factory.actions().buildOutput()
-												.setMaxLen(0xffFFffFF)
-												.setPort(p)
-												.build()))
-												.build()))
-												.setGroup(OFDPAUtils.GroupIds.createL2Interface(p, VlanVid.ofVlan(100)))
-												.build();
-				sw.write(ga);
-
-				/*
-				 * Add the port+bucket for creating the FLOOD group below.
-				 * All L2_INTERFACE groups in a VLAN should be within a
-				 * corresponding L2_FLOOD group of type ALL.
-				 */
-				buckets.add(factory.buildBucket().setActions(
-						Collections.singletonList(
-								(OFAction) factory.actions().buildOutput()
-								.setMaxLen(0xffFFffFF)
-								.setPort(p)
-								.build()
-								)
-						).build());
-			}
-		}
-
-		OFGroupAdd ga = factory.buildGroupAdd()
-				.setGroupType(OFGroupType.ALL)
-				.setBuckets(buckets)
-				.setGroup(OFDPAUtils.GroupIds.createL2Flood(U16.ZERO, VlanVid.ofVlan(100)))
-				.build();
-		sw.write(ga);
 	}
 
 	/**
@@ -884,15 +728,6 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 		 * Log an OpenFlow error message from a switch
 		 * @param error The error message
 		 */
-		@LogMessageDoc(level="ERROR",
-				message="Error {error type} {error code} from {switch} " +
-						"in state {state}",
-						explanation="The switch responded with an unexpected error" +
-								"to an OpenFlow message from the controller",
-								recommendation="This could indicate improper network operation. " +
-										"If the problem persists restarting the switch and " +
-										"controller may help."
-				)
 		protected void logError(OFErrorMsg error) {
 			log.error("{} from switch {} in state {}",
 					new Object[] {
@@ -1099,23 +934,12 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 	 * we send a DescriptionStatsRequest to the switch.
 	 * Next state: WAIT_DESCRIPTION_STAT_REPLY
 	 */
-	public class WaitConfigReplyState extends OFSwitchHandshakeState {
-
+	public class WaitConfigReplyState extends OFSwitchHandshakeState {		
 		WaitConfigReplyState() {
 			super(false);
 		}
 
 		@Override
-		@LogMessageDocs({
-			@LogMessageDoc(level="WARN",
-					message="Config Reply from {switch} has " +
-							"miss length set to {length}",
-							explanation="The controller requires that the switch " +
-									"use a miss length of 0xffff for correct " +
-									"function",
-									recommendation="Use a different switch to ensure " +
-					"correct function")
-		})
 		void processOFGetConfigReply(OFGetConfigReply m) {
 			if (m.getMissSendLen() == 0xffff) {
 				log.trace("Config Reply from switch {} confirms "
@@ -1180,15 +1004,12 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 	 */
 	public class WaitDescriptionStatReplyState extends OFSwitchHandshakeState{
 
+		long timestamp;
+		
 		WaitDescriptionStatReplyState() {
 			super(false);
 		}
 
-		@LogMessageDoc(message="Switch {switch info} bound to class " +
-				"{switch driver}, description {switch description}",
-				explanation="The specified switch has been bound to " +
-						"a switch driver based on the switch description" +
-				"received from the switch")
 		@Override
 		void processOFStatsReply(OFStatsReply m) {
 			// Read description, if it has been updated
@@ -1208,11 +1029,11 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 			if (portDescStats != null) {
 				sw.setPortDescStats(portDescStats);
 			}
+			
 			/*
 			 * Need to add after setting the features.
 			 */
 			switchManager.switchAdded(sw);
-
 
 			// Handle pending messages now that we have a sw object
 			handlePendingPortStatusMessages(description);
@@ -1543,15 +1364,6 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 			setSwitchStatus(SwitchStatus.MASTER);
 		}
 
-		@LogMessageDoc(level="WARN",
-				message="Received permission error from switch {} while" +
-						"being master. Reasserting master role.",
-						explanation="The switch has denied an operation likely " +
-								"indicating inconsistent controller roles",
-								recommendation="This situation can occurs transiently during role" +
-										" changes. If, however, the condition persists or happens" +
-										" frequently this indicates a role inconsistency. " +
-										LogMessageDoc.CHECK_CONTROLLER )
 		@Override
 		void processOFError(OFErrorMsg m) {
 			// role changer will ignore the error if it isn't for it
@@ -1748,15 +1560,6 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 		}
 
 		@Override
-		@LogMessageDoc(level="WARN",
-		message="Received PacketIn from switch {} while" +
-				"being slave. Reasserting slave role.",
-				explanation="The switch has receive a PacketIn despite being " +
-						"in slave role indicating inconsistent controller roles",
-						recommendation="This situation can occurs transiently during role" +
-								" changes. If, however, the condition persists or happens" +
-								" frequently this indicates a role inconsistency. " +
-								LogMessageDoc.CHECK_CONTROLLER )
 		void processOFPacketIn(OFPacketIn m) {
 			// we don't expect packetIn while slave, reassert we are slave
 			switchManagerCounters.packetInWhileSwitchIsSlave.increment();
