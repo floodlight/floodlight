@@ -4,6 +4,8 @@ import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -674,4 +676,18 @@ public class RPCService {
             }
         }
     }
+    
+    
+    public HashMap<Short, Integer> getConnections(){
+    	HashMap<Short, Integer> r = new HashMap<>();
+    	
+    	Iterator<Short> it = connections.keySet().iterator();
+    	while (it.hasNext()) {
+    		Short nodeId = it.next();
+			r.put(nodeId, 0);// 0 it it for heartbeat count
+		}
+    	return r;    	
+    }
+    
+    
 }

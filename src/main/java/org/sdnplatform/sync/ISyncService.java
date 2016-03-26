@@ -1,7 +1,11 @@
 package org.sdnplatform.sync;
 
+import java.util.HashMap;
+
 import org.sdnplatform.sync.error.SyncException;
 import org.sdnplatform.sync.error.UnknownStoreException;
+import org.sdnplatform.sync.internal.config.ClusterConfig;
+
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -133,4 +137,11 @@ public interface ISyncService extends IFloodlightService {
                        IInconsistencyResolver<Versioned<V>> resolver)
                                throws UnknownStoreException;
 
+
+    
+    
+    public ClusterConfig getClusterConfig();
+    
+    public HashMap<Short, Integer> getConnections();
+    
 }

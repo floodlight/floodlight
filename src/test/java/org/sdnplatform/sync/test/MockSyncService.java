@@ -7,6 +7,7 @@ import org.sdnplatform.sync.ISyncService;
 import org.sdnplatform.sync.error.SyncException;
 import org.sdnplatform.sync.error.UnknownStoreException;
 import org.sdnplatform.sync.internal.AbstractSyncManager;
+import org.sdnplatform.sync.internal.config.ClusterConfig;
 import org.sdnplatform.sync.internal.store.IStorageEngine;
 import org.sdnplatform.sync.internal.store.IStore;
 import org.sdnplatform.sync.internal.store.InMemoryStorageEngine;
@@ -119,4 +120,16 @@ public class MockSyncService extends AbstractSyncManager {
     public void reset() {
         localStores = new HashMap<String, ListenerStorageEngine>();
     }
+
+	@Override
+	public ClusterConfig getClusterConfig() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public HashMap<Short, Integer> getConnections() {
+		// TODO Auto-generated method stub
+		return null;
+	}
 }

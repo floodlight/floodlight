@@ -43,6 +43,6 @@ net.floodlightcontroller.core.internal.OFSwitchManager.keyStorePath=/path/to/fil
 net.floodlightcontroller.core.internal.OFSwitchManager.keyStorePassword=pass
 net.floodlightcontroller.core.internal.OFSwitchManager.useSsl=NO
 net.floodlightcontroller.core.internal.OFSwitchManager.supportedOpenFlowVersions=1.0, 1.1, 1.2, 1.3, 1.4
-net.floodlightcontroller.core.internal.OFSwitchManager.switchesInitialState={"00:00:00:00:00:00:00:01":"ROLE_SLAVE","00:00:00:00:00:00:00:02":"ROLE_SLAVE", "00:00:00:00:00:00:00:03":"ROLE_SLAVE", "00:00:00:00:00:00:00:04":"ROLE_MASTER","00:00:00:00:00:00:00:05":"ROLE_MASTER"}
+net.floodlightcontroller.core.internal.OFSwitchManager.switchesInitialState={"00:00:00:00:00:00:00:01":"ROLE_SLAVE","00:00:00:00:00:00:00:02":"ROLE_SLAVE", "00:00:00:00:00:00:00:03":"ROLE_SLAVE", "00:00:00:00:00:00:00:04":"ROLE_SLAVE","00:00:00:00:00:00:00:05":"ROLE_SLAVE"}
 net.floodlightcontroller.statistics.StatisticsCollector.enable=FALSE
 net.floodlightcontroller.statistics.StatisticsCollector.collectionIntervalPortStatsSeconds=10
