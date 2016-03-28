@@ -22,7 +22,7 @@
   <logger name="net.floodlightcontroller.devicemanager" level="INFO"></logger>
   <logger name="net.floodlightcontroller.linkdiscovery" level="INFO"></logger>
   <logger name="net.floodlightcontroller.forwarding" level="INFO"></logger>
-  <logger name="net.floodlightcontroller.simpleft.FT" level="TRACE"></logger>
+  <logger name="net.floodlightcontroller.simpleft.FT" level="INFO"></logger>
   <logger name="net.floodlightcontroller.core" level="INFO"></logger>
   <logger name="net.floodlightcontroller.topology" level="INFO" ></logger>
   <logger name="org.projectfloodlight.openflow" level="INFO" ></logger>

@@ -143,8 +143,10 @@ public interface ISyncService extends IFloodlightService {
     
    
     /**
-     * Listener to RPC connections, used in simple Fault tolerance module
-     * The listener is dispatched either connected or disconnected nodes
+     * Listener to RPC connections, used in simple Fault tolerance module,
+     * or other modules that need cluster monitor nodes (connect and disconnect).
+     * The listener is dispatched at connected or disconnected events.
+     * The listener inform the node id of connected or disconnected nodes on cluster.
      * @param listener
      */
 	public void addRPCListener(IRPCListener listener);

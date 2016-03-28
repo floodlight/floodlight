@@ -688,7 +688,7 @@ class OFChannelHandler extends SimpleChannelInboundHandler<Iterable<OFMessage>> 
 
 	@Override
 	public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
-		//log.debug("channelIdle on OFChannelHandler {}", String.format("%08x", System.identityHashCode(this)));
+		log.debug("channelIdle on OFChannelHandler {}", String.format("%08x", System.identityHashCode(this)));
 		OFChannelHandler handler = ctx.pipeline().get(OFChannelHandler.class);
 		handler.sendEchoRequest();
 	}

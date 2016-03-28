@@ -13,7 +13,15 @@ package org.sdnplatform.sync.internal.rpc;
 
 public interface IRPCListener {
 	
+	/**
+	 * Inform to listeners when a node is disconnected.
+	 * @param nodeId
+	 */
 	public void disconnectedNode(Short nodeId);
-
+	
+	/**
+	 * Inform to listeners when a node is connected.
+	 * @param nodeId
+	 */
 	public void connectedNode(Short nodeId);
 }
