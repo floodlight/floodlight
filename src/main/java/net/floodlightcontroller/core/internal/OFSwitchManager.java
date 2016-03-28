@@ -92,7 +92,8 @@ import io.netty.util.concurrent.GlobalEventExecutor;
  * @author gregor, capveg, sovietaced
  *
  */
-public class OFSwitchManager implements IOFSwitchManager, INewOFConnectionListener, IHAListener, IFloodlightModule, IOFSwitchService, IStoreListener<DatapathId> {
+public class OFSwitchManager implements IOFSwitchManager, INewOFConnectionListener, 
+IHAListener, IFloodlightModule, IOFSwitchService, IStoreListener<DatapathId> {
 	private static final Logger log = LoggerFactory.getLogger(OFSwitchManager.class);
 
 	private volatile OFControllerRole role;
@@ -633,7 +634,8 @@ public class OFSwitchManager implements IOFSwitchManager, INewOFConnectionListen
 	@Override
 	public Collection<Class<? extends IFloodlightService>>
 	getModuleDependencies() {
-		Collection<Class<? extends IFloodlightService>> l = new ArrayList<Class<? extends IFloodlightService>>();
+		Collection<Class<? extends IFloodlightService>> l = 
+				new ArrayList<Class<? extends IFloodlightService>>();
 
 		l.add(IFloodlightProviderService.class);
 		l.add(IDebugEventService.class);

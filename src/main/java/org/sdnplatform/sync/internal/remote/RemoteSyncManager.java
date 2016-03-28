@@ -30,6 +30,7 @@ import org.sdnplatform.sync.error.UnknownStoreException;
 import org.sdnplatform.sync.internal.AbstractSyncManager;
 import org.sdnplatform.sync.internal.config.AuthScheme;
 import org.sdnplatform.sync.internal.config.ClusterConfig;
+import org.sdnplatform.sync.internal.rpc.IRPCListener;
 import org.sdnplatform.sync.internal.rpc.RPCService;
 import org.sdnplatform.sync.internal.rpc.TProtocolUtil;
 import org.sdnplatform.sync.internal.store.IStore;
@@ -375,14 +376,14 @@ public class RemoteSyncManager extends AbstractSyncManager {
 
 	
 	@Override
-	public ClusterConfig getClusterConfig() {
+	public void addRPCListener(IRPCListener listener) {
 		// TODO Auto-generated method stub
-		return null;
+		
 	}
 
 	@Override
-	public HashMap<Short, Integer> getConnections() {
+	public void removeRPCListener(IRPCListener listener) {
 		// TODO Auto-generated method stub
-		return null;
+		
 	}
 }

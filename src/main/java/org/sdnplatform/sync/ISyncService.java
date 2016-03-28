@@ -5,6 +5,7 @@ import java.util.HashMap;
 import org.sdnplatform.sync.error.SyncException;
 import org.sdnplatform.sync.error.UnknownStoreException;
 import org.sdnplatform.sync.internal.config.ClusterConfig;
+import org.sdnplatform.sync.internal.rpc.IRPCListener;
 
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -140,8 +141,13 @@ public interface ISyncService extends IFloodlightService {
 
     
     
-    public ClusterConfig getClusterConfig();
-    
-    public HashMap<Short, Integer> getConnections();
+   
+    /**
+     * Listener to RPC connections, used in simple Fault tolerance module
+     * The listener is dispatched either connected or disconnected nodes
+     * @param listener
+     */
+	public void addRPCListener(IRPCListener listener);
+	public void removeRPCListener(IRPCListener listener);
     
 }

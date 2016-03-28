@@ -41,6 +41,7 @@ import org.sdnplatform.sync.internal.config.Node;
 import org.sdnplatform.sync.internal.config.PropertyCCProvider;
 import org.sdnplatform.sync.internal.config.StorageCCProvider;
 import org.sdnplatform.sync.internal.config.SyncStoreCCProvider;
+import org.sdnplatform.sync.internal.rpc.IRPCListener;
 import org.sdnplatform.sync.internal.rpc.RPCService;
 import org.sdnplatform.sync.internal.rpc.TProtocolUtil;
 import org.sdnplatform.sync.internal.store.IStorageEngine;
@@ -74,6 +75,7 @@ import net.floodlightcontroller.threadpool.IThreadPoolService;
  * @see ISyncService
  */
 public class SyncManager extends AbstractSyncManager {
+	
 	protected static final Logger logger =
 			LoggerFactory.getLogger(SyncManager.class.getName());
 
@@ -466,6 +468,7 @@ public class SyncManager extends AbstractSyncManager {
 		debugCounter = context.getServiceImpl(IDebugCounterService.class);
 		Map<String, String> config = context.getConfigParams(this);
 		storeRegistry = new StoreRegistry(this, config.get("dbPath"));
+		//context.addService(IRPCService.class, this);
 
 		String[] configProviders =
 			{PropertyCCProvider.class.getName(),
@@ -817,9 +820,16 @@ public class SyncManager extends AbstractSyncManager {
 	}
 
 	@Override
-	public HashMap<Short, Integer> getConnections() {
+	public void addRPCListener(IRPCListener listener) {
 		// TODO Auto-generated method stub
-		return rpcService.getConnections();
+		rpcService.addRPCListener(listener);
+		
+	}
+
+	@Override
+	public void removeRPCListener(IRPCListener listener) {
+		// TODO Auto-generated method stub
+		rpcService.removeRPCListener(listener);
 	}
 
 	

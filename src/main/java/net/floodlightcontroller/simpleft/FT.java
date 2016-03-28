@@ -2,37 +2,23 @@ package net.floodlightcontroller.simpleft;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
-import java.util.Random;
-import java.util.Set;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 
 import net.floodlightcontroller.core.FloodlightContext;
-import net.floodlightcontroller.core.IFloodlightProviderService;
-import net.floodlightcontroller.core.IOFConnectionBackend;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.IOFSwitchListener;
 import net.floodlightcontroller.core.PortChangeType;
 import net.floodlightcontroller.core.internal.FloodlightProvider;
-import net.floodlightcontroller.core.internal.IOFConnectionListener;
-import net.floodlightcontroller.core.internal.IOFSwitchManager;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
-import net.floodlightcontroller.core.internal.ISwitchDriverRegistry;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
-import net.floodlightcontroller.core.module.IFloodlightModuleContext;
 import net.floodlightcontroller.core.module.IFloodlightService;
-import net.floodlightcontroller.core.util.SingletonTask;
 import net.floodlightcontroller.storage.IStorageSourceService;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
-import net.floodlightcontroller.threadpool.ThreadPool;
-import net.floodlightcontroller.util.TimedCache;
 
 import org.projectfloodlight.openflow.protocol.OFControllerRole;
 import org.projectfloodlight.openflow.protocol.OFMessage;
@@ -40,46 +26,32 @@ import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.protocol.OFRoleReply;
 import org.projectfloodlight.openflow.protocol.OFType;
 import org.projectfloodlight.openflow.types.DatapathId;
-import org.projectfloodlight.openflow.types.U64;
 import org.sdnplatform.sync.IStoreClient;
 import org.sdnplatform.sync.IStoreListener;
 import org.sdnplatform.sync.ISyncService;
 import org.sdnplatform.sync.ISyncService.Scope;
 import org.sdnplatform.sync.error.SyncException;
-import org.sdnplatform.sync.internal.SyncManager;
-import org.sdnplatform.sync.internal.config.ClusterConfig;
-import org.sdnplatform.sync.internal.config.IClusterConfigProvider;
-import org.sdnplatform.sync.internal.config.Node;
+import org.sdnplatform.sync.internal.rpc.IRPCListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.util.concurrent.ListenableFuture;
 
 public class FT implements 
 IOFMessageListener, 
 IFloodlightModule,
 IStoreListener<String>,
-IOFSwitchListener
+IOFSwitchListener,
+IRPCListener
 {
 
 	private ISyncService syncService;
-	private IStoreClient<String, String> storeClient;
-	//private IFloodlightProviderService floodlightProvider;
+	private IStoreClient<String, String> storeFT;
 	
 	protected static Logger logger = LoggerFactory.getLogger(FT.class);
-
-	protected static IThreadPoolService threadPoolService;
-	protected static SingletonTask syncTestTask;
-	protected static SingletonTask heartBeatTask;
-	private final int HEARTBEAT = 3;//time to discover a crashed node
 	
 	protected static IOFSwitchService switchService;
 	private static UtilDurable utilDurable;
 			
 	private String controllerId;
-	
-	private HashMap<Short, Integer> cluster;
 
 	@Override
 	public String getName() {
@@ -102,18 +74,20 @@ IOFSwitchListener
 	@Override
 	public Collection<Class<? extends IFloodlightService>> getModuleServices() {
 		// TODO Auto-generated method stub
-		Collection<Class<? extends IFloodlightService>> l = 
+		/*Collection<Class<? extends IFloodlightService>> l = 
 				new ArrayList<Class<? extends IFloodlightService>>();
-		return l;
+		return l;*/
+		return null;
 
 	}
 
 	@Override
 	public Map<Class<? extends IFloodlightService>, IFloodlightService> getServiceImpls() {
 		// TODO Auto-generated method stub
-		Map<Class<? extends IFloodlightService>, IFloodlightService> m = 
+		/*Map<Class<? extends IFloodlightService>, IFloodlightService> m = 
 				new HashMap<Class<? extends IFloodlightService>, IFloodlightService>();
-		return m;
+		return m;*/
+		return null;
 
 	}
 
@@ -136,14 +110,11 @@ IOFSwitchListener
 		// TODO Auto-generated method stub
 		
 		this.syncService = context.getServiceImpl(ISyncService.class);
-		threadPoolService = context.getServiceImpl(IThreadPoolService.class);
 		switchService = context.getServiceImpl(IOFSwitchService.class);
-		//floodlightProvider = context.getServiceImpl(IFloodlightProviderService.class);
 		utilDurable = new UtilDurable();
 
 		Map<String, String> configParams = context.getConfigParams(FloodlightProvider.class);
 		controllerId = configParams.get("controllerId");
-		cluster = new HashMap<>();
 		
 			
 	}
@@ -151,89 +122,21 @@ IOFSwitchListener
 	@Override
 	public void startUp(FloodlightModuleContext context)
 			throws FloodlightModuleException {
-
-		/**
-		 * ##############################################################
-		 *                          FAULT TOLERANCE BEGIN
-		 * ##############################################################
-		 *                           
-		 */
-		Collection<Node> nodes = syncService.getClusterConfig().getNodes();
-		Iterator<Node> it = nodes.iterator();
-		while (it.hasNext()) {
-			Node node = it.next();
-			if(!controllerId.equals(""+node.getNodeId())){
-				cluster.put(node.getNodeId(), 0);
-			}
-		}		
-		logger.debug("ClusterConfig: {}", cluster);
 		
-		ScheduledExecutorService ses = threadPoolService.getScheduledExecutor();
-		heartBeatTask = new SingletonTask(ses, new Runnable() {
-			@Override
-			public void run() { 				
-				HashMap<Short, Integer> mapC = syncService.getConnections();				
-				Iterator<Short> it = cluster.keySet().iterator();
-				while (it.hasNext()) {
-					Short nodeId = it.next();
-					if(!mapC.containsKey(nodeId)){
-						logger.debug("Crashed nodeId: {}. Role request to switches...", nodeId);
-						String swIds=null; 
-						try {
-							swIds = storeClient.get(""+nodeId).getValue();
-							logger.debug("Switches managed by nodeId:{}, {}", nodeId, swIds);							
-						} catch (SyncException e) {
-							e.printStackTrace();
-						}
-						
-						if(swIds!= null){
-							String swId[] = swIds.split(",");
-							for (int i = 0; i < swId.length; i++) {
-								setSwitchRole(OFControllerRole.ROLE_MASTER, swId[i]);	
-							}	
-						}	
-					}
-				}				
-				heartBeatTask.reschedule(HEARTBEAT, TimeUnit.SECONDS);
-			}
-		});
-		heartBeatTask.reschedule(10, TimeUnit.SECONDS);
-		
-		
-		
-		/**
-		 * ##############################################################
-		 *                          UPDATE SWITCHES
-		 * ##############################################################                          
-		 */
+		switchService.addOFSwitchListener(this);
+		syncService.addRPCListener(this);
 		
 		try {
 			this.syncService.registerStore("FT_Switches", Scope.GLOBAL);
-			this.storeClient = this.syncService
+			this.storeFT = this.syncService
 					.getStoreClient("FT_Switches",
 							String.class,
 							String.class);
-			this.storeClient.addStoreListener(this);
+			this.storeFT.addStoreListener(this);
 		} catch (SyncException e) {
 			throw new FloodlightModuleException("Error while setting up sync service", e);
 		}
 		
-		ses = threadPoolService.getScheduledExecutor();
-		syncTestTask = new SingletonTask(ses, new Runnable() {
-			@Override
-			public void run() { 				
-				try {
-					storeClient.put(controllerId, getActiveSwitches());
-				} catch (SyncException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
-				syncTestTask.reschedule(6, TimeUnit.SECONDS);
-			}
-		});
-		syncTestTask.reschedule(6, TimeUnit.SECONDS);
-		
-
 	}
 
 	@Override
@@ -259,7 +162,7 @@ IOFSwitchListener
 							type.name()}
 						);*/
 				if(type.name().equals("REMOTE")){
-					String swIds = storeClient.get(k).getValue();
+					String swIds = storeFT.get(k).getValue();
 					logger.debug("REMOTE: key:{}, Value:{}", k, swIds);
 				}
 			} catch (SyncException e) {
@@ -273,19 +176,13 @@ IOFSwitchListener
 	@Override
 	public void switchAdded(DatapathId switchId) {
 		// TODO Auto-generated method stub
-		try {
-			this.storeClient.put(controllerId, getActiveSwitches());
-		} catch (SyncException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
 	}
 
 	@Override
 	public void switchRemoved(DatapathId switchId) {
 		// TODO Auto-generated method stub
 		try {
-			this.storeClient.put(controllerId, getActiveSwitches());
+			this.storeFT.put(controllerId, getActiveSwitches());
 		} catch (SyncException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -296,7 +193,7 @@ IOFSwitchListener
 	public void switchActivated(DatapathId switchId) {
 		// TODO Auto-generated method stub
 		try {
-			this.storeClient.put(controllerId, getActiveSwitches());
+			this.storeFT.put(controllerId, getActiveSwitches());
 		} catch (SyncException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -314,7 +211,7 @@ IOFSwitchListener
 	public void switchChanged(DatapathId switchId) {
 		// TODO Auto-generated method stub
 		try {
-			this.storeClient.put(controllerId, getActiveSwitches());
+			this.storeFT.put(controllerId, getActiveSwitches());
 		} catch (SyncException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -352,6 +249,38 @@ IOFSwitchListener
 		}
 		else
 			logger.info("Reply NULL!");
+	}
+
+	@Override
+	public void disconnectedNode(Short nodeId) {
+		// TODO Auto-generated method stub
+		String swIds=null; 
+		try {
+			swIds = storeFT.get(""+nodeId).getValue();
+			logger.debug("Switches managed by nodeId:{}, Switches:{}", nodeId, swIds);							
+		} catch (SyncException e) {
+			e.printStackTrace();
+		}
+		
+		if(!swIds.equals("")){
+			String swId[] = swIds.split(",");
+			for (int i = 0; i < swId.length; i++) {
+				setSwitchRole(OFControllerRole.ROLE_MASTER, swId[i]);	
+			}	
+		}
+	}
+
+	@Override
+	public void connectedNode(Short nodeId) {
+		// TODO Auto-generated method stub
+		String activeSwicthes = getActiveSwitches();
+		logger.debug("NodeID: {} connected, informing my switches: {}", nodeId, activeSwicthes);
+		try {
+			storeFT.put(controllerId, activeSwicthes);
+		} catch (SyncException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 	
 }
