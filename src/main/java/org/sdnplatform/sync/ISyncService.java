@@ -1,18 +1,13 @@
 package org.sdnplatform.sync;
 
-import java.util.HashMap;
+import net.floodlightcontroller.core.module.IFloodlightService;
 
 import org.sdnplatform.sync.error.SyncException;
 import org.sdnplatform.sync.error.UnknownStoreException;
-import org.sdnplatform.sync.internal.config.ClusterConfig;
 import org.sdnplatform.sync.internal.rpc.IRPCListener;
 
-
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.core.type.TypeReference;
-
-
-import net.floodlightcontroller.core.module.IFloodlightService;
+import com.fasterxml.jackson.databind.JsonNode;
 
 /**
  * The sync service provides a high-performance in-memory database for

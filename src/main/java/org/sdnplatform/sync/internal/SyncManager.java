@@ -6,14 +6,11 @@ import io.netty.util.Timer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.HashMap;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Random;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -21,13 +18,19 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.core.type.TypeReference;
+import net.floodlightcontroller.core.module.FloodlightModuleContext;
+import net.floodlightcontroller.core.module.FloodlightModuleException;
+import net.floodlightcontroller.core.module.IFloodlightService;
+import net.floodlightcontroller.core.util.SingletonTask;
+import net.floodlightcontroller.debugcounter.IDebugCounter;
+import net.floodlightcontroller.debugcounter.IDebugCounterService;
+import net.floodlightcontroller.storage.IStorageSourceService;
+import net.floodlightcontroller.threadpool.IThreadPoolService;
 
 import org.sdnplatform.sync.IClosableIterator;
 import org.sdnplatform.sync.ISyncService;
-import org.sdnplatform.sync.Versioned;
 import org.sdnplatform.sync.IVersion.Occurred;
+import org.sdnplatform.sync.Versioned;
 import org.sdnplatform.sync.error.PersistException;
 import org.sdnplatform.sync.error.SyncException;
 import org.sdnplatform.sync.error.SyncRuntimeException;
@@ -50,22 +53,16 @@ import org.sdnplatform.sync.internal.store.MappingStoreListener;
 import org.sdnplatform.sync.internal.store.SynchronizingStorageEngine;
 import org.sdnplatform.sync.internal.util.ByteArray;
 import org.sdnplatform.sync.internal.version.VectorClock;
-import org.sdnplatform.sync.thrift.SyncMessage;
 import org.sdnplatform.sync.thrift.KeyedValues;
 import org.sdnplatform.sync.thrift.KeyedVersions;
+import org.sdnplatform.sync.thrift.SyncMessage;
 import org.sdnplatform.sync.thrift.SyncOfferMessage;
 import org.sdnplatform.sync.thrift.SyncValueMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import net.floodlightcontroller.core.module.FloodlightModuleContext;
-import net.floodlightcontroller.core.module.FloodlightModuleException;
-import net.floodlightcontroller.core.module.IFloodlightService;
-import net.floodlightcontroller.core.util.SingletonTask;
-import net.floodlightcontroller.debugcounter.IDebugCounter;
-import net.floodlightcontroller.debugcounter.IDebugCounterService;
-import net.floodlightcontroller.storage.IStorageSourceService;
-import net.floodlightcontroller.threadpool.IThreadPoolService;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 
 /**
@@ -468,7 +465,6 @@ public class SyncManager extends AbstractSyncManager {
 		debugCounter = context.getServiceImpl(IDebugCounterService.class);
 		Map<String, String> config = context.getConfigParams(this);
 		storeRegistry = new StoreRegistry(this, config.get("dbPath"));
-		//context.addService(IRPCService.class, this);
 
 		String[] configProviders =
 			{PropertyCCProvider.class.getName(),
@@ -819,13 +815,23 @@ public class SyncManager extends AbstractSyncManager {
 		}
 	}
 
+	
+	/**
+	 * Add a listener to RPC connections on cluster.
+	 * The listener is dispatched at connect or disconnect events. 
+	 * Can be used to monitor connections or disconnections on cluster configs.
+	 */
 	@Override
 	public void addRPCListener(IRPCListener listener) {
 		// TODO Auto-generated method stub
 		rpcService.addRPCListener(listener);
 		
 	}
-
+	/**
+	 * Remove the listener to RPC connections on cluster.
+	 * The listener is dispatched at connect or disconnect events. 
+	 * Can be used to monitor connections or disconnections on cluster configs.
+	 */
 	@Override
 	public void removeRPCListener(IRPCListener listener) {
 		// TODO Auto-generated method stub
