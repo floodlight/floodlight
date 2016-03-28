@@ -539,4 +539,50 @@ public class FirewallTest extends FloodlightTestCase {
         IRoutingDecision decision = IRoutingDecision.rtStore.get(cntx, IRoutingDecision.CONTEXT_DECISION);
         assertEquals(decision.getRoutingAction(), IRoutingDecision.RoutingAction.FORWARD_OR_FLOOD);
     }
+
+    @Test
+    public void testDuplicateLayer2Rule() {
+        FirewallRule rule1 = new FirewallRule();
+        rule1.dl_src = MacAddress.of("00:44:33:22:11:00");
+        rule1.any_dl_src = false;
+        rule1.dl_dst = MacAddress.of("00:11:22:33:44:55");
+        rule1.any_dl_dst = false;
+        rule1.any_dpid = false;
+        rule1.dpid = DatapathId.of(0x0102030405060708L);
+        rule1.any_in_port = false;
+        rule1.in_port = OFPort.LOCAL;
+        rule1.priority = 1;
+        rule1.ruleid = rule1.genID();
+        // Rule same as itself.
+        assertTrue(rule1.isSameAs(rule1));
+
+        FirewallRule rule2 = new FirewallRule();
+        rule2.dl_src = MacAddress.of("00:44:33:22:11:00");
+        rule2.any_dl_src = false;
+        rule2.dl_dst = MacAddress.of("00:11:22:33:44:55");
+        rule2.any_dl_dst = false;
+        rule2.any_dpid = false;
+        rule2.dpid = DatapathId.of(0x0102030405060708L);
+        rule2.any_in_port = false;
+        rule2.in_port = OFPort.LOCAL;
+        rule2.priority = 1;
+        rule2.ruleid = rule2.genID();
+        // Separate object instances, but otherwise identical rule.
+        assertTrue(rule1.isSameAs(rule2));
+
+        // Change dl_src, rules no longer "same"
+        MacAddress tmp = rule2.dl_src;
+        rule2.dl_src = MacAddress.of("08:01:02:03:04:05");
+        rule2.ruleid = rule2.genID();
+        assertFalse(rule1.isSameAs(rule2));
+
+        // Restore dl_src, rules should be "same" again
+        rule2.dl_src = tmp;
+        rule2.ruleid = rule2.genID();
+        assertTrue(rule1.isSameAs(rule2));
+
+        // Change dl_dst, rules no longer "same"
+        rule2.dl_dst = MacAddress.of("00:01:02:03:04:05");
+        assertFalse(rule1.isSameAs(rule2));
+    }
 }
