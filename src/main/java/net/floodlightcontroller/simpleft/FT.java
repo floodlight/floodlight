@@ -2,7 +2,6 @@ package net.floodlightcontroller.simpleft;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 
@@ -74,9 +73,6 @@ IRPCListener
 	@Override
 	public Collection<Class<? extends IFloodlightService>> getModuleServices() {
 		// TODO Auto-generated method stub
-		/*Collection<Class<? extends IFloodlightService>> l = 
-				new ArrayList<Class<? extends IFloodlightService>>();
-		return l;*/
 		return null;
 
 	}
@@ -84,9 +80,6 @@ IRPCListener
 	@Override
 	public Map<Class<? extends IFloodlightService>, IFloodlightService> getServiceImpls() {
 		// TODO Auto-generated method stub
-		/*Map<Class<? extends IFloodlightService>, IFloodlightService> m = 
-				new HashMap<Class<? extends IFloodlightService>, IFloodlightService>();
-		return m;*/
 		return null;
 
 	}
@@ -96,10 +89,8 @@ IRPCListener
 		// TODO Auto-generated method stub
 		Collection<Class<? extends IFloodlightService>> l =
 				new ArrayList<Class<? extends IFloodlightService>>();
-		//l.add(IFloodlightProviderService.class);
 		l.add(IStorageSourceService.class);
 		l.add(ISyncService.class);
-		l.add(IThreadPoolService.class);
 		l.add(IOFSwitchService.class);
 		return l;
 	}
@@ -146,8 +137,6 @@ IRPCListener
 		return null;
 	}
 
-
-
 	@Override
 	public void keysModified(Iterator<String> keys,
 			org.sdnplatform.sync.IStoreListener.UpdateType type) {
@@ -163,7 +152,7 @@ IRPCListener
 						);*/
 				if(type.name().equals("REMOTE")){
 					String swIds = storeFT.get(k).getValue();
-					logger.debug("REMOTE: key:{}, Value:{}", k, swIds);
+					logger.debug("REMOTE: NodeId:{}, Switches:{}", k, swIds);
 				}
 			} catch (SyncException e) {
 				// TODO Auto-generated catch block
@@ -210,8 +199,10 @@ IRPCListener
 	@Override
 	public void switchChanged(DatapathId switchId) {
 		// TODO Auto-generated method stub
+		String switches = getActiveSwitches();
+		if(switches==null)return;
 		try {
-			this.storeFT.put(controllerId, getActiveSwitches());
+			this.storeFT.put(controllerId, switches);
 		} catch (SyncException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -220,14 +211,20 @@ IRPCListener
 
 
 	public String getActiveSwitches(){
+		if(switchService == null)return null;
 		String activeSwitches = "";
 		Iterator<DatapathId> itDpid = switchService.getAllSwitchDpids().iterator();
 		while (itDpid.hasNext()) {
 			DatapathId dpid = itDpid.next();
-			if(switchService.getActiveSwitch(dpid).isActive()){
-				activeSwitches += dpid;
-				if(itDpid.hasNext())
-					activeSwitches += ",";	
+			try{
+				if(switchService.getActiveSwitch(dpid).isActive()){
+					activeSwitches += dpid;
+					if(itDpid.hasNext())
+						activeSwitches += ",";	
+				}
+			}
+			catch(NullPointerException npe){
+				return null;
 			}
 		}
 		return activeSwitches;
@@ -274,7 +271,7 @@ IRPCListener
 	public void connectedNode(Short nodeId) {
 		// TODO Auto-generated method stub
 		String activeSwicthes = getActiveSwitches();
-		logger.debug("NodeID: {} connected, informing my switches: {}", nodeId, activeSwicthes);
+		logger.debug("NodeID: {} connected, my switches: {}", nodeId, activeSwicthes);
 		try {
 			storeFT.put(controllerId, activeSwicthes);
 		} catch (SyncException e) {
