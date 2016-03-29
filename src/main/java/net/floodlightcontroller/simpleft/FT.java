@@ -106,8 +106,6 @@ IRPCListener
 
 		Map<String, String> configParams = context.getConfigParams(FloodlightProvider.class);
 		controllerId = configParams.get("controllerId");
-		
-			
 	}
 
 	@Override
@@ -181,8 +179,10 @@ IRPCListener
 	@Override
 	public void switchActivated(DatapathId switchId) {
 		// TODO Auto-generated method stub
+		String switches = getActiveSwitches();
+		if(switches==null)return;
 		try {
-			this.storeFT.put(controllerId, getActiveSwitches());
+			this.storeFT.put(controllerId, switches);
 		} catch (SyncException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
