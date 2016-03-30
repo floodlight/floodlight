@@ -1,5 +1,10 @@
 /**
  * Tulio Alberton Ribeiro
+ * 
+ * LaSIGE - Large-Scale Informatics Systems Laboratory
+ * 
+ * 03/2016
+ * 
  * Without warrant
  * 
  *    Licensed under the Apache License, Version 2.0 (the "License"); you may
