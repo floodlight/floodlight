@@ -55,6 +55,7 @@ import org.projectfloodlight.openflow.protocol.OFPortStatus;
 import org.projectfloodlight.openflow.protocol.OFQueueGetConfigReply;
 import org.projectfloodlight.openflow.protocol.OFRoleReply;
 import org.projectfloodlight.openflow.protocol.OFRoleRequest;
+import org.projectfloodlight.openflow.protocol.OFRoleStatus;
 import org.projectfloodlight.openflow.protocol.OFSetConfig;
 import org.projectfloodlight.openflow.protocol.OFStatsReply;
 import org.projectfloodlight.openflow.protocol.OFStatsReplyFlags;
@@ -617,6 +618,13 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 		void processOFRoleRequest(OFRoleRequest m) {
 			unhandledMessageWritten(m);
 		}
+		
+		/**
+		 *  Tulio Ribeiro
+		 */
+		void processOFRoleStatus(OFRoleStatus m){
+			unhandledMessageReceived(m);
+		}
 
 		void processOFNiciraControllerRoleRequest(OFNiciraControllerRoleRequest m) {
 			unhandledMessageWritten(m);
@@ -862,6 +870,9 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 				break;
 			case EXPERIMENTER:
 				processOFExperimenter((OFExperimenter) m);
+				break;
+			case ROLE_STATUS:
+				processOFRoleStatus((OFRoleStatus) m);
 				break;
 			default:
 				illegalMessageReceived(m);
@@ -1313,7 +1324,20 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 
 		@Override
 		void enterState(){
-			sendRoleRequest(roleManager.getOFControllerRole());
+			//sendRoleRequest(roleManager.getOFControllerRole());//original
+			/**
+			 * Tulio Ribeiro
+			 * Retrieve role from floodlightdefault.properties configuration file
+			 * swId;Role 00:00:00:00:00:00:00:01;ROLE_SLAVE
+			 * If not defined there, the role will be set as MASTER
+			 */
+			OFControllerRole role = OFControllerRole.ROLE_MASTER;
+			if(OFSwitchManager.switchInitialRole != null)
+				if(OFSwitchManager.switchInitialRole.containsKey(mainConnection.getDatapathId())){
+					role = OFSwitchManager.switchInitialRole.get(mainConnection.getDatapathId());
+					log.info("Defining switch role from config file: {}", role);				
+				}	
+			sendRoleRequest(role);			
 		}
 	}
 
@@ -1412,6 +1436,35 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 		@Override
 		void processOFRoleRequest(OFRoleRequest m) {
 			sendRoleRequest(m);
+		}
+		
+		@Override
+		void processOFRoleStatus(OFRoleStatus m) {
+			/**
+			 *  Tulio Ribeiro
+			 *  
+			 *  Controller roles. 
+			 *  enum ofp_controller_role { 
+			 *  OFPCR_ROLE_NOCHANGE = 	0, Don’t change current role. 
+			 *  OFPCR_ROLE_EQUAL = 		1, Default role, full access. 
+			 *  OFPCR_ROLE_MASTER = 	2, Full access, at most one master. 
+			 *  OFPCR_ROLE_SLAVE = 		3, Read-only access. 
+			 *  };
+			 */
+			//log.info("Processing roleStatus from MasterState...");
+			long role = m.getRole();
+			if(role==3){
+				sendRoleRequest(OFControllerRole.ROLE_SLAVE);
+				/*OFSwitchManager.switchInitialRole.remove(mainConnection.getDatapathId());
+				OFSwitchManager.switchInitialRole.put(mainConnection.getDatapathId(), 
+						OFControllerRole.ROLE_SLAVE);*/
+			}
+			else if (role==2)
+				sendRoleRequest(OFControllerRole.ROLE_MASTER);
+			else if (role==1)
+				sendRoleRequest(OFControllerRole.ROLE_EQUAL);
+			else
+				sendRoleRequest(OFControllerRole.ROLE_NOCHANGE);
 		}
 
 		@Override
@@ -1529,6 +1582,30 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 		@Override
 		void processOFRoleRequest(OFRoleRequest m) {
 			sendRoleRequest(m);
+		}
+		
+		@Override
+		void processOFRoleStatus(OFRoleStatus m) {
+			/**
+			 *  Tulio Ribeiro
+			 *  
+			 *  Controller roles. 
+			 *  enum ofp_controller_role { 
+			 *  OFPCR_ROLE_NOCHANGE = 	0, Don’t change current role. 
+			 *  OFPCR_ROLE_EQUAL = 		1, Default role, full access. 
+			 *  OFPCR_ROLE_MASTER = 	2, Full access, at most one master. 
+			 *  OFPCR_ROLE_SLAVE = 		3, Read-only access. 
+			 *  };
+			 */
+			long role = m.getRole();
+			if(role==3)
+				sendRoleRequest(OFControllerRole.ROLE_SLAVE);
+			else if (role==2)
+				sendRoleRequest(OFControllerRole.ROLE_MASTER);
+			else if (role==1)
+				sendRoleRequest(OFControllerRole.ROLE_EQUAL);
+			else
+				sendRoleRequest(OFControllerRole.ROLE_NOCHANGE);
 		}
 
 		@Override

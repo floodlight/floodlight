@@ -720,6 +720,23 @@ public class Controller implements IFloodlightProviderService, IStorageSourceLis
         }
         log.info("Number of worker threads set to {}", this.workerThreads);
         
+        
+        /**
+         * Tulio Ribeiro
+         */
+        String controllerId = configParams.get("controllerId");
+        if (!Strings.isNullOrEmpty(controllerId)) {
+            try {
+            	this.controllerId = controllerId;
+            } catch (Exception e) {
+                log.error("Invalid controlelrId {}, {}", controllerId, e);
+                throw new FloodlightModuleException("Invalid controllerId of " + controllerId + " in config");
+            }
+        }        
+        log.info("ControllerId set to {}", this.controllerId);
+        
+        
+        
         String addresses = configParams.get("openFlowAddresses");
         if (!Strings.isNullOrEmpty(addresses)) {
             try {

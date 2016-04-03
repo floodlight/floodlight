@@ -78,7 +78,7 @@ public class SyncManagerTest {
         fmc.addConfigParam(syncManager, "configProviders", 
                            PropertyCCProvider.class.getName());
         fmc.addConfigParam(syncManager, "nodes", nodeString);
-        fmc.addConfigParam(syncManager, "thisNode", ""+thisNode.getNodeId());
+        fmc.addConfigParam(syncManager, "thisNodeId", ""+thisNode.getNodeId());
         fmc.addConfigParam(syncManager, "persistenceEnabled", "false");
         fmc.addConfigParam(syncManager, "authScheme", "CHALLENGE_RESPONSE");
         fmc.addConfigParam(syncManager, "keyStorePath", 

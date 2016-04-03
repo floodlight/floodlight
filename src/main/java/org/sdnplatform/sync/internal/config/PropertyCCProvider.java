@@ -21,7 +21,7 @@ public class PropertyCCProvider implements IClusterConfigProvider {
 
     @Override
     public ClusterConfig getConfig() throws SyncException {
-        if (!config.containsKey("nodes") || !config.containsKey("thisNode"))
+    	if (!config.containsKey("nodes") || !config.containsKey("thisNodeId"))
             throw new SyncException("Configuration properties nodes or " +
                     "thisNode not set");
 
@@ -34,10 +34,10 @@ public class PropertyCCProvider implements IClusterConfigProvider {
         
         Short thisNodeId;
         try {
-            thisNodeId = Short.parseShort(config.get("thisNode"));
+            thisNodeId = Short.parseShort(config.get("thisNodeId"));
         } catch (NumberFormatException e) {
             throw new SyncException("Failed to parse thisNode " +
-                    "node ID: " + config.get("thisNode"), e);
+                    "node ID: " + config.get("thisNodeId"), e);
         }
         try {
             ObjectMapper mapper = new ObjectMapper();
@@ -49,6 +49,7 @@ public class PropertyCCProvider implements IClusterConfigProvider {
                                      keyStorePath, 
                                      keyStorePassword);
         } catch (Exception e) {
+        	e.printStackTrace();
             throw new SyncException("Could not update " +
                     "configuration", e);
         }

@@ -47,8 +47,7 @@ public class ClientTest {
     
     @Before
     public void setUp() throws Exception {
-        keyStoreFile = new File(keyStoreFolder.getRoot(), 
-                "keystore.jceks");
+        keyStoreFile = new File(keyStoreFolder.getRoot(), "keystore.jceks");
         CryptoUtil.writeSharedSecret(keyStoreFile.getAbsolutePath(), 
                                      keyStorePassword, 
                                      CryptoUtil.secureRandom(16));
@@ -68,7 +67,7 @@ public class ClientTest {
         fmc.addService(IDebugEventService.class, new MockDebugEventService());
         
         fmc.addConfigParam(syncManager, "nodes", nodeString);
-        fmc.addConfigParam(syncManager, "thisNode", ""+1);
+        fmc.addConfigParam(syncManager, "thisNodeId", ""+1);
         fmc.addConfigParam(syncManager, "persistenceEnabled", "false");
         fmc.addConfigParam(syncManager, "authScheme", "CHALLENGE_RESPONSE");
         fmc.addConfigParam(syncManager, "keyStorePath", 
