@@ -33,7 +33,6 @@ import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.storage.IStorageSourceService;
-import net.floodlightcontroller.threadpool.IThreadPoolService;
 
 import org.projectfloodlight.openflow.protocol.OFControllerRole;
 import org.projectfloodlight.openflow.protocol.OFMessage;
@@ -60,12 +59,8 @@ IRPCListener
 
 	private ISyncService syncService;
 	private IStoreClient<String, String> storeFT;
-	
 	protected static Logger logger = LoggerFactory.getLogger(FT.class);
-	
 	protected static IOFSwitchService switchService;
-	private static UtilDurable utilDurable;
-			
 	private String controllerId;
 
 	@Override
@@ -90,14 +85,12 @@ IRPCListener
 	public Collection<Class<? extends IFloodlightService>> getModuleServices() {
 		// TODO Auto-generated method stub
 		return null;
-
 	}
 
 	@Override
 	public Map<Class<? extends IFloodlightService>, IFloodlightService> getServiceImpls() {
 		// TODO Auto-generated method stub
 		return null;
-
 	}
 
 	@Override
@@ -118,7 +111,6 @@ IRPCListener
 		
 		this.syncService = context.getServiceImpl(ISyncService.class);
 		switchService = context.getServiceImpl(IOFSwitchService.class);
-		utilDurable = new UtilDurable();
 
 		Map<String, String> configParams = context.getConfigParams(FloodlightProvider.class);
 		controllerId = configParams.get("controllerId");
@@ -141,7 +133,6 @@ IRPCListener
 		} catch (SyncException e) {
 			throw new FloodlightModuleException("Error while setting up sync service", e);
 		}
-		
 	}
 
 	@Override
@@ -184,51 +175,46 @@ IRPCListener
 	@Override
 	public void switchRemoved(DatapathId switchId) {
 		// TODO Auto-generated method stub
-		try {
-			this.storeFT.put(controllerId, getActiveSwitches());
-		} catch (SyncException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+		String activeSwitches = getActiveSwitchesAndUpdateSyncInfo();
+		logger.debug("Switch REMOVED: {}, Syncing: {}", switchId, activeSwitches);
 	}
 
 	@Override
 	public void switchActivated(DatapathId switchId) {
 		// TODO Auto-generated method stub
-		String switches = getActiveSwitches();
-		if(switches==null)return;
-		try {
-			this.storeFT.put(controllerId, switches);
-		} catch (SyncException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+		String activeSwitches = getActiveSwitchesAndUpdateSyncInfo();
+		logger.debug("Switch ACTIVATED: {}, Syncing: {}", switchId, activeSwitches);
+		
 	}
 
 	@Override
 	public void switchPortChanged(DatapathId switchId, OFPortDesc port,
 			PortChangeType type) {
 		// TODO Auto-generated method stub
-		
+		logger.debug("Switch Port CHANGED: {}", switchId);
 	}
 
 	@Override
 	public void switchChanged(DatapathId switchId) {
 		// TODO Auto-generated method stub
-		String switches = getActiveSwitches();
-		if(switches==null)return;
-		try {
-			this.storeFT.put(controllerId, switches);
-		} catch (SyncException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+		String activeSwitches = getActiveSwitchesAndUpdateSyncInfo();
+		logger.debug("Switch CHANGED: {}, Syncing: {}", switchId, activeSwitches);
+		
+	}
+	
+	@Override
+	public void switchDeactivated(DatapathId switchId) {
+		// TODO Auto-generated method stub
+		String activeSwitches = getActiveSwitchesAndUpdateSyncInfo();
+		logger.debug("Switch DEACTIVATED: {}, Syncing: {}", switchId, activeSwitches);
 	}
 
 
-	public String getActiveSwitches(){
-		if(switchService == null)return null;
+	public String getActiveSwitchesAndUpdateSyncInfo(){
 		String activeSwitches = "";
+		if(switchService == null)
+			return "";
+		
 		Iterator<DatapathId> itDpid = switchService.getAllSwitchDpids().iterator();
 		while (itDpid.hasNext()) {
 			DatapathId dpid = itDpid.next();
@@ -240,14 +226,24 @@ IRPCListener
 				}
 			}
 			catch(NullPointerException npe){
-				return null;
+				return "";
 			}
 		}
-		return activeSwitches;
+		
+		if(activeSwitches.equals(""))
+			return "";
+		
+		try {
+			this.storeFT.put(controllerId, activeSwitches);
+			return activeSwitches;
+		} catch (SyncException e) {
+			e.printStackTrace();
+			return "";
+		}
+		
 	}
-
+	
 	public void setSwitchRole(OFControllerRole role, String swId){
-
 		IOFSwitch sw = switchService.getActiveSwitch(DatapathId.of(swId));
 		OFRoleReply reply=null;
 		UtilDurable utilDurable = new UtilDurable();
@@ -275,7 +271,7 @@ IRPCListener
 			e.printStackTrace();
 		}
 		
-		if(!swIds.equals("")){
+		if(swIds != null){
 			String swId[] = swIds.split(",");
 			for (int i = 0; i < swId.length; i++) {
 				setSwitchRole(OFControllerRole.ROLE_MASTER, swId[i]);	
@@ -286,14 +282,8 @@ IRPCListener
 	@Override
 	public void connectedNode(Short nodeId) {
 		// TODO Auto-generated method stub
-		String activeSwicthes = getActiveSwitches();
-		logger.debug("NodeID: {} connected, my switches: {}", nodeId, activeSwicthes);
-		try {
-			storeFT.put(controllerId, activeSwicthes);
-		} catch (SyncException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+		String activeSwicthes = getActiveSwitchesAndUpdateSyncInfo();
+		logger.debug("NodeID:{} connected, sending my Switches: {}", nodeId, activeSwicthes);
 	}
 	
 }

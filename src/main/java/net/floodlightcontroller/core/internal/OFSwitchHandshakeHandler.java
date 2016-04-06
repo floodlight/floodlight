@@ -1453,12 +1453,8 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 			 */
 			//log.info("Processing roleStatus from MasterState...");
 			long role = m.getRole();
-			if(role==3){
+			if(role==3)
 				sendRoleRequest(OFControllerRole.ROLE_SLAVE);
-				/*OFSwitchManager.switchInitialRole.remove(mainConnection.getDatapathId());
-				OFSwitchManager.switchInitialRole.put(mainConnection.getDatapathId(), 
-						OFControllerRole.ROLE_SLAVE);*/
-			}
 			else if (role==2)
 				sendRoleRequest(OFControllerRole.ROLE_MASTER);
 			else if (role==1)

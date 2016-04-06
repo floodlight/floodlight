@@ -121,4 +121,10 @@ public class DHCPSwitchFlowSetter implements IFloodlightModule, IOFSwitchListene
 	@Override
 	public void switchChanged(DatapathId switchId) {
 	}
+
+	@Override
+	public void switchDeactivated(DatapathId switchId) {
+		// TODO Auto-generated method stub
+		
+	}
 }
