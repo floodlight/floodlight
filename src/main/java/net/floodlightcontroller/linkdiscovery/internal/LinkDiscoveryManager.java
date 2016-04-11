@@ -2287,4 +2287,10 @@ IFloodlightModule, IInfoProvider {
 			//no-op
 		}
 	}
+
+	@Override
+	public void switchDeactivated(DatapathId switchId) {
+		// TODO Auto-generated method stub
+		
+	}
 }

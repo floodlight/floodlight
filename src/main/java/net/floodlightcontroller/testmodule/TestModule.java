@@ -280,4 +280,10 @@ public class TestModule implements IFloodlightModule, IOFSwitchListener {
 		// TODO Auto-generated method stub
 	}
 
+	@Override
+	public void switchDeactivated(DatapathId switchId) {
+		// TODO Auto-generated method stub
+		
+	}
+
 }

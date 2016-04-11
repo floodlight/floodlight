@@ -573,4 +573,10 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 	@Override
 	public void switchChanged(DatapathId switchId) {
 	}
+
+	@Override
+	public void switchDeactivated(DatapathId switchId) {
+		// TODO Auto-generated method stub
+		
+	}
 }

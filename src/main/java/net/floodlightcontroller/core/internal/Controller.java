@@ -235,6 +235,12 @@ public class Controller implements IFloodlightProviderService, IStorageSourceLis
         @Override
         public void switchChanged(DatapathId switchId) {
         }
+
+		@Override
+		public void switchDeactivated(DatapathId switchId) {
+			// TODO Auto-generated method stub
+			
+		}
     }
                 
     /**

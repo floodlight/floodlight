@@ -392,7 +392,8 @@ IHAListener, IFloodlightModule, IOFSwitchService, IStoreListener<DatapathId> {
 						listener.switchActivated(swId);
 						break;
 					case DEACTIVATED:
-						// ignore
+						// Called on master to slave transitions, ROLE_STATUS message.
+						listener.switchDeactivated(swId);
 						break;
 					case OTHERCHANGE:
 						counters.switchOtherChange
