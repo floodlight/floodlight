@@ -1445,7 +1445,7 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 			 *  
 			 *  Controller roles. 
 			 *  enum ofp_controller_role { 
-			 *  OFPCR_ROLE_NOCHANGE = 	0, Don’t change current role. 
+			 *  OFPCR_ROLE_NOCHANGE = 	0, Don't change current role. 
 			 *  OFPCR_ROLE_EQUAL = 		1, Default role, full access. 
 			 *  OFPCR_ROLE_MASTER = 	2, Full access, at most one master. 
 			 *  OFPCR_ROLE_SLAVE = 		3, Read-only access. 
@@ -1587,7 +1587,7 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 			 *  
 			 *  Controller roles. 
 			 *  enum ofp_controller_role { 
-			 *  OFPCR_ROLE_NOCHANGE = 	0, Don’t change current role. 
+			 *  OFPCR_ROLE_NOCHANGE = 	0, Don't change current role. 
 			 *  OFPCR_ROLE_EQUAL = 		1, Default role, full access. 
 			 *  OFPCR_ROLE_MASTER = 	2, Full access, at most one master. 
 			 *  OFPCR_ROLE_SLAVE = 		3, Read-only access. 
