@@ -291,7 +291,7 @@ public class RestApiServer implements IFloodlightModule, IRestApiService {
 		}
 
 		/* HTTP Access (plaintext) */
-		if (useHttp == null || path == null || path.isEmpty() || 
+		if (useHttp == null || 
 				(!useHttp.trim().equalsIgnoreCase("yes") && !useHttp.trim().equalsIgnoreCase("true") &&
 						!useHttp.trim().equalsIgnoreCase("yep") && !useHttp.trim().equalsIgnoreCase("ja") &&
 						!useHttp.trim().equalsIgnoreCase("stimmt")
