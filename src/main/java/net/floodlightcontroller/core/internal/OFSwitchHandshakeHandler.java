@@ -983,9 +983,13 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 			 * log a warning, but proceed.
 			 */
 			if (m.getErrType() == OFErrorType.BAD_REQUEST &&
-					((OFBadRequestErrorMsg) m).getCode() == OFBadRequestCode.BAD_TYPE &&
+					((OFBadRequestErrorMsg) m).getCode() == OFBadRequestCode.BAD_TYPE) {
+				if (((OFBadRequestErrorMsg) m).getData().getParsedMessage() != null &&
 					((OFBadRequestErrorMsg) m).getData().getParsedMessage().get() instanceof OFBarrierRequest) {
-				log.warn("Switch does not support Barrier Request messages. Could be an HP ProCurve.");
+					log.warn("Switch does not support Barrier Request messages. Could be an HP ProCurve.");
+				} else if (((OFBadRequestErrorMsg) m).getData().getParsedMessage() == null) {
+					log.warn("Switch may not support Barrier Request messages (we can't know for sure if it's a barrier or not). Could be an Brocade...");
+				}
 			} else {
 				logErrorDisconnect(m);
 			}
