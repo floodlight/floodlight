@@ -14,6 +14,7 @@ import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.types.OFBufferId;
 import org.projectfloodlight.openflow.types.OFPort;
+import org.projectfloodlight.openflow.types.OFVlanVidMatch;
 
 /**
  * Tools to help work with OFMessages.
@@ -32,6 +33,28 @@ public class OFMessageUtils {
 	 * Prevent instantiation
 	 */
 	private OFMessageUtils() {};
+	
+	/**
+	 * Get the ingress port of a packet-in message. The manner in which
+	 * this is done depends on the OpenFlow version. OF1.0 and 1.1 have
+	 * a specific in_port field, while OF1.2+ store this information in
+	 * the packet-in's match field.
+	 * 
+	 * @param pi, the OFPacketIn
+	 * @return the ingress OFPort
+	 */
+	public static OFPort getInPort(OFPacketIn pi) {
+		return pi.getVersion().compareTo(OFVersion.OF_12) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT);
+	}
+	
+	/**
+	 * Get the VLAN on which this packet-in message was received.
+	 * @param pi, the OFPacketIn
+	 * @return the VLAN
+	 */
+	public static OFVlanVidMatch getVlan(OFPacketIn pi) {
+		return pi.getMatch().get(MatchField.VLAN_VID) == null ? OFVlanVidMatch.UNTAGGED : pi.getMatch().get(MatchField.VLAN_VID);
+	}
 	
 	/**
 	 * Returns true if each object is deeply-equal in the same manner that

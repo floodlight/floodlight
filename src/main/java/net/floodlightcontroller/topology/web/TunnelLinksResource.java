@@ -18,8 +18,8 @@ package net.floodlightcontroller.topology.web;
 
 import java.util.Set;
 
+import net.floodlightcontroller.core.types.NodePortTuple;
 import net.floodlightcontroller.topology.ITopologyService;
-import net.floodlightcontroller.topology.NodePortTuple;
 
 import org.restlet.resource.Get;
 import org.restlet.resource.ServerResource;
