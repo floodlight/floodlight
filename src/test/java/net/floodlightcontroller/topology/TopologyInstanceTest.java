@@ -135,7 +135,7 @@ public class TopologyInstanceTest {
                 expected.add(npt);
             }
             TopologyInstance ti = topologyManager.getCurrentInstance(tunnelsEnabled);
-            Set<NodePortTuple> computed = ti.getBroadcastNodePortsInCluster(npt.nodeId);
+            Set<NodePortTuple> computed = ti.getBroadcastNodePortsInCluster(npt.getNodeId());
             log.info("computed: {}", computed);
             if (computed != null)
                 assertTrue(computed.equals(expected));

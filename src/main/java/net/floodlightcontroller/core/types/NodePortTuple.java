@@ -32,8 +32,8 @@ import org.projectfloodlight.openflow.types.OFPort;
  */
 
 public class NodePortTuple implements Comparable<NodePortTuple> {
-    protected DatapathId nodeId; // switch DPID
-    protected OFPort portId; // switch port id
+    private DatapathId nodeId; // switch DPID
+    private OFPort portId; // switch port id
 
     /**
      * Creates a NodePortTuple
