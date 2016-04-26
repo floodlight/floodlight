@@ -30,7 +30,6 @@ import net.floodlightcontroller.routing.BroadcastTree;
 import net.floodlightcontroller.routing.Link;
 import net.floodlightcontroller.routing.Route;
 import net.floodlightcontroller.routing.RouteId;
-import net.floodlightcontroller.servicechaining.ServiceChain;
 import net.floodlightcontroller.util.ClusterDFS;
 
 import org.projectfloodlight.openflow.types.DatapathId;
@@ -861,7 +860,7 @@ public class TopologyInstance {
 	/*
 	* Calculates E2E route
 	*/
-    protected Route getRoute(ServiceChain sc, DatapathId srcId, OFPort srcPort,
+    protected Route getRoute(DatapathId srcId, OFPort srcPort,
             DatapathId dstId, OFPort dstPort, U64 cookie) {
         // Return null if the route source and destination are the
         // same switch ports.
