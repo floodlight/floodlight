@@ -696,7 +696,7 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 	public Route getRoute(DatapathId src, OFPort srcPort, DatapathId dst, OFPort dstPort, U64 cookie,
 			boolean tunnelEnabled) {
 		TopologyInstance ti = getCurrentInstance(tunnelEnabled);
-		return ti.getRoute(null, src, srcPort, dst, dstPort, cookie);
+		return ti.getRoute(src, srcPort, dst, dstPort, cookie);
 	}
 
 	@Override
