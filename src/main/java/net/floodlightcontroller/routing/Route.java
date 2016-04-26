@@ -22,7 +22,7 @@ import java.util.List;
 
 import org.projectfloodlight.openflow.types.DatapathId;
 
-import net.floodlightcontroller.topology.NodePortTuple;
+import net.floodlightcontroller.core.types.NodePortTuple;
 
 /**
  * Represents a route between two switches

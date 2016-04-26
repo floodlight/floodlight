@@ -21,8 +21,8 @@ import java.util.List;
 import java.util.Set;
 
 import net.floodlightcontroller.core.internal.IOFSwitchService;
+import net.floodlightcontroller.core.types.NodePortTuple;
 import net.floodlightcontroller.topology.ITopologyService;
-import net.floodlightcontroller.topology.NodePortTuple;
 
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFPort;

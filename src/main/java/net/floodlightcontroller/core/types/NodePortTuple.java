@@ -14,7 +14,7 @@
  *    under the License.
  **/
 
-package net.floodlightcontroller.topology;
+package net.floodlightcontroller.core.types;
 
 import net.floodlightcontroller.core.web.serializers.DPIDSerializer;
 

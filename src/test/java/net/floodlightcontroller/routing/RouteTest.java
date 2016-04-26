@@ -23,9 +23,9 @@ import org.junit.Test;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFPort;
 
+import net.floodlightcontroller.core.types.NodePortTuple;
 import net.floodlightcontroller.routing.Route;
 import net.floodlightcontroller.test.FloodlightTestCase;
-import net.floodlightcontroller.topology.NodePortTuple;
 
 /**
  *

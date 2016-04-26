@@ -14,8 +14,8 @@ import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.VlanVid;
 
-import net.floodlightcontroller.devicemanager.IDeviceService.DeviceField;
 import net.floodlightcontroller.devicemanager.SwitchPort;
+import net.floodlightcontroller.devicemanager.IDeviceService.DeviceField;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 

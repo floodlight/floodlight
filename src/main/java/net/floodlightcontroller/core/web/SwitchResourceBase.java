@@ -145,6 +145,7 @@ public class SwitchResourceBase extends ServerResource {
 			case METER_CONFIG:
 				if (sw.getOFFactory().getVersion().compareTo(OFVersion.OF_13) >= 0) {
 					req = sw.getOFFactory().buildMeterConfigStatsRequest()
+							.setMeterId(0xffFFffFF)
 							.build();
 				}
 				break;
