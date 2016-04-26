@@ -29,6 +29,7 @@ import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.test.MockFloodlightProvider;
 import net.floodlightcontroller.core.test.MockSwitchManager;
 import net.floodlightcontroller.core.test.MockThreadPoolService;
+import net.floodlightcontroller.core.types.NodePortTuple;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
 import net.floodlightcontroller.debugcounter.MockDebugCounterService;
 import net.floodlightcontroller.debugevent.IDebugEventService;
@@ -36,7 +37,6 @@ import net.floodlightcontroller.debugevent.MockDebugEventService;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscovery;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryService;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
-import net.floodlightcontroller.topology.NodePortTuple;
 import net.floodlightcontroller.topology.TopologyInstance;
 import net.floodlightcontroller.topology.TopologyManager;
 
@@ -135,7 +135,7 @@ public class TopologyInstanceTest {
                 expected.add(npt);
             }
             TopologyInstance ti = topologyManager.getCurrentInstance(tunnelsEnabled);
-            Set<NodePortTuple> computed = ti.getBroadcastNodePortsInCluster(npt.nodeId);
+            Set<NodePortTuple> computed = ti.getBroadcastNodePortsInCluster(npt.getNodeId());
             log.info("computed: {}", computed);
             if (computed != null)
                 assertTrue(computed.equals(expected));

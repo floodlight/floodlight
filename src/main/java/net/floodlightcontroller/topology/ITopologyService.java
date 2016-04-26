@@ -24,10 +24,11 @@ import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFPort;
 
 import net.floodlightcontroller.core.module.IFloodlightService;
+import net.floodlightcontroller.core.types.NodePortTuple;
 import net.floodlightcontroller.routing.Link;
 
 public interface ITopologyService extends IFloodlightService  {
-
+	
 	/*******************************************************
 	 * GENERAL TOPOLOGY FUNCTIONS
 	 *******************************************************/

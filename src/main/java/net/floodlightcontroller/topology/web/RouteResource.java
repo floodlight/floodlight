@@ -18,9 +18,9 @@ package net.floodlightcontroller.topology.web;
 
 import java.util.List;
 
+import net.floodlightcontroller.core.types.NodePortTuple;
 import net.floodlightcontroller.routing.IRoutingService;
 import net.floodlightcontroller.routing.Route;
-import net.floodlightcontroller.topology.NodePortTuple;
 
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFPort;
@@ -44,7 +44,7 @@ public class RouteResource extends ServerResource {
         String srcPort = (String) getRequestAttributes().get("src-port");
         String dstDpid = (String) getRequestAttributes().get("dst-dpid");
         String dstPort = (String) getRequestAttributes().get("dst-port");
-
+        
         log.debug( srcDpid + "--" + srcPort + "--" + dstDpid + "--" + dstPort);
 
         DatapathId longSrcDpid = DatapathId.of(srcDpid);

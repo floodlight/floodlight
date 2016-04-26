@@ -14,6 +14,7 @@ import net.floodlightcontroller.statistics.web.SwitchPortBandwidthSerializer;
 public class SwitchPortBandwidth {
 	private DatapathId id;
 	private OFPort pt;
+	private U64 speed;
 	private U64 rx;
 	private U64 tx;
 	private Date time;
@@ -21,9 +22,10 @@ public class SwitchPortBandwidth {
 	private U64 txValue;
 	
 	private SwitchPortBandwidth() {}
-	private SwitchPortBandwidth(DatapathId d, OFPort p, U64 rx, U64 tx, U64 rxValue, U64 txValue) {
+	private SwitchPortBandwidth(DatapathId d, OFPort p, U64 s, U64 rx, U64 tx, U64 rxValue, U64 txValue) {
 		id = d;
 		pt = p;
+		speed = s;
 		this.rx = rx;
 		this.tx = tx;
 		time = new Date();
@@ -31,12 +33,15 @@ public class SwitchPortBandwidth {
 		this.txValue = txValue;
 	}
 	
-	public static SwitchPortBandwidth of(DatapathId d, OFPort p, U64 rx, U64 tx, U64 rxValue, U64 txValue) {
+	public static SwitchPortBandwidth of(DatapathId d, OFPort p, U64 s, U64 rx, U64 tx, U64 rxValue, U64 txValue) {
 		if (d == null) {
 			throw new IllegalArgumentException("Datapath ID cannot be null");
 		}
 		if (p == null) {
 			throw new IllegalArgumentException("Port cannot be null");
+		}
+		if (s == null) {
+			throw new IllegalArgumentException("Link speed cannot be null");
 		}
 		if (rx == null) {
 			throw new IllegalArgumentException("RX bandwidth cannot be null");
@@ -50,7 +55,7 @@ public class SwitchPortBandwidth {
 		if (txValue == null) {
 			throw new IllegalArgumentException("TX value cannot be null");
 		}
-		return new SwitchPortBandwidth(d, p, rx, tx, rxValue, txValue);
+		return new SwitchPortBandwidth(d, p, s, rx, tx, rxValue, txValue);
 	}
 	
 	public DatapathId getSwitchId() {
@@ -59,6 +64,10 @@ public class SwitchPortBandwidth {
 	
 	public OFPort getSwitchPort() {
 		return pt;
+	}
+	
+	public U64 getLinkSpeedBitsPerSec() {
+		return speed;
 	}
 	
 	public U64 getBitsPerSecondRx() {

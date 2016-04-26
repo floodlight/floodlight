@@ -6,7 +6,7 @@ import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFPort;
 
 import net.floodlightcontroller.core.module.IFloodlightService;
-import net.floodlightcontroller.topology.NodePortTuple;
+import net.floodlightcontroller.core.types.NodePortTuple;
 
 public interface IStatisticsService extends IFloodlightService {
 
