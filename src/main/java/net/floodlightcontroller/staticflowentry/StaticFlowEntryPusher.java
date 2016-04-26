@@ -998,4 +998,10 @@ implements IOFSwitchListener, IFloodlightModule, IStaticFlowEntryPusherService, 
 			deleteAllFlows();
 		}
 	}
+
+	@Override
+	public void switchDeactivated(DatapathId switchId) {
+		// TODO Auto-generated method stub
+		
+	}
 }

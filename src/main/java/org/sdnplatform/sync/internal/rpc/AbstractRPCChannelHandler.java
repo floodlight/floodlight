@@ -335,6 +335,7 @@ public abstract class AbstractRPCChannelHandler extends ChannelInboundHandlerAda
             throw new AuthException("No authentication data in " + 
                     "handshake message");
         }
+        
         if (cr.isSetResponse()) {
             authenticateResponse(currentChallenge, cr.getResponse());
             currentChallenge = null;
@@ -348,8 +349,7 @@ public abstract class AbstractRPCChannelHandler extends ChannelInboundHandlerAda
             header.setTransactionId(getTransactionId());
             m.setHeader(header);
             SyncMessage bsm = new SyncMessage(MessageType.HELLO);
-            bsm.setHello(m);
-
+            bsm.setHello(m); 
             AuthChallengeResponse reply = new AuthChallengeResponse();
             reply.setResponse(generateResponse(cr.getChallenge()));
             m.setAuthChallengeResponse(reply);
@@ -622,7 +622,7 @@ public abstract class AbstractRPCChannelHandler extends ChannelInboundHandlerAda
     }
     
     private String generateResponse(String challenge) throws AuthException {
-        byte[] secretBytes = getSharedSecret();
+    	byte[] secretBytes = getSharedSecret();
         if (secretBytes == null) return null;
 
         SecretKeySpec signingKey = 
@@ -631,9 +631,9 @@ public abstract class AbstractRPCChannelHandler extends ChannelInboundHandlerAda
         try {
             mac = Mac.getInstance("HmacSHA1");
         } catch (NoSuchAlgorithmException e) {
-            throw new AuthException("Could not initialize HmacSHA1 algorithm", 
-                                    e);
+            throw new AuthException("Could not initialize HmacSHA1 algorithm", e);
         }
+        
         try {
             mac.init(signingKey);
             byte[] output = 

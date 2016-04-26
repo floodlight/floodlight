@@ -417,7 +417,7 @@ IFloodlightModule, IInfoProvider {
 		byte[] data = ethernet.serialize();
 		OFPacketOut.Builder pob = iofSwitch.getOFFactory().buildPacketOut();
 		pob.setBufferId(OFBufferId.NO_BUFFER);
-		pob.setInPort(OFPort.ANY);
+		pob.setInPort(OFPort.CONTROLLER);
 
 		// set data and data length
 		pob.setData(data);
@@ -2286,5 +2286,11 @@ IFloodlightModule, IInfoProvider {
 		public void transitionToStandby() {
 			//no-op
 		}
+	}
+
+	@Override
+	public void switchDeactivated(DatapathId switchId) {
+		// TODO Auto-generated method stub
+		
 	}
 }

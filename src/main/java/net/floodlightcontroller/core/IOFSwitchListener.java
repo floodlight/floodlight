@@ -51,7 +51,7 @@ public interface IOFSwitchListener {
     public void switchAdded(DatapathId switchId);
 
     /**
-     * Fired when a switch disconnects from the cluster ,
+     * Fired when a switch disconnects from the cluster,
      * @param switchId the datapath Id of the switch
      */
     public void switchRemoved(DatapathId switchId);
@@ -88,4 +88,14 @@ public interface IOFSwitchListener {
      * @param switchId
      */
     public void switchChanged(DatapathId switchId);
+    
+    
+    /**
+     * Fired when receive a ROLE_STATUS message, 
+     * TODO: At Master to Slave transitions, switch become deactivated. 
+     * @param switchId
+     */
+    public void switchDeactivated(DatapathId switchId);
+    
+    
 }

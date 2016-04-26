@@ -307,7 +307,9 @@ public class Ethernet extends BasePacket {
                 this.payload = new Data(data);
             }
         } else {
-            this.payload = new Data(data);
+            byte[] buf = new byte[bb.remaining()];
+            bb.get(buf);
+            this.payload = new Data(buf);
         }
         this.payload.setParent(this);
         return this;

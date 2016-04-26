@@ -51,8 +51,7 @@ public class BootstrapTest {
 
         int curPort = 6699;
         
-        String keyStorePath = new File(dbFolder.getRoot(), 
-                                       "keystore.jceks").getAbsolutePath();
+        String keyStorePath = new File(dbFolder.getRoot(), "keystore.jceks").getAbsolutePath();
         String keyStorePassword = "bootstrapping is fun!";
         CryptoUtil.writeSharedSecret(keyStorePath, 
                                      keyStorePassword, 
