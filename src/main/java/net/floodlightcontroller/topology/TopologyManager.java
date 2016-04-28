@@ -315,14 +315,6 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 		ldUpdates.addAll(updateList);
 	}
 
-	@Override
-	public void linkDiscoveryUpdate(LDUpdate update) {
-		if (log.isTraceEnabled()) {
-			log.trace("Queuing update: {}", update);
-		}
-		ldUpdates.add(update);
-	}
-
 	// ****************
 	// ITopologyService
 	// ****************

@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -41,6 +42,8 @@ import net.floodlightcontroller.debugcounter.IDebugCounterService;
 import net.floodlightcontroller.devicemanager.IDevice;
 import net.floodlightcontroller.devicemanager.IDeviceService;
 import net.floodlightcontroller.devicemanager.SwitchPort;
+import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryListener;
+import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryService;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.packet.IPv6;
@@ -59,6 +62,7 @@ import net.floodlightcontroller.util.OFPortModeTuple;
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
 import org.projectfloodlight.openflow.protocol.OFFlowModCommand;
 import org.projectfloodlight.openflow.protocol.OFGroupType;
+import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.OFPacketOut;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
@@ -82,7 +86,7 @@ import org.projectfloodlight.openflow.types.VlanVid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class Forwarding extends ForwardingBase implements IFloodlightModule, IOFSwitchListener {
+public class Forwarding extends ForwardingBase implements IFloodlightModule, IOFSwitchListener, ILinkDiscoveryListener {
 	protected static Logger log = LoggerFactory.getLogger(Forwarding.class);
 
 	@Override
@@ -141,7 +145,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 		.setBufferId(OFBufferId.NO_BUFFER)
 		.setMatch(m)
 		.setPriority(FLOWMOD_DEFAULT_PRIORITY);
-		
+
 		FlowModUtils.setActions(fmb, actions, sw);
 
 		try {
@@ -160,7 +164,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 		OFPort inPort = (pi.getVersion().compareTo(OFVersion.OF_12) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT));
 		IDevice dstDevice = IDeviceService.fcStore.get(cntx, IDeviceService.CONTEXT_DST_DEVICE);
 		DatapathId source = sw.getId();
-				
+
 		if (dstDevice != null) {
 			IDevice srcDevice = IDeviceService.fcStore.get(cntx, IDeviceService.CONTEXT_SRC_DEVICE);
 
@@ -168,7 +172,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 				log.error("No device entry found for source device. Is the device manager running? If so, report bug.");
 				return;
 			}
-			
+
 			if (FLOOD_ALL_ARP_PACKETS && 
 					IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD).getEtherType() 
 					== EthType.ARP) {
@@ -190,7 +194,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 				log.info("Both source and destination are on the same switch/port {}/{}. Action = NOP", sw.toString(), inPort);
 				return;
 			}
-	
+
 			SwitchPort[] dstDaps = dstDevice.getAttachmentPoints();
 			SwitchPort dstDap = null;
 
@@ -223,14 +227,14 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 				doFlood(sw, pi, cntx);
 				return; 
 			}
-			
+
 			/* It's possible that we learned packed destination while it was in flight */
 			if (!topologyService.isEdge(source, inPort)) {	
 				log.debug("Packet destination is known, but packet was not received on an edge port (rx on {}/{}). Flooding packet", source, inPort);
 				doFlood(sw, pi, cntx);
 				return; 
 			}				
-			
+
 			Route route = routingEngineService.getRoute(source, 
 					inPort,
 					dstDap.getSwitchDPID(),
@@ -238,7 +242,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 
 			Match m = createMatchFromPacket(sw, inPort, cntx);
 			U64 cookie = AppCookie.makeCookie(FORWARDING_APP_ID, 0);
-			
+
 			if (route != null) {
 				log.debug("pushRoute inPort={} route={} " +
 						"destination={}:{}",
@@ -309,7 +313,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 			IPv4 ip = (IPv4) eth.getPayload();
 			IPv4Address srcIp = ip.getSourceAddress();
 			IPv4Address dstIp = ip.getDestinationAddress();
-			
+
 			if (FLOWMOD_DEFAULT_MATCH_IP_ADDR) {
 				mb.setExact(MatchField.ETH_TYPE, EthType.IPv4)
 				.setExact(MatchField.IPV4_SRC, srcIp)
@@ -324,7 +328,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 				if (!FLOWMOD_DEFAULT_MATCH_IP_ADDR) {
 					mb.setExact(MatchField.ETH_TYPE, EthType.IPv4);
 				}
-				
+
 				if (ip.getProtocol().equals(IpProtocol.TCP)) {
 					TCP tcp = (TCP) ip.getPayload();
 					mb.setExact(MatchField.IP_PROTO, IpProtocol.TCP)
@@ -343,7 +347,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 			IPv6 ip = (IPv6) eth.getPayload();
 			IPv6Address srcIp = ip.getSourceAddress();
 			IPv6Address dstIp = ip.getDestinationAddress();
-			
+
 			if (FLOWMOD_DEFAULT_MATCH_IP_ADDR) {
 				mb.setExact(MatchField.ETH_TYPE, EthType.IPv6)
 				.setExact(MatchField.IPV6_SRC, srcIp)
@@ -358,7 +362,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 				if (!FLOWMOD_DEFAULT_MATCH_IP_ADDR) {
 					mb.setExact(MatchField.ETH_TYPE, EthType.IPv6);
 				}
-				
+
 				if (ip.getNextHeader().equals(IpProtocol.TCP)) {
 					TCP tcp = (TCP) ip.getPayload();
 					mb.setExact(MatchField.IP_PROTO, IpProtocol.TCP)
@@ -394,7 +398,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 			/* Must be a single-switch w/no links */
 			broadcastPorts = Collections.singleton(OFPort.FLOOD);
 		}
-		
+
 		for (OFPort p : broadcastPorts) {
 			if (p.equals(inPort)) continue;
 			actions.add(sw.getOFFactory().actions().output(p, Integer.MAX_VALUE));
@@ -444,6 +448,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 		l.add(IRoutingService.class);
 		l.add(ITopologyService.class);
 		l.add(IDebugCounterService.class);
+		l.add(ILinkDiscoveryService.class);
 		return l;
 	}
 
@@ -456,6 +461,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 		this.topologyService = context.getServiceImpl(ITopologyService.class);
 		this.debugCounterService = context.getServiceImpl(IDebugCounterService.class);
 		this.switchService = context.getServiceImpl(IOFSwitchService.class);
+		this.linkService = context.getServiceImpl(ILinkDiscoveryService.class);
 
 		Map<String, String> configParameters = context.getConfigParams(this);
 		String tmp = configParameters.get("hard-timeout");
@@ -503,7 +509,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 				+ ", MAC=" + FLOWMOD_DEFAULT_MATCH_MAC
 				+ ", IP=" + FLOWMOD_DEFAULT_MATCH_IP_ADDR
 				+ ", TPPT=" + FLOWMOD_DEFAULT_MATCH_TRANSPORT);
-		
+
 		tmp = configParameters.get("flood-arp");
 		if (tmp != null) {
 			tmp = tmp.toLowerCase();
@@ -515,12 +521,27 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 				log.info("Flooding all ARP packets. No ARP flows will be inserted");
 			}
 		}
+
+		tmp = configParameters.get("remove-flows-on-link-or-port-down");
+		if (tmp != null) {
+			REMOVE_FLOWS_ON_LINK_OR_PORT_DOWN = Boolean.parseBoolean(tmp);
+		}
+		if (REMOVE_FLOWS_ON_LINK_OR_PORT_DOWN) {
+			log.info("Flows will be removed on link/port down events");
+		} else {
+			log.info("Flows will not be removed on link/port down events");
+		}
 	}
 
 	@Override
 	public void startUp(FloodlightModuleContext context) {
 		super.startUp();
 		switchService.addOFSwitchListener(this);
+
+		/* Register only if we want to remove stale flows */
+		if (REMOVE_FLOWS_ON_LINK_OR_PORT_DOWN) {
+			linkService.addListener(this);
+		}
 	}
 
 	@Override
@@ -554,7 +575,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 					.build()
 					);
 			sw.write(sw.getOFFactory().buildBarrierRequest().build());
-			
+
 			List<OFPortModeTuple> portModes = new ArrayList<OFPortModeTuple>();
 			for (OFPortDesc p : sw.getPorts()) {
 				portModes.add(OFPortModeTuple.of(p.getPortNo(), OFPortMode.ACCESS));
@@ -567,7 +588,8 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 	}
 
 	@Override
-	public void switchPortChanged(DatapathId switchId, OFPortDesc port, PortChangeType type) {		
+	public void switchPortChanged(DatapathId switchId, OFPortDesc port, PortChangeType type) {	
+		/* Port down events handled via linkDiscoveryUpdate(), which passes thru all events */
 	}
 
 	@Override
@@ -576,7 +598,61 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 
 	@Override
 	public void switchDeactivated(DatapathId switchId) {
-		// TODO Auto-generated method stub
-		
+	}
+
+	@Override
+	public void linkDiscoveryUpdate(List<LDUpdate> updateList) {
+		for (LDUpdate u : updateList) {
+			/* Remove flows on either side if link/port went down */
+			if (u.getOperation() == UpdateOperation.LINK_REMOVED ||
+					u.getOperation() == UpdateOperation.PORT_DOWN ||
+					u.getOperation() == UpdateOperation.TUNNEL_PORT_REMOVED) {
+				Set<OFMessage> msgs = new HashSet<OFMessage>();
+
+				if (u.getSrc() != null || !u.getSrc().equals(DatapathId.NONE)) {
+					IOFSwitch srcSw = switchService.getSwitch(u.getSrc());
+					/* src side of link */
+					if (srcSw != null) {
+						/* flows matching on src port */
+						msgs.add(srcSw.getOFFactory().buildFlowDelete()
+								.setCookie(AppCookie.makeCookie(FORWARDING_APP_ID, 0))
+								.setMatch(srcSw.getOFFactory().buildMatch()
+										.setExact(MatchField.IN_PORT, u.getSrcPort())
+										.build())
+										.build());
+						/* flows outputting to src port */
+						msgs.add(srcSw.getOFFactory().buildFlowDelete()
+								.setCookie(AppCookie.makeCookie(FORWARDING_APP_ID, 0))
+								.setOutPort(u.getSrcPort())
+								.build());
+						srcSw.write(msgs);
+						log.warn("{}. Removing flows to/from DPID={}, port={}", new Object[] { u.getType(), u.getSrc(), u.getSrcPort() });
+					}
+				}
+
+				/* must be a link, not just a port down, if we have a dst switch */
+				if (u.getDst() != null || !u.getDst().equals(DatapathId.NONE)) {
+					/* dst side of link */
+					IOFSwitch dstSw = switchService.getSwitch(u.getDst());
+					if (dstSw != null) {
+						/* flows matching on dst port */
+						msgs.clear();
+						msgs.add(dstSw.getOFFactory().buildFlowDelete()
+								.setCookie(AppCookie.makeCookie(FORWARDING_APP_ID, 0))
+								.setMatch(dstSw.getOFFactory().buildMatch()
+										.setExact(MatchField.IN_PORT, u.getDstPort())
+										.build())
+										.build());
+						/* flows outputting to dst port */
+						msgs.add(dstSw.getOFFactory().buildFlowDelete()
+								.setCookie(AppCookie.makeCookie(FORWARDING_APP_ID, 0))
+								.setOutPort(u.getDstPort())
+								.build());
+						dstSw.write(msgs);
+						log.warn("{}. Removing flows to/from DPID={}, port={}", new Object[] { u.getType(), u.getDst(), u.getDstPort() });
+					}
+				}
+			}
+		}
 	}
 }
