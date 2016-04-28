@@ -43,7 +43,6 @@ public class MockOFSwitchImpl extends OFSwitch {
         this.attributes.putAll(attrs);
     }
 
-
     @SuppressWarnings("unchecked")
     @Override
     public <REPLY extends OFStatsReply> ListenableFuture<List<REPLY>> writeStatsRequest(OFStatsRequest<REPLY> request) {
