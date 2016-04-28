@@ -45,6 +45,8 @@ import net.floodlightcontroller.devicemanager.test.MockDeviceManager;
 import net.floodlightcontroller.devicemanager.IDevice;
 import net.floodlightcontroller.devicemanager.IDeviceService;
 import net.floodlightcontroller.devicemanager.IEntityClassifierService;
+import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryService;
+import net.floodlightcontroller.linkdiscovery.internal.LinkDiscoveryManager;
 import net.floodlightcontroller.packet.Data;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPacket;
@@ -98,6 +100,7 @@ public class ForwardingTest extends FloodlightTestCase {
 	protected IRoutingService routingEngine;
 	protected Forwarding forwarding;
 	protected ITopologyService topology;
+	protected LinkDiscoveryManager linkService;
 	protected MockThreadPoolService threadPool;
 	protected IOFSwitch sw1, sw2;
 	protected OFFeaturesReply swFeatures;
@@ -133,6 +136,7 @@ public class ForwardingTest extends FloodlightTestCase {
 		routingEngine = createMock(IRoutingService.class);
 		topology = createMock(ITopologyService.class);
 		mockSyncService = new MockSyncService();
+		linkService = new LinkDiscoveryManager();
 		DefaultEntityClassifier entityClassifier = new DefaultEntityClassifier();
 
 		FloodlightModuleContext fmc = new FloodlightModuleContext();
@@ -147,6 +151,7 @@ public class ForwardingTest extends FloodlightTestCase {
 		fmc.addService(IDebugCounterService.class, new MockDebugCounterService());
 		fmc.addService(IDebugEventService.class, new MockDebugEventService());
 		fmc.addService(IOFSwitchService.class, getMockSwitchService());
+		fmc.addService(ILinkDiscoveryService.class, linkService);
 
 		topology.addListener(anyObject(ITopologyListener.class));
 		expectLastCall().anyTimes();
@@ -155,11 +160,13 @@ public class ForwardingTest extends FloodlightTestCase {
 
 		threadPool.init(fmc);
 		mockSyncService.init(fmc);
-		forwarding.init(fmc);
+		linkService.init(fmc);
 		deviceManager.init(fmc);
+		forwarding.init(fmc);
 		entityClassifier.init(fmc);
 		threadPool.startUp(fmc);
 		mockSyncService.startUp(fmc);
+		linkService.startUp(fmc);
 		deviceManager.startUp(fmc);
 		forwarding.startUp(fmc);
 		entityClassifier.startUp(fmc);

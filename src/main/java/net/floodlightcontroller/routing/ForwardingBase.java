@@ -36,6 +36,7 @@ import net.floodlightcontroller.core.util.AppCookie;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
 import net.floodlightcontroller.devicemanager.IDeviceService;
 import net.floodlightcontroller.devicemanager.SwitchPort;
+import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryService;
 import net.floodlightcontroller.packet.IPacket;
 import net.floodlightcontroller.routing.IRoutingService;
 import net.floodlightcontroller.routing.IRoutingDecision;
@@ -83,7 +84,7 @@ public abstract class ForwardingBase implements IOFMessageListener {
 	public static int FLOWMOD_DEFAULT_PRIORITY = 1; // 0 is the default table-miss flow in OF1.3+, so we need to use 1
 	
 	protected static boolean FLOWMOD_DEFAULT_SET_SEND_FLOW_REM_FLAG = false;
-	
+		
 	protected static boolean FLOWMOD_DEFAULT_MATCH_VLAN = true;
 	protected static boolean FLOWMOD_DEFAULT_MATCH_MAC = true;
 	protected static boolean FLOWMOD_DEFAULT_MATCH_IP_ADDR = true;
@@ -93,6 +94,8 @@ public abstract class ForwardingBase implements IOFMessageListener {
 	protected static final short FLOWMOD_DEFAULT_HARD_TIMEOUT_CONSTANT = 0;
 	
 	protected static boolean FLOOD_ALL_ARP_PACKETS = false;
+	
+	protected static boolean REMOVE_FLOWS_ON_LINK_OR_PORT_DOWN = true;
 
 	protected IFloodlightProviderService floodlightProviderService;
 	protected IOFSwitchService switchService;
@@ -100,6 +103,7 @@ public abstract class ForwardingBase implements IOFMessageListener {
 	protected IRoutingService routingEngineService;
 	protected ITopologyService topologyService;
 	protected IDebugCounterService debugCounterService;
+	protected ILinkDiscoveryService linkService;
 
 	protected OFMessageDamper messageDamper;
 
