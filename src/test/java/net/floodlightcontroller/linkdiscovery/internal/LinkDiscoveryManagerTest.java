@@ -38,7 +38,11 @@ import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IListener.Command;
 import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.core.IOFSwitchBackend;
+import net.floodlightcontroller.core.LogicalOFMessageCategory;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
+import net.floodlightcontroller.core.internal.MockOFConnection;
+import net.floodlightcontroller.core.internal.MockOFSwitchImpl;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.test.MockThreadPoolService;
 import net.floodlightcontroller.core.types.NodePortTuple;
@@ -69,16 +73,21 @@ import org.easymock.CaptureType;
 import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
+import org.projectfloodlight.openflow.protocol.OFControllerRole;
 import org.projectfloodlight.openflow.protocol.OFFactories;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.OFPacketInReason;
+import org.projectfloodlight.openflow.protocol.OFPacketOut;
+import org.projectfloodlight.openflow.protocol.OFPortConfig;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.protocol.OFPortFeatures;
+import org.projectfloodlight.openflow.protocol.OFPortState;
 import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.EthType;
 import org.projectfloodlight.openflow.types.MacAddress;
+import org.projectfloodlight.openflow.types.OFAuxId;
 import org.projectfloodlight.openflow.types.OFBufferId;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.U64;
@@ -162,6 +171,7 @@ public class LinkDiscoveryManagerTest extends FloodlightTestCase {
 
         IOFSwitch sw1 = createMockSwitch(1L);
         IOFSwitch sw2 = createMockSwitch(2L);
+
         Map<DatapathId, IOFSwitch> switches = new HashMap<DatapathId, IOFSwitch>();
         switches.put(DatapathId.of(1L), sw1);
         switches.put(DatapathId.of(2L), sw2);
@@ -461,6 +471,68 @@ public class LinkDiscoveryManagerTest extends FloodlightTestCase {
         assertTrue(ldm.isClearLinksCalled);
         ldm.reset();
         */
+    }
+    
+    @Test
+    public void testDontSendLLDPinSlave() throws Exception {
+        LinkDiscoveryManager linkDiscovery = getLinkDiscoveryManager();
+        OFPortDesc pd = createMock(OFPortDesc.class);
+        expect(pd.getHwAddr()).andReturn(MacAddress.of(1)).anyTimes();
+        expect(pd.getPortNo()).andReturn(OFPort.of(1)).anyTimes();
+        expect(pd.getName()).andReturn("1").anyTimes();
+        expect(pd.getConfig()).andReturn(Collections.<OFPortConfig> emptySet()).anyTimes();
+        expect(pd.getState()).andReturn(Collections.<OFPortState> emptySet()).anyTimes();
+        replay(pd);
+        /*OFPortDesc pd = OFFactories.getFactory(OFVersion.OF_13).buildPortDesc()
+        		.setHwAddr(MacAddress.of(1))
+        		.setPortNo(OFPort.of(1))
+        		.build();*/
+                
+        MockOFConnection c3 = new MockOFConnection(DatapathId.of(3), OFAuxId.MAIN);
+        c3.updateLatency(U64.ZERO);
+        MockOFSwitchImpl sw3 = new MockOFSwitchImpl(c3);
+        sw3.setControllerRole(OFControllerRole.ROLE_MASTER);
+        sw3.setPorts(Collections.singleton(pd));
+        
+        MockOFConnection c4 = new MockOFConnection(DatapathId.of(4), OFAuxId.MAIN);
+        c4.updateLatency(U64.ZERO);
+        MockOFSwitchImpl sw4 = new MockOFSwitchImpl(c4);
+        sw4.setControllerRole(OFControllerRole.ROLE_SLAVE);
+        sw4.setPorts(Collections.singleton(pd));
+        
+        MockOFConnection c5 = new MockOFConnection(DatapathId.of(5), OFAuxId.MAIN);
+        c5.updateLatency(U64.ZERO);
+        MockOFSwitchImpl sw5 = new MockOFSwitchImpl(c5);
+        sw5.setControllerRole(OFControllerRole.ROLE_EQUAL);
+        sw5.setPorts(Collections.singleton(pd));
+
+        Map<DatapathId, IOFSwitch> newSwitches = new HashMap<DatapathId, IOFSwitch>(linkDiscovery.switchService.getAllSwitchMap());
+        newSwitches.put(DatapathId.of(3), sw3);
+        newSwitches.put(DatapathId.of(4), sw4);
+        newSwitches.put(DatapathId.of(5), sw5);
+        getMockSwitchService().setSwitches(newSwitches);
+                
+        boolean pass = false;
+        try {
+        	linkDiscovery.sendDiscoveryMessage(DatapathId.of(3L), OFPort.of(1), true, false);
+        } catch (IllegalArgumentException e) { /* expected exception, since we aren't wired to write packets */
+        	log.info("LLDP packet-out sent while in MASTER (pass)");
+        	pass = true;
+        }
+        assertTrue("LLDP packet-out NOT sent while in MASTER (fail)", pass);
+                
+        assertFalse("LLDP packet-out DID occur while in SLAVE (fail)", 
+        		linkDiscovery.sendDiscoveryMessage(DatapathId.of(4L), OFPort.of(1), true, false));
+    	log.info("LLDP packet-out did not occur while in SLAVE (pass)");
+    	
+    	pass = false;
+    	try {
+        	linkDiscovery.sendDiscoveryMessage(DatapathId.of(5L), OFPort.of(1), true, false);
+        } catch (IllegalArgumentException e) { /* expected exception, since we aren't wired to write packets */
+        	log.info("LLDP packet-out sent while in EQUAL/OTHER (pass)");
+        	pass = true;
+        }
+    	assertTrue("LLDP packet-out NOT sent while in EQUAL/OTHER (fail)", pass);
     }
 
     @Test

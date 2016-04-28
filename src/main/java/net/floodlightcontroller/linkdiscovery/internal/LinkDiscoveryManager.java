@@ -90,6 +90,7 @@ import net.floodlightcontroller.storage.OperatorPredicate;
 import net.floodlightcontroller.storage.StorageException;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
 
+import org.projectfloodlight.openflow.protocol.OFControllerRole;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.OFPacketOut;
@@ -1151,6 +1152,8 @@ IFloodlightModule, IInfoProvider {
 		IOFSwitch iofSwitch = switchService.getSwitch(sw);
 		if (iofSwitch == null) {
 			return false;
+		} else if (iofSwitch.getControllerRole() == OFControllerRole.ROLE_SLAVE) {
+			return false;
 		}
 
 		if (port == OFPort.LOCAL) return false;
@@ -1195,16 +1198,16 @@ IFloodlightModule, IInfoProvider {
 	 * @param isReverse
 	 *            indicates whether the LLDP was sent as a response
 	 */
-	protected void sendDiscoveryMessage(DatapathId sw, OFPort port,
+	protected boolean sendDiscoveryMessage(DatapathId sw, OFPort port,
 			boolean isStandard, boolean isReverse) {
 
 		// Takes care of all checks including null pointer checks.
 		if (!isOutgoingDiscoveryAllowed(sw, port, isStandard, isReverse))
-			return;
+			return false;
 
 		IOFSwitch iofSwitch = switchService.getSwitch(sw);
 		if (iofSwitch == null)             //fix dereference violations in case race conditions
-			return;
+			return false;
 		OFPortDesc ofpPort = iofSwitch.getPort(port);
 
 		OFPacketOut po = generateLLDPMessage(iofSwitch, port, isStandard, isReverse);
@@ -1218,7 +1221,7 @@ IFloodlightModule, IInfoProvider {
 
 		// send
 		// no more try-catch. switch will silently fail
-		iofSwitch.write(pob.build());
+		return iofSwitch.write(pob.build());
 	}
 
 	/**
