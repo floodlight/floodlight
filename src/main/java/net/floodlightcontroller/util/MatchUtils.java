@@ -25,7 +25,6 @@ import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.OFVlanVidMatch;
 import org.projectfloodlight.openflow.types.OFVlanVidMatchWithMask;
 import org.projectfloodlight.openflow.types.TransportPort;
-import org.projectfloodlight.openflow.types.U16;
 import org.projectfloodlight.openflow.types.U32;
 import org.projectfloodlight.openflow.types.U64;
 import org.projectfloodlight.openflow.types.U8;
@@ -58,6 +57,16 @@ public class MatchUtils {
 	 * expect the JSON string to be formatted using these strings for the applicable fields.
 	 */
 	public static final String STR_IN_PORT = "in_port";
+	
+	/* These are special port IDs */
+	public static final String STR_PORT_LOCAL = "local";
+	public static final String STR_PORT_CONTROLLER = "controller";
+	public static final String STR_PORT_ALL = "all";
+	public static final String STR_PORT_IN_PORT = STR_IN_PORT;
+	public static final String STR_PORT_FLOOD = "flood";
+	public static final String STR_PORT_NORMAL = "normal";
+	public static final String STR_PORT_TABLE = "table";
+
 	public static final String STR_IN_PHYS_PORT = "in_phys_port";
 
 	public static final String STR_DL_DST = "eth_dst";
@@ -155,8 +164,8 @@ public class MatchUtils {
 		}
 		return mb.build();
 	}
-	
-	
+
+
 	/**
 	 * Retains all fields in the Match parent. Converts the parent to an
 	 * equivalent Match of OFVersion version. No polite check is done to verify 
@@ -406,18 +415,27 @@ public class MatchUtils {
 			if (dataMask.length > 2) {
 				throw new IllegalArgumentException("[Data, Mask] " + dataMask + " does not have form 'data/mask' or 'data'" + key_value[1]);
 			} else if (dataMask.length == 1) {
+				dataMask[0] = dataMask[0].trim().toLowerCase();
 				log.debug("No mask detected in Match string: {}", key_value[1]);
 			} else if (dataMask.length == 2) {
+				dataMask[0] = dataMask[0].trim().toLowerCase();
+				dataMask[1] = dataMask[1].trim().toLowerCase();
 				log.debug("Detected mask in Match string: {}", key_value[1]);
 			}
 
 			switch (key_value[0]) {
 			case STR_IN_PORT:
 				if (dataMask.length == 1) {
-					mb.setExact(MatchField.IN_PORT, OFPort.ofShort(dataMask[0].contains("0x") ? U16.of(Integer.valueOf(dataMask[0].replaceFirst("0x", ""), 16)).getRaw() : U16.of(Integer.valueOf(dataMask[0])).getRaw()));
+					if (dataMask[0].equals(STR_PORT_LOCAL)) {
+						mb.setExact(MatchField.IN_PORT, OFPort.LOCAL);
+					} else if (dataMask[0].equals(STR_PORT_CONTROLLER)) {
+						mb.setExact(MatchField.IN_PORT, OFPort.CONTROLLER);
+					} else {
+						mb.setExact(MatchField.IN_PORT, OFPort.of(U32.of(dataMask[0].contains("0x") ? Long.parseLong(dataMask[0].replaceFirst("0x", ""), 16) : Long.parseLong(dataMask[0])).getRaw()));
+					}
 				} else {
-					mb.setMasked(MatchField.IN_PORT, OFPort.ofShort(dataMask[0].contains("0x") ? U16.of(Integer.valueOf(dataMask[0].replaceFirst("0x", ""), 16)).getRaw() : U16.of(Integer.valueOf(dataMask[0])).getRaw()), 
-					OFPort.ofShort(dataMask[1].contains("0x") ? U16.of(Integer.valueOf(dataMask[1].replaceFirst("0x", ""), 16)).getRaw() : U16.of(Integer.valueOf(dataMask[1])).getRaw()));
+					mb.setMasked(MatchField.IN_PORT, OFPort.of(U32.of(dataMask[0].contains("0x") ? Long.parseLong(dataMask[0].replaceFirst("0x", ""), 16) : Long.parseLong(dataMask[0])).getRaw()), 
+							OFPort.of(U32.of(dataMask[1].contains("0x") ? Long.parseLong(dataMask[1].replaceFirst("0x", ""), 16) : Long.parseLong(dataMask[1])).getRaw()));
 				}
 				break;
 			case STR_DL_DST: /* Only accept hex-string for MAC addresses */
@@ -436,27 +454,27 @@ public class MatchUtils {
 				break;
 			case STR_DL_TYPE:
 				if (dataMask.length == 1) {
-					mb.setExact(MatchField.ETH_TYPE, EthType.of(dataMask[0].contains("0x") ? Integer.valueOf(dataMask[0].replaceFirst("0x", ""), 16) : Integer.valueOf(dataMask[0])));
+					mb.setExact(MatchField.ETH_TYPE, EthType.of(dataMask[0].contains("0x") ? Integer.parseInt(dataMask[0].replaceFirst("0x", ""), 16) : Integer.parseInt(dataMask[0])));
 				} else {
-					mb.setMasked(MatchField.ETH_TYPE, EthType.of(dataMask[0].contains("0x") ? Integer.valueOf(dataMask[0].replaceFirst("0x", ""), 16) : Integer.valueOf(dataMask[0])), 
-					EthType.of(dataMask[1].contains("0x") ? Integer.valueOf(dataMask[1].replaceFirst("0x", ""), 16) : Integer.valueOf(dataMask[1])));
+					mb.setMasked(MatchField.ETH_TYPE, EthType.of(dataMask[0].contains("0x") ? Integer.parseInt(dataMask[0].replaceFirst("0x", ""), 16) : Integer.parseInt(dataMask[0])), 
+							EthType.of(dataMask[1].contains("0x") ? Integer.parseInt(dataMask[1].replaceFirst("0x", ""), 16) : Integer.parseInt(dataMask[1])));
 				}
 				break;
 			case STR_DL_VLAN:
 				if (dataMask.length == 1) {
-					mb.setExact(MatchField.VLAN_VID, OFVlanVidMatch.ofRawVid(dataMask[0].contains("0x") ? Short.valueOf(dataMask[0].replaceFirst("0x", ""), 16) : Short.valueOf(dataMask[0])));
+					mb.setExact(MatchField.VLAN_VID, OFVlanVidMatch.ofRawVid(dataMask[0].contains("0x") ? Short.parseShort(dataMask[0].replaceFirst("0x", ""), 16) : Short.parseShort(dataMask[0])));
 				} else {
 					mb.setMasked(MatchField.VLAN_VID, OFVlanVidMatchWithMask.of(
-						OFVlanVidMatch.ofRawVid(dataMask[0].contains("0x") ? Short.valueOf(dataMask[0].replaceFirst("0x", ""), 16) : Short.valueOf(dataMask[0])), 
-						OFVlanVidMatch.ofRawVid(dataMask[1].contains("0x") ? Short.valueOf(dataMask[1].replaceFirst("0x", ""), 16) : Short.valueOf(dataMask[1]))));
+							OFVlanVidMatch.ofRawVid(dataMask[0].contains("0x") ? Short.parseShort(dataMask[0].replaceFirst("0x", ""), 16) : Short.parseShort(dataMask[0])), 
+							OFVlanVidMatch.ofRawVid(dataMask[1].contains("0x") ? Short.parseShort(dataMask[1].replaceFirst("0x", ""), 16) : Short.parseShort(dataMask[1]))));
 				}
 				break;
 			case STR_DL_VLAN_PCP:
 				if (dataMask.length == 1) {
-					mb.setExact(MatchField.VLAN_PCP, VlanPcp.of(dataMask[0].contains("0x") ? U8.t(Short.valueOf(dataMask[0].replaceFirst("0x", ""), 16)) : U8.t(Short.valueOf(dataMask[0]))));
+					mb.setExact(MatchField.VLAN_PCP, VlanPcp.of(dataMask[0].contains("0x") ? U8.t(Short.parseShort(dataMask[0].replaceFirst("0x", ""), 16)) : U8.t(Short.parseShort(dataMask[0]))));
 				} else {
-					mb.setMasked(MatchField.VLAN_PCP, VlanPcp.of(dataMask[0].contains("0x") ? U8.t(Short.valueOf(dataMask[0].replaceFirst("0x", ""), 16)) : U8.t(Short.valueOf(dataMask[0]))), 
-					VlanPcp.of(dataMask[1].contains("0x") ? U8.t(Short.valueOf(dataMask[1].replaceFirst("0x", ""), 16)) : U8.t(Short.valueOf(dataMask[1]))));
+					mb.setMasked(MatchField.VLAN_PCP, VlanPcp.of(dataMask[0].contains("0x") ? U8.t(Short.parseShort(dataMask[0].replaceFirst("0x", ""), 16)) : U8.t(Short.parseShort(dataMask[0]))), 
+							VlanPcp.of(dataMask[1].contains("0x") ? U8.t(Short.parseShort(dataMask[1].replaceFirst("0x", ""), 16)) : U8.t(Short.parseShort(dataMask[1]))));
 				}
 				break;
 			case STR_NW_DST: /* Only accept dotted-decimal for IPv4 addresses */
@@ -482,45 +500,45 @@ public class MatchUtils {
 					throw new IllegalArgumentException("OF Version incompatible");
 				}
 				if (dataMask.length == 1) {
-					mb.setExact(MatchField.IPV6_FLABEL, IPv6FlowLabel.of(dataMask[0].contains("0x") ? Integer.valueOf(dataMask[0].replaceFirst("0x", ""), 16) : Integer.valueOf(dataMask[0])));
+					mb.setExact(MatchField.IPV6_FLABEL, IPv6FlowLabel.of(dataMask[0].contains("0x") ? Integer.parseInt(dataMask[0].replaceFirst("0x", ""), 16) : Integer.parseInt(dataMask[0])));
 				} else {
-					mb.setMasked(MatchField.IPV6_FLABEL, IPv6FlowLabel.of(dataMask[0].contains("0x") ? Integer.valueOf(dataMask[0].replaceFirst("0x", ""), 16) : Integer.valueOf(dataMask[0])), 
-					IPv6FlowLabel.of(dataMask[1].contains("0x") ? Integer.valueOf(dataMask[1].replaceFirst("0x", ""), 16) : Integer.valueOf(dataMask[1])));
+					mb.setMasked(MatchField.IPV6_FLABEL, IPv6FlowLabel.of(dataMask[0].contains("0x") ? Integer.parseInt(dataMask[0].replaceFirst("0x", ""), 16) : Integer.parseInt(dataMask[0])), 
+							IPv6FlowLabel.of(dataMask[1].contains("0x") ? Integer.parseInt(dataMask[1].replaceFirst("0x", ""), 16) : Integer.parseInt(dataMask[1])));
 				}
 				break;
 			case STR_NW_PROTO:
 				if (dataMask.length == 1) {
-					mb.setExact(MatchField.IP_PROTO, IpProtocol.of(dataMask[0].contains("0x") ? Short.valueOf(dataMask[0].replaceFirst("0x", ""), 16) : Short.valueOf(dataMask[0])));
+					mb.setExact(MatchField.IP_PROTO, IpProtocol.of(dataMask[0].contains("0x") ? Short.parseShort(dataMask[0].replaceFirst("0x", ""), 16) : Short.parseShort(dataMask[0])));
 				} else {
-					mb.setMasked(MatchField.IP_PROTO, IpProtocol.of(dataMask[0].contains("0x") ? Short.valueOf(dataMask[0].replaceFirst("0x", ""), 16) : Short.valueOf(dataMask[0])), 
-					IpProtocol.of(dataMask[1].contains("0x") ? Short.valueOf(dataMask[1].replaceFirst("0x", ""), 16) : Short.valueOf(dataMask[1])));
+					mb.setMasked(MatchField.IP_PROTO, IpProtocol.of(dataMask[0].contains("0x") ? Short.parseShort(dataMask[0].replaceFirst("0x", ""), 16) : Short.parseShort(dataMask[0])), 
+							IpProtocol.of(dataMask[1].contains("0x") ? Short.parseShort(dataMask[1].replaceFirst("0x", ""), 16) : Short.parseShort(dataMask[1])));
 				}
 				break;
 			case STR_NW_TOS:
 				if (dataMask.length == 1) {
-					mb.setExact(MatchField.IP_ECN, IpEcn.of(dataMask[0].contains("0x") ? U8.t(Short.valueOf(dataMask[0].replaceFirst("0x", ""), 16)) : U8.t(Short.valueOf(dataMask[0]))));
-					mb.setExact(MatchField.IP_DSCP, IpDscp.of(dataMask[0].contains("0x") ? U8.t(Short.valueOf(dataMask[0].replaceFirst("0x", ""), 16)) : U8.t(Short.valueOf(dataMask[0]))));
+					mb.setExact(MatchField.IP_ECN, IpEcn.of(dataMask[0].contains("0x") ? U8.t(Short.parseShort(dataMask[0].replaceFirst("0x", ""), 16)) : U8.t(Short.parseShort(dataMask[0]))));
+					mb.setExact(MatchField.IP_DSCP, IpDscp.of(dataMask[0].contains("0x") ? U8.t(Short.parseShort(dataMask[0].replaceFirst("0x", ""), 16)) : U8.t(Short.parseShort(dataMask[0]))));
 				} else {
-					mb.setMasked(MatchField.IP_ECN, IpEcn.of(dataMask[0].contains("0x") ? U8.t(Short.valueOf(dataMask[0].replaceFirst("0x", ""), 16)) : U8.t(Short.valueOf(dataMask[0]))), 
-							IpEcn.of(dataMask[1].contains("0x") ? U8.t(Short.valueOf(dataMask[1].replaceFirst("0x", ""), 16)) : U8.t(Short.valueOf(dataMask[1]))));
-					mb.setMasked(MatchField.IP_DSCP, IpDscp.of(dataMask[0].contains("0x") ? U8.t(Short.valueOf(dataMask[0].replaceFirst("0x", ""), 16)) : U8.t(Short.valueOf(dataMask[0]))), 
-							IpDscp.of(dataMask[1].contains("0x") ? U8.t(Short.valueOf(dataMask[1].replaceFirst("0x", ""), 16)) : U8.t(Short.valueOf(dataMask[1]))));
+					mb.setMasked(MatchField.IP_ECN, IpEcn.of(dataMask[0].contains("0x") ? U8.t(Short.parseShort(dataMask[0].replaceFirst("0x", ""), 16)) : U8.t(Short.parseShort(dataMask[0]))), 
+							IpEcn.of(dataMask[1].contains("0x") ? U8.t(Short.parseShort(dataMask[1].replaceFirst("0x", ""), 16)) : U8.t(Short.parseShort(dataMask[1]))));
+					mb.setMasked(MatchField.IP_DSCP, IpDscp.of(dataMask[0].contains("0x") ? U8.t(Short.parseShort(dataMask[0].replaceFirst("0x", ""), 16)) : U8.t(Short.parseShort(dataMask[0]))), 
+							IpDscp.of(dataMask[1].contains("0x") ? U8.t(Short.parseShort(dataMask[1].replaceFirst("0x", ""), 16)) : U8.t(Short.parseShort(dataMask[1]))));
 				}
 				break;
 			case STR_NW_ECN:
 				if (dataMask.length == 1) {
-					mb.setExact(MatchField.IP_ECN, IpEcn.of(dataMask[0].contains("0x") ? U8.t(Short.valueOf(dataMask[0].replaceFirst("0x", ""), 16)) : U8.t(Short.valueOf(dataMask[0]))));
+					mb.setExact(MatchField.IP_ECN, IpEcn.of(dataMask[0].contains("0x") ? U8.t(Short.parseShort(dataMask[0].replaceFirst("0x", ""), 16)) : U8.t(Short.parseShort(dataMask[0]))));
 				} else {
-					mb.setMasked(MatchField.IP_ECN, IpEcn.of(dataMask[0].contains("0x") ? U8.t(Short.valueOf(dataMask[0].replaceFirst("0x", ""), 16)) : U8.t(Short.valueOf(dataMask[0]))), 
-							IpEcn.of(dataMask[1].contains("0x") ? U8.t(Short.valueOf(dataMask[1].replaceFirst("0x", ""), 16)) : U8.t(Short.valueOf(dataMask[1]))));
+					mb.setMasked(MatchField.IP_ECN, IpEcn.of(dataMask[0].contains("0x") ? U8.t(Short.parseShort(dataMask[0].replaceFirst("0x", ""), 16)) : U8.t(Short.parseShort(dataMask[0]))), 
+							IpEcn.of(dataMask[1].contains("0x") ? U8.t(Short.parseShort(dataMask[1].replaceFirst("0x", ""), 16)) : U8.t(Short.parseShort(dataMask[1]))));
 				}
 				break;
 			case STR_NW_DSCP:
 				if (dataMask.length == 1) {
-					mb.setExact(MatchField.IP_DSCP, IpDscp.of(dataMask[0].contains("0x") ? U8.t(Short.valueOf(dataMask[0].replaceFirst("0x", ""), 16)) : U8.t(Short.valueOf(dataMask[0]))));
+					mb.setExact(MatchField.IP_DSCP, IpDscp.of(dataMask[0].contains("0x") ? U8.t(Short.parseShort(dataMask[0].replaceFirst("0x", ""), 16)) : U8.t(Short.parseShort(dataMask[0]))));
 				} else {
-					mb.setMasked(MatchField.IP_DSCP, IpDscp.of(dataMask[0].contains("0x") ? U8.t(Short.valueOf(dataMask[0].replaceFirst("0x", ""), 16)) : U8.t(Short.valueOf(dataMask[0]))), 
-							IpDscp.of(dataMask[1].contains("0x") ? U8.t(Short.valueOf(dataMask[1].replaceFirst("0x", ""), 16)) : U8.t(Short.valueOf(dataMask[1]))));
+					mb.setMasked(MatchField.IP_DSCP, IpDscp.of(dataMask[0].contains("0x") ? U8.t(Short.parseShort(dataMask[0].replaceFirst("0x", ""), 16)) : U8.t(Short.parseShort(dataMask[0]))), 
+							IpDscp.of(dataMask[1].contains("0x") ? U8.t(Short.parseShort(dataMask[1].replaceFirst("0x", ""), 16)) : U8.t(Short.parseShort(dataMask[1]))));
 				}
 				break;
 			case STR_SCTP_DST: // for transport ports, if we don't know the transport protocol yet, postpone parsing this [key, value] pair until we know. Put it at the back of the queue.
@@ -528,10 +546,10 @@ public class MatchUtils {
 					llValues.add(key_value); // place it back if we can't proceed yet
 				} else {
 					if (dataMask.length == 1) {
-						mb.setExact(MatchField.SCTP_DST, TransportPort.of(dataMask[0].contains("0x") ? Integer.valueOf(dataMask[0].replaceFirst("0x", ""), 16) : Integer.valueOf(dataMask[0])));
+						mb.setExact(MatchField.SCTP_DST, TransportPort.of(dataMask[0].contains("0x") ? Integer.parseInt(dataMask[0].replaceFirst("0x", ""), 16) : Integer.parseInt(dataMask[0])));
 					} else {
-						mb.setMasked(MatchField.SCTP_DST, TransportPort.of(dataMask[0].contains("0x") ? Integer.valueOf(dataMask[0].replaceFirst("0x", ""), 16) : Integer.valueOf(dataMask[0])), 
-								TransportPort.of(dataMask[1].contains("0x") ? Integer.valueOf(dataMask[1].replaceFirst("0x", ""), 16) : Integer.valueOf(dataMask[1])));
+						mb.setMasked(MatchField.SCTP_DST, TransportPort.of(dataMask[0].contains("0x") ? Integer.parseInt(dataMask[0].replaceFirst("0x", ""), 16) : Integer.parseInt(dataMask[0])), 
+								TransportPort.of(dataMask[1].contains("0x") ? Integer.parseInt(dataMask[1].replaceFirst("0x", ""), 16) : Integer.parseInt(dataMask[1])));
 					}
 				}
 				break;
@@ -540,10 +558,10 @@ public class MatchUtils {
 					llValues.add(key_value); // place it back if we can't proceed yet
 				} else {
 					if (dataMask.length == 1) {
-						mb.setExact(MatchField.SCTP_SRC, TransportPort.of(dataMask[0].contains("0x") ? Integer.valueOf(dataMask[0].replaceFirst("0x", ""), 16) : Integer.valueOf(dataMask[0])));
+						mb.setExact(MatchField.SCTP_SRC, TransportPort.of(dataMask[0].contains("0x") ? Integer.parseInt(dataMask[0].replaceFirst("0x", ""), 16) : Integer.parseInt(dataMask[0])));
 					} else {
-						mb.setMasked(MatchField.SCTP_SRC, TransportPort.of(dataMask[0].contains("0x") ? Integer.valueOf(dataMask[0].replaceFirst("0x", ""), 16) : Integer.valueOf(dataMask[0])), 
-								TransportPort.of(dataMask[1].contains("0x") ? Integer.valueOf(dataMask[1].replaceFirst("0x", ""), 16) : Integer.valueOf(dataMask[1])));
+						mb.setMasked(MatchField.SCTP_SRC, TransportPort.of(dataMask[0].contains("0x") ? Integer.parseInt(dataMask[0].replaceFirst("0x", ""), 16) : Integer.parseInt(dataMask[0])), 
+								TransportPort.of(dataMask[1].contains("0x") ? Integer.parseInt(dataMask[1].replaceFirst("0x", ""), 16) : Integer.parseInt(dataMask[1])));
 					}
 				}
 				break;
@@ -552,10 +570,10 @@ public class MatchUtils {
 					llValues.add(key_value); // place it back if we can't proceed yet
 				} else {
 					if (dataMask.length == 1) {
-						mb.setExact(MatchField.UDP_DST, TransportPort.of(dataMask[0].contains("0x") ? Integer.valueOf(dataMask[0].replaceFirst("0x", ""), 16) : Integer.valueOf(dataMask[0])));
+						mb.setExact(MatchField.UDP_DST, TransportPort.of(dataMask[0].contains("0x") ? Integer.parseInt(dataMask[0].replaceFirst("0x", ""), 16) : Integer.parseInt(dataMask[0])));
 					} else {
-						mb.setMasked(MatchField.UDP_DST, TransportPort.of(dataMask[0].contains("0x") ? Integer.valueOf(dataMask[0].replaceFirst("0x", ""), 16) : Integer.valueOf(dataMask[0])), 
-								TransportPort.of(dataMask[1].contains("0x") ? Integer.valueOf(dataMask[1].replaceFirst("0x", ""), 16) : Integer.valueOf(dataMask[1])));
+						mb.setMasked(MatchField.UDP_DST, TransportPort.of(dataMask[0].contains("0x") ? Integer.parseInt(dataMask[0].replaceFirst("0x", ""), 16) : Integer.parseInt(dataMask[0])), 
+								TransportPort.of(dataMask[1].contains("0x") ? Integer.parseInt(dataMask[1].replaceFirst("0x", ""), 16) : Integer.parseInt(dataMask[1])));
 					}
 				}
 				break;
@@ -564,10 +582,10 @@ public class MatchUtils {
 					llValues.add(key_value); // place it back if we can't proceed yet
 				} else {
 					if (dataMask.length == 1) {
-						mb.setExact(MatchField.UDP_SRC, TransportPort.of(dataMask[0].contains("0x") ? Integer.valueOf(dataMask[0].replaceFirst("0x", ""), 16) : Integer.valueOf(dataMask[0])));
+						mb.setExact(MatchField.UDP_SRC, TransportPort.of(dataMask[0].contains("0x") ? Integer.parseInt(dataMask[0].replaceFirst("0x", ""), 16) : Integer.parseInt(dataMask[0])));
 					} else {
-						mb.setMasked(MatchField.UDP_SRC, TransportPort.of(dataMask[0].contains("0x") ? Integer.valueOf(dataMask[0].replaceFirst("0x", ""), 16) : Integer.valueOf(dataMask[0])), 
-								TransportPort.of(dataMask[1].contains("0x") ? Integer.valueOf(dataMask[1].replaceFirst("0x", ""), 16) : Integer.valueOf(dataMask[1])));
+						mb.setMasked(MatchField.UDP_SRC, TransportPort.of(dataMask[0].contains("0x") ? Integer.parseInt(dataMask[0].replaceFirst("0x", ""), 16) : Integer.parseInt(dataMask[0])), 
+								TransportPort.of(dataMask[1].contains("0x") ? Integer.parseInt(dataMask[1].replaceFirst("0x", ""), 16) : Integer.parseInt(dataMask[1])));
 					}
 				}
 				break;
@@ -576,10 +594,10 @@ public class MatchUtils {
 					llValues.add(key_value); // place it back if we can't proceed yet
 				} else {
 					if (dataMask.length == 1) {
-						mb.setExact(MatchField.TCP_DST, TransportPort.of(dataMask[0].contains("0x") ? Integer.valueOf(dataMask[0].replaceFirst("0x", ""), 16) : Integer.valueOf(dataMask[0])));
+						mb.setExact(MatchField.TCP_DST, TransportPort.of(dataMask[0].contains("0x") ? Integer.parseInt(dataMask[0].replaceFirst("0x", ""), 16) : Integer.parseInt(dataMask[0])));
 					} else {
-						mb.setMasked(MatchField.TCP_DST, TransportPort.of(dataMask[0].contains("0x") ? Integer.valueOf(dataMask[0].replaceFirst("0x", ""), 16) : Integer.valueOf(dataMask[0])), 
-								TransportPort.of(dataMask[1].contains("0x") ? Integer.valueOf(dataMask[1].replaceFirst("0x", ""), 16) : Integer.valueOf(dataMask[1])));
+						mb.setMasked(MatchField.TCP_DST, TransportPort.of(dataMask[0].contains("0x") ? Integer.parseInt(dataMask[0].replaceFirst("0x", ""), 16) : Integer.parseInt(dataMask[0])), 
+								TransportPort.of(dataMask[1].contains("0x") ? Integer.parseInt(dataMask[1].replaceFirst("0x", ""), 16) : Integer.parseInt(dataMask[1])));
 					}
 				}
 				break;
@@ -588,10 +606,10 @@ public class MatchUtils {
 					llValues.add(key_value); // place it back if we can't proceed yet
 				} else {
 					if (dataMask.length == 1) {
-						mb.setExact(MatchField.TCP_SRC, TransportPort.of(dataMask[0].contains("0x") ? Integer.valueOf(dataMask[0].replaceFirst("0x", ""), 16) : Integer.valueOf(dataMask[0])));
+						mb.setExact(MatchField.TCP_SRC, TransportPort.of(dataMask[0].contains("0x") ? Integer.parseInt(dataMask[0].replaceFirst("0x", ""), 16) : Integer.parseInt(dataMask[0])));
 					} else {
-						mb.setMasked(MatchField.TCP_SRC, TransportPort.of(dataMask[0].contains("0x") ? Integer.valueOf(dataMask[0].replaceFirst("0x", ""), 16) : Integer.valueOf(dataMask[0])), 
-								TransportPort.of(dataMask[1].contains("0x") ? Integer.valueOf(dataMask[1].replaceFirst("0x", ""), 16) : Integer.valueOf(dataMask[1])));
+						mb.setMasked(MatchField.TCP_SRC, TransportPort.of(dataMask[0].contains("0x") ? Integer.parseInt(dataMask[0].replaceFirst("0x", ""), 16) : Integer.parseInt(dataMask[0])), 
+								TransportPort.of(dataMask[1].contains("0x") ? Integer.parseInt(dataMask[1].replaceFirst("0x", ""), 16) : Integer.parseInt(dataMask[1])));
 					}
 				}
 				break;
@@ -600,24 +618,24 @@ public class MatchUtils {
 					llValues.add(key_value); // place it back if we can't proceed yet
 				} else if (ipProto == IpProtocol.TCP){
 					if (dataMask.length == 1) {
-						mb.setExact(MatchField.TCP_DST, TransportPort.of(dataMask[0].contains("0x") ? Integer.valueOf(dataMask[0].replaceFirst("0x", ""), 16) : Integer.valueOf(dataMask[0])));
+						mb.setExact(MatchField.TCP_DST, TransportPort.of(dataMask[0].contains("0x") ? Integer.parseInt(dataMask[0].replaceFirst("0x", ""), 16) : Integer.parseInt(dataMask[0])));
 					} else {
-						mb.setMasked(MatchField.TCP_DST, TransportPort.of(dataMask[0].contains("0x") ? Integer.valueOf(dataMask[0].replaceFirst("0x", ""), 16) : Integer.valueOf(dataMask[0])), 
-								TransportPort.of(dataMask[1].contains("0x") ? Integer.valueOf(dataMask[1].replaceFirst("0x", ""), 16) : Integer.valueOf(dataMask[1])));
+						mb.setMasked(MatchField.TCP_DST, TransportPort.of(dataMask[0].contains("0x") ? Integer.parseInt(dataMask[0].replaceFirst("0x", ""), 16) : Integer.parseInt(dataMask[0])), 
+								TransportPort.of(dataMask[1].contains("0x") ? Integer.parseInt(dataMask[1].replaceFirst("0x", ""), 16) : Integer.parseInt(dataMask[1])));
 					}
 				} else if (ipProto == IpProtocol.UDP){
 					if (dataMask.length == 1) {
-						mb.setExact(MatchField.UDP_DST, TransportPort.of(dataMask[0].contains("0x") ? Integer.valueOf(dataMask[0].replaceFirst("0x", ""), 16) : Integer.valueOf(dataMask[0])));
+						mb.setExact(MatchField.UDP_DST, TransportPort.of(dataMask[0].contains("0x") ? Integer.parseInt(dataMask[0].replaceFirst("0x", ""), 16) : Integer.parseInt(dataMask[0])));
 					} else {
-						mb.setMasked(MatchField.UDP_DST, TransportPort.of(dataMask[0].contains("0x") ? Integer.valueOf(dataMask[0].replaceFirst("0x", ""), 16) : Integer.valueOf(dataMask[0])), 
-								TransportPort.of(dataMask[1].contains("0x") ? Integer.valueOf(dataMask[1].replaceFirst("0x", ""), 16) : Integer.valueOf(dataMask[1])));
+						mb.setMasked(MatchField.UDP_DST, TransportPort.of(dataMask[0].contains("0x") ? Integer.parseInt(dataMask[0].replaceFirst("0x", ""), 16) : Integer.parseInt(dataMask[0])), 
+								TransportPort.of(dataMask[1].contains("0x") ? Integer.parseInt(dataMask[1].replaceFirst("0x", ""), 16) : Integer.parseInt(dataMask[1])));
 					}
 				} else if (ipProto == IpProtocol.SCTP){
 					if (dataMask.length == 1) {
-						mb.setExact(MatchField.SCTP_DST, TransportPort.of(dataMask[0].contains("0x") ? Integer.valueOf(dataMask[0].replaceFirst("0x", ""), 16) : Integer.valueOf(dataMask[0])));
+						mb.setExact(MatchField.SCTP_DST, TransportPort.of(dataMask[0].contains("0x") ? Integer.parseInt(dataMask[0].replaceFirst("0x", ""), 16) : Integer.parseInt(dataMask[0])));
 					} else {
-						mb.setMasked(MatchField.SCTP_DST, TransportPort.of(dataMask[0].contains("0x") ? Integer.valueOf(dataMask[0].replaceFirst("0x", ""), 16) : Integer.valueOf(dataMask[0])), 
-								TransportPort.of(dataMask[1].contains("0x") ? Integer.valueOf(dataMask[1].replaceFirst("0x", ""), 16) : Integer.valueOf(dataMask[1])));
+						mb.setMasked(MatchField.SCTP_DST, TransportPort.of(dataMask[0].contains("0x") ? Integer.parseInt(dataMask[0].replaceFirst("0x", ""), 16) : Integer.parseInt(dataMask[0])), 
+								TransportPort.of(dataMask[1].contains("0x") ? Integer.parseInt(dataMask[1].replaceFirst("0x", ""), 16) : Integer.parseInt(dataMask[1])));
 					}
 				}
 				break;
@@ -626,41 +644,41 @@ public class MatchUtils {
 					llValues.add(key_value); // place it back if we can't proceed yet
 				}  else if (ipProto == IpProtocol.TCP){
 					if (dataMask.length == 1) {
-						mb.setExact(MatchField.TCP_SRC, TransportPort.of(dataMask[0].contains("0x") ? Integer.valueOf(dataMask[0].replaceFirst("0x", ""), 16) : Integer.valueOf(dataMask[0])));
+						mb.setExact(MatchField.TCP_SRC, TransportPort.of(dataMask[0].contains("0x") ? Integer.parseInt(dataMask[0].replaceFirst("0x", ""), 16) : Integer.parseInt(dataMask[0])));
 					} else {
-						mb.setMasked(MatchField.TCP_SRC, TransportPort.of(dataMask[0].contains("0x") ? Integer.valueOf(dataMask[0].replaceFirst("0x", ""), 16) : Integer.valueOf(dataMask[0])), 
-								TransportPort.of(dataMask[1].contains("0x") ? Integer.valueOf(dataMask[1].replaceFirst("0x", ""), 16) : Integer.valueOf(dataMask[1])));
+						mb.setMasked(MatchField.TCP_SRC, TransportPort.of(dataMask[0].contains("0x") ? Integer.parseInt(dataMask[0].replaceFirst("0x", ""), 16) : Integer.parseInt(dataMask[0])), 
+								TransportPort.of(dataMask[1].contains("0x") ? Integer.parseInt(dataMask[1].replaceFirst("0x", ""), 16) : Integer.parseInt(dataMask[1])));
 					}
 				} else if (ipProto == IpProtocol.UDP){
 					if (dataMask.length == 1) {
-						mb.setExact(MatchField.UDP_SRC, TransportPort.of(dataMask[0].contains("0x") ? Integer.valueOf(dataMask[0].replaceFirst("0x", ""), 16) : Integer.valueOf(dataMask[0])));
+						mb.setExact(MatchField.UDP_SRC, TransportPort.of(dataMask[0].contains("0x") ? Integer.parseInt(dataMask[0].replaceFirst("0x", ""), 16) : Integer.parseInt(dataMask[0])));
 					} else {
-						mb.setMasked(MatchField.UDP_SRC, TransportPort.of(dataMask[0].contains("0x") ? Integer.valueOf(dataMask[0].replaceFirst("0x", ""), 16) : Integer.valueOf(dataMask[0])), 
-								TransportPort.of(dataMask[1].contains("0x") ? Integer.valueOf(dataMask[1].replaceFirst("0x", ""), 16) : Integer.valueOf(dataMask[1])));
+						mb.setMasked(MatchField.UDP_SRC, TransportPort.of(dataMask[0].contains("0x") ? Integer.parseInt(dataMask[0].replaceFirst("0x", ""), 16) : Integer.parseInt(dataMask[0])), 
+								TransportPort.of(dataMask[1].contains("0x") ? Integer.parseInt(dataMask[1].replaceFirst("0x", ""), 16) : Integer.parseInt(dataMask[1])));
 					}
 				} else if (ipProto == IpProtocol.SCTP){
 					if (dataMask.length == 1) {
-						mb.setExact(MatchField.SCTP_SRC, TransportPort.of(dataMask[0].contains("0x") ? Integer.valueOf(dataMask[0].replaceFirst("0x", ""), 16) : Integer.valueOf(dataMask[0])));
+						mb.setExact(MatchField.SCTP_SRC, TransportPort.of(dataMask[0].contains("0x") ? Integer.parseInt(dataMask[0].replaceFirst("0x", ""), 16) : Integer.parseInt(dataMask[0])));
 					} else {
-						mb.setMasked(MatchField.SCTP_SRC, TransportPort.of(dataMask[0].contains("0x") ? Integer.valueOf(dataMask[0].replaceFirst("0x", ""), 16) : Integer.valueOf(dataMask[0])), 
-								TransportPort.of(dataMask[1].contains("0x") ? Integer.valueOf(dataMask[1].replaceFirst("0x", ""), 16) : Integer.valueOf(dataMask[1])));
+						mb.setMasked(MatchField.SCTP_SRC, TransportPort.of(dataMask[0].contains("0x") ? Integer.parseInt(dataMask[0].replaceFirst("0x", ""), 16) : Integer.parseInt(dataMask[0])), 
+								TransportPort.of(dataMask[1].contains("0x") ? Integer.parseInt(dataMask[1].replaceFirst("0x", ""), 16) : Integer.parseInt(dataMask[1])));
 					}
 				}
 				break;
 			case STR_ICMP_TYPE:
 				if (dataMask.length == 1) {
-					mb.setExact(MatchField.ICMPV4_TYPE, ICMPv4Type.of(dataMask[0].contains("0x") ? Short.valueOf(dataMask[0].replaceFirst("0x", ""), 16) : Short.valueOf(dataMask[0])));
+					mb.setExact(MatchField.ICMPV4_TYPE, ICMPv4Type.of(dataMask[0].contains("0x") ? Short.parseShort(dataMask[0].replaceFirst("0x", ""), 16) : Short.parseShort(dataMask[0])));
 				} else {
-					mb.setMasked(MatchField.ICMPV4_TYPE, ICMPv4Type.of(dataMask[0].contains("0x") ? Short.valueOf(dataMask[0].replaceFirst("0x", ""), 16) : Short.valueOf(dataMask[0])), 
-							ICMPv4Type.of(dataMask[1].contains("0x") ? Short.valueOf(dataMask[1].replaceFirst("0x", ""), 16) : Short.valueOf(dataMask[1])));
+					mb.setMasked(MatchField.ICMPV4_TYPE, ICMPv4Type.of(dataMask[0].contains("0x") ? Short.parseShort(dataMask[0].replaceFirst("0x", ""), 16) : Short.parseShort(dataMask[0])), 
+							ICMPv4Type.of(dataMask[1].contains("0x") ? Short.parseShort(dataMask[1].replaceFirst("0x", ""), 16) : Short.parseShort(dataMask[1])));
 				}
 				break;
 			case STR_ICMP_CODE:
 				if (dataMask.length == 1) {
-					mb.setExact(MatchField.ICMPV4_CODE, ICMPv4Code.of(dataMask[0].contains("0x") ? Short.valueOf(dataMask[0].replaceFirst("0x", ""), 16) : Short.valueOf(dataMask[0])));
+					mb.setExact(MatchField.ICMPV4_CODE, ICMPv4Code.of(dataMask[0].contains("0x") ? Short.parseShort(dataMask[0].replaceFirst("0x", ""), 16) : Short.parseShort(dataMask[0])));
 				} else {
-					mb.setMasked(MatchField.ICMPV4_CODE, ICMPv4Code.of(dataMask[0].contains("0x") ? Short.valueOf(dataMask[0].replaceFirst("0x", ""), 16) : Short.valueOf(dataMask[0])), 
-							ICMPv4Code.of(dataMask[1].contains("0x") ? Short.valueOf(dataMask[1].replaceFirst("0x", ""), 16) : Short.valueOf(dataMask[1])));
+					mb.setMasked(MatchField.ICMPV4_CODE, ICMPv4Code.of(dataMask[0].contains("0x") ? Short.parseShort(dataMask[0].replaceFirst("0x", ""), 16) : Short.parseShort(dataMask[0])), 
+							ICMPv4Code.of(dataMask[1].contains("0x") ? Short.parseShort(dataMask[1].replaceFirst("0x", ""), 16) : Short.parseShort(dataMask[1])));
 				}
 				break;
 			case STR_ICMPV6_TYPE:
@@ -668,10 +686,10 @@ public class MatchUtils {
 					throw new IllegalArgumentException("OF Version incompatible");
 				}
 				if (dataMask.length == 1) {
-					mb.setExact(MatchField.ICMPV6_TYPE, dataMask[0].contains("0x") ? U8.of(Short.valueOf(dataMask[0].replaceFirst("0x", ""), 16)) : U8.of(Short.valueOf(dataMask[0])));
+					mb.setExact(MatchField.ICMPV6_TYPE, dataMask[0].contains("0x") ? U8.of(Short.parseShort(dataMask[0].replaceFirst("0x", ""), 16)) : U8.of(Short.parseShort(dataMask[0])));
 				} else {
-					mb.setMasked(MatchField.ICMPV6_TYPE, dataMask[0].contains("0x") ? U8.of(Short.valueOf(dataMask[0].replaceFirst("0x", ""), 16)) : U8.of(Short.valueOf(dataMask[0])), 
-							dataMask[1].contains("0x") ? U8.of(Short.valueOf(dataMask[1].replaceFirst("0x", ""), 16)) : U8.of(Short.valueOf(dataMask[1])));
+					mb.setMasked(MatchField.ICMPV6_TYPE, dataMask[0].contains("0x") ? U8.of(Short.parseShort(dataMask[0].replaceFirst("0x", ""), 16)) : U8.of(Short.parseShort(dataMask[0])), 
+							dataMask[1].contains("0x") ? U8.of(Short.parseShort(dataMask[1].replaceFirst("0x", ""), 16)) : U8.of(Short.parseShort(dataMask[1])));
 				}
 				break;
 			case STR_ICMPV6_CODE:
@@ -679,10 +697,10 @@ public class MatchUtils {
 					throw new IllegalArgumentException("OF Version incompatible");
 				}
 				if (dataMask.length == 1) {
-					mb.setExact(MatchField.ICMPV6_CODE, dataMask[0].contains("0x") ? U8.of(Short.valueOf(dataMask[0].replaceFirst("0x", ""), 16)) : U8.of(Short.valueOf(dataMask[0])));
+					mb.setExact(MatchField.ICMPV6_CODE, dataMask[0].contains("0x") ? U8.of(Short.parseShort(dataMask[0].replaceFirst("0x", ""), 16)) : U8.of(Short.parseShort(dataMask[0])));
 				} else {
-					mb.setMasked(MatchField.ICMPV6_CODE, dataMask[0].contains("0x") ? U8.of(Short.valueOf(dataMask[0].replaceFirst("0x", ""), 16)) : U8.of(Short.valueOf(dataMask[0])), 
-							dataMask[1].contains("0x") ? U8.of(Short.valueOf(dataMask[1].replaceFirst("0x", ""), 16)) : U8.of(Short.valueOf(dataMask[1])));
+					mb.setMasked(MatchField.ICMPV6_CODE, dataMask[0].contains("0x") ? U8.of(Short.parseShort(dataMask[0].replaceFirst("0x", ""), 16)) : U8.of(Short.parseShort(dataMask[0])), 
+							dataMask[1].contains("0x") ? U8.of(Short.parseShort(dataMask[1].replaceFirst("0x", ""), 16)) : U8.of(Short.parseShort(dataMask[1])));
 				}
 				break;
 			case STR_IPV6_ND_SSL:
@@ -713,10 +731,10 @@ public class MatchUtils {
 				break;
 			case STR_ARP_OPCODE:
 				if (dataMask.length == 1) {
-					mb.setExact(MatchField.ARP_OP, dataMask[0].contains("0x") ? ArpOpcode.of(Integer.valueOf(dataMask[0].replaceFirst("0x", ""), 16)) : ArpOpcode.of(Integer.valueOf(dataMask[0])));
+					mb.setExact(MatchField.ARP_OP, dataMask[0].contains("0x") ? ArpOpcode.of(Integer.parseInt(dataMask[0].replaceFirst("0x", ""), 16)) : ArpOpcode.of(Integer.parseInt(dataMask[0])));
 				} else {
-					mb.setMasked(MatchField.ARP_OP, dataMask[0].contains("0x") ? ArpOpcode.of(Integer.valueOf(dataMask[0].replaceFirst("0x", ""), 16)) : ArpOpcode.of(Integer.valueOf(dataMask[0])), 
-							dataMask[1].contains("0x") ? ArpOpcode.of(Integer.valueOf(dataMask[1].replaceFirst("0x", ""), 16)) : ArpOpcode.of(Integer.valueOf(dataMask[1])));
+					mb.setMasked(MatchField.ARP_OP, dataMask[0].contains("0x") ? ArpOpcode.of(Integer.parseInt(dataMask[0].replaceFirst("0x", ""), 16)) : ArpOpcode.of(Integer.parseInt(dataMask[0])), 
+							dataMask[1].contains("0x") ? ArpOpcode.of(Integer.parseInt(dataMask[1].replaceFirst("0x", ""), 16)) : ArpOpcode.of(Integer.parseInt(dataMask[1])));
 				}
 				break;
 			case STR_ARP_SHA:
@@ -741,18 +759,18 @@ public class MatchUtils {
 				break;
 			case STR_MPLS_LABEL:
 				if (dataMask.length == 1) {
-					mb.setExact(MatchField.MPLS_LABEL, dataMask[0].contains("0x") ? U32.of(Long.valueOf(dataMask[0].replaceFirst("0x", ""), 16)) : U32.of(Long.valueOf(dataMask[0])));
+					mb.setExact(MatchField.MPLS_LABEL, dataMask[0].contains("0x") ? U32.of(Long.parseLong(dataMask[0].replaceFirst("0x", ""), 16)) : U32.of(Long.parseLong(dataMask[0])));
 				} else {
-					mb.setMasked(MatchField.MPLS_LABEL, dataMask[0].contains("0x") ? U32.of(Long.valueOf(dataMask[0].replaceFirst("0x", ""), 16)) : U32.of(Long.valueOf(dataMask[0])), 
-							dataMask[1].contains("0x") ? U32.of(Long.valueOf(dataMask[1].replaceFirst("0x", ""), 16)) : U32.of(Long.valueOf(dataMask[1])));
+					mb.setMasked(MatchField.MPLS_LABEL, dataMask[0].contains("0x") ? U32.of(Long.parseLong(dataMask[0].replaceFirst("0x", ""), 16)) : U32.of(Long.parseLong(dataMask[0])), 
+							dataMask[1].contains("0x") ? U32.of(Long.parseLong(dataMask[1].replaceFirst("0x", ""), 16)) : U32.of(Long.parseLong(dataMask[1])));
 				}
 				break;
 			case STR_MPLS_TC:
 				if (dataMask.length == 1) {
-					mb.setExact(MatchField.MPLS_TC, dataMask[0].contains("0x") ? U8.of(Short.valueOf(dataMask[0].replaceFirst("0x", ""), 16)) : U8.of(Short.valueOf(dataMask[0])));
+					mb.setExact(MatchField.MPLS_TC, dataMask[0].contains("0x") ? U8.of(Short.parseShort(dataMask[0].replaceFirst("0x", ""), 16)) : U8.of(Short.parseShort(dataMask[0])));
 				} else {
-					mb.setMasked(MatchField.MPLS_TC, dataMask[0].contains("0x") ? U8.of(Short.valueOf(dataMask[0].replaceFirst("0x", ""), 16)) : U8.of(Short.valueOf(dataMask[0])), 
-							dataMask[1].contains("0x") ? U8.of(Short.valueOf(dataMask[1].replaceFirst("0x", ""), 16)) : U8.of(Short.valueOf(dataMask[1])));
+					mb.setMasked(MatchField.MPLS_TC, dataMask[0].contains("0x") ? U8.of(Short.parseShort(dataMask[0].replaceFirst("0x", ""), 16)) : U8.of(Short.parseShort(dataMask[0])), 
+							dataMask[1].contains("0x") ? U8.of(Short.parseShort(dataMask[1].replaceFirst("0x", ""), 16)) : U8.of(Short.parseShort(dataMask[1])));
 				}
 				break;
 			case STR_MPLS_BOS:
@@ -760,18 +778,18 @@ public class MatchUtils {
 				break;
 			case STR_METADATA:
 				if (dataMask.length == 1) {
-					mb.setExact(MatchField.METADATA, dataMask[0].contains("0x") ? OFMetadata.ofRaw(Long.valueOf(dataMask[0].replaceFirst("0x", ""), 16)) : OFMetadata.ofRaw(Long.valueOf(dataMask[0])));
+					mb.setExact(MatchField.METADATA, dataMask[0].contains("0x") ? OFMetadata.ofRaw(Long.parseLong(dataMask[0].replaceFirst("0x", ""), 16)) : OFMetadata.ofRaw(Long.parseLong(dataMask[0])));
 				} else {
-					mb.setMasked(MatchField.METADATA, dataMask[0].contains("0x") ? OFMetadata.ofRaw(Long.valueOf(dataMask[0].replaceFirst("0x", ""), 16)) : OFMetadata.ofRaw(Long.valueOf(dataMask[0])), 
-							dataMask[1].contains("0x") ? OFMetadata.ofRaw(Long.valueOf(dataMask[1].replaceFirst("0x", ""), 16)) : OFMetadata.ofRaw(Long.valueOf(dataMask[1])));
+					mb.setMasked(MatchField.METADATA, dataMask[0].contains("0x") ? OFMetadata.ofRaw(Long.parseLong(dataMask[0].replaceFirst("0x", ""), 16)) : OFMetadata.ofRaw(Long.parseLong(dataMask[0])), 
+							dataMask[1].contains("0x") ? OFMetadata.ofRaw(Long.parseLong(dataMask[1].replaceFirst("0x", ""), 16)) : OFMetadata.ofRaw(Long.parseLong(dataMask[1])));
 				}
 				break;
 			case STR_TUNNEL_ID:
 				if (dataMask.length == 1) {
-					mb.setExact(MatchField.TUNNEL_ID, dataMask[0].contains("0x") ? U64.of(Long.valueOf(dataMask[0].replaceFirst("0x", ""), 16)) : U64.of(Long.valueOf(dataMask[0])));
+					mb.setExact(MatchField.TUNNEL_ID, dataMask[0].contains("0x") ? U64.of(Long.parseLong(dataMask[0].replaceFirst("0x", ""), 16)) : U64.of(Long.parseLong(dataMask[0])));
 				} else {
-					mb.setMasked(MatchField.TUNNEL_ID, dataMask[0].contains("0x") ? U64.of(Long.valueOf(dataMask[0].replaceFirst("0x", ""), 16)) : U64.of(Long.valueOf(dataMask[0])), 
-							dataMask[1].contains("0x") ? U64.of(Long.valueOf(dataMask[1].replaceFirst("0x", ""), 16)) : U64.of(Long.valueOf(dataMask[1])));
+					mb.setMasked(MatchField.TUNNEL_ID, dataMask[0].contains("0x") ? U64.of(Long.parseLong(dataMask[0].replaceFirst("0x", ""), 16)) : U64.of(Long.parseLong(dataMask[0])), 
+							dataMask[1].contains("0x") ? U64.of(Long.parseLong(dataMask[1].replaceFirst("0x", ""), 16)) : U64.of(Long.parseLong(dataMask[1])));
 				}
 				break;
 			case STR_TUNNEL_IPV4_SRC:

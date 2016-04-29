@@ -669,7 +669,7 @@ public class ActionUtils {
 							}
 							break;
 						default:
-							log.error("UNEXPECTED OF1.3 SET-FIELD '{}'", actionData);
+							log.error("UNEXPECTED OF1.2+ SET-FIELD '{}'", actionData);
 							break;
 						}					
 						break;
@@ -855,48 +855,62 @@ public class ActionUtils {
 		}		
 		return;
 	} 
-
+	
 	/**
 	 * Parse string and numerical port representations.
 	 * The key and delimiter for the action should be omitted, and only the
 	 * data should be presented to this decoder. Data can be any signed integer
-	 * as a string or the strings 'controller', 'local', 'ingress-port', 'normal',
-	 * or 'flood'.
+	 * or hex (w/leading 0x prefix) as a string or the special string port
+	 * STR_PORT_* as defined in {@link MatchUtils}.
 	 * @param actionToDecode; The action as a string to decode
 	 * @param version; The OF version to create the action for
 	 * @param log
 	 * @return
 	 */
 	private static OFActionOutput decode_output(String actionToDecode, OFVersion version, Logger log) {
-		Matcher n = Pattern.compile("((all)|(controller)|(local)|(ingress-port)|(normal)|(flood))").matcher(actionToDecode);
 		OFActionOutput.Builder ab = OFFactories.getFactory(version).actions().buildOutput();
-		OFPort port = OFPort.ANY;
-		if (n.matches()) {
-			if (n.group(1) != null && n.group(1).equals("all")) 
-				port = OFPort.ALL;
-			else if (n.group(1) != null && n.group(1).equals("controller"))
-				port = OFPort.CONTROLLER;
-			else if (n.group(1) != null && n.group(1).equals("local"))
-				port = OFPort.LOCAL;
-			else if (n.group(1) != null && n.group(1).equals("ingress-port"))
-				port = OFPort.IN_PORT;
-			else if (n.group(1) != null && n.group(1).equals("normal"))
-				port = OFPort.NORMAL;
-			else if (n.group(1) != null && n.group(1).equals("flood"))
-				port = OFPort.FLOOD;
+		actionToDecode = actionToDecode.trim().toLowerCase();
+		OFPort port = OFPort.ZERO;
+		switch (actionToDecode) {
+		case MatchUtils.STR_PORT_ALL:
+			port = OFPort.ALL;
+			break;
+		case MatchUtils.STR_PORT_CONTROLLER:
+			port = OFPort.CONTROLLER;
+			break;
+		case MatchUtils.STR_PORT_FLOOD:
+			port = OFPort.FLOOD;
+			break;
+		case MatchUtils.STR_PORT_IN_PORT:
+			port = OFPort.IN_PORT;
+			break;
+		case MatchUtils.STR_PORT_LOCAL:
+			port = OFPort.LOCAL;
+			break;
+		case MatchUtils.STR_PORT_NORMAL:
+			port = OFPort.NORMAL;
+			break;
+		case MatchUtils.STR_PORT_TABLE:
+			port = OFPort.TABLE;
+			break;
+		default:
+			log.debug("Port {} was not a special port string. Parsing as raw int or hex", actionToDecode);
+		}
+		if (!port.equals(OFPort.ZERO)) {
 			ab.setPort(port);
 			ab.setMaxLen(Integer.MAX_VALUE);
 			log.debug("action {}", ab.build());
 			return ab.build();
-		}
-		else {
+		} else {
 			try {
-				port = OFPort.of(Integer.parseInt(actionToDecode));
+				port = OFPort.of(U32.of(actionToDecode.contains("0x") ? 
+						Long.parseLong(actionToDecode.replaceFirst("0x", ""), 16) : 
+							Long.parseLong(actionToDecode)).getRaw());
 				ab.setPort(port);
 				ab.setMaxLen(Integer.MAX_VALUE);
 				return ab.build();
 			} catch (NumberFormatException e) {
-				log.error("Could not parse Integer port: '{}'", actionToDecode);
+				log.error("Could not parse port: '{}'", actionToDecode);
 				return null;
 			}
 		}
