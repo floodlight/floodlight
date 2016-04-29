@@ -558,7 +558,7 @@ public class LinkDiscoveryManagerTest extends FloodlightTestCase {
         }
 
         // Set the captures.
-        wc = new Capture<OFMessage>(CaptureType.ALL);
+        wc = EasyMock.newCapture(CaptureType.ALL);
 
         // Expect switch to return those ports.
         expect(sw1.getEnabledPortNumbers()).andReturn(ports).anyTimes();

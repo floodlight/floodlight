@@ -440,7 +440,7 @@ public class LoadBalancerTest extends FloodlightTestCase {
 
 		OFPacketOut arpReplyPacketOut1;
 
-		Capture<OFMessage> wc1 = new Capture<OFMessage>(CaptureType.ALL);
+		Capture<OFMessage> wc1 = EasyMock.newCapture(CaptureType.ALL);
 
 		sw1 = EasyMock.createNiceMock(IOFSwitch.class);
 		expect(sw1.getId()).andReturn(DatapathId.of(1L)).anyTimes();
