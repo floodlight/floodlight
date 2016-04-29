@@ -44,8 +44,8 @@
     <property name="floodlight-test-jar" location="${target}/floodlight-test.jar"/>
     <property name="thrift.dir" value="${basedir}/src/main/thrift"/>
     <property name="thrift.out.dir" value="lib/gen-java"/>
-    <property name="ant.build.javac.source" value="1.7"/>
-    <property name="ant.build.javac.target" value="1.7"/>
+    <property name="ant.build.javac.source" value="1.8"/>
+    <property name="ant.build.javac.target" value="1.8"/>
     <property name="findbugs.home" value="../build/findbugs-2.0.2"/>
     <property name="findbugs.results" value="findbugs-results" />
     <property name="lib" location="lib"/>
@@ -115,8 +115,8 @@
     </path>
 
     <patternset id="lib-test">
-        <include name="junit-4.8.2.jar"/>
-        <include name="org.easymock-3.1.jar"/>
+        <include name="junit-4.12.jar"/>
+        <include name="easymock-3.4.jar"/>
         <include name="objenesis-1.2.jar"/>  <!-- required by easymock to mock classes -->
         <include name="cglib-nodep-2.2.2.jar"/>    <!-- required by easymock to mock classes -->
     </patternset>

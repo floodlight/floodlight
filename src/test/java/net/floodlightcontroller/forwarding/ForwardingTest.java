@@ -438,8 +438,8 @@ public class ForwardingTest extends FloodlightTestCase {
 	public void testForwardMultiSwitchPath() throws Exception {
 		learnDevices(DestDeviceToLearn.DEVICE1);
 
-		Capture<OFMessage> wc1 = new Capture<OFMessage>(CaptureType.ALL);
-		Capture<OFMessage> wc2 = new Capture<OFMessage>(CaptureType.ALL);
+		Capture<OFMessage> wc1 = EasyMock.newCapture(CaptureType.ALL);
+		Capture<OFMessage> wc2 = EasyMock.newCapture(CaptureType.ALL);
 
 		Route route = new Route(DatapathId.of(1L), DatapathId.of(2L));
 		List<NodePortTuple> nptList = new ArrayList<NodePortTuple>();
@@ -508,8 +508,8 @@ public class ForwardingTest extends FloodlightTestCase {
 	public void testForwardMultiSwitchPathIPv6() throws Exception {
 		learnDevicesIPv6(DestDeviceToLearn.DEVICE1);
 
-		Capture<OFMessage> wc1 = new Capture<OFMessage>(CaptureType.ALL);
-		Capture<OFMessage> wc2 = new Capture<OFMessage>(CaptureType.ALL);
+		Capture<OFMessage> wc1 = EasyMock.newCapture(CaptureType.ALL);
+		Capture<OFMessage> wc2 = EasyMock.newCapture(CaptureType.ALL);
 
 		Route route = new Route(DatapathId.of(1L), DatapathId.of(2L));
 		List<NodePortTuple> nptList = new ArrayList<NodePortTuple>();
@@ -578,8 +578,8 @@ public class ForwardingTest extends FloodlightTestCase {
 	public void testForwardSingleSwitchPath() throws Exception {
 		learnDevices(DestDeviceToLearn.DEVICE2);
 
-		Capture<OFMessage> wc1 = new Capture<OFMessage>(CaptureType.ALL);
-		Capture<OFMessage> wc2 = new Capture<OFMessage>(CaptureType.ALL);
+		Capture<OFMessage> wc1 = EasyMock.newCapture(CaptureType.ALL);
+		Capture<OFMessage> wc2 = EasyMock.newCapture(CaptureType.ALL);
 
 		Route route = new  Route(DatapathId.of(1L), DatapathId.of(1L));
 		route.getPath().add(new NodePortTuple(DatapathId.of(1L), OFPort.of(1)));
@@ -632,8 +632,8 @@ public class ForwardingTest extends FloodlightTestCase {
 	public void testForwardSingleSwitchPathIPv6() throws Exception {
 		learnDevicesIPv6(DestDeviceToLearn.DEVICE2);
 
-		Capture<OFMessage> wc1 = new Capture<OFMessage>(CaptureType.ALL);
-		Capture<OFMessage> wc2 = new Capture<OFMessage>(CaptureType.ALL);
+		Capture<OFMessage> wc1 = EasyMock.newCapture(CaptureType.ALL);
+		Capture<OFMessage> wc2 = EasyMock.newCapture(CaptureType.ALL);
 
 		Route route = new  Route(DatapathId.of(1L), DatapathId.of(1L));
 		route.getPath().add(new NodePortTuple(DatapathId.of(1L), OFPort.of(1)));
@@ -747,7 +747,7 @@ public class ForwardingTest extends FloodlightTestCase {
 		// Set no destination attachment point or route
 		// expect no Flow-mod but expect the packet to be flooded
 
-		Capture<OFMessage> wc1 = new Capture<OFMessage>(CaptureType.ALL);
+		Capture<OFMessage> wc1 = EasyMock.newCapture(CaptureType.ALL);
 		
 		Set<OFPort> bcastPorts = new HashSet<OFPort>();
 		bcastPorts.add(OFPort.of(10));
@@ -778,7 +778,7 @@ public class ForwardingTest extends FloodlightTestCase {
 		// Set no destination attachment point or route
 		// expect no Flow-mod but expect the packet to be flooded
 
-		Capture<OFMessage> wc1 = new Capture<OFMessage>(CaptureType.ALL);
+		Capture<OFMessage> wc1 = EasyMock.newCapture(CaptureType.ALL);
 		
 		Set<OFPort> bcastPorts = new HashSet<OFPort>();
 		bcastPorts.add(OFPort.of(10));

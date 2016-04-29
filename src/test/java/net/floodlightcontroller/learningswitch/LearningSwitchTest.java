@@ -184,7 +184,7 @@ public class LearningSwitchTest extends FloodlightTestCase {
             .setData(this.testPacketSerialized)
 	        .build();
         
-        Capture<OFMessage> wc1 = new Capture<OFMessage>(CaptureType.ALL);
+        Capture<OFMessage> wc1 = EasyMock.newCapture(CaptureType.ALL);
         
         // Mock up our expected behavior
         IOFSwitch mockSwitch = createMock(IOFSwitch.class);
@@ -215,9 +215,9 @@ public class LearningSwitchTest extends FloodlightTestCase {
         // tweak the test packet in since we need a bufferId
         this.packetIn = packetIn.createBuilder().setBufferId(OFBufferId.of(50)).build();
 
-        Capture<OFMessage> wc1 = new Capture<OFMessage>(CaptureType.ALL);
-        Capture<OFMessage> wc2 = new Capture<OFMessage>(CaptureType.ALL);
-        Capture<OFMessage> wc3 = new Capture<OFMessage>(CaptureType.ALL);
+        Capture<OFMessage> wc1 = EasyMock.newCapture(CaptureType.ALL);
+        Capture<OFMessage> wc2 = EasyMock.newCapture(CaptureType.ALL);
+        Capture<OFMessage> wc3 = EasyMock.newCapture(CaptureType.ALL);
         
         Set<OFFlowModFlags> flags = new HashSet<OFFlowModFlags>();
         flags.add(OFFlowModFlags.SEND_FLOW_REM);
