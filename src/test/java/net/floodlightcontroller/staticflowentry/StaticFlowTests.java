@@ -27,6 +27,7 @@ import java.util.Set;
 
 import org.easymock.Capture;
 import org.easymock.CaptureType;
+import org.easymock.EasyMock;
 import org.junit.Test;
 import org.projectfloodlight.openflow.protocol.OFFactories;
 import org.projectfloodlight.openflow.protocol.OFFactory;
@@ -200,8 +201,8 @@ public class StaticFlowTests extends FloodlightTestCase {
 		dpid = HexString.toLong(TestSwitch1DPID);
 
 		mockSwitch = createNiceMock(IOFSwitch.class);
-		writeCapture = new Capture<OFMessage>(CaptureType.ALL);
-		writeCaptureList = new Capture<List<OFMessage>>(CaptureType.ALL);
+		writeCapture = EasyMock.newCapture(CaptureType.ALL);
+		writeCaptureList = EasyMock.newCapture(CaptureType.ALL);
 
 		expect(mockSwitch.write(capture(writeCapture))).andReturn(true).anyTimes();
 		expect(mockSwitch.write(capture(writeCaptureList))).andReturn(Collections.<OFMessage>emptyList()).anyTimes();
@@ -264,9 +265,9 @@ public class StaticFlowTests extends FloodlightTestCase {
 		// should be fixed because OFMessage.hashCode() is deterministic
 		OFFlowMod firstFlowMod = (OFFlowMod) writeCapture.getValues().get(2);
 		verifyFlowMod(firstFlowMod, FlowMod1);
-		OFFlowMod secondFlowMod = (OFFlowMod) writeCapture.getValues().get(1);
+		OFFlowMod secondFlowMod = (OFFlowMod) writeCapture.getValues().get(0); /* Java 8 stores 2-0-1 */
 		verifyFlowMod(secondFlowMod, FlowMod2);
-		OFFlowMod thirdFlowMod = (OFFlowMod) writeCapture.getValues().get(0);
+		OFFlowMod thirdFlowMod = (OFFlowMod) writeCapture.getValues().get(1);
 		verifyFlowMod(thirdFlowMod, FlowMod3);
 
 		writeCapture.reset();

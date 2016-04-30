@@ -119,16 +119,16 @@ public class OFChannelHandlerVer10Test {
         switchManager = createMock(IOFSwitchManager.class);
         connectionListener = createMock(IOFConnectionListener.class);
         newConnectionListener = createMock(INewOFConnectionListener.class);
-        newConnection = new Capture<IOFConnectionBackend>();
-        newFeaturesReply = new Capture<OFFeaturesReply>();
+        newConnection = EasyMock.newCapture();
+        newFeaturesReply = EasyMock.newCapture();
         eventLoop = new TestEventLoop();
 
         ctx = createMock(ChannelHandlerContext.class);
         channel = createMock(Channel.class);
         timer = new HashedWheelTimer();
-        exceptionEventCapture = new Capture<Throwable>(CaptureType.ALL);
+        exceptionEventCapture = EasyMock.newCapture(CaptureType.ALL);
         pipeline = createMock(ChannelPipeline.class);
-        writeCapture = new Capture<List<OFMessage>>(CaptureType.ALL);
+        writeCapture = EasyMock.newCapture(CaptureType.ALL);
         seenXids = null;
 
         // TODO: should mock IDebugCounterService and make sure

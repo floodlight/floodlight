@@ -609,7 +609,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 					u.getOperation() == UpdateOperation.TUNNEL_PORT_REMOVED) {
 				Set<OFMessage> msgs = new HashSet<OFMessage>();
 
-				if (u.getSrc() != null || !u.getSrc().equals(DatapathId.NONE)) {
+				if (u.getSrc() != null && !u.getSrc().equals(DatapathId.NONE)) {
 					IOFSwitch srcSw = switchService.getSwitch(u.getSrc());
 					/* src side of link */
 					if (srcSw != null) {
@@ -631,7 +631,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 				}
 
 				/* must be a link, not just a port down, if we have a dst switch */
-				if (u.getDst() != null || !u.getDst().equals(DatapathId.NONE)) {
+				if (u.getDst() != null && !u.getDst().equals(DatapathId.NONE)) {
 					/* dst side of link */
 					IOFSwitch dstSw = switchService.getSwitch(u.getDst());
 					if (dstSw != null) {
