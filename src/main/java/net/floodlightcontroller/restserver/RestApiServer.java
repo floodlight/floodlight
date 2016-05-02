@@ -150,11 +150,12 @@ public class RestApiServer implements IFloodlightModule, IRestApiService {
 				};
 
 				crossAccessAllowAll.setNext(slashFilter);
+				slashFilter.setNext(baseRouter);
+				return crossAccessAllowAll; /* caaa --> sf --> br */
 			}
 
 			slashFilter.setNext(baseRouter);
-
-			return slashFilter;
+			return slashFilter; /* sf --> br */
 		}
 
 		public void run(FloodlightModuleContext fmlContext, String restHost) {
