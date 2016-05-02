@@ -220,15 +220,6 @@ public class RestApiServer implements IFloodlightModule, IRestApiService {
 					}
 				}
 
-				/*CorsService corsService = new CorsService();         
-				corsService.setAllowedOrigins(new HashSet<String>(Arrays.asList("*")));
-				corsService.setAllowedCredentials(true);
-				corsService.setContext(context);
-				corsService.setAllowingAllRequestedHeaders(true);
-				corsService.setEnabled(true);
-
-				this.getServices().add(corsService);*/
-
 				component.getClients().add(Protocol.CLAP);
 				component.getDefaultHost().attach(this);
 				component.start();
