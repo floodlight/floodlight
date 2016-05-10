@@ -39,6 +39,7 @@ import org.projectfloodlight.openflow.types.IpProtocol;
 import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.TransportPort;
+import org.projectfloodlight.openflow.types.U64;
 
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IOFMessageListener;
@@ -47,6 +48,7 @@ import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
+import net.floodlightcontroller.core.util.AppCookie;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.devicemanager.IDeviceService;
 
@@ -76,6 +78,13 @@ import org.slf4j.LoggerFactory;
  */
 public class Firewall implements IFirewallService, IOFMessageListener,
 IFloodlightModule {
+	private static final short APP_ID = 30;
+	static {
+		AppCookie.registerApp(APP_ID, "Firewall");
+	}
+	private static final U64 DENY_BCAST_COOKIE = AppCookie.makeCookie(APP_ID, 0xaaaaaaaa);
+	private static final U64 ALLOW_BCAST_COOKIE = AppCookie.makeCookie(APP_ID, 0x55555555);
+	private static final U64 RULE_MISS_COOKIE = AppCookie.makeCookie(APP_ID, -1);
 
 	// service modules needed
 	protected IFloodlightProviderService floodlightProvider;
@@ -309,8 +318,11 @@ IFloodlightModule {
 		switch (msg.getType()) {
 		case PACKET_IN:
 			IRoutingDecision decision = null;
-			if (cntx != null) {
+			if (cntx == null) {
+				logger.warn("Firewall unable to request packet drop: FloodlightContext is null.");
+			} else {
 				decision = IRoutingDecision.rtStore.get(cntx, IRoutingDecision.CONTEXT_DECISION);
+
 				return this.processPacketInMessage(sw, (OFPacketIn) msg, decision, cntx);
 			}
 			break;
@@ -560,6 +572,7 @@ IFloodlightModule {
 				decision = new RoutingDecision(sw.getId(), inPort, 
 						IDeviceService.fcStore.get(cntx, IDeviceService.CONTEXT_SRC_DEVICE),
 						IRoutingDecision.RoutingAction.MULTICAST);
+				decision.setDescriptor(ALLOW_BCAST_COOKIE);
 				decision.addToContext(cntx);
 			} else {
 				if (logger.isTraceEnabled()) {
@@ -569,6 +582,7 @@ IFloodlightModule {
 				decision = new RoutingDecision(sw.getId(), inPort,
 						IDeviceService.fcStore.get(cntx, IDeviceService.CONTEXT_SRC_DEVICE),
 						IRoutingDecision.RoutingAction.DROP);
+				decision.setDescriptor(DENY_BCAST_COOKIE);
 				decision.addToContext(cntx);
 			}
 			return Command.CONTINUE;
@@ -581,6 +595,7 @@ IFloodlightModule {
 		 * else if (eth.getEtherType() == Ethernet.TYPE_ARP) {
 		 * logger.info("allowing ARP traffic"); decision = new
 		 * FirewallDecision(IRoutingDecision.RoutingAction.FORWARD_OR_FLOOD);
+		 * decision.setDescriptor(ALLOW_BCAST_COOKIE);
 		 * decision.addToContext(cntx); return Command.CONTINUE; }
 		 */
 
@@ -596,6 +611,11 @@ IFloodlightModule {
 						IDeviceService.fcStore.get(cntx, IDeviceService.CONTEXT_SRC_DEVICE), 
 						IRoutingDecision.RoutingAction.DROP);
 				decision.setMatch(rmp.match);
+				if (rule == null) {
+					decision.setDescriptor(RULE_MISS_COOKIE);
+				} else {
+					decision.setDescriptor(AppCookie.makeCookie(APP_ID, rule.ruleid));
+				}
 				decision.addToContext(cntx);
 				if (logger.isTraceEnabled()) {
 					if (rule == null) {
@@ -610,6 +630,7 @@ IFloodlightModule {
 						IDeviceService.fcStore.get(cntx, IDeviceService.CONTEXT_SRC_DEVICE),
 						IRoutingDecision.RoutingAction.FORWARD_OR_FLOOD);
 				decision.setMatch(rmp.match);
+				decision.setDescriptor(AppCookie.makeCookie(APP_ID, rule.ruleid));
 				decision.addToContext(cntx);
 				if (logger.isTraceEnabled()) {
 					logger.trace("Allow rule={} match for PacketIn={}", rule, pi);
