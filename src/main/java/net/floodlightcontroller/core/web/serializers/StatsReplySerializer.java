@@ -28,14 +28,17 @@ import com.fasterxml.jackson.databind.SerializerProvider;
 
 import net.floodlightcontroller.core.web.OFStatsTypeStrings;
 import net.floodlightcontroller.core.web.StatsReply;
+import net.floodlightcontroller.util.OXMUtils;
 
 import org.projectfloodlight.openflow.protocol.OFActionType;
 import org.projectfloodlight.openflow.protocol.OFBucket;
 import org.projectfloodlight.openflow.protocol.OFBucketCounter;
 import org.projectfloodlight.openflow.protocol.OFFeaturesReply;
+import org.projectfloodlight.openflow.protocol.OFFlowModFlags;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsReply;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsEntry;
 import org.projectfloodlight.openflow.protocol.OFDescStatsReply;
+import org.projectfloodlight.openflow.protocol.OFGroupCapabilities;
 import org.projectfloodlight.openflow.protocol.OFGroupDescStatsEntry;
 import org.projectfloodlight.openflow.protocol.OFGroupDescStatsReply;
 import org.projectfloodlight.openflow.protocol.OFGroupFeaturesStatsReply;
@@ -46,15 +49,23 @@ import org.projectfloodlight.openflow.protocol.OFMeterConfig;
 import org.projectfloodlight.openflow.protocol.OFMeterConfigStatsReply;
 import org.projectfloodlight.openflow.protocol.OFMeterFeatures;
 import org.projectfloodlight.openflow.protocol.OFMeterFeaturesStatsReply;
+import org.projectfloodlight.openflow.protocol.OFMeterFlags;
 import org.projectfloodlight.openflow.protocol.OFMeterStats;
 import org.projectfloodlight.openflow.protocol.OFMeterStatsReply;
+import org.projectfloodlight.openflow.protocol.OFPortConfig;
+import org.projectfloodlight.openflow.protocol.OFPortDescProp;
+import org.projectfloodlight.openflow.protocol.OFPortFeatures;
+import org.projectfloodlight.openflow.protocol.OFPortState;
 import org.projectfloodlight.openflow.protocol.OFPortStatsReply;
 import org.projectfloodlight.openflow.protocol.OFPortStatsEntry;
 import org.projectfloodlight.openflow.protocol.OFPortDescStatsReply;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
+import org.projectfloodlight.openflow.protocol.OFStatsReplyFlags;
 import org.projectfloodlight.openflow.protocol.OFTableFeatureProp;
 import org.projectfloodlight.openflow.protocol.OFTableFeaturePropApplyActions;
 import org.projectfloodlight.openflow.protocol.OFTableFeaturePropApplyActionsMiss;
+import org.projectfloodlight.openflow.protocol.OFTableFeaturePropApplyCopyfield;
+import org.projectfloodlight.openflow.protocol.OFTableFeaturePropApplyCopyfieldMiss;
 import org.projectfloodlight.openflow.protocol.OFTableFeaturePropApplySetfield;
 import org.projectfloodlight.openflow.protocol.OFTableFeaturePropApplySetfieldMiss;
 import org.projectfloodlight.openflow.protocol.OFTableFeaturePropExperimenter;
@@ -64,9 +75,13 @@ import org.projectfloodlight.openflow.protocol.OFTableFeaturePropInstructionsMis
 import org.projectfloodlight.openflow.protocol.OFTableFeaturePropMatch;
 import org.projectfloodlight.openflow.protocol.OFTableFeaturePropNextTables;
 import org.projectfloodlight.openflow.protocol.OFTableFeaturePropNextTablesMiss;
+import org.projectfloodlight.openflow.protocol.OFTableFeaturePropOxmValues;
+import org.projectfloodlight.openflow.protocol.OFTableFeaturePropTableSyncFrom;
 import org.projectfloodlight.openflow.protocol.OFTableFeaturePropWildcards;
 import org.projectfloodlight.openflow.protocol.OFTableFeaturePropWriteActions;
 import org.projectfloodlight.openflow.protocol.OFTableFeaturePropWriteActionsMiss;
+import org.projectfloodlight.openflow.protocol.OFTableFeaturePropWriteCopyfield;
+import org.projectfloodlight.openflow.protocol.OFTableFeaturePropWriteCopyfieldMiss;
 import org.projectfloodlight.openflow.protocol.OFTableFeaturePropWriteSetfield;
 import org.projectfloodlight.openflow.protocol.OFTableFeaturePropWriteSetfieldMiss;
 import org.projectfloodlight.openflow.protocol.OFTableFeatures;
@@ -79,30 +94,9 @@ import org.projectfloodlight.openflow.protocol.meterband.OFMeterBand;
 import org.projectfloodlight.openflow.protocol.meterband.OFMeterBandDrop;
 import org.projectfloodlight.openflow.protocol.meterband.OFMeterBandDscpRemark;
 import org.projectfloodlight.openflow.protocol.meterband.OFMeterBandExperimenter;
-import org.projectfloodlight.openflow.protocol.ver13.OFFlowModFlagsSerializerVer13;
-import org.projectfloodlight.openflow.protocol.ver13.OFMeterBandTypeSerializerVer13;
-// Use Loxigen's serializer
-import org.projectfloodlight.openflow.protocol.ver13.OFPortFeaturesSerializerVer13;
-import org.projectfloodlight.openflow.protocol.ver13.OFStatsReplyFlagsSerializerVer13;
-import org.projectfloodlight.openflow.protocol.ver13.OFTableFeaturePropTypeSerializerVer13;
-import org.projectfloodlight.openflow.protocol.ver12.OFFlowModFlagsSerializerVer12;
-import org.projectfloodlight.openflow.protocol.ver12.OFPortConfigSerializerVer12;
-import org.projectfloodlight.openflow.protocol.ver12.OFPortFeaturesSerializerVer12;
-import org.projectfloodlight.openflow.protocol.ver12.OFPortStateSerializerVer12;
-import org.projectfloodlight.openflow.protocol.ver12.OFStatsReplyFlagsSerializerVer12;
-import org.projectfloodlight.openflow.protocol.ver11.OFFlowModFlagsSerializerVer11;
-import org.projectfloodlight.openflow.protocol.ver11.OFPortConfigSerializerVer11;
-import org.projectfloodlight.openflow.protocol.ver11.OFPortFeaturesSerializerVer11;
-import org.projectfloodlight.openflow.protocol.ver11.OFPortStateSerializerVer11;
-import org.projectfloodlight.openflow.protocol.ver11.OFStatsReplyFlagsSerializerVer11;
-import org.projectfloodlight.openflow.protocol.ver10.OFPortConfigSerializerVer10;
-import org.projectfloodlight.openflow.protocol.ver10.OFPortFeaturesSerializerVer10;
-import org.projectfloodlight.openflow.protocol.ver10.OFPortStateSerializerVer10;
-import org.projectfloodlight.openflow.protocol.ver10.OFStatsReplyFlagsSerializerVer10;
-import org.projectfloodlight.openflow.protocol.ver13.OFPortStateSerializerVer13;
-import org.projectfloodlight.openflow.protocol.ver13.OFPortConfigSerializerVer13;
-import org.projectfloodlight.openflow.protocol.ver14.OFFlowModFlagsSerializerVer14;
-import org.projectfloodlight.openflow.protocol.ver14.OFStatsReplyFlagsSerializerVer14;
+import org.projectfloodlight.openflow.protocol.ver15.OFMeterBandTypeSerializerVer15;
+import org.projectfloodlight.openflow.protocol.ver15.OFPortDescPropTypeSerializerVer15;
+import org.projectfloodlight.openflow.protocol.ver15.OFTableFeaturePropTypeSerializerVer15;
 import org.projectfloodlight.openflow.protocol.OFAggregateStatsReply;
 import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.types.U32;
@@ -135,23 +129,24 @@ public class StatsReplySerializer extends JsonSerializer<StatsReply> {
 			jGen.writeStringField(" **", "-- The switch is not connected to the controller.");
 			jGen.writeStringField("*  ", "-- The request specified is not supported by the switch's OpenFlow version.");
 			jGen.writeEndObject();
-			jGen.writeObjectFieldStart("Valid statistics and features strings are:");
-			jGen.writeStringField("1)", OFStatsTypeStrings.AGGREGATE);
-			jGen.writeStringField("2)", OFStatsTypeStrings.DESC);
-			jGen.writeStringField("3)", OFStatsTypeStrings.EXPERIMENTER);
-			jGen.writeStringField("4)", OFStatsTypeStrings.FEATURES);
-			jGen.writeStringField("5)", OFStatsTypeStrings.FLOW);
-			jGen.writeStringField("6)", OFStatsTypeStrings.GROUP);
-			jGen.writeStringField("7)", OFStatsTypeStrings.GROUP_DESC);
-			jGen.writeStringField("8)", OFStatsTypeStrings.GROUP_FEATURES);  
-			jGen.writeStringField("9)", OFStatsTypeStrings.METER);  
-			jGen.writeStringField("A)", OFStatsTypeStrings.METER_CONFIG); 
-			jGen.writeStringField("B)", OFStatsTypeStrings.METER_FEATURES); 
-			jGen.writeStringField("C)", OFStatsTypeStrings.PORT);
-			jGen.writeStringField("D)", OFStatsTypeStrings.PORT_DESC);
-			jGen.writeStringField("E)", OFStatsTypeStrings.QUEUE);
-			jGen.writeStringField("F)", OFStatsTypeStrings.TABLE);
-			jGen.writeStringField("G)", OFStatsTypeStrings.TABLE_FEATURES);
+			jGen.writeArrayFieldStart("Valid statistics and features are");
+			jGen.writeString(OFStatsTypeStrings.AGGREGATE);
+			jGen.writeString(OFStatsTypeStrings.DESC);
+			jGen.writeString(OFStatsTypeStrings.EXPERIMENTER);
+			jGen.writeString(OFStatsTypeStrings.FEATURES);
+			jGen.writeString(OFStatsTypeStrings.FLOW);
+			jGen.writeString(OFStatsTypeStrings.GROUP);
+			jGen.writeString(OFStatsTypeStrings.GROUP_DESC);
+			jGen.writeString(OFStatsTypeStrings.GROUP_FEATURES);  
+			jGen.writeString(OFStatsTypeStrings.METER);  
+			jGen.writeString(OFStatsTypeStrings.METER_CONFIG); 
+			jGen.writeString(OFStatsTypeStrings.METER_FEATURES); 
+			jGen.writeString(OFStatsTypeStrings.PORT);
+			jGen.writeString(OFStatsTypeStrings.PORT_DESC);
+			jGen.writeString(OFStatsTypeStrings.QUEUE);
+			jGen.writeString(OFStatsTypeStrings.TABLE);
+			jGen.writeString(OFStatsTypeStrings.TABLE_FEATURES);
+			jGen.writeEndArray();
 			jGen.writeEndObject(); 
 			jGen.writeEndObject();
 			return;
@@ -165,21 +160,51 @@ public class StatsReplySerializer extends JsonSerializer<StatsReply> {
 		} else {
 			switch (reply.getStatType()) {
 			case PORT:
+				logger.warn("Unimplemented {} stats reply serializer", reply.getStatType());
+				break;
+			case PORT_STATS:
 				serializePortReply((List<OFPortStatsReply>) reply.getValues(), jGen);
 				break;
+			case PORT_DESC:
+				serializePortDescReply((List<OFPortDescStatsReply>) reply.getValues(), jGen);
+				break;
 			case QUEUE:
-				// handle queue
+				logger.warn("Unimplemented {} stats reply serializer", reply.getStatType());
+				break;
+			case QUEUE_STATS:
+				logger.warn("Unimplemented {} stats reply serializer", reply.getStatType());
+				//TODO serializeQueueReply((List<OFQueueStatsReply>) reply.getValues(), jGen);
+				break;
+			case QUEUE_DESC:
+				logger.warn("Unimplemented {} stats reply serializer", reply.getStatType());
+				//TODO serializeQueueDescReply((List<OFQueueDescStatsReply>) reply.getValues(), jGen);
 				break;
 			case FLOW:
+				logger.warn("Unimplemented {} stats reply serializer", reply.getStatType());
+				break;
+			case FLOW_STATS:
 				serializeFlowReply((List<OFFlowStatsReply>) reply.getValues(), jGen);
 				break;
+			case FLOW_DESC:
+				logger.warn("Unimplemented {} stats reply serializer", reply.getStatType());
+				//TODO serializeFlowDescReply((List<OFFlowDescStatsReply>) reply.getValues(), jGen);
+				break;
+			case FLOW_MONITOR:
+				logger.warn("Unimplemented {} stats reply serializer", reply.getStatType());
+				break;
 			case AGGREGATE:
+				logger.warn("Unimplemented {} stats reply serializer", reply.getStatType());
+				break;
+			case AGGREGATE_STATS:
 				serializeAggregateReply((List<OFAggregateStatsReply>) reply.getValues(), jGen);
 				break;
 			case DESC:
 				serializeDescReply((List<OFDescStatsReply>) reply.getValues(), jGen);
 				break;            
 			case GROUP:
+				logger.warn("Unimplemented {} stats reply serializer", reply.getStatType());
+				break;
+			case GROUP_STATS:
 				serializeGroupReply((List<OFGroupStatsReply>) reply.getValues(), jGen);            
 				break;        
 			case GROUP_DESC:
@@ -189,6 +214,9 @@ public class StatsReplySerializer extends JsonSerializer<StatsReply> {
 				serializeGroupFeaturesReply((List<OFGroupFeaturesStatsReply>) reply.getValues(), jGen);
 				break;
 			case METER:
+				logger.warn("Unimplemented {} stats reply serializer", reply.getStatType());
+				break;
+			case METER_STATS:
 				serializeMeterReply((List<OFMeterStatsReply>) reply.getValues(), jGen);
 				break;
 			case METER_CONFIG:
@@ -196,19 +224,34 @@ public class StatsReplySerializer extends JsonSerializer<StatsReply> {
 				break;
 			case METER_FEATURES:
 				serializeMeterFeaturesReply((List<OFMeterFeaturesStatsReply>) reply.getValues(), jGen);
-				break;            
+				break;     
+			case METER_DESC:
+				logger.warn("Unimplemented {} stats reply serializer", reply.getStatType());
+				// TODO serializeMeterDescReply((List<OFMeterDescStatsReply>) reply.getValues(), jGen);
+				break;
 			case TABLE:
+				logger.warn("Unimplemented {} stats reply serializer", reply.getStatType());
+				break;
+			case TABLE_STATS:
 				serializeTableReply((List<OFTableStatsReply>) reply.getValues(), jGen);
 				break;
 			case TABLE_FEATURES:
 				serializeTableFeaturesReply((List<OFTableFeaturesStatsReply>) reply.getValues(), jGen);
 				break;
-			case PORT_DESC:
-				serializePortDescReply((List<OFPortDescStatsReply>) reply.getValues(), jGen);
+			case TABLE_DESC:
+				logger.warn("Unimplemented {} stats reply serializer", reply.getStatType());
+				//TODO serializeTableDescReply((List<OFTableDescStatsReply>) reply.getValues(), jGen);
+				break;
+			case BUNDLE_FEATURES:
+				logger.warn("Unimplemented {} stats reply serializer", reply.getStatType());
+				//TODO serializeBundleFeaturesReply((List<OFBundleFeaturesStatsReply>) reply.getValues(), jGen);
+				break;
+			case CONTROLLER_STATUS:
+				logger.warn("Unimplemented {} stats reply serializer", reply.getStatType());
+				//TODO serializeControllerStatusReply((List<OFControllerStatusStatsReply>) reply.getValues(), jGen);
 				break;
 			case EXPERIMENTER:
-				break;
-			default:
+				logger.warn("Unimplemented {} stats reply serializer", reply.getStatType());
 				break;
 			}   
 		}
@@ -246,12 +289,11 @@ public class StatsReplySerializer extends JsonSerializer<StatsReply> {
 	 * @throws JsonProcessingException
 	 */
 	public static void serializeGroupReply(List<OFGroupStatsReply> groupReplies, JsonGenerator jGen) throws IOException, JsonProcessingException{
-
 		OFGroupStatsReply groupReply = groupReplies.get(0); // we will get only one GroupReply and it will contains many OFGroupStatsEntry
 		jGen.writeStringField("version", groupReply.getVersion().toString()); //return the enum name
 		jGen.writeFieldName("group");
 		jGen.writeStartArray();
-		for(OFGroupStatsEntry entry : groupReply.getEntries()) {
+		for (OFGroupStatsEntry entry : groupReply.getEntries()) {
 			jGen.writeStartObject();
 			jGen.writeStringField("groupNumber",entry.getGroup().toString());               
 			jGen.writeNumberField("refCount", entry.getRefCount());
@@ -259,7 +301,7 @@ public class StatsReplySerializer extends JsonSerializer<StatsReply> {
 			jGen.writeNumberField("byteCount", entry.getByteCount().getValue());                        
 			jGen.writeFieldName("bucketCounters");
 			jGen.writeStartArray();            
-			for(OFBucketCounter bCounter : entry.getBucketStats()) {
+			for (OFBucketCounter bCounter : entry.getBucketStats()) {
 				jGen.writeStartObject();
 				jGen.writeNumberField("packetCount", bCounter.getPacketCount().getValue());
 				jGen.writeNumberField("byteCount", bCounter.getByteCount().getValue());
@@ -288,13 +330,13 @@ public class StatsReplySerializer extends JsonSerializer<StatsReply> {
 		jGen.writeStringField("version", groupDescReply.getVersion().toString()); //return the enum name
 		jGen.writeFieldName("groupDesc");
 		jGen.writeStartArray();
-		for(OFGroupDescStatsEntry entry : groupDescReply.getEntries()) {
+		for (OFGroupDescStatsEntry entry : groupDescReply.getEntries()) {
 			jGen.writeStartObject();                        
 			jGen.writeStringField("groupType",entry.getGroupType().toString());
 			jGen.writeStringField("groupNumber",entry.getGroup().toString());                                               
 			jGen.writeFieldName("buckets");            
 			jGen.writeStartArray();            
-			for(OFBucket buckets : entry.getBuckets()) {            	
+			for (OFBucket buckets : entry.getBuckets()) {            	
 				jGen.writeStartObject();
 				jGen.writeNumberField("weight", buckets.getWeight());
 				jGen.writeNumberField("watchPortNumber", buckets.getWatchPort().getPortNumber());
@@ -323,15 +365,19 @@ public class StatsReplySerializer extends JsonSerializer<StatsReply> {
 
 		jGen.writeFieldName("groupFeatures");
 		jGen.writeStartObject();                        
-		jGen.writeNumberField("capabilities",groupFeaturesReply.getCapabilities());                                                              
-		jGen.writeNumberField("maxGroupsAll",groupFeaturesReply.getMaxGroupsAll());
-		jGen.writeNumberField("maxGroupsSelect",groupFeaturesReply.getMaxGroupsSelect());
-		jGen.writeNumberField("maxGroupsIndirect",groupFeaturesReply.getMaxGroupsIndirect());
-		jGen.writeNumberField("maxGroupsFf",groupFeaturesReply.getMaxGroupsFf());
-		jGen.writeNumberField("actionsAll",groupFeaturesReply.getActionsAll());
-		jGen.writeNumberField("actionsSelect",groupFeaturesReply.getActionsSelect());
-		jGen.writeNumberField("actionsIndirect",groupFeaturesReply.getActionsIndirect());
-		jGen.writeNumberField("actionsFf",groupFeaturesReply.getActionsFf());
+		jGen.writeArrayFieldStart("capabilities");
+		for (OFGroupCapabilities c : groupFeaturesReply.getCapabilities()) {
+			jGen.writeString(c.toString());
+		}
+		jGen.writeEndArray();
+		jGen.writeNumberField("maxGroupsAll", groupFeaturesReply.getMaxGroupsAll());
+		jGen.writeNumberField("maxGroupsSelect", groupFeaturesReply.getMaxGroupsSelect());
+		jGen.writeNumberField("maxGroupsIndirect", groupFeaturesReply.getMaxGroupsIndirect());
+		jGen.writeNumberField("maxGroupsFf", groupFeaturesReply.getMaxGroupsFf());
+		jGen.writeNumberField("actionsAll", groupFeaturesReply.getActionsAll());
+		jGen.writeNumberField("actionsSelect", groupFeaturesReply.getActionsSelect());
+		jGen.writeNumberField("actionsIndirect", groupFeaturesReply.getActionsIndirect());
+		jGen.writeNumberField("actionsFf", groupFeaturesReply.getActionsFf());
 
 		jGen.writeEndObject();//end of group Feature
 	}
@@ -349,15 +395,15 @@ public class StatsReplySerializer extends JsonSerializer<StatsReply> {
 		jGen.writeStringField("version", meterReply.getVersion().toString()); //return the enum name
 		jGen.writeFieldName("meter");
 		jGen.writeStartArray();
-		for(OFMeterStats entry : meterReply.getEntries()) {
+		for (OFMeterStats entry : meterReply.getEntries()) {
 			jGen.writeStartObject();
-			jGen.writeNumberField("meterId",entry.getMeterId());                        
+			jGen.writeNumberField("meterId", entry.getMeterId());                        
 			jGen.writeNumberField("flowCount", entry.getFlowCount());
 			jGen.writeNumberField("packetInCount", entry.getPacketInCount().getValue());
 			jGen.writeNumberField("byteInCount", entry.getByteInCount().getValue());
 			jGen.writeFieldName("meterBandStats");
 			jGen.writeStartArray();
-			for(OFMeterBandStats bandStats : entry.getBandStats()) {
+			for (OFMeterBandStats bandStats : entry.getBandStats()) {
 				jGen.writeStartObject();
 				jGen.writeNumberField("packetBandCount", bandStats.getPacketBandCount().getValue());
 				jGen.writeNumberField("byteBandCount", bandStats.getByteBandCount().getValue());
@@ -388,11 +434,11 @@ public class StatsReplySerializer extends JsonSerializer<StatsReply> {
 		jGen.writeFieldName("meterFeatures");
 		jGen.writeStartObject();      
 
-		jGen.writeNumberField("maxGroupsAll",meterFeatures.getMaxMeter());
-		jGen.writeNumberField("maxGroupsSelect",meterFeatures.getBandTypes());
-		jGen.writeNumberField("capabilities",meterFeatures.getCapabilities());
-		jGen.writeNumberField("maxGroupsIndirect",meterFeatures.getMaxBands());
-		jGen.writeNumberField("maxGroupsFf",meterFeatures.getMaxColor());
+		jGen.writeNumberField("maxGroupsAll", meterFeatures.getMaxMeter());
+		jGen.writeNumberField("maxGroupsSelect", meterFeatures.getBandTypes());
+		jGen.writeNumberField("capabilities", meterFeatures.getCapabilities());
+		jGen.writeNumberField("maxGroupsIndirect", meterFeatures.getMaxBands());
+		jGen.writeNumberField("maxGroupsFf", meterFeatures.getMaxColor());
 
 		jGen.writeEndObject();//end of group Feature
 	}
@@ -413,29 +459,33 @@ public class StatsReplySerializer extends JsonSerializer<StatsReply> {
 		for (OFMeterConfig config : meterConfigReply.getEntries()) {
 			jGen.writeStartObject();
 			jGen.writeNumberField("meterId", config.getMeterId());
-			jGen.writeNumberField("flags", config.getFlags());
+			jGen.writeArrayFieldStart("flags");
+			for (OFMeterFlags f : config.getFlags()) {
+				jGen.writeString(f.toString());
+			}
+			jGen.writeEndArray();
 			jGen.writeFieldName("meterBands");
 			jGen.writeStartArray();
 			for (OFMeterBand band : config.getEntries()) {
 				jGen.writeStartObject();
-				short type = (short)band.getType();
+				int type = band.getType();
 				jGen.writeNumberField("bandType",type);
 
 				switch (type) {
-				case OFMeterBandTypeSerializerVer13.DROP_VAL:
+				case OFMeterBandTypeSerializerVer15.DROP_VAL:
 					OFMeterBandDrop bandDrop = (OFMeterBandDrop) band;
 					jGen.writeNumberField("rate", bandDrop.getRate());
 					jGen.writeNumberField("burstSize", bandDrop.getBurstSize());
 					break;
 
-				case OFMeterBandTypeSerializerVer13.DSCP_REMARK_VAL:
+				case OFMeterBandTypeSerializerVer15.DSCP_REMARK_VAL:
 					OFMeterBandDscpRemark bandDscp = (OFMeterBandDscpRemark) band;
 					jGen.writeNumberField("rate", bandDscp.getRate());
 					jGen.writeNumberField("burstSize", bandDscp.getBurstSize());
 					jGen.writeNumberField("precLevel", bandDscp.getPrecLevel());
 					break;
 
-				case OFMeterBandTypeSerializerVer13.EXPERIMENTER_VAL:
+				case OFMeterBandTypeSerializerVer15.EXPERIMENTER_VAL:
 					OFMeterBandExperimenter bandExp = (OFMeterBandExperimenter) band;
 					jGen.writeNumberField("rate", bandExp.getRate());
 					jGen.writeNumberField("burstSize", bandExp.getBurstSize());
@@ -469,7 +519,7 @@ public class StatsReplySerializer extends JsonSerializer<StatsReply> {
 		jGen.writeStringField("version", tableReply.getVersion().toString()); //return the enum name
 		jGen.writeFieldName("table");
 		jGen.writeStartArray();
-		for(OFTableStatsEntry entry : tableReply.getEntries()) {
+		for (OFTableStatsEntry entry : tableReply.getEntries()) {
 			jGen.writeStartObject();
 
 			//Fields common to all OF versions
@@ -480,9 +530,12 @@ public class StatsReplySerializer extends JsonSerializer<StatsReply> {
 			jGen.writeNumberField("matchCount", entry.getMatchedCount().getValue());
 
 			//Fields Applicable only for specific Versions
-			switch (entry.getVersion()) {            
+			switch (entry.getVersion()) {   
+			case OF_15:
+			case OF_14:
+			case OF_13:
 			case OF_12:
-				//Fields applicable only to OF 1.2
+				//Fields applicable only to OF 1.2+
 				jGen.writeNumberField("writeSetFields", entry.getWriteSetfields().getValue());
 				jGen.writeNumberField("applySetFields", entry.getApplySetfields().getValue());
 				jGen.writeNumberField("metaDataMatch", entry.getMetadataMatch().getValue());
@@ -501,11 +554,10 @@ public class StatsReplySerializer extends JsonSerializer<StatsReply> {
 				jGen.writeNumberField("maxEntries", entry.getMaxEntries());
 				break;                   
 			default:
-				//no extra fields for OF_13
 				break;            	
-			}//End of switch case
+			} //End of switch case
 			jGen.writeEndObject();
-		}//End of for loop
+		} //End of for loop
 		jGen.writeEndArray();
 	}
 
@@ -523,7 +575,7 @@ public class StatsReplySerializer extends JsonSerializer<StatsReply> {
 		jGen.writeStartArray();
 		for (OFTableFeaturesStatsReply tableFeaturesReply : tableFeaturesReplies) {
 
-			for(OFTableFeatures tableFeature : tableFeaturesReply.getEntries()) {
+			for (OFTableFeatures tableFeature : tableFeaturesReply.getEntries()) {
 				jGen.writeStartObject();    
 				jGen.writeStringField("version", tableFeature.getVersion().toString());
 				jGen.writeNumberField("tableId", tableFeature.getTableId().getValue());
@@ -538,9 +590,9 @@ public class StatsReplySerializer extends JsonSerializer<StatsReply> {
 				for (OFTableFeatureProp properties : tableFeature.getProperties()) {            	
 					jGen.writeStartObject();
 
-					short type = (short)properties.getType();
+					int type = properties.getType();
 					switch (type) {
-					case OFTableFeaturePropTypeSerializerVer13.INSTRUCTIONS_VAL:
+					case OFTableFeaturePropTypeSerializerVer15.INSTRUCTIONS_VAL:
 						OFTableFeaturePropInstructions propInstruct = (OFTableFeaturePropInstructions) properties;
 						jGen.writeFieldName("instructions");
 						jGen.writeStartArray();
@@ -549,7 +601,7 @@ public class StatsReplySerializer extends JsonSerializer<StatsReply> {
 						}
 						jGen.writeEndArray();
 						break;
-					case OFTableFeaturePropTypeSerializerVer13.INSTRUCTIONS_MISS_VAL:
+					case OFTableFeaturePropTypeSerializerVer15.INSTRUCTIONS_MISS_VAL:
 						OFTableFeaturePropInstructionsMiss propInstructMiss = (OFTableFeaturePropInstructionsMiss) properties;
 						jGen.writeFieldName("instructionsMiss");
 						jGen.writeStartArray();
@@ -558,7 +610,7 @@ public class StatsReplySerializer extends JsonSerializer<StatsReply> {
 						}
 						jGen.writeEndArray();
 						break;
-					case OFTableFeaturePropTypeSerializerVer13.NEXT_TABLES_VAL:
+					case OFTableFeaturePropTypeSerializerVer15.NEXT_TABLES_VAL:
 						OFTableFeaturePropNextTables propNxtTables = (OFTableFeaturePropNextTables) properties;
 						jGen.writeFieldName("nextTables");
 						jGen.writeStartArray();
@@ -567,7 +619,7 @@ public class StatsReplySerializer extends JsonSerializer<StatsReply> {
 						}
 						jGen.writeEndArray();
 						break;
-					case OFTableFeaturePropTypeSerializerVer13.NEXT_TABLES_MISS_VAL:
+					case OFTableFeaturePropTypeSerializerVer15.NEXT_TABLES_MISS_VAL:
 						OFTableFeaturePropNextTablesMiss propNxtTablesMiss = (OFTableFeaturePropNextTablesMiss) properties;
 						jGen.writeFieldName("nextTablesMiss");
 						jGen.writeStartArray();
@@ -576,7 +628,7 @@ public class StatsReplySerializer extends JsonSerializer<StatsReply> {
 						}
 						jGen.writeEndArray();
 						break;
-					case OFTableFeaturePropTypeSerializerVer13.WRITE_ACTIONS_VAL:
+					case OFTableFeaturePropTypeSerializerVer15.WRITE_ACTIONS_VAL:
 						OFTableFeaturePropWriteActions propWrAct = (OFTableFeaturePropWriteActions) properties; 
 						jGen.writeFieldName("writeActions");
 						jGen.writeStartArray();
@@ -585,7 +637,7 @@ public class StatsReplySerializer extends JsonSerializer<StatsReply> {
 						}
 						jGen.writeEndArray();
 						break;
-					case OFTableFeaturePropTypeSerializerVer13.WRITE_ACTIONS_MISS_VAL:
+					case OFTableFeaturePropTypeSerializerVer15.WRITE_ACTIONS_MISS_VAL:
 						OFTableFeaturePropWriteActionsMiss propWrActMiss = (OFTableFeaturePropWriteActionsMiss) properties;
 						jGen.writeFieldName("writeActionsMiss");
 						jGen.writeStartArray();
@@ -594,7 +646,7 @@ public class StatsReplySerializer extends JsonSerializer<StatsReply> {
 						}
 						jGen.writeEndArray();
 						break;
-					case OFTableFeaturePropTypeSerializerVer13.APPLY_ACTIONS_VAL:
+					case OFTableFeaturePropTypeSerializerVer15.APPLY_ACTIONS_VAL:
 						OFTableFeaturePropApplyActions propAppAct = (OFTableFeaturePropApplyActions) properties;   
 						jGen.writeFieldName("applyActions");
 						jGen.writeStartArray();
@@ -603,7 +655,7 @@ public class StatsReplySerializer extends JsonSerializer<StatsReply> {
 						}
 						jGen.writeEndArray();
 						break;	
-					case OFTableFeaturePropTypeSerializerVer13.APPLY_ACTIONS_MISS_VAL:
+					case OFTableFeaturePropTypeSerializerVer15.APPLY_ACTIONS_MISS_VAL:
 						OFTableFeaturePropApplyActionsMiss propAppActMiss = (OFTableFeaturePropApplyActionsMiss) properties;
 						jGen.writeFieldName("applyActionsMiss");
 						jGen.writeStartArray();
@@ -612,61 +664,61 @@ public class StatsReplySerializer extends JsonSerializer<StatsReply> {
 						}
 						jGen.writeEndArray();
 						break;
-					case OFTableFeaturePropTypeSerializerVer13.MATCH_VAL:                	
+					case OFTableFeaturePropTypeSerializerVer15.MATCH_VAL:                	
 						OFTableFeaturePropMatch propMatch = (OFTableFeaturePropMatch) properties;
 						jGen.writeFieldName("match");
 						jGen.writeStartArray();
 						for (U32 id : propMatch.getOxmIds()) {
-							jGen.writeString(OXMSerializer.oxmIdToString(id));
+							jGen.writeString(OXMUtils.oxmIdToString(id));
 						}
 						jGen.writeEndArray();
 						break;
-					case OFTableFeaturePropTypeSerializerVer13.WILDCARDS_VAL:
+					case OFTableFeaturePropTypeSerializerVer15.WILDCARDS_VAL:
 						OFTableFeaturePropWildcards propWildcards = (OFTableFeaturePropWildcards) properties;
 						jGen.writeFieldName("wildcards");
 						jGen.writeStartArray();
 						for (U32 id : propWildcards.getOxmIds()) {
-							jGen.writeString(OXMSerializer.oxmIdToString(id));
+							jGen.writeString(OXMUtils.oxmIdToString(id));
 						}
 						jGen.writeEndArray();
 						break;
-					case OFTableFeaturePropTypeSerializerVer13.WRITE_SETFIELD_VAL:
+					case OFTableFeaturePropTypeSerializerVer15.WRITE_SETFIELD_VAL:
 						OFTableFeaturePropWriteSetfield propWrSetfield = (OFTableFeaturePropWriteSetfield) properties;           
 						jGen.writeFieldName("writeSetfield");
 						jGen.writeStartArray();
 						for (U32 id : propWrSetfield.getOxmIds()) {
-							jGen.writeString(OXMSerializer.oxmIdToString(id));
+							jGen.writeString(OXMUtils.oxmIdToString(id));
 						}
 						jGen.writeEndArray();
 						break;
-					case OFTableFeaturePropTypeSerializerVer13.WRITE_SETFIELD_MISS_VAL:
+					case OFTableFeaturePropTypeSerializerVer15.WRITE_SETFIELD_MISS_VAL:
 						OFTableFeaturePropWriteSetfieldMiss propWrSetfieldMiss = (OFTableFeaturePropWriteSetfieldMiss) properties; 
 						jGen.writeFieldName("writeSetfieldMiss");
 						jGen.writeStartArray();
 						for (U32 id : propWrSetfieldMiss.getOxmIds()) {
-							jGen.writeString(OXMSerializer.oxmIdToString(id));
+							jGen.writeString(OXMUtils.oxmIdToString(id));
 						}
 						jGen.writeEndArray();
 						break;
-					case OFTableFeaturePropTypeSerializerVer13.APPLY_SETFIELD_VAL:
+					case OFTableFeaturePropTypeSerializerVer15.APPLY_SETFIELD_VAL:
 						OFTableFeaturePropApplySetfield propAppSetfield = (OFTableFeaturePropApplySetfield) properties;
 						jGen.writeFieldName("applySetfield");
 						jGen.writeStartArray();
 						for (U32 id : propAppSetfield.getOxmIds()) {
-							jGen.writeString(OXMSerializer.oxmIdToString(id));
+							jGen.writeString(OXMUtils.oxmIdToString(id));
 						}
 						jGen.writeEndArray();
 						break;
-					case OFTableFeaturePropTypeSerializerVer13.APPLY_SETFIELD_MISS_VAL:
+					case OFTableFeaturePropTypeSerializerVer15.APPLY_SETFIELD_MISS_VAL:
 						OFTableFeaturePropApplySetfieldMiss propAppSetfieldMiss = (OFTableFeaturePropApplySetfieldMiss) properties;                		
 						jGen.writeFieldName("applySetfieldMiss");
 						jGen.writeStartArray();
 						for (U32 id : propAppSetfieldMiss.getOxmIds()) {
-							jGen.writeString(OXMSerializer.oxmIdToString(id));
+							jGen.writeString(OXMUtils.oxmIdToString(id));
 						}
 						jGen.writeEndArray();
 						break;
-					case OFTableFeaturePropTypeSerializerVer13.EXPERIMENTER_VAL:
+					case OFTableFeaturePropTypeSerializerVer15.EXPERIMENTER_VAL:
 						OFTableFeaturePropExperimenter propExp = (OFTableFeaturePropExperimenter) properties; 
 						jGen.writeFieldName("experimenter");
 						jGen.writeStartObject();
@@ -675,7 +727,7 @@ public class StatsReplySerializer extends JsonSerializer<StatsReply> {
 						jGen.writeStringField("data", propExp.getExperimenterData().toString());
 						jGen.writeEndObject();
 						break;	
-					case OFTableFeaturePropTypeSerializerVer13.EXPERIMENTER_MISS_VAL:
+					case OFTableFeaturePropTypeSerializerVer15.EXPERIMENTER_MISS_VAL:
 						OFTableFeaturePropExperimenterMiss propExpMiss = (OFTableFeaturePropExperimenterMiss) properties;
 						jGen.writeFieldName("experimenterMiss");
 						jGen.writeStartObject();
@@ -684,10 +736,62 @@ public class StatsReplySerializer extends JsonSerializer<StatsReply> {
 						jGen.writeStringField("data", propExpMiss.getExperimenterData().toString());
 						jGen.writeEndObject();
 						break;	
+					case OFTableFeaturePropTypeSerializerVer15.APPLY_COPYFIELD_MISS_VAL:
+						OFTableFeaturePropApplyCopyfieldMiss propApplyCopyfieldMiss = (OFTableFeaturePropApplyCopyfieldMiss) properties;           
+						jGen.writeFieldName("applyCopyfieldMiss");
+						jGen.writeStartArray();
+						for (U32 id : propApplyCopyfieldMiss.getOxmIds()) {
+							jGen.writeString(OXMUtils.oxmIdToString(id));
+						}
+						jGen.writeEndArray();
+						break;
+					case OFTableFeaturePropTypeSerializerVer15.APPLY_COPYFIELD_VAL:
+						OFTableFeaturePropApplyCopyfield propApplyCopyfield = (OFTableFeaturePropApplyCopyfield) properties;           
+						jGen.writeFieldName("applyCopyfield");
+						jGen.writeStartArray();
+						for (U32 id : propApplyCopyfield.getOxmIds()) {
+							jGen.writeString(OXMUtils.oxmIdToString(id));
+						}
+						jGen.writeEndArray();
+						break;
+					case OFTableFeaturePropTypeSerializerVer15.WRITE_COPYFIELD_MISS_VAL:
+						OFTableFeaturePropWriteCopyfieldMiss propWriteCopyfieldMiss = (OFTableFeaturePropWriteCopyfieldMiss) properties;           
+						jGen.writeFieldName("writeCopyfieldMiss");
+						jGen.writeStartArray();
+						for (U32 id : propWriteCopyfieldMiss.getOxmIds()) {
+							jGen.writeString(OXMUtils.oxmIdToString(id));
+						}
+						jGen.writeEndArray();
+						break;
+					case OFTableFeaturePropTypeSerializerVer15.WRITE_COPYFIELD_VAL:
+						OFTableFeaturePropWriteCopyfield propWriteCopyfield = (OFTableFeaturePropWriteCopyfield) properties;           
+						jGen.writeFieldName("writeCopyfieldMiss");
+						jGen.writeStartArray();
+						for (U32 id : propWriteCopyfield.getOxmIds()) {
+							jGen.writeString(OXMUtils.oxmIdToString(id));
+						}
+						jGen.writeEndArray();
+						break;
+					case OFTableFeaturePropTypeSerializerVer15.TABLE_SYNC_FROM_VAL:
+						OFTableFeaturePropTableSyncFrom propTableSyncFrom = (OFTableFeaturePropTableSyncFrom) properties;           
+						jGen.writeFieldName("writeCopyfieldMiss");
+						jGen.writeStartArray();
+						for (U8 id : propTableSyncFrom.getTableIds()) {
+							jGen.writeString(id.toString());
+						}
+						jGen.writeEndArray();
+						break;
+					case OFTableFeaturePropTypeSerializerVer15.PACKET_TYPES_VAL:
+						OFTableFeaturePropOxmValues propOxmValues = (OFTableFeaturePropOxmValues) properties; /* TODO name mismatch? */        
+						jGen.writeFieldName("packetTypes");
+						jGen.writeStartArray();
+						for (byte id : propOxmValues.getOxmValues()) {
+							jGen.writeString(Byte.toString(id));
+						}
+						jGen.writeEndArray();
+						break;
 					default:
-						// shouldn't ever get here
-						jGen.writeStartObject();
-						jGen.writeEndObject();
+						logger.warn("Unexpected OFTableFeaturePropType value {}", type);
 						break;            		
 					}//end of Switch Case  
 					jGen.writeEndObject();
@@ -707,7 +811,7 @@ public class StatsReplySerializer extends JsonSerializer<StatsReply> {
 			jGen.writeStringField("version", portReply.getVersion().toString()); //return the enum name
 			jGen.writeFieldName("port");
 			jGen.writeStartArray();
-			for(OFPortStatsEntry entry : portReply.getEntries()) {
+			for (OFPortStatsEntry entry : portReply.getEntries()) {
 				jGen.writeStartObject();
 				jGen.writeStringField("portNumber",entry.getPortNo().toString());
 				jGen.writeNumberField("receivePackets", entry.getRxPackets().getValue());
@@ -753,26 +857,11 @@ public class StatsReplySerializer extends JsonSerializer<StatsReply> {
 				jGen.writeNumberField("priority", entry.getPriority());
 				jGen.writeNumberField("idleTimeoutSec", entry.getIdleTimeout());
 				jGen.writeNumberField("hardTimeoutSec", entry.getHardTimeout());
-				switch (entry.getVersion()) {
-				case OF_10:
-					// flags not supported
-					break;
-				case OF_11:
-					jGen.writeNumberField("flags", OFFlowModFlagsSerializerVer11.toWireValue(entry.getFlags()));
-					break;
-				case OF_12:
-					jGen.writeNumberField("flags", OFFlowModFlagsSerializerVer12.toWireValue(entry.getFlags()));
-					break;
-				case OF_13:
-					jGen.writeNumberField("flags", OFFlowModFlagsSerializerVer13.toWireValue(entry.getFlags()));
-					break;
-				case OF_14:
-					jGen.writeNumberField("flags", OFFlowModFlagsSerializerVer14.toWireValue(entry.getFlags()));
-					break;
-				default:
-					logger.error("Could not decode OFVersion {}", entry.getVersion());
-					break;
+				jGen.writeArrayFieldStart("flags");
+				for (OFFlowModFlags f : entry.getFlags()) {
+					jGen.writeString(f.toString());
 				}
+				jGen.writeEndArray();
 
 				MatchSerializer.serializeMatch(jGen, entry.getMatch());
 
@@ -811,25 +900,11 @@ public class StatsReplySerializer extends JsonSerializer<StatsReply> {
 		jGen.writeNumberField("flowCount", aggregateReply.getFlowCount());
 		jGen.writeNumberField("packetCount", aggregateReply.getPacketCount().getValue());
 		jGen.writeNumberField("byteCount", aggregateReply.getByteCount().getValue());
-		switch (aggregateReply.getVersion()) {
-		case OF_10:
-			jGen.writeNumberField("flags", OFStatsReplyFlagsSerializerVer10.toWireValue(aggregateReply.getFlags()));
-			break;
-		case OF_11:
-			jGen.writeNumberField("flags", OFStatsReplyFlagsSerializerVer11.toWireValue(aggregateReply.getFlags()));
-			break;
-		case OF_12:
-			jGen.writeNumberField("flags", OFStatsReplyFlagsSerializerVer12.toWireValue(aggregateReply.getFlags()));
-			break;
-		case OF_13:
-			jGen.writeNumberField("flags", OFStatsReplyFlagsSerializerVer13.toWireValue(aggregateReply.getFlags()));
-			break;
-		case OF_14:
-			jGen.writeNumberField("flags", OFStatsReplyFlagsSerializerVer14.toWireValue(aggregateReply.getFlags()));
-			break;
-		default:
-			break;
+		jGen.writeArrayFieldStart("flags");
+		for (OFStatsReplyFlags f : aggregateReply.getFlags()) {
+			jGen.writeString(f.toString());
 		}
+		jGen.writeEndArray();
 		jGen.writeEndObject(); // end match
 	}
 
@@ -847,43 +922,45 @@ public class StatsReplySerializer extends JsonSerializer<StatsReply> {
 			jGen.writeStringField("portNumber",entry.getPortNo().toString());
 			jGen.writeStringField("hardwareAddress", entry.getHwAddr().toString());
 			jGen.writeStringField("name", entry.getName());
-			switch(entry.getVersion()) {
-			case OF_10:
-				jGen.writeNumberField("config", OFPortConfigSerializerVer10.toWireValue(entry.getConfig()));
-				jGen.writeNumberField("state", OFPortStateSerializerVer10.toWireValue(entry.getState()));
-				jGen.writeNumberField("currentFeatures", OFPortFeaturesSerializerVer10.toWireValue(entry.getCurr()));
-				jGen.writeNumberField("advertisedFeatures", OFPortFeaturesSerializerVer10.toWireValue(entry.getAdvertised()));
-				jGen.writeNumberField("supportedFeatures", OFPortFeaturesSerializerVer10.toWireValue(entry.getSupported()));
-				jGen.writeNumberField("peerFeatures", OFPortFeaturesSerializerVer10.toWireValue(entry.getPeer()));
-				break;
-			case OF_11:
-				jGen.writeNumberField("config", OFPortConfigSerializerVer11.toWireValue(entry.getConfig()));
-				jGen.writeNumberField("state", OFPortStateSerializerVer11.toWireValue(entry.getState()));
-				jGen.writeNumberField("currentFeatures", OFPortFeaturesSerializerVer11.toWireValue(entry.getCurr()));
-				jGen.writeNumberField("advertisedFeatures", OFPortFeaturesSerializerVer11.toWireValue(entry.getAdvertised()));
-				jGen.writeNumberField("supportedFeatures", OFPortFeaturesSerializerVer11.toWireValue(entry.getSupported()));
-				jGen.writeNumberField("peerFeatures", OFPortFeaturesSerializerVer11.toWireValue(entry.getPeer()));
-				break;
-			case OF_12:
-				jGen.writeNumberField("config", OFPortConfigSerializerVer12.toWireValue(entry.getConfig()));
-				jGen.writeNumberField("state", OFPortStateSerializerVer12.toWireValue(entry.getState()));
-				jGen.writeNumberField("currentFeatures", OFPortFeaturesSerializerVer12.toWireValue(entry.getCurr()));
-				jGen.writeNumberField("advertisedFeatures", OFPortFeaturesSerializerVer12.toWireValue(entry.getAdvertised()));
-				jGen.writeNumberField("supportedFeatures", OFPortFeaturesSerializerVer12.toWireValue(entry.getSupported()));
-				jGen.writeNumberField("peerFeatures", OFPortFeaturesSerializerVer12.toWireValue(entry.getPeer()));
-				break;
-			case OF_13:
-				jGen.writeNumberField("config", OFPortConfigSerializerVer13.toWireValue(entry.getConfig()));
-				jGen.writeNumberField("state", OFPortStateSerializerVer13.toWireValue(entry.getState()));
-				jGen.writeNumberField("currentFeatures", OFPortFeaturesSerializerVer13.toWireValue(entry.getCurr()));
-				jGen.writeNumberField("advertisedFeatures", OFPortFeaturesSerializerVer13.toWireValue(entry.getAdvertised()));
-				jGen.writeNumberField("supportedFeatures", OFPortFeaturesSerializerVer13.toWireValue(entry.getSupported()));
-				jGen.writeNumberField("peerFeatures", OFPortFeaturesSerializerVer13.toWireValue(entry.getPeer()));
-				break;
-			case OF_14:
-				// TODO
-				logger.error("OF1.4 OFPortDesc serializer not implemented");
+			jGen.writeArrayFieldStart("config");
+			for (OFPortConfig e : entry.getConfig()) {
+				jGen.writeString(e.toString());
 			}
+			jGen.writeEndArray();
+			jGen.writeArrayFieldStart("state");
+			for (OFPortState e : entry.getState()) {
+				jGen.writeString(e.toString());
+			}
+			jGen.writeEndArray();
+			jGen.writeArrayFieldStart("currentFeatures");
+			for (OFPortFeatures e : entry.getCurr()) {
+				jGen.writeString(e.toString());
+			}
+			jGen.writeEndArray();
+			jGen.writeArrayFieldStart("advertisedFeatures");
+			for (OFPortFeatures e : entry.getAdvertised()) {
+				jGen.writeString(e.toString());
+			}
+			jGen.writeEndArray();
+			jGen.writeArrayFieldStart("supportedFeatures");
+			for (OFPortFeatures e : entry.getSupported()) {
+				jGen.writeString(e.toString());
+			}
+			jGen.writeEndArray();
+			jGen.writeArrayFieldStart("peerFeatures");
+			for (OFPortFeatures e : entry.getPeer()) {
+				jGen.writeString(e.toString());
+			}
+			jGen.writeEndArray();
+
+			if (entry.getVersion().compareTo(OFVersion.OF_15) >= 0) {
+				jGen.writeArrayFieldStart("properties");
+				for (OFPortDescProp e : entry.getProperties()) {
+					jGen.writeString(OFPortDescPropTypeSerializerVer15.ofWireValue((short) e.getType()).toString());
+				}
+				jGen.writeEndArray();
+			}
+
 			if (OFVersion.OF_10 != entry.getVersion()) {
 				jGen.writeNumberField("currSpeed",entry.getCurrSpeed());
 				jGen.writeNumberField("maxSpeed",entry.getMaxSpeed());

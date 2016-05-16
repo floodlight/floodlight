@@ -62,11 +62,6 @@ import net.floodlightcontroller.core.types.NodePortTuple;
 import net.floodlightcontroller.core.util.SingletonTask;
 import net.floodlightcontroller.debugcounter.IDebugCounter;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
-import net.floodlightcontroller.debugevent.IDebugEventService;
-import net.floodlightcontroller.debugevent.IDebugEventService.EventColumn;
-import net.floodlightcontroller.debugevent.IDebugEventService.EventFieldType;
-import net.floodlightcontroller.debugevent.IEventCategory;
-import net.floodlightcontroller.debugevent.IDebugEventService.EventType;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscovery;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscovery.LDUpdate;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscovery.LinkType;
@@ -151,16 +146,12 @@ IFloodlightModule, IInfoProvider {
 	private static final String LINK_TYPE = "link_type";
 	private static final String SWITCH_CONFIG_TABLE_NAME = "controller_switchconfig";
 
-	// Event updaters for debug events
-	protected IEventCategory<DirectLinkEvent> eventCategory;
-
 	protected IFloodlightProviderService floodlightProviderService;
 	protected IOFSwitchService switchService;
 	protected IStorageSourceService storageSourceService;
 	protected IThreadPoolService threadPoolService;
 	protected IRestApiService restApiService;
 	protected IDebugCounterService debugCounterService;
-	protected IDebugEventService debugEventService;
 	protected IShutdownService shutdownService;
 
 	// Role
@@ -1435,8 +1426,6 @@ IFloodlightModule, IInfoProvider {
 				LinkType linkType = getLinkType(lt, newInfo);
 				if (linkType == ILinkDiscovery.LinkType.DIRECT_LINK) {
 					log.debug("Inter-switch link detected: {}", lt);
-					eventCategory.newEventNoFlush(new DirectLinkEvent(lt.getSrc(),
-							lt.getSrcPort(), lt.getDst(), lt.getDstPort(), "direct-link-added::rcvd LLDP"));
 				}
 				notifier.postNotification("Link added: " + lt.toString());
 			} else {
@@ -1446,9 +1435,6 @@ IFloodlightModule, IInfoProvider {
 					LinkType linkType = getLinkType(lt, newInfo);
 					if (linkType == ILinkDiscovery.LinkType.DIRECT_LINK) {
 						log.debug("Inter-switch link updated: {}", lt);
-						eventCategory.newEventNoFlush(new DirectLinkEvent(lt.getSrc(),
-								lt.getSrcPort(), lt.getDst(), lt.getDstPort(),
-								"link-port-state-updated::rcvd LLDP"));
 					}
 					notifier.postNotification("Link updated: " + lt.toString());
 				}
@@ -1558,11 +1544,6 @@ IFloodlightModule, IInfoProvider {
 						linkType,
 						UpdateOperation.LINK_REMOVED));
 
-				// FIXME: link type shows up as invalid now -- thus not checking if
-				// link type is a direct link
-				eventCategory.newEventWithFlush(new DirectLinkEvent(lt.getSrc(),
-						lt.getSrcPort(), lt.getDst(), lt.getDstPort(),
-						"link-deleted::" + reason));
 				// remove link from storage.
 				removeLinkFromStorage(lt);
 
@@ -2001,7 +1982,6 @@ IFloodlightModule, IInfoProvider {
 		threadPoolService = context.getServiceImpl(IThreadPoolService.class);
 		restApiService = context.getServiceImpl(IRestApiService.class);
 		debugCounterService = context.getServiceImpl(IDebugCounterService.class);
-		debugEventService = context.getServiceImpl(IDebugEventService.class);
 		shutdownService = context.getServiceImpl(IShutdownService.class);
 
 		// read our config options
@@ -2056,7 +2036,6 @@ IFloodlightModule, IInfoProvider {
 				new ConcurrentHashMap<MACRange,Boolean>());
 		this.haListener = new HAListenerDelegate();
 		registerLinkDiscoveryDebugCounters();
-		registerLinkDiscoveryDebugEvents();
 	}
 
 	@Override
@@ -2176,46 +2155,6 @@ IFloodlightModule, IInfoProvider {
 				"All packets whose srcmac is configured to be dropped by this module");
 		ctrQuarantineDrops = debugCounterService.registerCounter(PACKAGE, "quarantine-drops",
 				"All packets arriving on quarantined ports dropped by this module", IDebugCounterService.MetaData.WARN);
-	}
-
-	private void registerLinkDiscoveryDebugEvents() throws FloodlightModuleException {
-		if (debugEventService == null) {
-			log.error("Debug Event Service not found.");
-		}
-
-		eventCategory = debugEventService.buildEvent(DirectLinkEvent.class)
-				.setModuleName(PACKAGE)
-				.setEventName("linkevent")
-				.setEventDescription("Direct OpenFlow links discovered or timed-out")
-				.setEventType(EventType.ALWAYS_LOG)
-				.setBufferCapacity(100)
-				.register();
-	}
-
-	public class DirectLinkEvent {
-		@EventColumn(name = "srcSw", description = EventFieldType.DPID)
-		DatapathId srcDpid;
-
-		@EventColumn(name = "srcPort", description = EventFieldType.PRIMITIVE)
-		OFPort srcPort;
-
-		@EventColumn(name = "dstSw", description = EventFieldType.DPID)
-		DatapathId dstDpid;
-
-		@EventColumn(name = "dstPort", description = EventFieldType.PRIMITIVE)
-		OFPort dstPort;
-
-		@EventColumn(name = "reason", description = EventFieldType.STRING)
-		String reason;
-
-		public DirectLinkEvent(DatapathId srcDpid, OFPort srcPort, DatapathId dstDpid,
-				OFPort dstPort, String reason) {
-			this.srcDpid = srcDpid;
-			this.srcPort = srcPort;
-			this.dstDpid = dstDpid;
-			this.dstPort = dstPort;
-			this.reason = reason;
-		}
 	}
 
 	//*********************

@@ -48,7 +48,7 @@ public class OFFlowModSerializer extends JsonSerializer<OFFlowMod> {
 	@Override
 	public void serialize(OFFlowMod fm, JsonGenerator jGen, SerializerProvider serializer)
 			throws IOException, JsonProcessingException {
-		
+		serializeFlowMod(jGen, fm);
 	}
 
 	public static void serializeFlowMod(JsonGenerator jGen, OFFlowMod flowMod) throws IOException, JsonProcessingException {

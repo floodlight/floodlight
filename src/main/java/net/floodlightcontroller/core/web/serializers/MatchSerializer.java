@@ -120,13 +120,13 @@ public class MatchSerializer extends JsonSerializer<Match> {
 				jGen.writeStringField(MatchUtils.STR_IPV6_FLOW_LABEL, matchValueToString(m, mf));
 				break;
 			case IPV6_ND_SLL:
-				jGen.writeStringField(MatchUtils.STR_IPV6_ND_SSL, matchValueToString(m, mf));
+				jGen.writeStringField(MatchUtils.STR_IPV6_ND_SLL, matchValueToString(m, mf));
 				break;
 			case IPV6_ND_TARGET:
 				jGen.writeStringField(MatchUtils.STR_IPV6_ND_TARGET, matchValueToString(m, mf));
 				break;
 			case IPV6_ND_TLL:
-				jGen.writeStringField(MatchUtils.STR_IPV6_ND_TTL, matchValueToString(m, mf));
+				jGen.writeStringField(MatchUtils.STR_IPV6_ND_TLL, matchValueToString(m, mf));
 				break;
 			case METADATA:
 				jGen.writeStringField(MatchUtils.STR_METADATA, matchValueToString(m, mf));

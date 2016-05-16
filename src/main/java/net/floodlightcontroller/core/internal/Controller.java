@@ -17,6 +17,10 @@
 
 package net.floodlightcontroller.core.internal;
 
+import io.netty.util.HashedWheelTimer;
+import io.netty.util.Timer;
+
+import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.lang.management.RuntimeMXBean;
 import java.util.ArrayList;
@@ -36,8 +40,6 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.LinkedBlockingQueue;
 
-import io.netty.util.HashedWheelTimer;
-import io.netty.util.Timer;
 import net.floodlightcontroller.core.ControllerId;
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.HAListenerTypeMarker;
@@ -46,11 +48,11 @@ import net.floodlightcontroller.core.IControllerCompletionListener;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IHAListener;
 import net.floodlightcontroller.core.IInfoProvider;
-import net.floodlightcontroller.core.IShutdownService;
 import net.floodlightcontroller.core.IListener.Command;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.IOFSwitchListener;
+import net.floodlightcontroller.core.IShutdownService;
 import net.floodlightcontroller.core.LogicalOFMessageCategory;
 import net.floodlightcontroller.core.PortChangeType;
 import net.floodlightcontroller.core.RoleInfo;
@@ -59,18 +61,8 @@ import net.floodlightcontroller.core.module.FloodlightModuleLoader;
 import net.floodlightcontroller.core.util.ListenerDispatcher;
 import net.floodlightcontroller.core.web.CoreWebRoutable;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
-import net.floodlightcontroller.debugevent.IDebugEventService;
 import net.floodlightcontroller.notification.INotificationManager;
 import net.floodlightcontroller.notification.NotificationManagerFactory;
-
-import org.projectfloodlight.openflow.protocol.OFMessage;
-import org.projectfloodlight.openflow.protocol.OFPacketIn;
-import org.projectfloodlight.openflow.protocol.OFPortDesc;
-import org.projectfloodlight.openflow.protocol.OFType;
-import org.projectfloodlight.openflow.types.DatapathId;
-import org.projectfloodlight.openflow.types.IPv4Address;
-import org.projectfloodlight.openflow.types.TransportPort;
-
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.perfmon.IPktInProcessingTimeService;
 import net.floodlightcontroller.restserver.IRestApiService;
@@ -79,14 +71,19 @@ import net.floodlightcontroller.storage.IStorageSourceListener;
 import net.floodlightcontroller.storage.IStorageSourceService;
 import net.floodlightcontroller.storage.StorageException;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
+import net.floodlightcontroller.util.LoadMonitor;
 
+import org.projectfloodlight.openflow.protocol.OFMessage;
+import org.projectfloodlight.openflow.protocol.OFPacketIn;
+import org.projectfloodlight.openflow.protocol.OFPortDesc;
+import org.projectfloodlight.openflow.protocol.OFType;
+import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.IPv4Address;
+import org.projectfloodlight.openflow.types.TransportPort;
 import org.sdnplatform.sync.ISyncService;
 import org.sdnplatform.sync.ISyncService.Scope;
 import org.sdnplatform.sync.error.SyncException;
 import org.sdnplatform.sync.internal.config.ClusterConfig;
-
-import net.floodlightcontroller.util.LoadMonitor;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -128,7 +125,6 @@ public class Controller implements IFloodlightProviderService, IStorageSourceLis
     private IStorageSourceService storageSourceService;
     private IOFSwitchService switchService;
     private IDebugCounterService debugCounterService;
-    protected IDebugEventService debugEventService;
     private IRestApiService restApiService;
     private IPktInProcessingTimeService pktinProcTimeService;
     private IThreadPoolService threadPoolService;
@@ -305,10 +301,6 @@ public class Controller implements IFloodlightProviderService, IStorageSourceLis
     
     void setShutdownService(IShutdownService shutdownService) {
     	this.shutdownService = shutdownService;
-    }
-
-    public void setDebugEvent(IDebugEventService debugEvent) {
-        this.debugEventService = debugEvent;
     }
     
     void setDebugCounter(IDebugCounterService debugCounters) {

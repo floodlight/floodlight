@@ -59,8 +59,6 @@ import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.test.MockThreadPoolService;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
 import net.floodlightcontroller.debugcounter.MockDebugCounterService;
-import net.floodlightcontroller.debugevent.IDebugEventService;
-import net.floodlightcontroller.debugevent.MockDebugEventService;
 import net.floodlightcontroller.devicemanager.IDevice;
 import net.floodlightcontroller.devicemanager.IDeviceListener;
 import net.floodlightcontroller.devicemanager.IDeviceService;
@@ -134,7 +132,6 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 	DeviceManagerImpl deviceManager;
 	MemoryStorageSource storageSource;
 	IDebugCounterService debugCounterService;
-	IDebugEventService debugEventService;
 
 	private IOFSwitch makeSwitchMock(DatapathId id) {
 		IOFSwitch mockSwitch = createMock(IOFSwitch.class);
@@ -187,8 +184,6 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 		mockFloodlightProvider = getMockFloodlightProvider();
 		mockFloodlightProvider.setRole(initialRole, "");
 		debugCounterService = new MockDebugCounterService();
-		debugEventService = new MockDebugEventService();
-
 
 		deviceManager = new DeviceManagerImpl();
 		DefaultEntityClassifier entityClassifier = new DefaultEntityClassifier();
@@ -201,7 +196,6 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 		fmc.addService(ITopologyService.class, topology);
 		fmc.addService(ISyncService.class, syncService);
 		fmc.addService(IDebugCounterService.class, debugCounterService);
-		fmc.addService(IDebugEventService.class, debugEventService);
 		tp.init(fmc);
 		restApi.init(fmc);
 		storageSource.init(fmc);

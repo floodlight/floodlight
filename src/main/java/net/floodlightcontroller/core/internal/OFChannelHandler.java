@@ -39,7 +39,6 @@ import org.projectfloodlight.openflow.protocol.OFHelloElem;
 import org.projectfloodlight.openflow.protocol.OFHelloElemVersionbitmap;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFPortStatus;
-import org.projectfloodlight.openflow.protocol.OFRoleStatus;
 import org.projectfloodlight.openflow.protocol.OFType;
 import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.protocol.ver13.OFHelloElemTypeSerializerVer13;

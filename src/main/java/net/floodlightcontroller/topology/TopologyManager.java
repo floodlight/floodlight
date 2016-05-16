@@ -48,11 +48,6 @@ import net.floodlightcontroller.core.types.NodePortTuple;
 import net.floodlightcontroller.core.util.SingletonTask;
 import net.floodlightcontroller.debugcounter.IDebugCounter;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
-import net.floodlightcontroller.debugevent.IDebugEventService;
-import net.floodlightcontroller.debugevent.IEventCategory;
-import net.floodlightcontroller.debugevent.IDebugEventService.EventColumn;
-import net.floodlightcontroller.debugevent.IDebugEventService.EventFieldType;
-import net.floodlightcontroller.debugevent.IDebugEventService.EventType;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryListener;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryService;
 import net.floodlightcontroller.packet.BSN;
@@ -166,83 +161,6 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 	 */
 	protected static final String PACKAGE = TopologyManager.class.getPackage().getName();
 	protected IDebugCounter ctrIncoming;
-
-	/**
-	 * Debug Events
-	 */
-	protected IDebugEventService debugEventService;
-
-	/*
-	 * Topology Event Updater
-	 */
-	protected IEventCategory<TopologyEvent> eventCategory;
-
-	/**
-	 * Topology Information exposed for a Topology related event - used inside
-	 * the BigTopologyEvent class
-	 */
-	protected class TopologyEventInfo {
-		private final int numOpenflowClustersWithTunnels;
-		private final int numOpenflowClustersWithoutTunnels;
-		private final Map<DatapathId, List<NodePortTuple>> externalPortsMap;
-		private final int numTunnelPorts;
-		public TopologyEventInfo(int numOpenflowClustersWithTunnels,
-				int numOpenflowClustersWithoutTunnels,
-				Map<DatapathId, List<NodePortTuple>> externalPortsMap,
-				int numTunnelPorts) {
-			super();
-			this.numOpenflowClustersWithTunnels = numOpenflowClustersWithTunnels;
-			this.numOpenflowClustersWithoutTunnels = numOpenflowClustersWithoutTunnels;
-			this.externalPortsMap = externalPortsMap;
-			this.numTunnelPorts = numTunnelPorts;
-		}
-		@Override
-		public String toString() {
-			StringBuilder builder = new StringBuilder();
-			builder.append("# Openflow Clusters:");
-			builder.append(" { With Tunnels: ");
-			builder.append(numOpenflowClustersWithTunnels);
-			builder.append(" Without Tunnels: ");
-			builder.append(numOpenflowClustersWithoutTunnels);
-			builder.append(" }");
-			builder.append(", # External Clusters: ");
-			int numExternalClusters = externalPortsMap.size();
-			builder.append(numExternalClusters);
-			if (numExternalClusters > 0) {
-				builder.append(" { ");
-				int count = 0;
-				for (DatapathId extCluster : externalPortsMap.keySet()) {
-					builder.append("#" + extCluster + ":Ext Ports: ");
-					builder.append(externalPortsMap.get(extCluster).size());
-					if (++count < numExternalClusters) {
-						builder.append(", ");
-					} else {
-						builder.append(" ");
-					}
-				}
-				builder.append("}");
-			}
-			builder.append(", # Tunnel Ports: ");
-			builder.append(numTunnelPorts);
-			return builder.toString();
-		}
-	}
-
-	/**
-	 * Topology Event class to track topology related events
-	 */
-	protected class TopologyEvent {
-		@EventColumn(name = "Reason", description = EventFieldType.STRING)
-		private final String reason;
-		@EventColumn(name = "Topology Summary")
-		private final TopologyEventInfo topologyInfo;
-		public TopologyEvent(String reason,
-				TopologyEventInfo topologyInfo) {
-			super();
-			this.reason = reason;
-			this.topologyInfo = topologyInfo;
-		}
-	}
 
 	//  Getter/Setter methods
 	/**
@@ -830,7 +748,6 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 		l.add(IFloodlightProviderService.class);
 		l.add(IOFSwitchService.class);
 		l.add(IDebugCounterService.class);
-		l.add(IDebugEventService.class);
 		l.add(IRestApiService.class);
 		return l;
 	}
@@ -844,7 +761,6 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 		switchService = context.getServiceImpl(IOFSwitchService.class);
 		restApiService = context.getServiceImpl(IRestApiService.class);
 		debugCounterService = context.getServiceImpl(IDebugCounterService.class);
-		debugEventService = context.getServiceImpl(IDebugEventService.class);
 
 		switchPorts = new HashMap<DatapathId, Set<OFPort>>();
 		switchPortLinks = new HashMap<NodePortTuple, Set<Link>>();
@@ -855,20 +771,6 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 		ldUpdates = new LinkedBlockingQueue<LDUpdate>();
 		haListener = new HAListenerDelegate();
 		registerTopologyDebugCounters();
-		registerTopologyDebugEvents();
-	}
-
-	protected void registerTopologyDebugEvents() throws FloodlightModuleException {
-		if (debugEventService == null) {
-			log.error("debugEventService should not be null. Has IDebugEventService been loaded previously?");
-		}
-		eventCategory = debugEventService.buildEvent(TopologyEvent.class)
-				.setModuleName(PACKAGE)
-				.setEventName("topologyevent")
-				.setEventDescription("Topology Computation")
-				.setEventType(EventType.ALWAYS_LOG)
-				.setBufferCapacity(100)
-				.register();
 	}
 
 	@Override
@@ -1229,12 +1131,6 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 		// If needed, we may compute them differently.
 		currentInstance = nt;
 		currentInstanceWithoutTunnels = nt;
-
-		TopologyEventInfo topologyInfo =
-				new TopologyEventInfo(0, nt.getClusters().size(),
-						new HashMap<DatapathId, List<NodePortTuple>>(),
-						0);
-		eventCategory.newEventWithFlush(new TopologyEvent(reason, topologyInfo));
 
 		return true;
 	}

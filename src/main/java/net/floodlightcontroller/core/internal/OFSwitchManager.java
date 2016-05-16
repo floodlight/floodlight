@@ -41,10 +41,6 @@ import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.core.rest.SwitchRepresentation;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
-import net.floodlightcontroller.debugevent.IDebugEventService;
-import net.floodlightcontroller.debugevent.IDebugEventService.EventType;
-import net.floodlightcontroller.debugevent.IEventCategory;
-import net.floodlightcontroller.debugevent.MockDebugEventService;
 
 import org.projectfloodlight.openflow.protocol.OFControllerRole;
 import org.projectfloodlight.openflow.protocol.OFFactories;
@@ -126,15 +122,12 @@ IHAListener, IFloodlightModule, IOFSwitchService, IStoreListener<DatapathId> {
 	private Set<LogicalOFMessageCategory> logicalOFMessageCategories = new CopyOnWriteArraySet<LogicalOFMessageCategory>();
 	private final List<IAppHandshakePluginFactory> handshakePlugins = new CopyOnWriteArrayList<IAppHandshakePluginFactory>();
 	private int numRequiredConnections = -1;
-	// Event IDs for debug events
-	protected IEventCategory<SwitchEvent> evSwitch;
 
 	// ISwitchService
 	protected Set<IOFSwitchListener> switchListeners;
 
 	// Module Dependencies
 	private IFloodlightProviderService floodlightProvider;
-	private IDebugEventService debugEventService;
 	private IDebugCounterService debugCounterService;
 
 	private NioEventLoopGroup bossGroup;
@@ -166,8 +159,6 @@ IHAListener, IFloodlightModule, IOFSwitchService, IStoreListener<DatapathId> {
 	public synchronized void switchAdded(IOFSwitchBackend sw) {
 		DatapathId dpid = sw.getId();
 		IOFSwitchBackend oldSw = this.switches.put(dpid, sw);
-		// Update event history
-		evSwitch.newEventWithFlush(new SwitchEvent(dpid, "connected"));
 
 		if (oldSw == sw)  {
 			// Note == for object equality, not .equals for value
@@ -214,10 +205,6 @@ IHAListener, IFloodlightModule, IOFSwitchService, IStoreListener<DatapathId> {
 			log.debug("Switch {} status change but not present in sync manager", sw);
 			return;
 		}
-		evSwitch.newEventWithFlush(new SwitchEvent(dpid,
-				String.format("%s -> %s",
-						oldStatus,
-						newStatus)));
 
 		if(newStatus == SwitchStatus.MASTER  && role != OFControllerRole.ROLE_MASTER) {
 			counters.invalidSwitchActivatedWhileSlave.increment();
@@ -451,14 +438,6 @@ IHAListener, IFloodlightModule, IOFSwitchService, IStoreListener<DatapathId> {
 	}
 
 	@Override
-	public void addSwitchEvent(DatapathId dpid, String reason, boolean flushNow) {
-		if (flushNow)
-			evSwitch.newEventWithFlush(new SwitchEvent(dpid, reason));
-		else
-			evSwitch.newEventNoFlush(new SwitchEvent(dpid, reason));
-	}
-
-	@Override
 	public synchronized void notifyPortChanged(IOFSwitchBackend sw,
 			OFPortDesc port,
 			PortChangeType changeType) {
@@ -639,7 +618,6 @@ IHAListener, IFloodlightModule, IOFSwitchService, IStoreListener<DatapathId> {
 				new ArrayList<Class<? extends IFloodlightService>>();
 
 		l.add(IFloodlightProviderService.class);
-		l.add(IDebugEventService.class);
 		l.add(IDebugCounterService.class);
 		l.add(ISyncService.class);
 
@@ -650,7 +628,6 @@ IHAListener, IFloodlightModule, IOFSwitchService, IStoreListener<DatapathId> {
 	public void init(FloodlightModuleContext context) throws FloodlightModuleException {
 		// Module dependencies
 		floodlightProvider = context.getServiceImpl(IFloodlightProviderService.class);
-		debugEventService = context.getServiceImpl(IDebugEventService.class);
 		debugCounterService = context.getServiceImpl(IDebugCounterService.class);
 		syncService = context.getServiceImpl(ISyncService.class);
 
@@ -983,8 +960,6 @@ IHAListener, IFloodlightModule, IOFSwitchService, IStoreListener<DatapathId> {
 		floodlightProvider.addHAListener(this);
 
 		loadLogicalCategories();
-
-		registerDebugEvents();
 	}
 
 	/**
@@ -1045,24 +1020,6 @@ IHAListener, IFloodlightModule, IOFSwitchService, IStoreListener<DatapathId> {
 	public void loadLogicalCategories() {
 		logicalOFMessageCategories = ImmutableSet.copyOf(logicalOFMessageCategories);
 		numRequiredConnections = calcNumRequiredConnections();
-	}
-
-	/**
-	 * Registers an event handler with the debug event service
-	 * for switch events.
-	 * @throws FloodlightModuleException
-	 */
-	private void registerDebugEvents() throws FloodlightModuleException {
-		if (debugEventService == null) {
-			debugEventService = new MockDebugEventService();
-		}
-		evSwitch = debugEventService.buildEvent(SwitchEvent.class)
-				.setModuleName(this.counters.getPrefix())
-				.setEventName("switch-event")
-				.setEventDescription("Switch connected, disconnected or port changed")
-				.setEventType(EventType.ALWAYS_LOG)
-				.setBufferCapacity(100)
-				.register();
 	}
 
 	@Override
@@ -1236,6 +1193,13 @@ IHAListener, IFloodlightModule, IOFSwitchService, IStoreListener<DatapathId> {
 			log.error("Problem: {}", e);
 		}
 		return retValue;
+	}
+
+	@Override
+	public void addSwitchEvent(DatapathId switchDpid, String reason,
+			boolean flushNow) {
+		// TODO Auto-generated method stub
+		
 	}
 	
 	

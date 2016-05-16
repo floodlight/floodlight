@@ -1456,12 +1456,12 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 			 *  };
 			 */
 			//log.info("Processing roleStatus from MasterState...");
-			long role = m.getRole();
-			if(role==3)
+			OFControllerRole role = m.getRole();
+			if (role == OFControllerRole.ROLE_SLAVE)
 				sendRoleRequest(OFControllerRole.ROLE_SLAVE);
-			else if (role==2)
+			else if (role == OFControllerRole.ROLE_MASTER)
 				sendRoleRequest(OFControllerRole.ROLE_MASTER);
-			else if (role==1)
+			else if (role == OFControllerRole.ROLE_EQUAL)
 				sendRoleRequest(OFControllerRole.ROLE_EQUAL);
 			else
 				sendRoleRequest(OFControllerRole.ROLE_NOCHANGE);
@@ -1597,12 +1597,12 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 			 *  OFPCR_ROLE_SLAVE = 		3, Read-only access. 
 			 *  };
 			 */
-			long role = m.getRole();
-			if(role==3)
+			OFControllerRole role = m.getRole();
+			if(role == OFControllerRole.ROLE_SLAVE)
 				sendRoleRequest(OFControllerRole.ROLE_SLAVE);
-			else if (role==2)
+			else if (role == OFControllerRole.ROLE_MASTER)
 				sendRoleRequest(OFControllerRole.ROLE_MASTER);
-			else if (role==1)
+			else if (role == OFControllerRole.ROLE_EQUAL)
 				sendRoleRequest(OFControllerRole.ROLE_EQUAL);
 			else
 				sendRoleRequest(OFControllerRole.ROLE_NOCHANGE);
@@ -1839,7 +1839,7 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 	}
 
 	protected void sendPortDescRequest() {
-		mainConnection.write(factory.portDescStatsRequest(ImmutableSet.<OFStatsRequestFlags>of()));
+		mainConnection.write(factory.buildPortDescStatsRequest().setFlags(ImmutableSet.<OFStatsRequestFlags>of()).build());
 	}
 
 	/**

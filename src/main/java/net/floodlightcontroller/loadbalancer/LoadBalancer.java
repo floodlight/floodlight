@@ -73,7 +73,7 @@ import net.floodlightcontroller.packet.UDP;
 import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.routing.IRoutingService;
 import net.floodlightcontroller.routing.Route;
-import net.floodlightcontroller.staticflowentry.IStaticFlowEntryPusherService;
+import net.floodlightcontroller.staticentry.IStaticEntryPusherService;
 import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.util.FlowModUtils;
 
@@ -105,7 +105,7 @@ public class LoadBalancer implements IFloodlightModule,
     protected IDeviceService deviceManagerService;
     protected IRoutingService routingEngineService;
     protected ITopologyService topologyService;
-    protected IStaticFlowEntryPusherService sfpService;
+    protected IStaticEntryPusherService sfpService;
     protected IOFSwitchService switchService;
     
     protected HashMap<String, LBVip> vips;
@@ -814,7 +814,7 @@ public class LoadBalancer implements IFloodlightModule,
         l.add(IDebugCounterService.class);
         l.add(ITopologyService.class);
         l.add(IRoutingService.class);
-        l.add(IStaticFlowEntryPusherService.class);
+        l.add(IStaticEntryPusherService.class);
 
         return l;
     }
@@ -828,7 +828,7 @@ public class LoadBalancer implements IFloodlightModule,
         deviceManagerService = context.getServiceImpl(IDeviceService.class);
         routingEngineService = context.getServiceImpl(IRoutingService.class);
         topologyService = context.getServiceImpl(ITopologyService.class);
-        sfpService = context.getServiceImpl(IStaticFlowEntryPusherService.class);
+        sfpService = context.getServiceImpl(IStaticEntryPusherService.class);
         switchService = context.getServiceImpl(IOFSwitchService.class);
         
         vips = new HashMap<String, LBVip>();

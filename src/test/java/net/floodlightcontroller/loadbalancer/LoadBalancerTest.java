@@ -39,7 +39,6 @@ import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
 import org.projectfloodlight.openflow.protocol.OFFactory;
-import org.projectfloodlight.openflow.protocol.OFFlowMod;
 import org.projectfloodlight.openflow.protocol.OFFactories;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
@@ -71,8 +70,6 @@ import net.floodlightcontroller.core.test.MockThreadPoolService;
 import net.floodlightcontroller.core.types.NodePortTuple;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
 import net.floodlightcontroller.debugcounter.MockDebugCounterService;
-import net.floodlightcontroller.debugevent.IDebugEventService;
-import net.floodlightcontroller.debugevent.MockDebugEventService;
 import net.floodlightcontroller.devicemanager.IDeviceService;
 import net.floodlightcontroller.devicemanager.IEntityClassifierService;
 import net.floodlightcontroller.devicemanager.internal.DefaultEntityClassifier;
@@ -86,8 +83,8 @@ import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.restserver.RestApiServer;
 import net.floodlightcontroller.routing.IRoutingService;
 import net.floodlightcontroller.routing.Route;
-import net.floodlightcontroller.staticflowentry.IStaticFlowEntryPusherService;
-import net.floodlightcontroller.staticflowentry.StaticFlowEntryPusher;
+import net.floodlightcontroller.staticentry.IStaticEntryPusherService;
+import net.floodlightcontroller.staticentry.StaticEntryPusher;
 import net.floodlightcontroller.storage.IStorageSourceService;
 import net.floodlightcontroller.storage.memory.MemoryStorageSource;
 import net.floodlightcontroller.test.FloodlightTestCase;
@@ -105,7 +102,7 @@ public class LoadBalancerTest extends FloodlightTestCase {
 	protected DefaultEntityClassifier entityClassifier;
 	protected IRoutingService routingEngine;
 	protected ITopologyService topology;
-	protected StaticFlowEntryPusher sfp;
+	protected StaticEntryPusher sfp;
 	protected MemoryStorageSource storage;
 	protected RestApiServer restApi;
 	protected VipsResource vipsResource;
@@ -113,7 +110,6 @@ public class LoadBalancerTest extends FloodlightTestCase {
 	protected MembersResource membersResource;
 	private MockSyncService mockSyncService;
 	protected IDebugCounterService debugCounterService;
-	protected IDebugEventService debugEventService;
 	protected LBVip vip1, vip2;
 	protected LBPool pool1, pool2, pool3;
 	protected LBMember member1, member2, member3, member4;
@@ -136,11 +132,10 @@ public class LoadBalancerTest extends FloodlightTestCase {
 		topology = createMock(ITopologyService.class);
 		routingEngine = createMock(IRoutingService.class);
 		restApi = new RestApiServer();
-		sfp = new StaticFlowEntryPusher();
+		sfp = new StaticEntryPusher();
 		storage = new MemoryStorageSource(); //dependency for sfp
 		mockSyncService = new MockSyncService();
 		debugCounterService = new MockDebugCounterService();
-		debugEventService = new MockDebugEventService();
 
 		fmc.addService(IRestApiService.class, restApi);
 		fmc.addService(IFloodlightProviderService.class, getMockFloodlightProvider());
@@ -149,12 +144,11 @@ public class LoadBalancerTest extends FloodlightTestCase {
 		fmc.addService(IDeviceService.class, deviceManager);
 		fmc.addService(ITopologyService.class, topology);
 		fmc.addService(IRoutingService.class, routingEngine);
-		fmc.addService(IStaticFlowEntryPusherService.class, sfp);
+		fmc.addService(IStaticEntryPusherService.class, sfp);
 		fmc.addService(ILoadBalancerService.class, lb);
 		fmc.addService(IStorageSourceService.class, storage);
 		fmc.addService(ISyncService.class, mockSyncService);
 		fmc.addService(IDebugCounterService.class, debugCounterService);
-		fmc.addService(IDebugEventService.class, debugEventService);
 		fmc.addService(IOFSwitchService.class, getMockSwitchService());
 
 		lb.init(fmc);
@@ -686,7 +680,7 @@ public class LoadBalancerTest extends FloodlightTestCase {
 		assertTrue(msglist2.size()==2); // has inbound and outbound packetouts
 		// TODO: not seeing flowmods yet ...
 
-		Map<String, OFFlowMod> map = sfp.getFlows(DatapathId.of(1L));
+		Map<String, OFMessage> map = sfp.getEntries(DatapathId.of(1L));
 
 		assertTrue(map.size()==4);
 	}
