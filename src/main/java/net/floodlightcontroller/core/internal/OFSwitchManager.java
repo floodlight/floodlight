@@ -760,7 +760,7 @@ IHAListener, IFloodlightModule, IOFSwitchService, IStoreListener<DatapathId> {
 		 * version as well as the OF1.3.1 version bitmap contents.
 		 */
 		String protocols = configParams.get("supportedOpenFlowVersions");
-		Set<OFVersion> ofVersions = new HashSet<OFVersion>();
+		List<OFVersion> ofVersions = new ArrayList<OFVersion>();
 		if (protocols != null && !protocols.isEmpty()) {
 			protocols = protocols.toLowerCase();
 			/* 
@@ -781,24 +781,31 @@ IHAListener, IFloodlightModule, IOFSwitchService, IStoreListener<DatapathId> {
 			if (protocols.contains("1.4") || protocols.contains("14")) {
 				ofVersions.add(OFVersion.OF_14);
 			}
+			if (protocols.contains("1.5") || protocols.contains("15")) {
+				ofVersions.add(OFVersion.OF_15);
+			}
 			/*
 			 * TODO This will need to be updated if/when 
-			 * Loxi is updated to support > 1.4.
+			 * Loxi is updated to support > 1.5.
 			 * 
-			 * if (protocols.contains("1.5") || protocols.contains("15")) {
-			 *     ofVersions.add(OFVersion.OF_15);
+			 * if (protocols.contains("1.6") || protocols.contains("16")) {
+			 *     ofVersions.add(OFVersion.OF_16);
 			 * }
 			 */
 		} else {
 			log.warn("Supported OpenFlow versions not specified. Using Loxi-defined {}", OFVersion.values());
 			ofVersions.addAll(Arrays.asList(OFVersion.values()));
 		}
+
 		/* Sanity check */
 		if (ofVersions.isEmpty()) {
 			throw new IllegalStateException("OpenFlow version list should never be empty at this point. Make sure it's being populated in OFSwitchManager's init function.");
 		}
 		defaultFactory = computeInitialFactory(ofVersions);
 		ofBitmaps = computeOurVersionBitmaps(ofVersions);
+		
+		log.info("Computed OpenFlow version bitmap as {}", ofBitmaps);
+		log.info("OpenFlow version {} will be advertised to switches. Supported fallback versions {}", defaultFactory.getVersion(), ofVersions);
 	}
 
 	/**
@@ -811,12 +818,10 @@ IHAListener, IFloodlightModule, IOFSwitchService, IStoreListener<DatapathId> {
 	 * version depending on what's computed during the
 	 * version-negotiation part of the handshake.
 	 * 
-	 * Assumption: The Set of OFVersion ofVersions
-	 * variable has been set already and is NOT EMPTY.
-	 * 
+	 * @param ofVersions the OpenFlow versions we support
 	 * @return the highest-version OFFactory we support
 	 */
-	private OFFactory computeInitialFactory(Set<OFVersion> ofVersions) {
+	private OFFactory computeInitialFactory(List<OFVersion> ofVersions) {
 		/* This should NEVER happen. Double-checking. */
 		if (ofVersions == null || ofVersions.isEmpty()) {
 			throw new IllegalStateException("OpenFlow version list should never be null or empty at this point. Make sure it's set in the OFSwitchManager.");
@@ -843,12 +848,10 @@ IHAListener, IFloodlightModule, IOFSwitchService, IStoreListener<DatapathId> {
 	 * cross-version OpenFlow handshake where both parties support 
 	 * OpenFlow versions >= 1.3.1.
 	 * 
-	 * Type Set is used as input to guarantee all unique versions.
-	 * 
-	 * @param ofVersions, the list of bitmaps. Supply to an OFHello message.
+	 * @param ofVersions the OpenFlow versions we support
 	 * @return list of bitmaps for the versions of OpenFlow we support
 	 */
-	private List<U32> computeOurVersionBitmaps(Set<OFVersion> ofVersions) {
+	private List<U32> computeOurVersionBitmaps(List<OFVersion> ofVersions) {
 		/* This should NEVER happen. Double-checking. */
 		if (ofVersions == null || ofVersions.isEmpty()) {
 			throw new IllegalStateException("OpenFlow version list should never be null or empty at this point. Make sure it's set in the OFSwitchManager.");
@@ -872,7 +875,6 @@ IHAListener, IFloodlightModule, IOFSwitchService, IStoreListener<DatapathId> {
 		if (tempBitmap != 0) {
 			bitmaps.add(U32.ofRaw(tempBitmap));
 		}
-		log.info("Computed OpenFlow version bitmap as {}", Arrays.asList(tempBitmap));
 		return bitmaps;
 	}
 

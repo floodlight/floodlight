@@ -84,6 +84,7 @@ import net.floodlightcontroller.storage.IStorageSourceService;
 import net.floodlightcontroller.storage.OperatorPredicate;
 import net.floodlightcontroller.storage.StorageException;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
+import net.floodlightcontroller.util.OFMessageUtils;
 
 import org.projectfloodlight.openflow.protocol.OFControllerRole;
 import org.projectfloodlight.openflow.protocol.OFMessage;
@@ -284,7 +285,7 @@ IFloodlightModule, IInfoProvider {
 	//*********************
 
 	@Override
-	public OFPacketOut generateLLDPMessage(IOFSwitch iofSwitch, OFPort port,
+	public OFPacketOut generateLLDPMessage(IOFSwitch iofSwitch, OFPort port, 
 			boolean isStandard, boolean isReverse) {
 
 		OFPortDesc ofpPort = iofSwitch.getPort(port);
@@ -407,13 +408,13 @@ IFloodlightModule, IInfoProvider {
 
 		// serialize and wrap in a packet out
 		byte[] data = ethernet.serialize();
-		OFPacketOut.Builder pob = iofSwitch.getOFFactory().buildPacketOut();
-		pob.setBufferId(OFBufferId.NO_BUFFER);
-		pob.setInPort(OFPort.CONTROLLER);
+		OFPacketOut.Builder pob = iofSwitch.getOFFactory().buildPacketOut()
+		.setBufferId(OFBufferId.NO_BUFFER)
+		.setActions(getDiscoveryActions(iofSwitch, port))
+		.setData(data);
+		OFMessageUtils.setInPort(pob, OFPort.CONTROLLER);
 
-		// set data and data length
-		pob.setData(data);
-
+		log.info("{}", pob.build());
 		return pob.build();
 	}
 
@@ -1169,7 +1170,7 @@ IFloodlightModule, IInfoProvider {
 	 * @param port
 	 * @return
 	 */
-	protected List<OFAction> getDiscoveryActions (IOFSwitch sw, OFPort port){
+	protected List<OFAction> getDiscoveryActions(IOFSwitch sw, OFPort port) {
 		// set actions
 		List<OFAction> actions = new ArrayList<OFAction>();
 		actions.add(sw.getOFFactory().actions().buildOutput().setPort(port).build());
@@ -1193,26 +1194,16 @@ IFloodlightModule, IInfoProvider {
 			boolean isStandard, boolean isReverse) {
 
 		// Takes care of all checks including null pointer checks.
-		if (!isOutgoingDiscoveryAllowed(sw, port, isStandard, isReverse))
+		if (!isOutgoingDiscoveryAllowed(sw, port, isStandard, isReverse)) {
 			return false;
+		}
 
 		IOFSwitch iofSwitch = switchService.getSwitch(sw);
-		if (iofSwitch == null)             //fix dereference violations in case race conditions
+		if (iofSwitch == null) { // fix dereference violations in case race conditions
 			return false;
-		OFPortDesc ofpPort = iofSwitch.getPort(port);
+		}
 
-		OFPacketOut po = generateLLDPMessage(iofSwitch, port, isStandard, isReverse);
-		OFPacketOut.Builder pob = po.createBuilder();
-
-		// Add actions
-		List<OFAction> actions = getDiscoveryActions(iofSwitch, ofpPort.getPortNo());
-		pob.setActions(actions);
-
-		// no need to set length anymore
-
-		// send
-		// no more try-catch. switch will silently fail
-		return iofSwitch.write(pob.build());
+		return iofSwitch.write(generateLLDPMessage(iofSwitch, port, isStandard, isReverse));
 	}
 
 	/**

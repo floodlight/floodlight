@@ -56,6 +56,7 @@ import net.floodlightcontroller.routing.Route;
 import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.util.FlowModUtils;
 import net.floodlightcontroller.util.OFDPAUtils;
+import net.floodlightcontroller.util.OFMessageUtils;
 import net.floodlightcontroller.util.OFPortMode;
 import net.floodlightcontroller.util.OFPortModeTuple;
 
@@ -407,7 +408,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 		// log.info("actions {}",actions);
 		// set buffer-id, in-port and packet-data based on packet-in
 		pob.setBufferId(OFBufferId.NO_BUFFER);
-		pob.setInPort(inPort);
+		OFMessageUtils.setInPort(pob, inPort);
 		pob.setData(pi.getData());
 
 		try {

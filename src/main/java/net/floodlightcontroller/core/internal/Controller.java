@@ -484,16 +484,11 @@ public class Controller implements IFloodlightProviderService, IStorageSourceLis
                         }
                     }
                     pktinProcTimeService.recordEndTimePktIn(sw, m, bc);
-                } else {
-                    if (m.getType() != OFType.BARRIER_REPLY)
-                        log.warn("Unhandled OF Message: {} from {}", m, sw);
-                    else
-                        log.debug("Received a Barrier Reply, no listeners for it");
                 }
                 // paag
                 // And just before we exit the controller loop we see if anyone
                 // is interested in knowing that we are exiting the loop
-                for (IControllerCompletionListener listener:completionListeners)
+                for (IControllerCompletionListener listener : completionListeners)
                 	listener.onMessageConsumed(sw, m, bc);
                 
                 if ((bContext == null) && (bc != null)) flcontext_free(bc);
