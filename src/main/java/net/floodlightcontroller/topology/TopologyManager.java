@@ -1,44 +1,22 @@
 /**
- *    Copyright 2013, Big Switch Networks, Inc.
- *
- *    Licensed under the Apache License, Version 2.0 (the "License"); you may
- *    not use this file except in compliance with the License. You may obtain
- *    a copy of the License at
- *
- *         http://www.apache.org/licenses/LICENSE-2.0
- *
- *    Unless required by applicable law or agreed to in writing, software
- *    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- *    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- *    License for the specific language governing permissions and limitations
- *    under the License.
+ * Copyright 2013, Big Switch Networks, Inc.
+ * <p>
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may
+ * not use this file except in compliance with the License. You may obtain
+ * a copy of the License at
+ * <p>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p>
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations
+ * under the License.
  **/
 
 package net.floodlightcontroller.topology;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-
-import net.floodlightcontroller.core.FloodlightContext;
-import net.floodlightcontroller.core.HAListenerTypeMarker;
-import net.floodlightcontroller.core.HARole;
-import net.floodlightcontroller.core.IFloodlightProviderService;
-import net.floodlightcontroller.core.IHAListener;
-import net.floodlightcontroller.core.IOFMessageListener;
-import net.floodlightcontroller.core.IOFSwitch;
-import net.floodlightcontroller.core.LogicalOFMessageCategory;
+import net.floodlightcontroller.core.*;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
@@ -59,12 +37,7 @@ import net.floodlightcontroller.routing.Link;
 import net.floodlightcontroller.routing.Route;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
 import net.floodlightcontroller.topology.web.TopologyWebRoutable;
-
-import org.projectfloodlight.openflow.protocol.OFMessage;
-import org.projectfloodlight.openflow.protocol.OFPacketIn;
-import org.projectfloodlight.openflow.protocol.OFPacketOut;
-import org.projectfloodlight.openflow.protocol.OFType;
-import org.projectfloodlight.openflow.protocol.OFVersion;
+import org.projectfloodlight.openflow.protocol.*;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.types.DatapathId;
@@ -74,19 +47,20 @@ import org.projectfloodlight.openflow.types.U64;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.*;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+
 /**
  * Topology manager is responsible for maintaining the controller's notion
  * of the network graph, as well as implementing tools for finding routes
  * through the topology.
  */
 public class TopologyManager implements IFloodlightModule, ITopologyService, IRoutingService, ILinkDiscoveryListener, IOFMessageListener {
-
 	protected static Logger log = LoggerFactory.getLogger(TopologyManager.class);
-
 	public static final String MODULE_NAME = "topology";
-
-	public static final String CONTEXT_TUNNEL_ENABLED =
-			"com.bigswitch.floodlight.topologymanager.tunnelEnabled";
 
 	/**
 	 * Role of the controller.
@@ -1044,6 +1018,7 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 
 	protected void addOrUpdateSwitch(DatapathId sw) {
 		/*TODO react appropriately
+
 		addSwitch(sw);
 		for (OFPortDesc p : switchService.getSwitch(sw).getPorts()) {
 			addPortToSwitch(sw, p.getPortNo());
@@ -1123,7 +1098,10 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 				blockedPorts,
 				openflowLinks,
 				broadcastDomainPorts,
-				tunnelPorts,switchPortLinks,allPorts);
+				tunnelPorts,
+				switchPortLinks,
+				allPorts,
+				portBroadcastDomainLinks);
 
 		nt.compute();
 
@@ -1258,173 +1236,174 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 		if (s.get(n2) == null) {
 			s.put(n2, new HashSet<Link>());
 		}
+
 		/* 
 		 * Since we don't include latency in .equals(), we need
 		 * to explicitly remove the existing link (if present).
 		 * Otherwise, new latency values for existing links will
 		 * never be accepted.
 		 */
-		s.get(n1).remove(l);
-		s.get(n2).remove(l);
-		s.get(n1).add(l);
-		s.get(n2).add(l);
-	}
+        s.get(n1).remove(l);
+        s.get(n2).remove(l);
+        s.get(n1).add(l);
+        s.get(n2).add(l);
+    }
 
-	/**
-	 * Delete the given link from the data structure.  Returns true if the
-	 * link was deleted.
-	 * @param s
-	 * @param l
-	 * @return
-	 */
-	private boolean removeLinkFromStructure(Map<NodePortTuple, Set<Link>> s, Link l) {
+    /**
+     * Delete the given link from the data structure.  Returns true if the
+     * link was deleted.
+     * @param s
+     * @param l
+     * @return
+     */
+    private boolean removeLinkFromStructure(Map<NodePortTuple, Set<Link>> s, Link l) {
 
-		boolean result1 = false, result2 = false;
-		NodePortTuple n1 = new NodePortTuple(l.getSrc(), l.getSrcPort());
-		NodePortTuple n2 = new NodePortTuple(l.getDst(), l.getDstPort());
+        boolean result1 = false, result2 = false;
+        NodePortTuple n1 = new NodePortTuple(l.getSrc(), l.getSrcPort());
+        NodePortTuple n2 = new NodePortTuple(l.getDst(), l.getDstPort());
 
-		if (s.get(n1) != null) {
-			result1 = s.get(n1).remove(l);
-			if (s.get(n1).isEmpty()) s.remove(n1);
-		}
-		if (s.get(n2) != null) {
-			result2 = s.get(n2).remove(l);
-			if (s.get(n2).isEmpty()) s.remove(n2);
-		}
-		return result1 || result2;
-	}
+        if (s.get(n1) != null) {
+            result1 = s.get(n1).remove(l);
+            if (s.get(n1).isEmpty()) s.remove(n1);
+        }
+        if (s.get(n2) != null) {
+            result2 = s.get(n2).remove(l);
+            if (s.get(n2).isEmpty()) s.remove(n2);
+        }
+        return result1 || result2;
+    }
 
-	protected void addOrUpdateTunnelLink(DatapathId srcId, OFPort srcPort, DatapathId dstId,
-			OFPort dstPort, U64 latency) {
-		// If you need to handle tunnel links, this is a placeholder.
-	}
+    protected void addOrUpdateTunnelLink(DatapathId srcId, OFPort srcPort, DatapathId dstId,
+                                         OFPort dstPort, U64 latency) {
+        // If you need to handle tunnel links, this is a placeholder.
+    }
 
-	public void addOrUpdateLink(DatapathId srcId, OFPort srcPort, DatapathId dstId,
-			OFPort dstPort, U64 latency, LinkType type) {
-		Link link = new Link(srcId, srcPort, dstId, dstPort, latency);
+    public void addOrUpdateLink(DatapathId srcId, OFPort srcPort, DatapathId dstId,
+                                OFPort dstPort, U64 latency, LinkType type) {
+        Link link = new Link(srcId, srcPort, dstId, dstPort, latency);
 
-		if (type.equals(LinkType.MULTIHOP_LINK)) {
-			addPortToSwitch(srcId, srcPort);
-			addPortToSwitch(dstId, dstPort);
-			addLinkToStructure(switchPortLinks, link);
+        if (type.equals(LinkType.MULTIHOP_LINK)) {
+            addPortToSwitch(srcId, srcPort);
+            addPortToSwitch(dstId, dstPort);
+            addLinkToStructure(switchPortLinks, link);
 
-			addLinkToStructure(portBroadcastDomainLinks, link);
-			dtLinksUpdated = removeLinkFromStructure(directLinks, link);
-			linksUpdated = true;
-		} else if (type.equals(LinkType.DIRECT_LINK)) {
-			addPortToSwitch(srcId, srcPort);
-			addPortToSwitch(dstId, dstPort);
-			addLinkToStructure(switchPortLinks, link);
+            addLinkToStructure(portBroadcastDomainLinks, link);
+            dtLinksUpdated = removeLinkFromStructure(directLinks, link);
+            linksUpdated = true;
+        } else if (type.equals(LinkType.DIRECT_LINK)) {
+            addPortToSwitch(srcId, srcPort);
+            addPortToSwitch(dstId, dstPort);
+            addLinkToStructure(switchPortLinks, link);
 
-			addLinkToStructure(directLinks, link);
-			removeLinkFromStructure(portBroadcastDomainLinks, link);
-			dtLinksUpdated = true;
-			linksUpdated = true;
-		} else if (type.equals(LinkType.TUNNEL)) {
-			addOrUpdateTunnelLink(srcId, srcPort, dstId, dstPort, latency);
-		}
-	}
+            addLinkToStructure(directLinks, link);
+            removeLinkFromStructure(portBroadcastDomainLinks, link);
+            dtLinksUpdated = true;
+            linksUpdated = true;
+        } else if (type.equals(LinkType.TUNNEL)) {
+            addOrUpdateTunnelLink(srcId, srcPort, dstId, dstPort, latency);
+        }
+    }
 
-	public void removeLink(Link link)  {
-		linksUpdated = true;
-		dtLinksUpdated = removeLinkFromStructure(directLinks, link);
-		removeLinkFromStructure(portBroadcastDomainLinks, link);
-		removeLinkFromStructure(switchPortLinks, link);
+    public void removeLink(Link link) {
+        linksUpdated = true;
+        dtLinksUpdated = removeLinkFromStructure(directLinks, link);
+        removeLinkFromStructure(portBroadcastDomainLinks, link);
+        removeLinkFromStructure(switchPortLinks, link);
 
-		NodePortTuple srcNpt =
-				new NodePortTuple(link.getSrc(), link.getSrcPort());
-		NodePortTuple dstNpt =
-				new NodePortTuple(link.getDst(), link.getDstPort());
+        NodePortTuple srcNpt =
+                new NodePortTuple(link.getSrc(), link.getSrcPort());
+        NodePortTuple dstNpt =
+                new NodePortTuple(link.getDst(), link.getDstPort());
 
-		// Remove switch ports if there are no links through those switch ports
-		if (switchPortLinks.get(srcNpt) == null) {
-			if (switchPorts.get(srcNpt.getNodeId()) != null)
-				switchPorts.get(srcNpt.getNodeId()).remove(srcNpt.getPortId());
-		}
-		if (switchPortLinks.get(dstNpt) == null) {
-			if (switchPorts.get(dstNpt.getNodeId()) != null)
-				switchPorts.get(dstNpt.getNodeId()).remove(dstNpt.getPortId());
-		}
+        // Remove switch ports if there are no links through those switch ports
+        if (switchPortLinks.get(srcNpt) == null) {
+            if (switchPorts.get(srcNpt.getNodeId()) != null)
+                switchPorts.get(srcNpt.getNodeId()).remove(srcNpt.getPortId());
+        }
+        if (switchPortLinks.get(dstNpt) == null) {
+            if (switchPorts.get(dstNpt.getNodeId()) != null)
+                switchPorts.get(dstNpt.getNodeId()).remove(dstNpt.getPortId());
+        }
 
-		// Remove the node if no ports are present
-		if (switchPorts.get(srcNpt.getNodeId())!=null &&
-				switchPorts.get(srcNpt.getNodeId()).isEmpty()) {
-			switchPorts.remove(srcNpt.getNodeId());
-		}
-		if (switchPorts.get(dstNpt.getNodeId())!=null &&
-				switchPorts.get(dstNpt.getNodeId()).isEmpty()) {
-			switchPorts.remove(dstNpt.getNodeId());
-		}
-	}
+        // Remove the node if no ports are present
+        if (switchPorts.get(srcNpt.getNodeId()) != null &&
+                switchPorts.get(srcNpt.getNodeId()).isEmpty()) {
+            switchPorts.remove(srcNpt.getNodeId());
+        }
+        if (switchPorts.get(dstNpt.getNodeId()) != null &&
+                switchPorts.get(dstNpt.getNodeId()).isEmpty()) {
+            switchPorts.remove(dstNpt.getNodeId());
+        }
+    }
 
-	public void removeLink(DatapathId srcId, OFPort srcPort,
-			DatapathId dstId, OFPort dstPort) {
-		Link link = new Link(srcId, srcPort, dstId, dstPort, U64.ZERO /* does not matter for remove (not included in .equals() of Link) */);
-		removeLink(link);
-	}
+    public void removeLink(DatapathId srcId, OFPort srcPort,
+                           DatapathId dstId, OFPort dstPort) {
+        Link link = new Link(srcId, srcPort, dstId, dstPort, U64.ZERO /* does not matter for remove (not included in .equals() of Link) */);
+        removeLink(link);
+    }
 
-	public void clear() {
-		switchPorts.clear();
-		tunnelPorts.clear();
-		switchPortLinks.clear();
-		portBroadcastDomainLinks.clear();
-		directLinks.clear();
-	}
+    public void clear() {
+        switchPorts.clear();
+        tunnelPorts.clear();
+        switchPortLinks.clear();
+        portBroadcastDomainLinks.clear();
+        directLinks.clear();
+    }
 
-	/**
-	 * Clears the current topology. Note that this does NOT
-	 * send out updates.
-	 */
-	public void clearCurrentTopology() {
-		this.clear();
-		linksUpdated = true;
-		dtLinksUpdated = true;
-		tunnelPortsUpdated = true;
-		createNewInstance("startup");
-		lastUpdateTime = new Date();
-	}
+    /**
+     * Clears the current topology. Note that this does NOT
+     * send out updates.
+     */
+    public void clearCurrentTopology() {
+        this.clear();
+        linksUpdated = true;
+        dtLinksUpdated = true;
+        tunnelPortsUpdated = true;
+        createNewInstance("startup");
+        lastUpdateTime = new Date();
+    }
 
-	/**
-	 * Getters.  No Setters.
-	 */
-	public Map<DatapathId, Set<OFPort>> getSwitchPorts() {
-		return switchPorts;
-	}
+    /**
+     * Getters.  No Setters.
+     */
+    public Map<DatapathId, Set<OFPort>> getSwitchPorts() {
+        return switchPorts;
+    }
 
-	public Map<NodePortTuple, Set<Link>> getSwitchPortLinks() {
-		return switchPortLinks;
-	}
+    public Map<NodePortTuple, Set<Link>> getSwitchPortLinks() {
+        return switchPortLinks;
+    }
 
-	public Map<NodePortTuple, Set<Link>> getPortBroadcastDomainLinks() {
-		return portBroadcastDomainLinks;
-	}
+    public Map<NodePortTuple, Set<Link>> getPortBroadcastDomainLinks() {
+        return portBroadcastDomainLinks;
+    }
 
-	public TopologyInstance getCurrentInstance(boolean tunnelEnabled) {
-		if (tunnelEnabled)
-			return currentInstance;
-		else return this.currentInstanceWithoutTunnels;
-	}
+    public TopologyInstance getCurrentInstance(boolean tunnelEnabled) {
+        if (tunnelEnabled)
+            return currentInstance;
+        else return this.currentInstanceWithoutTunnels;
+    }
 
-	public TopologyInstance getCurrentInstance() {
-		return this.getCurrentInstance(true);
-	}
+    public TopologyInstance getCurrentInstance() {
+        return this.getCurrentInstance(true);
+    }
 
-	/**
-	 *  Switch methods
-	 */
-	@Override
-	public Set<OFPort> getPorts(DatapathId sw) {
-		IOFSwitch iofSwitch = switchService.getSwitch(sw);
-		if (iofSwitch == null) return Collections.emptySet();
+    /**
+     *  Switch methods
+     */
+    @Override
+    public Set<OFPort> getPorts(DatapathId sw) {
+        IOFSwitch iofSwitch = switchService.getSwitch(sw);
+        if (iofSwitch == null) return Collections.emptySet();
 
-		Collection<OFPort> ofpList = iofSwitch.getEnabledPortNumbers();
-		if (ofpList == null) return Collections.emptySet();
+        Collection<OFPort> ofpList = iofSwitch.getEnabledPortNumbers();
+        if (ofpList == null) return Collections.emptySet();
 
-		Set<OFPort> ports = new HashSet<OFPort>(ofpList);
-		Set<OFPort> qPorts = linkDiscoveryService.getQuarantinedPorts(sw);
-		if (qPorts != null)
-			ports.removeAll(qPorts);
+        Set<OFPort> ports = new HashSet<OFPort>(ofpList);
+        Set<OFPort> qPorts = linkDiscoveryService.getQuarantinedPorts(sw);
+        if (qPorts != null)
+            ports.removeAll(qPorts);
 
-		return ports;
-	}
+        return ports;
+    }
 }
