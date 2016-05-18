@@ -231,20 +231,31 @@ public class TopologyInstance {
 	/*
 	 * Returns broadcast ports for the given DatapathId
 	 */
-    public Set<OFPort> swBroadcastPorts(DatapathId sw){
-    	return this.broadcastPortMap.get(sw);
-
+    public Set<OFPort> swBroadcastPorts(DatapathId sw) {
+    	if (!broadcastPortMap.containsKey(sw) || broadcastPortMap.get(sw) == null) {
+    		log.warn("Could not locate broadcast ports for switch {}", sw);
+    		return Collections.emptySet();
+    	} else {
+    		if (log.isDebugEnabled()) {
+    			log.debug("Found broadcast ports {} for switch {}", broadcastPortMap.get(sw), sw);
+    		}
+    		return broadcastPortMap.get(sw);
+    	}
     }
 
     public void printTopology() {
         log.debug("-----------------Topology-----------------------");
         log.debug("All Links: {}", allLinks);
-		log.debug("Broadcast Tree: {}", finiteBroadcastTree);
-        log.debug("Broadcast Domain Ports: {}", broadcastDomainPorts);
+		log.debug("Cluser Broadcast Trees: {}", clusterBroadcastTrees);
+        log.debug("Cluster Ports: {}", clusterPorts);
         log.debug("Tunnel Ports: {}", tunnelPorts);
         log.debug("Clusters: {}", clusters);
         log.debug("Destination Rooted Full Trees: {}", destinationRootedFullTrees);
-        log.debug("Broadcast Node Ports: {}", broadcastNodePorts);
+        log.debug("Cluser Broadcast Node Ports: {}", clusterBroadcastNodePorts);
+        log.debug("Broadcast Ports Per Node (!!): {}", broadcastPortMap);
+        log.debug("Broadcast Domain Ports: {}", broadcastDomainPorts);
+        log.debug("Broadcast Node Ports: {}", broadcastDomainPorts);
+        log.debug("Archipelagos: {}", archipelagos);
         log.debug("-----------------------------------------------");  
     }
 
@@ -603,45 +614,52 @@ public class TopologyInstance {
         for (Set<Link> linkset : externalLinks.values()) {
             links.addAll(linkset);
         }
+        
+        /* Base case of 1:1 mapping b/t clusters and archipelagos */
+        if (links.isEmpty()) {
+        	if (!clusters.isEmpty()) {
+        		clusters.forEach(c -> archipelagos.add(new Archipelago().add(c)));
+        	}
+        } else { /* Only for two or more adjacent clusters that form archipelagos */
+            for (Link l : links) {
+                for (Cluster c : clusters) {
+                    if (c.getNodes().contains(l.getSrc())) srcCluster = c;
+                    if (c.getNodes().contains(l.getDst())) dstCluster = c;
+                }
+                for (Archipelago a : archipelagos) {
+                    // Is source cluster a part of an existing archipelago?
+                    if (a.isMember(srcCluster)) srcArchipelago = a;
+                    // Is destination cluster a part of an existing archipelago?
+                    if (a.isMember(dstCluster)) dstArchipelago = a;
+                }
 
-        for (Link l : links) {
-            for (Cluster c : clusters) {
-                if(c.getNodes().contains(l.getSrc())) srcCluster = c;
-                if(c.getNodes().contains(l.getDst())) dstCluster = c;
-            }
-            for (Archipelago a : archipelagos) {
-                // Is source cluster a part of an existing archipelago?
-                if(a.isMember(srcCluster)) srcArchipelago = a;
-                // Is destination cluster a part of an existing archipelago?
-                if(a.isMember(dstCluster)) dstArchipelago = a;
-            }
+                // Are they both found in an archipelago? If so, then merge the two.
+                if (srcArchipelago != null && dstArchipelago != null && !srcArchipelago.equals(dstArchipelago)) {
+                    srcArchipelago.merge(dstArchipelago);
+                    archipelagos.remove(dstArchipelago);
+                }
 
-            // Are they both found in an archipelago? If so, then merge the two.
-            if(srcArchipelago != null && dstArchipelago != null && srcArchipelago != dstArchipelago) {
-                srcArchipelago.merge(dstArchipelago);
-                archipelagos.remove(dstArchipelago);
-            }
+                // If neither were found in an existing, then form a new archipelago.
+                else if (srcArchipelago == null && dstArchipelago == null) {
+                    archipelagos.add(new Archipelago().add(srcCluster).add(dstCluster));
+                }
 
-            // If neither were found in an existing, then form a new archipelago.
-            else if(srcArchipelago == null && dstArchipelago == null) {
-                archipelagos.add(new Archipelago().add(srcCluster).add(dstCluster));
-            }
+                // If only one is found in an existing, then add the one not found to the existing.
+                else if (srcArchipelago != null && dstArchipelago == null) {
+                    srcArchipelago.add(dstCluster);
+                }
 
-            // If only one is found in an existing, then add the one not found to the existing.
-            else if(srcArchipelago != null && dstArchipelago == null) {
-                srcArchipelago.add(dstCluster);
-            }
+                else if (srcArchipelago == null && dstArchipelago != null) {
+                    dstArchipelago.add(srcCluster);
+                }
 
-            else if(srcArchipelago == null && dstArchipelago != null) {
-                dstArchipelago.add(srcCluster);
+                srcCluster = null;
+                dstCluster = null;
+                srcArchipelago = null;
+                dstArchipelago = null;
             }
-
-            srcCluster = null;
-            dstCluster = null;
-            srcArchipelago = null;
-            dstArchipelago = null;
         }
-
+        
         // Choose a broadcast tree for each archipelago
         for (Archipelago a : archipelagos) {
             for (DatapathId id : destinationRootedFullTrees.keySet()) {
@@ -792,7 +810,7 @@ public class TopologyInstance {
     }
 
     protected void calculateBroadcastTreeInClusters() {
-        for(Cluster c: clusters) {
+        for (Cluster c : clusters) {
             // c.id is the smallest node that's in the cluster
             BroadcastTree tree = destinationRootedTrees.get(c.id);
             clusterBroadcastTrees.put(c.id, tree);
@@ -975,7 +993,7 @@ public class TopologyInstance {
         try {
             result = pathcache.get(id);
         } catch (Exception e) {
-            log.error("{}", e);
+            log.warn("Could not find route from {} to {}. If the path exists, wait for the topology to settle, and it will be detected", srcId, dstId);
         }
 
         if (log.isTraceEnabled()) {

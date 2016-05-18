@@ -393,8 +393,8 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 		List<OFAction> actions = new ArrayList<OFAction>();
 		Set<OFPort> broadcastPorts = this.topologyService.getSwitchBroadcastPorts(sw.getId());
 
-		if (broadcastPorts == null) {
-			log.debug("BroadcastPorts returned null. Assuming single switch w/no links.");
+		if (broadcastPorts.isEmpty()) {
+			log.warn("No broadcast ports found. Using FLOOD output action");
 			/* Must be a single-switch w/no links */
 			broadcastPorts = Collections.singleton(OFPort.FLOOD);
 		}
