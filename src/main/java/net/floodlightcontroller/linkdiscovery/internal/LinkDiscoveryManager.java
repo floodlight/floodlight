@@ -70,8 +70,6 @@ import net.floodlightcontroller.linkdiscovery.ILinkDiscovery.UpdateOperation;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryListener;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryService;
 import net.floodlightcontroller.linkdiscovery.web.LinkDiscoveryWebRoutable;
-import net.floodlightcontroller.notification.INotificationManager;
-import net.floodlightcontroller.notification.NotificationManagerFactory;
 import net.floodlightcontroller.packet.BSN;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.LLDP;
@@ -127,8 +125,6 @@ public class LinkDiscoveryManager implements IOFMessageListener,
 IOFSwitchListener, IStorageSourceListener, ILinkDiscoveryService,
 IFloodlightModule, IInfoProvider {
 	protected static final Logger log = LoggerFactory.getLogger(LinkDiscoveryManager.class);
-	protected static final INotificationManager notifier =
-			NotificationManagerFactory.getNotificationManager(LinkDiscoveryManager.class);
 
 	public static final String MODULE_NAME = "linkdiscovery";
 
@@ -1418,7 +1414,6 @@ IFloodlightModule, IInfoProvider {
 				if (linkType == ILinkDiscovery.LinkType.DIRECT_LINK) {
 					log.debug("Inter-switch link detected: {}", lt);
 				}
-				notifier.postNotification("Link added: " + lt.toString());
 			} else {
 				linkChanged = updateLink(lt, existingInfo, newInfo);
 				if (linkChanged) {
@@ -1427,7 +1422,6 @@ IFloodlightModule, IInfoProvider {
 					if (linkType == ILinkDiscovery.LinkType.DIRECT_LINK) {
 						log.debug("Inter-switch link updated: {}", lt);
 					}
-					notifier.postNotification("Link updated: " + lt.toString());
 				}
 			}
 
@@ -1543,8 +1537,6 @@ IFloodlightModule, IInfoProvider {
 
 				if (linkType == ILinkDiscovery.LinkType.DIRECT_LINK) {
 					log.info("Inter-switch link removed: {}", lt);
-					notifier.postNotification("Inter-switch link removed: " +
-							lt.toString());
 				} else if (log.isTraceEnabled()) {
 					log.trace("Deleted link {}", lt);
 				}

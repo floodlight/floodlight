@@ -39,7 +39,6 @@ import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
-import net.floodlightcontroller.core.rest.SwitchRepresentation;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
 
 import org.projectfloodlight.openflow.protocol.OFControllerRole;
@@ -48,11 +47,13 @@ import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFFeaturesReply;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
+import org.projectfloodlight.openflow.protocol.OFPortState;
 import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.IPv4Address;
 import org.projectfloodlight.openflow.types.OFAuxId;
 import org.projectfloodlight.openflow.types.TableId;
+import org.projectfloodlight.openflow.types.TransportPort;
 import org.projectfloodlight.openflow.types.U32;
 import org.sdnplatform.sync.IStoreClient;
 import org.sdnplatform.sync.IStoreListener;
@@ -67,6 +68,7 @@ import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.databind.MappingJsonFactory;
 import com.google.common.base.Preconditions;
+import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
@@ -76,6 +78,8 @@ import io.netty.channel.ChannelOption;
 import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
+import io.netty.util.HashedWheelTimer;
+import io.netty.util.Timer;
 import io.netty.util.concurrent.GlobalEventExecutor;
 
 /**
@@ -85,20 +89,25 @@ import io.netty.util.concurrent.GlobalEventExecutor;
  * Switch Manager also provides the switch service, which allows other modules
  * to hook in switch listeners and get basic access to switch information.
  *
- * @author gregor, capveg, sovietaced
+ * @author gregor, capveg, sovietaced, rizard
  *
  */
 public class OFSwitchManager implements IOFSwitchManager, INewOFConnectionListener, 
 IHAListener, IFloodlightModule, IOFSwitchService, IStoreListener<DatapathId> {
 	private static final Logger log = LoggerFactory.getLogger(OFSwitchManager.class);
 
-	private volatile OFControllerRole role;
-	private SwitchManagerCounters counters;
+	private static volatile OFControllerRole role;
+	private static SwitchManagerCounters counters;
 
-	private ISyncService syncService;
-	private IStoreClient<DatapathId, SwitchSyncRepresentation> storeClient;
+	private static ISyncService syncService;
+	private static IStoreClient<DatapathId, SwitchSyncRepresentation> storeClient;
 	public static final String SWITCH_SYNC_STORE_NAME = OFSwitchManager.class.getCanonicalName() + ".stateStore";
 
+	private static int tcpSendBufferSize = 4 * 1024 * 1024;
+	private static int workerThreads = 16;
+	private static TransportPort openFlowPort = TransportPort.of(6653);
+	private static Set<IPv4Address> openFlowAddresses = new HashSet<IPv4Address>();	
+	
 	private static String keyStorePassword;
 	private static String keyStore;
 
@@ -111,44 +120,46 @@ IHAListener, IFloodlightModule, IOFSwitchService, IStoreListener<DatapathId> {
 	protected static List<U32> ofBitmaps;
 	protected static OFFactory defaultFactory;
 
-	private ConcurrentHashMap<DatapathId, OFSwitchHandshakeHandler> switchHandlers;
-	private ConcurrentHashMap<DatapathId, IOFSwitchBackend> switches;
-	private ConcurrentHashMap<DatapathId, IOFSwitch> syncedSwitches;
+	private static ConcurrentHashMap<DatapathId, OFSwitchHandshakeHandler> switchHandlers;
+	private static ConcurrentHashMap<DatapathId, IOFSwitchBackend> switches;
+	private static ConcurrentHashMap<DatapathId, IOFSwitch> syncedSwitches;
 	
 	protected static Map<DatapathId, OFControllerRole> switchInitialRole;
 
-	private ISwitchDriverRegistry driverRegistry;
+	private static ISwitchDriverRegistry driverRegistry;
 
 	private Set<LogicalOFMessageCategory> logicalOFMessageCategories = new CopyOnWriteArraySet<LogicalOFMessageCategory>();
-	private final List<IAppHandshakePluginFactory> handshakePlugins = new CopyOnWriteArrayList<IAppHandshakePluginFactory>();
-	private int numRequiredConnections = -1;
+	private static final List<IAppHandshakePluginFactory> handshakePlugins = new CopyOnWriteArrayList<IAppHandshakePluginFactory>();
+	private static int numRequiredConnections = -1;
 
 	// ISwitchService
-	protected Set<IOFSwitchListener> switchListeners;
+	protected static Set<IOFSwitchListener> switchListeners;
 
 	// Module Dependencies
-	private IFloodlightProviderService floodlightProvider;
-	private IDebugCounterService debugCounterService;
+	private static IFloodlightProviderService floodlightProvider;
+	private static IDebugCounterService debugCounterService;
 
-	private NioEventLoopGroup bossGroup;
-	private NioEventLoopGroup workerGroup;
-	private DefaultChannelGroup cg;
+	private static NioEventLoopGroup bossGroup;
+	private static NioEventLoopGroup workerGroup;
+	private static DefaultChannelGroup cg;
+	
+    protected static Timer timer;
 
 	/** IHAListener Implementation **/
 	@Override
 	public void transitionToActive() {
-		this.role = HARole.ACTIVE.getOFRole();
+		role = HARole.ACTIVE.getOFRole();
 	}
 
 	@Override
 	public void transitionToStandby() {
-		this.role = HARole.STANDBY.getOFRole();
+		role = HARole.STANDBY.getOFRole();
 	}
 
 	/** IOFSwitchManager Implementation **/
 
 	@Override public SwitchManagerCounters getCounters() {
-		return this.counters;
+		return counters;
 	}
 
 	private void addUpdateToQueue(IUpdate iUpdate) {
@@ -158,7 +169,7 @@ IHAListener, IFloodlightModule, IOFSwitchService, IStoreListener<DatapathId> {
 	@Override
 	public synchronized void switchAdded(IOFSwitchBackend sw) {
 		DatapathId dpid = sw.getId();
-		IOFSwitchBackend oldSw = this.switches.put(dpid, sw);
+		IOFSwitchBackend oldSw = switches.put(dpid, sw);
 
 		if (oldSw == sw)  {
 			// Note == for object equality, not .equals for value
@@ -172,10 +183,6 @@ IHAListener, IFloodlightModule, IOFSwitchService, IStoreListener<DatapathId> {
 			counters.switchWithSameDpidActivated.increment();
 			log.warn("New switch added {} for already-added switch {}", sw, oldSw);
 			// We need to disconnect and remove the old switch
-			// TODO: we notify switch listeners that the switch has been
-			// removed and then we notify them that the new one has been
-			// added. One could argue that a switchChanged notification
-			// might be more appropriate in this case....
 			oldSw.cancelAllPendingRequests();
 			addUpdateToQueue(new SwitchUpdate(dpid, SwitchUpdateType.REMOVED));
 			oldSw.disconnect();
@@ -196,7 +203,7 @@ IHAListener, IFloodlightModule, IOFSwitchService, IStoreListener<DatapathId> {
 	@Override
 	public synchronized void switchStatusChanged(IOFSwitchBackend sw, SwitchStatus oldStatus, SwitchStatus newStatus) {
 		DatapathId dpid = sw.getId();
-		IOFSwitchBackend presentSw = this.switches.get(dpid);
+		IOFSwitchBackend presentSw = switches.get(dpid);
 
 		if (presentSw != sw)  {
 			// Note == for object equality, not .equals for value
@@ -235,7 +242,7 @@ IHAListener, IFloodlightModule, IOFSwitchService, IStoreListener<DatapathId> {
 	@Override
 	public synchronized void switchDisconnected(IOFSwitchBackend sw) {
 		DatapathId dpid = sw.getId();
-		IOFSwitchBackend presentSw = this.switches.get(dpid);
+		IOFSwitchBackend presentSw = switches.get(dpid);
 
 		if (presentSw != sw)  {
 			// Note == for object equality, not .equals for value
@@ -245,11 +252,11 @@ IHAListener, IFloodlightModule, IOFSwitchService, IStoreListener<DatapathId> {
 		}
 
 		counters.switchDisconnected.increment();
-		this.switches.remove(dpid);
+		switches.remove(dpid);
 	}
 
 	@Override public void handshakeDisconnected(DatapathId dpid) {
-		this.switchHandlers.remove(dpid);
+		switchHandlers.remove(dpid);
 	}
 
 	public Iterable<IOFSwitch> getActiveSwitches() {
@@ -290,12 +297,12 @@ IHAListener, IFloodlightModule, IOFSwitchService, IStoreListener<DatapathId> {
 
 	@Override
 	public IOFSwitch getSwitch(DatapathId dpid) {
-		return this.switches.get(dpid);
+		return switches.get(dpid);
 	}
 
 	@Override
 	public IOFSwitch getActiveSwitch(DatapathId dpid) {
-		IOFSwitchBackend sw = this.switches.get(dpid);
+		IOFSwitchBackend sw = switches.get(dpid);
 		if(sw != null && sw.getStatus().isVisible())
 			return sw;
 		else
@@ -411,7 +418,7 @@ IHAListener, IFloodlightModule, IOFSwitchService, IStoreListener<DatapathId> {
 			// Create a new switch handshake handler
 			OFSwitchHandshakeHandler handler =
 					new OFSwitchHandshakeHandler(connection, featuresReply, this,
-							floodlightProvider.getRoleManager(), floodlightProvider.getTimer());
+							floodlightProvider.getRoleManager(), timer);
 
 			OFSwitchHandshakeHandler oldHandler = switchHandlers.put(dpid, handler);
 
@@ -449,7 +456,7 @@ IHAListener, IFloodlightModule, IOFSwitchService, IStoreListener<DatapathId> {
 			counters.invalidPortsChanged.increment();
 			return;
 		}
-		if (!this.switches.containsKey(sw.getId())) {
+		if (!switches.containsKey(sw.getId())) {
 			counters.invalidPortsChanged.increment();
 			return;
 		}
@@ -469,7 +476,7 @@ IHAListener, IFloodlightModule, IOFSwitchService, IStoreListener<DatapathId> {
 			SwitchDescription description,
 			OFFactory factory, DatapathId datapathId) {
 
-		return this.driverRegistry.getOFSwitchInstance(connection, description, factory, datapathId);
+		return driverRegistry.getOFSwitchInstance(connection, description, factory, datapathId);
 	}
 
 	@Override
@@ -485,12 +492,12 @@ IHAListener, IFloodlightModule, IOFSwitchService, IStoreListener<DatapathId> {
 	@Override
 	public void addOFSwitchDriver(String manufacturerDescriptionPrefix,
 			IOFSwitchDriver driver) {
-		this.driverRegistry.addSwitchDriver(manufacturerDescriptionPrefix, driver);
+		driverRegistry.addSwitchDriver(manufacturerDescriptionPrefix, driver);
 	}
 
 	@Override
 	public ImmutableList<OFSwitchHandshakeHandler> getSwitchHandshakeHandlers() {
-		return ImmutableList.copyOf(this.switchHandlers.values());
+		return ImmutableList.copyOf(switchHandlers.values());
 	}
 
 	@Override
@@ -504,11 +511,11 @@ IHAListener, IFloodlightModule, IOFSwitchService, IStoreListener<DatapathId> {
 	}
 
 	private int calcNumRequiredConnections() {
-		if(!this.logicalOFMessageCategories.isEmpty()){
+		if(!logicalOFMessageCategories.isEmpty()){
 			// We use tree set here to maintain ordering
 			TreeSet<OFAuxId> auxConnections = new TreeSet<OFAuxId>();
 
-			for(LogicalOFMessageCategory category : this.logicalOFMessageCategories){
+			for(LogicalOFMessageCategory category : logicalOFMessageCategories){
 				auxConnections.add(category.getAuxId());
 			}
 
@@ -537,12 +544,12 @@ IHAListener, IFloodlightModule, IOFSwitchService, IStoreListener<DatapathId> {
 	/** ISwitchService Implementation **/
 	@Override
 	public void addOFSwitchListener(IOFSwitchListener listener) {
-		this.switchListeners.add(listener);
+		switchListeners.add(listener);
 	}
 
 	@Override
 	public void removeOFSwitchListener(IOFSwitchListener listener) {
-		this.switchListeners.remove(listener);
+		switchListeners.remove(listener);
 	}
 
 	@Override
@@ -553,31 +560,6 @@ IHAListener, IFloodlightModule, IOFSwitchService, IStoreListener<DatapathId> {
 	@Override
 	public boolean isCategoryRegistered(LogicalOFMessageCategory category) {
 		return logicalOFMessageCategories.contains(category);
-	}
-
-	@Override
-	public SwitchRepresentation getSwitchRepresentation(DatapathId dpid) {
-		IOFSwitch sw = this.switches.get(dpid);
-		OFSwitchHandshakeHandler handler = this.switchHandlers.get(dpid);
-
-		if(sw != null && handler != null) {
-			return new SwitchRepresentation(sw, handler);
-		}
-		return null;
-	}
-
-	@Override
-	public List<SwitchRepresentation> getSwitchRepresentations() {
-
-		List<SwitchRepresentation> representations = new ArrayList<SwitchRepresentation>();
-
-		for(DatapathId dpid : this.switches.keySet()) {
-			SwitchRepresentation representation = getSwitchRepresentation(dpid);
-			if(representation != null) {
-				representations.add(representation);
-			}
-		}
-		return representations;
 	}
 
 	@Override
@@ -635,19 +617,20 @@ IHAListener, IFloodlightModule, IOFSwitchService, IStoreListener<DatapathId> {
 		switchHandlers = new ConcurrentHashMap<DatapathId, OFSwitchHandshakeHandler>();
 		switches = new ConcurrentHashMap<DatapathId, IOFSwitchBackend>();
 		syncedSwitches = new ConcurrentHashMap<DatapathId, IOFSwitch>();
-		floodlightProvider.getTimer();
 		counters = new SwitchManagerCounters(debugCounterService);
 		driverRegistry = new NaiveSwitchDriverRegistry(this);
 
-		this.switchListeners = new CopyOnWriteArraySet<IOFSwitchListener>();
+		switchListeners = new CopyOnWriteArraySet<IOFSwitchListener>();
+		
+        timer = new HashedWheelTimer();
 
-		/* TODO @Ryan
+		/* TODO
 		try {
-			this.storeClient = this.syncService.getStoreClient(
+			storeClient = syncService.getStoreClient(
 					SWITCH_SYNC_STORE_NAME,
 					DatapathId.class,
 					SwitchSyncRepresentation.class);
-			this.storeClient.addStoreListener(this);
+			storeClient.addStoreListener(this);
 		} catch (UnknownStoreException e) {
 			throw new FloodlightModuleException("Error while setting up sync store client", e);
 		} */
@@ -806,6 +789,46 @@ IHAListener, IFloodlightModule, IOFSwitchService, IStoreListener<DatapathId> {
 		
 		log.info("Computed OpenFlow version bitmap as {}", ofBitmaps);
 		log.info("OpenFlow version {} will be advertised to switches. Supported fallback versions {}", defaultFactory.getVersion(), ofVersions);
+		
+		/* OpenFlow listen TCP port */
+		String ofPort = configParams.get("openFlowPort");
+        if (!Strings.isNullOrEmpty(ofPort)) {
+            try {
+                openFlowPort = TransportPort.of(Integer.parseInt(ofPort));
+            } catch (Exception e) {
+                log.error("Invalid OpenFlow port {}, {}", ofPort, e);
+                throw new FloodlightModuleException("Invalid OpenFlow port of " + ofPort + " in config");
+            }
+        }
+        log.info("OpenFlow port set to {}", openFlowPort);
+
+        /* Netty worker threads */
+        String threads = configParams.get("workerThreads");
+        if (!Strings.isNullOrEmpty(threads)) {
+            workerThreads = Integer.parseInt(threads);
+        }
+        log.info("Number of OpenFlow port {} worker threads set to {}", openFlowPort, workerThreads);
+        
+        /* OpenFlow listen addresses */
+        String addresses = configParams.get("openFlowAddresses");
+        if (!Strings.isNullOrEmpty(addresses)) {
+            try {
+                openFlowAddresses = Collections.singleton(IPv4Address.of(addresses)); //TODO support list of addresses for multi-honed controllers
+            } catch (Exception e) {
+                log.error("Invalid OpenFlow address {}, {}", addresses, e);
+                throw new FloodlightModuleException("Invalid OpenFlow address of " + addresses + " in config");
+            }
+            log.info("OpenFlow addresses set to {}", openFlowAddresses);
+        } else {
+        	openFlowAddresses.add(IPv4Address.NONE);
+        }
+        
+        /* OpenFlow port TCP send buffer size */
+        String tcpBuffer = configParams.get("tcpSendBufferSizeBytes");
+        if (!Strings.isNullOrEmpty(tcpBuffer)) {
+            tcpSendBufferSize = Integer.parseInt(tcpBuffer);
+        }
+        log.info("OpenFlow port {} TCP send buffer size set to {}", openFlowPort, tcpSendBufferSize);
 	}
 
 	/**
@@ -978,14 +1001,14 @@ IHAListener, IFloodlightModule, IOFSwitchService, IStoreListener<DatapathId> {
 			.option(ChannelOption.SO_REUSEADDR, true)
 			.option(ChannelOption.SO_KEEPALIVE, true)
 			.option(ChannelOption.TCP_NODELAY, true)
-			.option(ChannelOption.SO_SNDBUF, Controller.SEND_BUFFER_SIZE);
+			.option(ChannelOption.SO_SNDBUF, tcpSendBufferSize);
 
 
 			OFChannelInitializer initializer = new OFChannelInitializer(
 					this, 
 					this, 
 					debugCounterService, 
-					floodlightProvider.getTimer(), 
+					timer, 
 					ofBitmaps, 
 					defaultFactory, 
 					keyStore, 
@@ -996,11 +1019,11 @@ IHAListener, IFloodlightModule, IOFSwitchService, IStoreListener<DatapathId> {
 			cg = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
 
 			Set<InetSocketAddress> addrs = new HashSet<InetSocketAddress>();
-			if (floodlightProvider.getOFAddresses().isEmpty()) {
-				cg.add(bootstrap.bind(new InetSocketAddress(InetAddress.getByAddress(IPv4Address.NONE.getBytes()), floodlightProvider.getOFPort().getPort())).channel());
+			if (openFlowAddresses.isEmpty()) {
+				cg.add(bootstrap.bind(new InetSocketAddress(InetAddress.getByAddress(IPv4Address.NONE.getBytes()), openFlowPort.getPort())).channel());
 			} else {
-				for (IPv4Address ip : floodlightProvider.getOFAddresses()) {
-					addrs.add(new InetSocketAddress(InetAddress.getByAddress(ip.getBytes()), floodlightProvider.getOFPort().getPort()));
+				for (IPv4Address ip : openFlowAddresses) {
+					addrs.add(new InetSocketAddress(InetAddress.getByAddress(ip.getBytes()), openFlowPort.getPort()));
 				}
 			}
 			
@@ -1073,7 +1096,7 @@ IHAListener, IFloodlightModule, IOFSwitchService, IStoreListener<DatapathId> {
 			}
 			SwitchSyncRepresentation storedSwitch = versionedSwitch.getValue();
 			IOFSwitch sw = getSwitch(storedSwitch.getDpid());
-			//TODO @Ryan need to get IOFSwitchBackend setFeaturesReply(storedSwitch.getFeaturesReply(sw.getOFFactory()));
+			//TODO need to get IOFSwitchBackend setFeaturesReply(storedSwitch.getFeaturesReply(sw.getOFFactory()));
 			if (!key.equals(storedSwitch.getFeaturesReply(sw.getOFFactory()).getDatapathId())) {
 				log.error("Inconsistent DPIDs from switch sync store: " +
 						"key is {} but sw.getId() says {}. Ignoring",
@@ -1096,10 +1119,6 @@ IHAListener, IFloodlightModule, IOFSwitchService, IStoreListener<DatapathId> {
 		IOFSwitch oldSw = syncedSwitches.remove(dpid);
 		if (oldSw != null) {
 			addUpdateToQueue(new SwitchUpdate(dpid, SwitchUpdateType.REMOVED));
-		} else {
-			// TODO: the switch was deleted (tombstone) before we ever
-			// knew about it (or was deleted repeatedly). Can this
-			// happen? When/how?
 		}
 	}
 
@@ -1131,13 +1150,42 @@ IHAListener, IFloodlightModule, IOFSwitchService, IStoreListener<DatapathId> {
 	 * @param newSw
 	 */
 	private synchronized void sendNotificationsIfSwitchDiffers(IOFSwitch oldSw, IOFSwitch newSw) {
-		/*TODO @Ryan Collection<PortChangeEvent> portDiffs = oldSw.comparePorts(newSw.getPorts());
-        for (PortChangeEvent ev: portDiffs) {
-            SwitchUpdate update = new SwitchUpdate(newSw.getId(),
-                                     SwitchUpdateType.PORTCHANGED,
-                                     ev.port, ev.type);
-            addUpdateToQueue(update);
-        }*/
+		for (OFPortDesc oldPort : oldSw.getPorts()) {
+			if (newSw.getPort(oldPort.getPortNo()) == null) { /* delete */
+				SwitchUpdate update = new SwitchUpdate(newSw.getId(),
+                        SwitchUpdateType.PORTCHANGED,
+                        oldPort, PortChangeType.DELETE);
+				addUpdateToQueue(update);
+			} else { /* in common; some form of update */
+				OFPortDesc newPort = newSw.getPort(oldPort.getPortNo());
+				if (newPort.getState().contains(OFPortState.LINK_DOWN) && /* went down */
+						!oldPort.getState().contains(OFPortState.LINK_DOWN)) {
+					SwitchUpdate update = new SwitchUpdate(newSw.getId(),
+	                        SwitchUpdateType.PORTCHANGED,
+	                        newPort, PortChangeType.DOWN);
+					addUpdateToQueue(update);
+				} else if (newPort.getState().contains(OFPortState.LIVE) && /* went up */
+						!oldPort.getState().contains(OFPortState.LIVE)) {
+					SwitchUpdate update = new SwitchUpdate(newSw.getId(),
+	                        SwitchUpdateType.PORTCHANGED,
+	                        newPort, PortChangeType.UP);
+					addUpdateToQueue(update);
+				} else if (!newPort.equals(oldPort)) {
+					SwitchUpdate update = new SwitchUpdate(newSw.getId(),
+	                        SwitchUpdateType.PORTCHANGED,
+	                        newPort, PortChangeType.OTHER_UPDATE);
+					addUpdateToQueue(update);
+				}
+			}
+		}
+		for (OFPortDesc newPort : newSw.getPorts()) {
+			if (oldSw.getPort(newPort.getPortNo()) == null) { /* add */
+				SwitchUpdate update = new SwitchUpdate(newSw.getId(),
+                        SwitchUpdateType.PORTCHANGED,
+                        newPort, PortChangeType.ADD);
+				addUpdateToQueue(update);
+			}
+		}
 	}
 	
 	
@@ -1198,11 +1246,5 @@ IHAListener, IFloodlightModule, IOFSwitchService, IStoreListener<DatapathId> {
 	}
 
 	@Override
-	public void addSwitchEvent(DatapathId switchDpid, String reason,
-			boolean flushNow) {
-		// TODO Auto-generated method stub
-		
-	}
-	
-	
+	public void addSwitchEvent(DatapathId switchDpid, String reason, boolean flushNow) {}
 }

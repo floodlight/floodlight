@@ -185,7 +185,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 			/* Validate that the source and destination are not on the same switch port */
 			boolean on_same_if = false;
 			for (SwitchPort dstDap : dstDevice.getAttachmentPoints()) {
-				if (sw.getId().equals(dstDap.getSwitchDPID()) && inPort.equals(dstDap.getPort())) {
+				if (sw.getId().equals(dstDap.getNodeId()) && inPort.equals(dstDap.getPortId())) {
 					on_same_if = true;
 				}
 				break;
@@ -210,7 +210,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 			 * in between two OpenFlow switches).
 			 */
 			for (SwitchPort ap : dstDaps) {
-				if (topologyService.isEdge(ap.getSwitchDPID(), ap.getPort())) {
+				if (topologyService.isEdge(ap.getNodeId(), ap.getPortId())) {
 					dstDap = ap;
 					break;
 				}
@@ -238,18 +238,20 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 
 			Route route = routingEngineService.getRoute(source, 
 					inPort,
-					dstDap.getSwitchDPID(),
-					dstDap.getPort(), U64.of(0)); //cookie = 0, i.e., default route
+					dstDap.getNodeId(),
+					dstDap.getPortId(), U64.of(0)); //cookie = 0, i.e., default route
 
 			Match m = createMatchFromPacket(sw, inPort, cntx);
 			U64 cookie = AppCookie.makeCookie(FORWARDING_APP_ID, 0);
 
 			if (route != null) {
-				log.debug("pushRoute inPort={} route={} " +
-						"destination={}:{}",
-						new Object[] { inPort, route,
-						dstDap.getSwitchDPID(),
-						dstDap.getPort()});
+				if (log.isDebugEnabled()) {
+					log.debug("pushRoute inPort={} route={} " +
+							"destination={}:{}",
+							new Object[] { inPort, route,
+									dstDap.getNodeId(),
+									dstDap.getPortId()});
+				}
 
 
 				log.debug("Cretaing flow rules on the route, match rule: {}", m);
@@ -259,12 +261,12 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 			} else {
 				/* Route traverses no links --> src/dst devices on same switch */
 				log.debug("Could not compute route. Devices should be on same switch src={} and dst={}", srcDevice, dstDevice);
-				Route r = new Route(srcDevice.getAttachmentPoints()[0].getSwitchDPID(), dstDevice.getAttachmentPoints()[0].getSwitchDPID());
+				Route r = new Route(srcDevice.getAttachmentPoints()[0].getNodeId(), dstDevice.getAttachmentPoints()[0].getNodeId());
 				List<NodePortTuple> path = new ArrayList<NodePortTuple>(2);
-				path.add(new NodePortTuple(srcDevice.getAttachmentPoints()[0].getSwitchDPID(),
-						srcDevice.getAttachmentPoints()[0].getPort()));
-				path.add(new NodePortTuple(dstDevice.getAttachmentPoints()[0].getSwitchDPID(),
-						dstDevice.getAttachmentPoints()[0].getPort()));
+				path.add(new NodePortTuple(srcDevice.getAttachmentPoints()[0].getNodeId(),
+						srcDevice.getAttachmentPoints()[0].getPortId()));
+				path.add(new NodePortTuple(dstDevice.getAttachmentPoints()[0].getNodeId(),
+						dstDevice.getAttachmentPoints()[0].getPortId()));
 				r.setPath(path);
 				pushRoute(r, m, pi, sw.getId(), cookie,
 						cntx, requestFlowRemovedNotifn,
@@ -620,7 +622,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 								.setMatch(srcSw.getOFFactory().buildMatch()
 										.setExact(MatchField.IN_PORT, u.getSrcPort())
 										.build())
-										.build());
+								.build());
 						/* flows outputting to src port */
 						msgs.add(srcSw.getOFFactory().buildFlowDelete()
 								.setCookie(AppCookie.makeCookie(FORWARDING_APP_ID, 0))
@@ -643,7 +645,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 								.setMatch(dstSw.getOFFactory().buildMatch()
 										.setExact(MatchField.IN_PORT, u.getDstPort())
 										.build())
-										.build());
+								.build());
 						/* flows outputting to dst port */
 						msgs.add(dstSw.getOFFactory().buildFlowDelete()
 								.setCookie(AppCookie.makeCookie(FORWARDING_APP_ID, 0))

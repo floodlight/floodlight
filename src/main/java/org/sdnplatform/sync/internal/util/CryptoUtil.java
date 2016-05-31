@@ -5,12 +5,8 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.security.Key;
 import java.security.KeyStore;
-import java.security.KeyStore.Entry;
 import java.security.SecureRandom;
-import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
-
-import org.sdnplatform.sync.ISyncService;
 
 public class CryptoUtil {
     private static SecureRandom secureRandom = new SecureRandom();

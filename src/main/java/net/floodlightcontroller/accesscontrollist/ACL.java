@@ -363,7 +363,7 @@ public class ACL implements IACLService, IFloodlightModule, IDeviceListener {
 			return;
 		}
 
-		String dpid = HexString.toHexString(switchPort[0].getSwitchDPID()
+		String dpid = HexString.toHexString(switchPort[0].getNodeId()
 				.getLong());
 		String ip = IPv4.fromIPv4Address(ips[0].getInt());
 		logger.debug("AP(dpid:{},ip:{}) is added", dpid, ip);
@@ -429,7 +429,7 @@ public class ACL implements IACLService, IFloodlightModule, IDeviceListener {
 		SwitchPort[] switchPort = device.getAttachmentPoints();
 		IPv4Address[] ips = device.getIPv4Addresses();
 
-		String dpid = HexString.toHexString(switchPort[0].getSwitchDPID()
+		String dpid = HexString.toHexString(switchPort[0].getNodeId()
 				.getLong());
 		String ip = null;
 		// some device may first appear with no IP address(default set to

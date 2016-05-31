@@ -76,6 +76,7 @@ import net.floodlightcontroller.routing.Route;
 import net.floodlightcontroller.staticentry.IStaticEntryPusherService;
 import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.util.FlowModUtils;
+import net.floodlightcontroller.util.OFMessageUtils;
 
 /**
  * A simple load balancer module for ping, tcp, and udp flows. This module is accessed 
@@ -127,8 +128,8 @@ public class LoadBalancer implements IFloodlightModule,
             new Comparator<SwitchPort>() {
                 @Override
                 public int compare(SwitchPort d1, SwitchPort d2) {
-                    DatapathId d1ClusterId = topologyService.getOpenflowDomainId(d1.getSwitchDPID());
-                    DatapathId d2ClusterId = topologyService.getOpenflowDomainId(d2.getSwitchDPID());
+                    DatapathId d1ClusterId = topologyService.getOpenflowDomainId(d1.getNodeId());
+                    DatapathId d2ClusterId = topologyService.getOpenflowDomainId(d2.getNodeId());
                     return d1ClusterId.compareTo(d2ClusterId);
                 }
             };
@@ -396,11 +397,11 @@ public class LoadBalancer implements IFloodlightModule,
         boolean on_same_island = false;
         boolean on_same_if = false;
         for (SwitchPort dstDap : dstDevice.getAttachmentPoints()) {
-            DatapathId dstSwDpid = dstDap.getSwitchDPID();
+            DatapathId dstSwDpid = dstDap.getNodeId();
             DatapathId dstIsland = topologyService.getOpenflowDomainId(dstSwDpid);
             if ((dstIsland != null) && dstIsland.equals(srcIsland)) {
                 on_same_island = true;
-                if ((sw.getId().equals(dstSwDpid)) && ((pi.getVersion().compareTo(OFVersion.OF_12) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT)).equals(dstDap.getPort()))) {
+                if ((sw.getId().equals(dstSwDpid)) && OFMessageUtils.getInPort(pi).equals(dstDap.getPortId())) {
                     on_same_if = true;
                 }
                 break;
@@ -441,9 +442,9 @@ public class LoadBalancer implements IFloodlightModule,
             SwitchPort srcDap = srcDaps[iSrcDaps];
             SwitchPort dstDap = dstDaps[iDstDaps];
             DatapathId srcCluster = 
-                    topologyService.getOpenflowDomainId(srcDap.getSwitchDPID());
+                    topologyService.getOpenflowDomainId(srcDap.getNodeId());
             DatapathId dstCluster = 
-                    topologyService.getOpenflowDomainId(dstDap.getSwitchDPID());
+                    topologyService.getOpenflowDomainId(dstDap.getNodeId());
 
             int srcVsDest = srcCluster.compareTo(dstCluster);
             if (srcVsDest == 0) {
@@ -451,15 +452,15 @@ public class LoadBalancer implements IFloodlightModule,
                         (srcCluster != null) && 
                         (dstCluster != null)) {
                     Route routeIn = 
-                            routingEngineService.getRoute(srcDap.getSwitchDPID(),
-                                                   srcDap.getPort(),
-                                                   dstDap.getSwitchDPID(),
-                                                   dstDap.getPort(), U64.of(0));
+                            routingEngineService.getRoute(srcDap.getNodeId(),
+                                                   srcDap.getPortId(),
+                                                   dstDap.getNodeId(),
+                                                   dstDap.getPortId(), U64.of(0));
                     Route routeOut = 
-                            routingEngineService.getRoute(dstDap.getSwitchDPID(),
-                                                   dstDap.getPort(),
-                                                   srcDap.getSwitchDPID(),
-                                                   srcDap.getPort(), U64.of(0));
+                            routingEngineService.getRoute(dstDap.getNodeId(),
+                                                   dstDap.getPortId(),
+                                                   srcDap.getNodeId(),
+                                                   srcDap.getPortId(), U64.of(0));
 
                     // use static flow entry pusher to push flow mod along in and out path
                     // in: match src client (ip, port), rewrite dest from vip ip/port to member ip/port, forward
