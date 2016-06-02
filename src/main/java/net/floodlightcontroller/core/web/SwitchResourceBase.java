@@ -127,21 +127,18 @@ public class SwitchResourceBase extends ServerResource {
 							.build();
 				}
 				break;
-
 			case GROUP_DESC:			
 				if (sw.getOFFactory().getVersion().compareTo(OFVersion.OF_10) > 0) {
 					req = sw.getOFFactory().buildGroupDescStatsRequest()			
 							.build();
 				}
 				break;
-
 			case GROUP_FEATURES:
 				if (sw.getOFFactory().getVersion().compareTo(OFVersion.OF_10) > 0) {
 					req = sw.getOFFactory().buildGroupFeaturesStatsRequest()
 							.build();
 				}
 				break;
-
 			case METER_CONFIG:
 				if (sw.getOFFactory().getVersion().compareTo(OFVersion.OF_13) >= 0) {
 					req = sw.getOFFactory().buildMeterConfigStatsRequest()
@@ -149,21 +146,18 @@ public class SwitchResourceBase extends ServerResource {
 							.build();
 				}
 				break;
-
 			case METER_FEATURES:
 				if (sw.getOFFactory().getVersion().compareTo(OFVersion.OF_13) >= 0) {
 					req = sw.getOFFactory().buildMeterFeaturesStatsRequest()
 							.build();
 				}
 				break;
-
 			case TABLE:
 				if (sw.getOFFactory().getVersion().compareTo(OFVersion.OF_10) > 0) {
 					req = sw.getOFFactory().buildTableStatsRequest()
 							.build();
 				}
 				break;
-
 			case TABLE_FEATURES:	
 				if (sw.getOFFactory().getVersion().compareTo(OFVersion.OF_10) > 0) {
 					req = sw.getOFFactory().buildTableFeaturesStatsRequest()
@@ -176,10 +170,52 @@ public class SwitchResourceBase extends ServerResource {
 							.build();
 				}
 				break;
-			case EXPERIMENTER: //TODO @Ryan support new OF1.1+ stats types			
-			default:
+			case EXPERIMENTER:		
 				log.error("Stats Request Type {} not implemented yet", statType.name());
 				break;
+			case BUNDLE_FEATURES:
+				if (sw.getOFFactory().getVersion().compareTo(OFVersion.OF_15) >= 0) {
+					req = sw.getOFFactory().buildBundleFeaturesStatsRequest()
+							.build();
+				}
+				break;
+			case CONTROLLER_STATUS:
+				if (sw.getOFFactory().getVersion().compareTo(OFVersion.OF_15) >= 0) {
+					req = sw.getOFFactory().buildControllerStatusStatsRequest()
+							.build();
+				}
+				break;
+			case FLOW_DESC:
+				if (sw.getOFFactory().getVersion().compareTo(OFVersion.OF_15) >= 0) {	
+					match = sw.getOFFactory().buildMatch().build();
+					req = sw.getOFFactory().buildFlowDescRequest()
+							.setMatch(match)
+							.setOutPort(OFPort.ANY)
+							.setTableId(TableId.ALL)
+							.build();
+				}
+				break;
+			case FLOW_MONITOR:
+				if (sw.getOFFactory().getVersion().compareTo(OFVersion.OF_14) >= 0) {
+					req = sw.getOFFactory().buildFlowMonitorRequest()
+							.build();
+				}
+				break;
+			case QUEUE_DESC:
+				if (sw.getOFFactory().getVersion().compareTo(OFVersion.OF_14) >= 0) {
+					req = sw.getOFFactory().buildQueueDescStatsRequest()
+							.setPortNo(OFPort.ANY)
+							.setQueueId(0xffFFffFF) /* all queues */
+							.build();
+				}
+				break;
+			case TABLE_DESC:
+				if (sw.getOFFactory().getVersion().compareTo(OFVersion.OF_14) >= 0) {
+					req = sw.getOFFactory().buildTableDescStatsRequest()
+							.build();
+				}
+				break;
+			/* omit a default so we will know (via warning) if we miss one in the future */
 			}
 
 			try {

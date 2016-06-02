@@ -470,7 +470,7 @@ public class MatchUtils {
 		 */
 		Match.Builder mb = OFFactories.getFactory(version).buildMatch(); 
 		Iterator<MatchField<?>> itr = parent.getMatchFields().iterator(); // only get exact or masked fields (not fully wildcarded)
-		while(itr.hasNext()) {
+		while (itr.hasNext()) {
 			@SuppressWarnings("rawtypes")
 			MatchField mf = itr.next();
 			if (parent.isExact(mf)) {
