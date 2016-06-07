@@ -42,6 +42,7 @@ import net.floodlightcontroller.routing.Link;
 import net.floodlightcontroller.routing.Route;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
 import net.floodlightcontroller.topology.web.TopologyWebRoutable;
+
 import org.projectfloodlight.openflow.protocol.*;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
@@ -72,6 +73,11 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
     public static final String CONTEXT_TUNNEL_ENABLED =
             "com.bigswitch.floodlight.topologymanager.tunnelEnabled";
 
+    /**
+	 * Maximum number of paths for multipath L2 forwarding
+	 */
+	private Integer numberOfMultipaths;
+	
     /**
      * Role of the controller.
      */
@@ -693,13 +699,16 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
     @Override
     public ArrayList<Route> getRoutes(DatapathId srcDpid, DatapathId dstDpid,
                                       boolean tunnelEnabled) {
-        // Floodlight supports single path routing now
-
-        // return single path now
-        ArrayList<Route> result = new ArrayList<Route>();
-        result.add(getRoute(srcDpid, dstDpid, U64.of(0), tunnelEnabled));
-        return result;
+    	TopologyInstance ti = getCurrentInstance(tunnelEnabled);
+		ArrayList<Route> result = ti.getL2Routes(srcDpid, dstDpid);
+		return result;
     }
+    
+    @Override
+	public Route getMultipath(DatapathId srcId, OFPort srcPort, DatapathId dstId, OFPort dstPort, boolean tunnelEnabled) {
+		TopologyInstance ti = getCurrentInstance(tunnelEnabled);
+		return ti.getL2Multipath(srcId, dstPort, dstId, dstPort, numberOfMultipaths);
+	}
 
     // ******************
     // IOFMessageListener
@@ -843,6 +852,8 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
         haListener = new HAListenerDelegate();
         registerTopologyDebugCounters();
         registerTopologyDebugEvents();
+        
+        numberOfMultipaths = Integer.parseInt(context.getConfigParams(this).get("numberOfMultipaths"));
     }
 
     protected void registerTopologyDebugEvents() throws FloodlightModuleException {
