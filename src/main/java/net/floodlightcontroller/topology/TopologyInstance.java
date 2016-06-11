@@ -180,6 +180,7 @@ public class TopologyInstance {
         this.switchClusterMap = new HashMap<DatapathId, Cluster>();
         this.destinationRootedTrees = new HashMap<DatapathId, BroadcastTree>();
         this.destinationRootedFullTrees= new HashMap<DatapathId, BroadcastTree>();
+        this.desinationRootedMultipathTrees = new HashMap<DatapathId, MultipathTree>();
 		this.broadcastNodePorts= new HashSet<NodePortTuple>();
 		this.broadcastPortMap = new HashMap<DatapathId,Set<OFPort>>();
         this.clusterBroadcastTrees = new HashMap<DatapathId, BroadcastTree>();
