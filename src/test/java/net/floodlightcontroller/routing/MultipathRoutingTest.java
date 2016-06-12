@@ -1,6 +1,46 @@
 package net.floodlightcontroller.routing;
 
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
+
+import org.easymock.EasyMock;
+import org.junit.Test;
+import org.projectfloodlight.openflow.protocol.OFDescStatsReply;
+import org.projectfloodlight.openflow.protocol.OFFactories;
+import org.projectfloodlight.openflow.protocol.OFFactory;
+import org.projectfloodlight.openflow.protocol.OFFeaturesReply;
+import org.projectfloodlight.openflow.protocol.OFVersion;
+import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.OFPort;
+import org.sdnplatform.sync.ISyncService;
+import org.sdnplatform.sync.test.MockSyncService;
+
+import net.floodlightcontroller.core.FloodlightContext;
+import net.floodlightcontroller.core.IFloodlightProviderService;
+import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.core.SwitchDescription;
+import net.floodlightcontroller.core.internal.IOFSwitchService;
+import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
+import net.floodlightcontroller.core.test.MockThreadPoolService;
+import net.floodlightcontroller.core.types.NodePortTuple;
+import net.floodlightcontroller.debugcounter.IDebugCounterService;
+import net.floodlightcontroller.debugcounter.MockDebugCounterService;
+import net.floodlightcontroller.debugevent.IDebugEventService;
+import net.floodlightcontroller.debugevent.MockDebugEventService;
+import net.floodlightcontroller.devicemanager.IDeviceService;
+import net.floodlightcontroller.devicemanager.IEntityClassifierService;
+import net.floodlightcontroller.devicemanager.internal.DefaultEntityClassifier;
+import net.floodlightcontroller.devicemanager.test.MockDeviceManager;
+import net.floodlightcontroller.forwarding.Forwarding;
+import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryService;
+import net.floodlightcontroller.linkdiscovery.internal.LinkDiscoveryManager;
+import net.floodlightcontroller.test.FloodlightTestCase;
+import net.floodlightcontroller.threadpool.IThreadPoolService;
+import net.floodlightcontroller.topology.ITopologyListener;
+import net.floodlightcontroller.topology.ITopologyService;
 import static org.easymock.EasyMock.anyLong;
 import static org.easymock.EasyMock.anyObject;
 import static org.easymock.EasyMock.anyShort;
@@ -11,51 +51,6 @@ import static org.easymock.EasyMock.replay;
 import static org.easymock.EasyMock.reset;
 import static org.easymock.EasyMock.verify;
 import static org.junit.Assert.assertSame;
-
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
-
-import net.floodlightcontroller.core.FloodlightContext;
-import net.floodlightcontroller.core.IFloodlightProviderService;
-import net.floodlightcontroller.core.IOFSwitch;
-import net.floodlightcontroller.core.SwitchDescription;
-import net.floodlightcontroller.core.internal.IOFSwitchService;
-import net.floodlightcontroller.core.module.FloodlightModuleContext;
-import net.floodlightcontroller.core.test.MockThreadPoolService;
-import net.floodlightcontroller.core.types.NodePortTuple;
-import net.floodlightcontroller.debugcounter.IDebugCounterService;
-import net.floodlightcontroller.debugcounter.MockDebugCounterService;
-import net.floodlightcontroller.debugevent.IDebugEventService;
-import net.floodlightcontroller.debugevent.MockDebugEventService;
-import net.floodlightcontroller.devicemanager.IDevice;
-import net.floodlightcontroller.devicemanager.IDeviceService;
-import net.floodlightcontroller.devicemanager.IEntityClassifierService;
-import net.floodlightcontroller.devicemanager.internal.DefaultEntityClassifier;
-import net.floodlightcontroller.devicemanager.test.MockDeviceManager;
-import net.floodlightcontroller.forwarding.Forwarding;
-import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryService;
-import net.floodlightcontroller.linkdiscovery.internal.LinkDiscoveryManager;
-import net.floodlightcontroller.packet.IPacket;
-import net.floodlightcontroller.test.FloodlightTestCase;
-import net.floodlightcontroller.threadpool.IThreadPoolService;
-import net.floodlightcontroller.topology.ITopologyListener;
-import net.floodlightcontroller.topology.ITopologyService;
-
-import org.easymock.EasyMock;
-import org.junit.Test;
-import org.projectfloodlight.openflow.protocol.OFDescStatsReply;
-import org.projectfloodlight.openflow.protocol.OFFactories;
-import org.projectfloodlight.openflow.protocol.OFFactory;
-import org.projectfloodlight.openflow.protocol.OFFeaturesReply;
-import org.projectfloodlight.openflow.protocol.OFPacketIn;
-import org.projectfloodlight.openflow.protocol.OFPacketOut;
-import org.projectfloodlight.openflow.protocol.OFVersion;
-import org.projectfloodlight.openflow.types.DatapathId;
-import org.projectfloodlight.openflow.types.OFPort;
-import org.sdnplatform.sync.ISyncService;
-import org.sdnplatform.sync.test.MockSyncService;
 
 public class MultipathRoutingTest extends FloodlightTestCase {
 	
@@ -69,18 +64,6 @@ public class MultipathRoutingTest extends FloodlightTestCase {
 	protected IOFSwitch sw1, sw2, sw3, sw4;
 	protected OFFeaturesReply swFeatures;
 	protected OFDescStatsReply swDescription;
-	protected IDevice srcDevice, dstDevice1, dstDevice2; /* reuse for IPv4 and IPv6 */
-	protected OFPacketIn packetIn;
-	protected OFPacketIn packetInIPv6;
-	protected OFPacketOut packetOut;
-	protected OFPacketOut packetOutIPv6;
-	protected OFPacketOut packetOutFlooded;
-	protected OFPacketOut packetOutFloodedIPv6;
-	protected IPacket testPacket;
-	protected IPacket testPacketIPv6;
-	protected byte[] testPacketSerialized;
-	protected byte[] testPacketSerializedIPv6;
-	protected int expected_wildcards;
 	protected Date currentDate;
 	private MockSyncService mockSyncService;
 	private OFFactory factory = OFFactories.getFactory(OFVersion.OF_13);
@@ -100,6 +83,7 @@ public class MultipathRoutingTest extends FloodlightTestCase {
 		addServicesToFloodlightModuleContext(entityClassifier, fmc);
 
 		topology.addListener(anyObject(ITopologyListener.class));
+
 		expectLastCall().anyTimes();
 		expect(topology.isIncomingBroadcastAllowed(anyObject(DatapathId.class), anyObject(OFPort.class))).andReturn(true).anyTimes();
 		replay(topology);
