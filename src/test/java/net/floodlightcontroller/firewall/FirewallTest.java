@@ -31,6 +31,7 @@ import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
+import net.floodlightcontroller.core.util.AppCookie;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
 import net.floodlightcontroller.debugcounter.MockDebugCounterService;
 import net.floodlightcontroller.packet.ARP;
@@ -64,6 +65,7 @@ import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFBufferId;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.TransportPort;
+import org.projectfloodlight.openflow.types.U64;
 
 /**
  * Unit test for stateless firewall implemented as a Google Summer of Code project.
@@ -83,6 +85,14 @@ public class FirewallTest extends FloodlightTestCase {
     private Firewall firewall;
     private MockDebugCounterService debugCounterService;
     public static String TestSwitch1DPID = "00:00:00:00:00:00:00:01";
+    private static final short APP_ID = 30;
+    static {
+                AppCookie.registerApp(APP_ID, "Firewall");
+        }
+    private static final U64 DENY_BCAST_COOKIE = AppCookie.makeCookie(APP_ID, 0xaaaaaaaa);
+    private static final U64 ALLOW_BCAST_COOKIE = AppCookie.makeCookie(APP_ID, 0x55555555);
+    private static final U64 RULE_MISS_COOKIE = AppCookie.makeCookie(APP_ID, -1);
+
 
     @Override
     @Before
@@ -255,6 +265,7 @@ public class FirewallTest extends FloodlightTestCase {
         IRoutingDecision decision = IRoutingDecision.rtStore.get(cntx, IRoutingDecision.CONTEXT_DECISION);
         // no rules to match, so firewall should deny
         assertEquals(decision.getRoutingAction(), IRoutingDecision.RoutingAction.DROP);
+        assertEquals(RULE_MISS_COOKIE, decision.getDescriptor());
     }
 
     @Test
@@ -373,6 +384,7 @@ public class FirewallTest extends FloodlightTestCase {
         rule.any_nw_dst = false;
         rule.priority = 1;
         firewall.addRule(rule);
+        U64 TCP_COOKIE = AppCookie.makeCookie(APP_ID, rule.ruleid);
 
         // simulate a packet-in events
 
@@ -382,6 +394,7 @@ public class FirewallTest extends FloodlightTestCase {
 
         IRoutingDecision decision = IRoutingDecision.rtStore.get(cntx, IRoutingDecision.CONTEXT_DECISION);
         assertEquals(IRoutingDecision.RoutingAction.FORWARD_OR_FLOOD, decision.getRoutingAction());
+        assertEquals(TCP_COOKIE, decision.getDescriptor());
 
         // clear decision
         IRoutingDecision.rtStore.remove(cntx, IRoutingDecision.CONTEXT_DECISION);
@@ -392,6 +405,7 @@ public class FirewallTest extends FloodlightTestCase {
 
         decision = IRoutingDecision.rtStore.get(cntx, IRoutingDecision.CONTEXT_DECISION);
         assertEquals(IRoutingDecision.RoutingAction.DROP, decision.getRoutingAction());
+        assertEquals(RULE_MISS_COOKIE, decision.getDescriptor());
     }
 
     @Test
@@ -407,12 +421,14 @@ public class FirewallTest extends FloodlightTestCase {
         rule.tp_dst = TransportPort.of(80);
         rule.priority = 1;
         firewall.addRule(rule);
+        U64 TCP_COOKIE = AppCookie.makeCookie(APP_ID, rule.ruleid);
 
         // add block all rule
         rule = new FirewallRule();
         rule.action = FirewallRule.FirewallAction.DROP;
         rule.priority = 2;
         firewall.addRule(rule);
+        U64 BLOCK_ALL_COOKIE = AppCookie.makeCookie(APP_ID, rule.ruleid);
 
         assertEquals(2, firewall.rules.size());
 
@@ -424,6 +440,7 @@ public class FirewallTest extends FloodlightTestCase {
 
         IRoutingDecision decision = IRoutingDecision.rtStore.get(cntx, IRoutingDecision.CONTEXT_DECISION);
         assertEquals(decision.getRoutingAction(), IRoutingDecision.RoutingAction.FORWARD_OR_FLOOD);
+        assertEquals(TCP_COOKIE, decision.getDescriptor());
 
         // clear decision
         IRoutingDecision.rtStore.remove(cntx, IRoutingDecision.CONTEXT_DECISION);
@@ -436,6 +453,7 @@ public class FirewallTest extends FloodlightTestCase {
 
         decision = IRoutingDecision.rtStore.get(cntx, IRoutingDecision.CONTEXT_DECISION);
         assertEquals(decision.getRoutingAction(), IRoutingDecision.RoutingAction.DROP);
+        assertEquals(BLOCK_ALL_COOKIE, decision.getDescriptor());
     }
 
     @Test
@@ -454,6 +472,8 @@ public class FirewallTest extends FloodlightTestCase {
         // broadcast-ARP traffic should be allowed
         IRoutingDecision decision = IRoutingDecision.rtStore.get(cntx, IRoutingDecision.CONTEXT_DECISION);
         assertEquals(IRoutingDecision.RoutingAction.MULTICAST, decision.getRoutingAction());
+        assertEquals(ALLOW_BCAST_COOKIE, decision.getDescriptor());
+
 
         // clear decision
         IRoutingDecision.rtStore.remove(cntx, IRoutingDecision.CONTEXT_DECISION);
@@ -467,6 +487,8 @@ public class FirewallTest extends FloodlightTestCase {
         // ARP reply traffic should be denied
         decision = IRoutingDecision.rtStore.get(cntx, IRoutingDecision.CONTEXT_DECISION);
         assertEquals(decision.getRoutingAction(), IRoutingDecision.RoutingAction.DROP);
+        assertEquals(RULE_MISS_COOKIE, decision.getDescriptor());
+
     }
 
     @Test
@@ -488,6 +510,8 @@ public class FirewallTest extends FloodlightTestCase {
         // broadcast traffic should be allowed
         IRoutingDecision decision = IRoutingDecision.rtStore.get(cntx, IRoutingDecision.CONTEXT_DECISION);
         assertEquals(IRoutingDecision.RoutingAction.MULTICAST, decision.getRoutingAction());
+        assertEquals(ALLOW_BCAST_COOKIE, decision.getDescriptor());
+
     }
 
     @Test
@@ -506,6 +530,10 @@ public class FirewallTest extends FloodlightTestCase {
         // malformed broadcast traffic should NOT be allowed
         IRoutingDecision decision = IRoutingDecision.rtStore.get(cntx, IRoutingDecision.CONTEXT_DECISION);
         assertEquals(decision.getRoutingAction(), IRoutingDecision.RoutingAction.DROP);
+//        assertEquals(IRoutingDecision.RoutingAction.MULTICAST, decision.getRoutingAction());
+        assertEquals(DENY_BCAST_COOKIE, decision.getDescriptor());
+        
+
     }
 
     @Test
@@ -521,6 +549,7 @@ public class FirewallTest extends FloodlightTestCase {
         rule.any_dl_dst = false;
         rule.priority = 1;
         firewall.addRule(rule);
+        U64 L2_LAYER_COOKIE = AppCookie.makeCookie(APP_ID, rule.ruleid);
 
         // add TCP deny all rule
         rule = new FirewallRule();
@@ -538,6 +567,7 @@ public class FirewallTest extends FloodlightTestCase {
 
         IRoutingDecision decision = IRoutingDecision.rtStore.get(cntx, IRoutingDecision.CONTEXT_DECISION);
         assertEquals(decision.getRoutingAction(), IRoutingDecision.RoutingAction.FORWARD_OR_FLOOD);
+        assertEquals(L2_LAYER_COOKIE, decision.getDescriptor());
     }
 
     @Test
@@ -584,5 +614,17 @@ public class FirewallTest extends FloodlightTestCase {
         // Change dl_dst, rules no longer "same"
         rule2.dl_dst = MacAddress.of("00:01:02:03:04:05");
         assertFalse(rule1.isSameAs(rule2));
+
+    }
+    
+    /* Testing to make sure that the cookies are properly formatted with the correct info before hitting the firewall. */
+    @Test
+    public void cookieAddedSuccessfully() {
+    	assertEquals("DENY_BCAST_COOKIE app_id is not correct", APP_ID, AppCookie.extractApp(DENY_BCAST_COOKIE));
+    	assertEquals("DENY_BCAST_COOKIE user_id is not correct", 0xaaaaaaaa, AppCookie.extractUser(DENY_BCAST_COOKIE));
+    	assertEquals("ALLOW_BCAST_COOKIE app_id is not correct", APP_ID, AppCookie.extractApp(DENY_BCAST_COOKIE));
+    	assertEquals("ALLOW_BCAST_COOKIE user_id is not correct", 0x55555555, AppCookie.extractUser(ALLOW_BCAST_COOKIE));
+      	assertEquals("RULE_MISS_COOKIE app_id is not correct", APP_ID, AppCookie.extractApp(DENY_BCAST_COOKIE));
+      	assertEquals("RULE_MISS_COOKIE user_id is not correct", -1, AppCookie.extractUser(RULE_MISS_COOKIE));
     }
 }
