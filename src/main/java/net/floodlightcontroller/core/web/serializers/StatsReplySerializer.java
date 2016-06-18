@@ -41,8 +41,8 @@ import org.projectfloodlight.openflow.protocol.OFBundleFeaturesStatsReply;
 import org.projectfloodlight.openflow.protocol.OFControllerStatusEntry;
 import org.projectfloodlight.openflow.protocol.OFControllerStatusStatsReply;
 import org.projectfloodlight.openflow.protocol.OFFeaturesReply;
-import org.projectfloodlight.openflow.protocol.OFFlowDescEntry;
-import org.projectfloodlight.openflow.protocol.OFFlowDescReply;
+import org.projectfloodlight.openflow.protocol.OFFlowLightweightStatsEntry;
+import org.projectfloodlight.openflow.protocol.OFFlowLightweightStatsReply;
 import org.projectfloodlight.openflow.protocol.OFFlowModFlags;
 import org.projectfloodlight.openflow.protocol.OFFlowMonitorReply;
 import org.projectfloodlight.openflow.protocol.OFFlowMonitorReplyEntry;
@@ -183,8 +183,8 @@ public class StatsReplySerializer extends JsonSerializer<StatsReply> {
 			case FLOW:
 				serializeFlowReply((List<OFFlowStatsReply>) reply.getValues(), jGen);
 				break;
-			case FLOW_DESC:
-				serializeFlowDescReply((List<OFFlowDescReply>) reply.getValues(), jGen);
+			case FLOW_LIGHTWEIGHT:
+				serializeFlowLightweightReply((List<OFFlowLightweightStatsReply>) reply.getValues(), jGen);
 				break;
 			case FLOW_MONITOR:
 				serializeFlowMonitorReply((List<OFFlowMonitorReply>) reply.getValues(), jGen);
@@ -359,30 +359,19 @@ public class StatsReplySerializer extends JsonSerializer<StatsReply> {
 		}
 	}
 	
-	public static void serializeFlowDescReply(List<OFFlowDescReply> frl, JsonGenerator jGen) throws IOException, JsonProcessingException {		
-		Set<OFFlowDescEntry> entries = new HashSet<OFFlowDescEntry>();
-		for (OFFlowDescReply r : frl) {
+	public static void serializeFlowLightweightReply(List<OFFlowLightweightStatsReply> frl, JsonGenerator jGen) throws IOException, JsonProcessingException {		
+		Set<OFFlowLightweightStatsEntry> entries = new HashSet<OFFlowLightweightStatsEntry>();
+		for (OFFlowLightweightStatsReply r : frl) {
 			entries.addAll(r.getEntries());
 		}
 		if (!entries.isEmpty()) {
 			jGen.writeStringField("version", entries.iterator().next().getVersion().toString()); /* common to all */
 			jGen.writeFieldName("flows");
 			jGen.writeStartArray();
-			for (OFFlowDescEntry e : entries) {
+			for (OFFlowLightweightStatsEntry e : entries) {
 				jGen.writeStartObject();
-				jGen.writeNumberField("hard_timeout_s", e.getHardTimeout());
-				jGen.writeNumberField("idle_timeout_s", e.getIdleTimeout());
-				jGen.writeNumberField("importance", e.getImportance());
 				jGen.writeNumberField("priority", e.getPriority());
 				jGen.writeNumberField("table_id", e.getTableId().getValue());
-				jGen.writeNumberField("cookie", e.getCookie().getValue());
-				jGen.writeFieldName("flags");
-				jGen.writeStartArray();
-				for (OFFlowModFlags f : e.getFlags()) {
-					jGen.writeString(f.name());
-				}
-				jGen.writeEndArray();
-				OFInstructionListSerializer.serializeInstructionList(jGen, e.getInstructions());
 				MatchSerializer.serializeMatch(jGen, e.getMatch());
 				jGen.writeFieldName("stats");
 				jGen.writeStartObject();

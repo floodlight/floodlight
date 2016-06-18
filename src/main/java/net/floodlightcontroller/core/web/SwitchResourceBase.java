@@ -185,10 +185,10 @@ public class SwitchResourceBase extends ServerResource {
 							.build();
 				}
 				break;
-			case FLOW_DESC:
+			case FLOW_LIGHTWEIGHT:
 				if (sw.getOFFactory().getVersion().compareTo(OFVersion.OF_15) >= 0) {	
 					match = sw.getOFFactory().buildMatch().build();
-					req = sw.getOFFactory().buildFlowDescRequest()
+					req = sw.getOFFactory().buildFlowLightweightStatsRequest()
 							.setMatch(match)
 							.setOutPort(OFPort.ANY)
 							.setTableId(TableId.ALL)

@@ -5,7 +5,7 @@ public class OFStatsTypeStrings {
 	public static final String DESC = "desc";
 	public static final String EXPERIMENTER = "experimenter";
 	public static final String FLOW = "flow";
-	public static final String FLOW_DESC = "flow-desc";
+	public static final String FLOW_LIGHTWEIGHT = "flow-lightweight";
 	public static final String GROUP = "group";
 	public static final String GROUP_DESC = "group-desc";
 	public static final String GROUP_FEATURES = "group-features";

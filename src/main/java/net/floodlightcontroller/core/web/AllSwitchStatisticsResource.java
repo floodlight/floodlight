@@ -76,8 +76,8 @@ public class AllSwitchStatisticsResource extends SwitchResourceBase {
 			type = OFStatsType.FLOW;
 			rType = REQUESTTYPE.OFSTATS;
 			break;
-		case OFStatsTypeStrings.FLOW_DESC:
-			type = OFStatsType.FLOW_DESC;
+		case OFStatsTypeStrings.FLOW_LIGHTWEIGHT:
+			type = OFStatsType.FLOW_LIGHTWEIGHT;
 			rType = REQUESTTYPE.OFSTATS;
 			break;
 		case OFStatsTypeStrings.FLOW_MONITOR:
