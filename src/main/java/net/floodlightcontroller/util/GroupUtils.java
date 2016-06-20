@@ -335,10 +335,10 @@ public class GroupUtils {
                         bucketId = ParseUtils.parseHexOrDecInt(value);
                         break;
                     case BUCKET_WATCH_GROUP:
-                        b.setWatchGroup(groupIdFromString(key));
+                        b.setWatchGroup(groupIdFromString(value));
                         break;
                     case BUCKET_WATCH_PORT:
-                        b.setWatchPort(MatchUtils.portFromString(key));
+                        b.setWatchPort(MatchUtils.portFromString(value));
                         break;
                     case BUCKET_WEIGHT:
                         b.setWeight(ParseUtils.parseHexOrDecInt(value));
