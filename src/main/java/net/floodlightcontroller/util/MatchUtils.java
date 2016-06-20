@@ -27,7 +27,6 @@ import org.projectfloodlight.openflow.types.IpProtocol;
 import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFBooleanValue;
 import org.projectfloodlight.openflow.types.OFMetadata;
-import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.OFVlanVidMatch;
 import org.projectfloodlight.openflow.types.OFVlanVidMatchWithMask;
 import org.projectfloodlight.openflow.types.PacketType;
@@ -37,6 +36,7 @@ import org.projectfloodlight.openflow.types.U32;
 import org.projectfloodlight.openflow.types.U64;
 import org.projectfloodlight.openflow.types.U8;
 import org.projectfloodlight.openflow.types.VlanPcp;
+import org.projectfloodlight.openflow.types.OFPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -77,6 +77,9 @@ public class MatchUtils {
 	public static final String STR_PORT_FLOOD = "flood";
 	public static final String STR_PORT_NORMAL = "normal";
 	public static final String STR_PORT_TABLE = "table";
+	public static final String STR_PORT_MAX = "max";
+	public static final String STR_PORT_ANY = "any";
+
 
 	public static final String STR_IN_PHYS_PORT = "in_phys_port";
 
@@ -611,16 +614,9 @@ public class MatchUtils {
 			switch (key_value[0]) {
 			case STR_IN_PORT:
 				if (dataMask.length == 1) {
-					if (dataMask[0].equals(STR_PORT_LOCAL)) {
-						mb.setExact(MatchField.IN_PORT, OFPort.LOCAL);
-					} else if (dataMask[0].equals(STR_PORT_CONTROLLER)) {
-						mb.setExact(MatchField.IN_PORT, OFPort.CONTROLLER);
-					} else {
-						mb.setExact(MatchField.IN_PORT, OFPort.of(U32.of(dataMask[0].contains("0x") ? Long.parseLong(dataMask[0].replaceFirst("0x", ""), 16) : Long.parseLong(dataMask[0])).getRaw()));
-					}
+				    mb.setExact(MatchField.IN_PORT, portFromString(dataMask[0]));
 				} else {
-					mb.setMasked(MatchField.IN_PORT, OFPort.of(U32.of(dataMask[0].contains("0x") ? Long.parseLong(dataMask[0].replaceFirst("0x", ""), 16) : Long.parseLong(dataMask[0])).getRaw()), 
-							OFPort.of(U32.of(dataMask[1].contains("0x") ? Long.parseLong(dataMask[1].replaceFirst("0x", ""), 16) : Long.parseLong(dataMask[1])).getRaw()));
+					mb.setMasked(MatchField.IN_PORT, portFromString(dataMask[0]), portFromString(dataMask[1]));
 				}
 				break;
 			case STR_DL_DST: /* Only accept hex-string for MAC addresses */
@@ -1027,10 +1023,9 @@ public class MatchUtils {
 					log.warn("Why are we here?");
 				}*/
 				if (dataMask.length == 1) {
-					mb.setExact(MatchField.ACTSET_OUTPUT, OFPort.of(U32.of(dataMask[0].contains("0x") ? Long.parseLong(dataMask[0].replaceFirst("0x", ""), 16) : Long.parseLong(dataMask[0])).getRaw()));
+					mb.setExact(MatchField.ACTSET_OUTPUT, portFromString(dataMask[0]));
 				} else {
-					mb.setMasked(MatchField.ACTSET_OUTPUT, OFPort.of(U32.of(dataMask[0].contains("0x") ? Long.parseLong(dataMask[0].replaceFirst("0x", ""), 16) : Long.parseLong(dataMask[0])).getRaw()), 
-							OFPort.of(U32.of(dataMask[1].contains("0x") ? Long.parseLong(dataMask[1].replaceFirst("0x", ""), 16) : Long.parseLong(dataMask[1])).getRaw()));
+					mb.setMasked(MatchField.ACTSET_OUTPUT, portFromString(dataMask[0]), portFromString(dataMask[1]));
 				}
 				break;
 			case STR_PACKET_TYPE:
@@ -1049,4 +1044,78 @@ public class MatchUtils {
 		}
 		return mb.build();
 	}
+		
+	public static OFPort portFromString(String s) {
+        if (s == null) {
+            throw new IllegalArgumentException("Port string cannot be null");
+        }
+        
+        s = s.trim().toLowerCase();
+        switch (s) {
+        case MatchUtils.STR_PORT_ALL:
+            return OFPort.ALL;
+        case MatchUtils.STR_PORT_CONTROLLER:
+            return OFPort.CONTROLLER;
+        case MatchUtils.STR_PORT_FLOOD:
+            return OFPort.FLOOD;
+        case MatchUtils.STR_PORT_IN_PORT:
+            return OFPort.IN_PORT;
+        case MatchUtils.STR_PORT_LOCAL:
+            return OFPort.LOCAL;
+        case MatchUtils.STR_PORT_NORMAL:
+            return OFPort.NORMAL;
+        case MatchUtils.STR_PORT_TABLE:
+            return OFPort.TABLE;
+        case MatchUtils.STR_PORT_MAX:
+            return OFPort.MAX;
+        case MatchUtils.STR_PORT_ANY:
+            return OFPort.ANY;
+        default:
+            log.debug("Port {} was not a special port string. Parsing as raw int or hex", s);
+        }
+
+        try {
+            return OFPort.of(U32.of(s.contains("0x") ? 
+                    Long.parseLong(s.replaceFirst("0x", ""), 16) : 
+                        Long.parseLong(s)).getRaw());
+        } catch (NumberFormatException e) {
+            log.error("Could not parse port '{}'", s);
+            return null;
+        }
+    }
+	
+	public static String portToString(OFPort p) {
+        if (p == null) {
+            throw new IllegalArgumentException("Port cannot be null");
+        }
+        
+        if (p.equals(OFPort.ALL)) {
+            return STR_PORT_ALL;
+        } 
+        if (p.equals(OFPort.ANY)) {
+            return STR_PORT_ANY;
+        }
+        if (p.equals(OFPort.CONTROLLER)) {
+            return STR_PORT_CONTROLLER;
+        }
+        if (p.equals(OFPort.FLOOD)) {
+            return STR_PORT_FLOOD;
+        }
+        if (p.equals(OFPort.IN_PORT)) {
+            return STR_PORT_IN_PORT;
+        }
+        if (p.equals(OFPort.LOCAL)) {
+            return STR_PORT_LOCAL;
+        }
+        if (p.equals(OFPort.NORMAL)) {
+            return STR_PORT_NORMAL;
+        }
+        if (p.equals(OFPort.MAX)) {
+            return STR_PORT_MAX;
+        }
+        if (p.equals(OFPort.TABLE)) {
+            return STR_PORT_TABLE;
+        }
+        return Integer.toString(p.getPortNumber());
+    }
 }
