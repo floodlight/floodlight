@@ -94,7 +94,6 @@ import org.projectfloodlight.openflow.types.IpEcn;
 import org.projectfloodlight.openflow.types.IpProtocol;
 import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFBooleanValue;
-import org.projectfloodlight.openflow.types.OFGroup;
 import org.projectfloodlight.openflow.types.OFMetadata;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.OFVlanVidMatch;
@@ -527,16 +526,12 @@ public class ActionUtils {
                         }
 
                         switch (actionData[0]) {
-                        case MatchUtils.STR_ARP_OPCODE:
-                            if (actionData[1].startsWith("0x")) {
-                                a = f.actions().buildSetField()
-                                        .setField(f.oxms().buildArpOp().setValue(ArpOpcode.of(Integer.parseInt(actionData[1].replaceFirst("0x", ""), 16))).build())
-                                        .build();
-                            } else {
-                                a = f.actions().buildSetField()
-                                        .setField(f.oxms().buildArpOp().setValue(ArpOpcode.of(Integer.parseInt(actionData[1]))).build())
-                                        .build();
-                            }
+                        case MatchUtils.STR_ARP_OPCODE:      
+                            a = f.actions().buildSetField()
+                            .setField(f.oxms().buildArpOp()
+                                    .setValue(ArpOpcode.of(ParseUtils.parseHexOrDecInt(actionData[1])))
+                                    .build())
+                            .build();
                             break;
                         case MatchUtils.STR_ARP_SHA:
                             a = f.actions().buildSetField()
@@ -574,15 +569,11 @@ public class ActionUtils {
                             .build();
                             break;
                         case MatchUtils.STR_DL_TYPE:
-                            if (actionData[1].startsWith("0x")) {
-                                a = f.actions().buildSetField()
-                                        .setField(f.oxms().buildEthType().setValue(EthType.of(Integer.parseInt(actionData[1].replaceFirst("0x", ""), 16))).build())
-                                        .build();
-                            } else {
-                                a = f.actions().buildSetField()
-                                        .setField(f.oxms().buildEthType().setValue(EthType.of(Integer.parseInt(actionData[1]))).build())
-                                        .build();
-                            }
+                            a = f.actions().buildSetField()
+                            .setField(f.oxms().buildEthType()
+                                    .setValue(EthType.of(ParseUtils.parseHexOrDecInt(actionData[1])))
+                                    .build())
+                            .build();
                             break;
                         case MatchUtils.STR_DL_SRC:
                             a = f.actions().buildSetField()
@@ -595,81 +586,53 @@ public class ActionUtils {
                             .build();
                             break;
                         case MatchUtils.STR_DL_VLAN:
-                            if (actionData[1].startsWith("0x")) {
-                                a = f.actions().buildSetField()
-                                        .setField(f.oxms().buildVlanVid().setValue(OFVlanVidMatch.ofVlan(Integer.parseInt(actionData[1].replaceFirst("0x", ""), 16))).build())
-                                        .build();
-                            } else {
-                                a = f.actions().buildSetField()
-                                        .setField(f.oxms().buildVlanVid().setValue(OFVlanVidMatch.ofVlan(Integer.parseInt(actionData[1]))).build())
-                                        .build();
-                            }
+                            a = f.actions().buildSetField()
+                            .setField(f.oxms().buildVlanVid()
+                                    .setValue(OFVlanVidMatch.ofVlan(ParseUtils.parseHexOrDecInt(actionData[1])))
+                                    .build())
+                            .build();
                             break;
                         case MatchUtils.STR_DL_VLAN_PCP:
-                            if (actionData[1].startsWith("0x")) {
-                                a = f.actions().buildSetField()
-                                        .setField(f.oxms().buildVlanPcp().setValue(VlanPcp.of(Byte.parseByte(actionData[1].replaceFirst("0x", ""), 16))).build())
-                                        .build();
-                            } else {
-                                a = f.actions().buildSetField()
-                                        .setField(f.oxms().buildVlanPcp().setValue(VlanPcp.of(Byte.parseByte(actionData[1]))).build())
-                                        .build();
-                            }
+                            a = f.actions().buildSetField()
+                            .setField(f.oxms().buildVlanPcp()
+                                    .setValue(VlanPcp.of(ParseUtils.parseHexOrDecByte(actionData[1])))
+                                    .build())
+                            .build();
                             break;
                         case MatchUtils.STR_ICMP_CODE:
-                            if (actionData[1].startsWith("0x")) {
-                                a = f.actions().buildSetField()
-                                        .setField(f.oxms().buildIcmpv4Code().setValue(ICMPv4Code.of(Short.parseShort(actionData[1].replaceFirst("0x", ""), 16))).build())
-                                        .build();
-                            } else {
-                                a = f.actions().buildSetField()
-                                        .setField(f.oxms().buildIcmpv4Code().setValue(ICMPv4Code.of(Short.parseShort(actionData[1]))).build())
-                                        .build();
-                            }
+                            a = f.actions().buildSetField()
+                            .setField(f.oxms().buildIcmpv4Code()
+                                    .setValue(ICMPv4Code.of(ParseUtils.parseHexOrDecShort(actionData[1])))
+                                    .build())
+                            .build();
                             break;
                         case MatchUtils.STR_ICMP_TYPE:
-                            if (actionData[1].startsWith("0x")) {
-                                a = f.actions().buildSetField()
-                                        .setField(f.oxms().buildIcmpv4Type().setValue(ICMPv4Type.of(Short.parseShort(actionData[1].replaceFirst("0x", ""), 16))).build())
-                                        .build();
-                            } else {
-                                a = f.actions().buildSetField()
-                                        .setField(f.oxms().buildIcmpv4Type().setValue(ICMPv4Type.of(Short.parseShort(actionData[1]))).build())
-                                        .build();
-                            }
+                            a = f.actions().buildSetField()
+                            .setField(f.oxms().buildIcmpv4Type()
+                                    .setValue(ICMPv4Type.of(ParseUtils.parseHexOrDecShort(actionData[1])))
+                                    .build())
+                            .build();
                             break;
                         case MatchUtils.STR_ICMPV6_CODE:
-                            if (actionData[1].startsWith("0x")) {
-                                a = f.actions().buildSetField()
-                                        .setField(f.oxms().buildIcmpv6Code().setValue(U8.of(Short.parseShort(actionData[1].replaceFirst("0x", ""), 16))).build())
-                                        .build();
-                            } else {
-                                a = f.actions().buildSetField()
-                                        .setField(f.oxms().buildIcmpv6Code().setValue(U8.of(Short.parseShort(actionData[1]))).build())
-                                        .build();
-                            }
+                            a = f.actions().buildSetField()
+                            .setField(f.oxms().buildIcmpv6Code()
+                                    .setValue(U8.of(ParseUtils.parseHexOrDecShort(actionData[1])))
+                                    .build())
+                            .build();
                             break;
                         case MatchUtils.STR_ICMPV6_TYPE:
-                            if (actionData[1].startsWith("0x")) {
-                                a = f.actions().buildSetField()
-                                        .setField(f.oxms().buildIcmpv6Type().setValue(U8.of(Short.parseShort(actionData[1].replaceFirst("0x", ""), 16))).build())
-                                        .build();
-                            } else {
-                                a = f.actions().buildSetField()
-                                        .setField(f.oxms().buildIcmpv6Type().setValue(U8.of(Short.parseShort(actionData[1]))).build())
-                                        .build();
-                            }
+                            a = f.actions().buildSetField()
+                            .setField(f.oxms().buildIcmpv6Type()
+                                    .setValue(U8.of(ParseUtils.parseHexOrDecShort(actionData[1])))
+                                    .build())
+                            .build();
                             break;
                         case MatchUtils.STR_NW_PROTO:
-                            if (actionData[1].startsWith("0x")) {
-                                a = f.actions().buildSetField()
-                                        .setField(f.oxms().buildIpProto().setValue(IpProtocol.of(Short.parseShort(actionData[1].replaceFirst("0x", ""), 16))).build())
-                                        .build();
-                            } else {
-                                a = f.actions().buildSetField()
-                                        .setField(f.oxms().buildIpProto().setValue(IpProtocol.of(Short.parseShort(actionData[1]))).build())
-                                        .build();
-                            }
+                            a = f.actions().buildSetField()
+                            .setField(f.oxms().buildIpProto()
+                                    .setValue(IpProtocol.of(ParseUtils.parseHexOrDecShort(actionData[1])))
+                                    .build())
+                            .build();
                             break;
                         case MatchUtils.STR_NW_SRC:
                             a = f.actions().buildSetField()
@@ -692,122 +655,110 @@ public class ActionUtils {
                             .build();						
                             break;
                         case MatchUtils.STR_IPV6_FLOW_LABEL:
-                            if (actionData[1].startsWith("0x")) {
-                                a = f.actions().buildSetField()
-                                        .setField(f.oxms().buildIpv6Flabel().setValue(IPv6FlowLabel.of(Integer.parseInt(actionData[1].replaceFirst("0x", ""), 16))).build())
-                                        .build();			
-                            } else {
-                                a = f.actions().buildSetField()
-                                        .setField(f.oxms().buildIpv6Flabel().setValue(IPv6FlowLabel.of(Integer.parseInt(actionData[1]))).build())
-                                        .build();
-                            }
+                            a = f.actions().buildSetField()
+                            .setField(f.oxms().buildIpv6Flabel()
+                                    .setValue(IPv6FlowLabel.of(ParseUtils.parseHexOrDecInt(actionData[1])))
+                                    .build())
+                            .build();			
                             break;
                         case MatchUtils.STR_NW_ECN:
-                            if (actionData[1].startsWith("0x")) {
-                                a = f.actions().buildSetField()
-                                        .setField(f.oxms().buildIpEcn().setValue(IpEcn.of(Byte.parseByte(actionData[1].replaceFirst("0x", ""), 16))).build())
-                                        .build();
-                            } else {
-                                a = f.actions().buildSetField()
-                                        .setField(f.oxms().buildIpEcn().setValue(IpEcn.of(Byte.parseByte(actionData[1]))).build())
-                                        .build();
-                            }
+                            a = f.actions().buildSetField()
+                            .setField(f.oxms().buildIpEcn()
+                                    .setValue(IpEcn.of(ParseUtils.parseHexOrDecByte(actionData[1])))
+                                    .build())
+                            .build();
                             break;
                         case MatchUtils.STR_NW_DSCP:
-                            if (actionData[1].startsWith("0x")) {
-                                a = f.actions().buildSetField()
-                                        .setField(f.oxms().buildIpDscp().setValue(IpDscp.of(Byte.parseByte(actionData[1].replaceFirst("0x", ""), 16))).build())
-                                        .build();
-                            } else {
-                                a = f.actions().buildSetField()
-                                        .setField(f.oxms().buildIpDscp().setValue(IpDscp.of(Byte.parseByte(actionData[1]))).build())
-                                        .build();
-                            }
+                            a = f.actions().buildSetField()
+                            .setField(f.oxms().buildIpDscp()
+                                    .setValue(IpDscp.of(ParseUtils.parseHexOrDecByte(actionData[1])))
+                                    .build())
+                            .build();
                             break;
                         case MatchUtils.STR_SCTP_SRC:
                             a = f.actions().buildSetField()
-                            .setField(f.oxms().buildSctpSrc().setValue(TransportPort.of(Integer.parseInt(actionData[1]))).build())
+                            .setField(f.oxms().buildSctpSrc()
+                                    .setValue(TransportPort.of(ParseUtils.parseHexOrDecInt(actionData[1])))
+                                    .build())
                             .build();	
                             break;
                         case MatchUtils.STR_SCTP_DST:
                             a = f.actions().buildSetField()
-                            .setField(f.oxms().buildSctpDst().setValue(TransportPort.of(Integer.parseInt(actionData[1]))).build())
+                            .setField(f.oxms().buildSctpDst()
+                                    .setValue(TransportPort.of(ParseUtils.parseHexOrDecInt(actionData[1])))
+                                    .build())
                             .build();	
                             break;
                         case MatchUtils.STR_TCP_SRC:
                             a = f.actions().buildSetField()
-                            .setField(f.oxms().buildTcpSrc().setValue(TransportPort.of(Integer.parseInt(actionData[1]))).build())
+                            .setField(f.oxms().buildTcpSrc()
+                                    .setValue(TransportPort.of(ParseUtils.parseHexOrDecInt(actionData[1])))
+                                    .build())
                             .build();	
                             break;
                         case MatchUtils.STR_TCP_DST:
                             a = f.actions().buildSetField()
-                            .setField(f.oxms().buildTcpDst().setValue(TransportPort.of(Integer.parseInt(actionData[1]))).build())
+                            .setField(f.oxms().buildTcpDst()
+                                    .setValue(TransportPort.of(ParseUtils.parseHexOrDecInt(actionData[1])))
+                                    .build())
                             .build();	
                             break;
                         case MatchUtils.STR_UDP_SRC:
                             a = f.actions().buildSetField()
-                            .setField(f.oxms().buildUdpSrc().setValue(TransportPort.of(Integer.parseInt(actionData[1]))).build())
+                            .setField(f.oxms().buildUdpSrc()
+                                    .setValue(TransportPort.of(ParseUtils.parseHexOrDecInt(actionData[1])))
+                                    .build())
                             .build();	
                             break;
                         case MatchUtils.STR_UDP_DST:
                             a = f.actions().buildSetField()
-                            .setField(f.oxms().buildUdpDst().setValue(TransportPort.of(Integer.parseInt(actionData[1]))).build())
+                            .setField(f.oxms().buildUdpDst()
+                                    .setValue(TransportPort.of(ParseUtils.parseHexOrDecInt(actionData[1])))
+                                    .build())
                             .build();	
                             break;
                         case MatchUtils.STR_MPLS_LABEL:
-                            if (actionData[1].startsWith("0x")) {
-                                a = f.actions().buildSetField()
-                                        .setField(f.oxms().buildMplsLabel().setValue(U32.of(Long.parseLong(actionData[1].replaceFirst("0x", ""), 16))).build())
-                                        .build();
-                            } else {
-                                a = f.actions().buildSetField()
-                                        .setField(f.oxms().buildMplsLabel().setValue(U32.of(Long.parseLong(actionData[1]))).build())
-                                        .build();
-                            }
+                            a = f.actions().buildSetField()
+                            .setField(f.oxms().buildMplsLabel()
+                                    .setValue(U32.of(ParseUtils.parseHexOrDecLong(actionData[1])))
+                                    .build())
+                            .build();
                             break;
                         case MatchUtils.STR_MPLS_TC:
-                            if (actionData[1].startsWith("0x")) {
-                                a = f.actions().buildSetField()
-                                        .setField(f.oxms().buildMplsTc().setValue(U8.of(Short.parseShort(actionData[1].replaceFirst("0x", ""), 16))).build())
-                                        .build();
-                            } else {
-                                a = f.actions().buildSetField()
-                                        .setField(f.oxms().buildMplsTc().setValue(U8.of(Short.parseShort(actionData[1]))).build())
-                                        .build();
-                            }
+                            a = f.actions().buildSetField()
+                            .setField(f.oxms().buildMplsTc()
+                                    .setValue(U8.of(ParseUtils.parseHexOrDecShort(actionData[1])))
+                                    .build())
+                            .build();
                             break;
                         case MatchUtils.STR_MPLS_BOS:
                             a = f.actions().buildSetField()
-                            .setField(f.oxms().buildMplsBos().setValue(OFBooleanValue.of(Boolean.parseBoolean(actionData[1]))).build()) // interprets anything other than "true" as false
+                            .setField(f.oxms().buildMplsBos()
+                                    .setValue(OFBooleanValue.of(Boolean.parseBoolean(actionData[1])))
+                                    .build()) // interprets anything other than "true" as false
                             .build();
                             break;
                         case MatchUtils.STR_METADATA:
-                            if (actionData[1].startsWith("0x")) {
-                                a = f.actions().buildSetField()
-                                        .setField(f.oxms().buildMetadata().setValue(OFMetadata.of(U64.of(Long.parseLong(actionData[1].replaceFirst("0x", ""), 16)))).build())
-                                        .build();
-                            } else {
-                                a = f.actions().buildSetField()
-                                        .setField(f.oxms().buildMetadata().setValue(OFMetadata.of(U64.of(Long.parseLong(actionData[1])))).build())
-                                        .build();
-                            }
+                            a = f.actions().buildSetField()
+                            .setField(f.oxms().buildMetadata()
+                                    .setValue(OFMetadata.of(U64.of(ParseUtils.parseHexOrDecLong(actionData[1]))))
+                                    .build())
+                            .build();
                             break;
                         case MatchUtils.STR_ACTSET_OUTPUT:
-                                a = f.actions().buildSetField()
-                                        .setField(f.oxms().buildActsetOutput().setValue(portFromString(actionData[1])).build())
-                                        .build();
-                           
+                            a = f.actions().buildSetField()
+                            .setField(f.oxms().buildActsetOutput()
+                                    .setValue(portFromString(actionData[1]))
+                                    .build())
+                            .build();
+
                             break;
                         case MatchUtils.STR_TCP_FLAGS:
-                            if (actionData[1].startsWith("0x")) {
-                                a = f.actions().buildSetField()
-                                        .setField(f.oxms().buildTcpFlags().setValue(U16.of(Integer.parseInt(actionData[1].replaceFirst("0x", ""), 16))).build())
-                                        .build();
-                            } else {
-                                a = f.actions().buildSetField()
-                                        .setField(f.oxms().buildTcpFlags().setValue(U16.of(Integer.parseInt(actionData[1]))).build())
-                                        .build();
-                            }
+                            a = f.actions().buildSetField()
+                            .setField(f.oxms().buildTcpFlags()
+                                    .setValue(U16.of(ParseUtils.parseHexOrDecInt(actionData[1])))
+                                    .build())
+                            .build();
                             break;
                         default:
                             log.error("Unexpected OF1.2+ setfield '{}'", actionData);
@@ -815,73 +766,37 @@ public class ActionUtils {
                         }					
                         break;
                     case STR_GROUP:
-                        if (pair.startsWith("0x")) {
-                            a = f.actions().buildGroup()
-                                    .setGroup(OFGroup.of(Integer.parseInt(pair.replaceFirst("0x", ""), 16)))
-                                    .build();	
-                        } else {
-                            a = f.actions().buildGroup()
-                                    .setGroup(OFGroup.of(Integer.parseInt(pair)))
-                                    .build();		
-                        }
+                        a = f.actions().buildGroup()
+                        .setGroup(GroupUtils.groupIdFromString(pair))
+                        .build();	
                         break;
                     case STR_MPLS_LABEL_SET:
-                        if (pair.startsWith("0x")) {
-                            a = f.actions().buildSetMplsLabel()
-                                    .setMplsLabel(Long.parseLong(pair.replaceFirst("0x", ""), 16))
-                                    .build();			
-                        } else {
-                            a = f.actions().buildSetMplsLabel()
-                                    .setMplsLabel(Long.parseLong(pair))
-                                    .build();					
-                        }
+                        a = f.actions().buildSetMplsLabel()
+                        .setMplsLabel(ParseUtils.parseHexOrDecLong(pair))
+                        .build();			
                         break;
                     case STR_MPLS_POP:
-                        if (pair.startsWith("0x")) {
-                            a = f.actions().buildPopMpls()
-                                    .setEthertype(EthType.of(Integer.parseInt(pair.replaceFirst("0x", ""), 16)))
-                                    .build();
-                        } else {
-                            a = f.actions().buildPopMpls()
-                                    .setEthertype(EthType.of(Integer.parseInt(pair)))
-                                    .build();	
-                        }
+                        a = f.actions().buildPopMpls()
+                        .setEthertype(EthType.of(ParseUtils.parseHexOrDecInt(pair)))
+                        .build();
                         break;
                     case STR_MPLS_PUSH:
-                        if (pair.startsWith("0x")) {
-                            a = f.actions().buildPushMpls()
-                                    .setEthertype(EthType.of(Integer.parseInt(pair.replaceFirst("0x", ""), 16)))
-                                    .build();		
-                        } else {
-                            a = f.actions().buildPushMpls()
-                                    .setEthertype(EthType.of(Integer.parseInt(pair)))
-                                    .build();			
-                        }
+                        a = f.actions().buildPushMpls()
+                        .setEthertype(EthType.of(ParseUtils.parseHexOrDecInt(pair)))
+                        .build();		
                         break;
                     case STR_MPLS_TC_SET:
-                        if (pair.startsWith("0x")) {
-                            a = f.actions().buildSetMplsTc()
-                                    .setMplsTc(Short.parseShort(pair.replaceFirst("0x", ""), 16))
-                                    .build();	
-                        } else {
-                            a = f.actions().buildSetMplsTc()
-                                    .setMplsTc(Short.parseShort(pair))
-                                    .build();			
-                        }
+                        a = f.actions().buildSetMplsTc()
+                        .setMplsTc(ParseUtils.parseHexOrDecShort(pair))
+                        .build();	
                         break;
                     case STR_MPLS_TTL_DEC:
                         a = f.actions().decMplsTtl();
                         break;
                     case STR_MPLS_TTL_SET:
-                        if (pair.startsWith("0x")) {
-                            a = f.actions().buildSetMplsTtl()
-                                    .setMplsTtl(Short.parseShort(pair.replaceFirst("0x", ""), 16))
-                                    .build();	
-                        } else {
-                            a = f.actions().buildSetMplsTtl()
-                                    .setMplsTtl(Short.parseShort(pair))
-                                    .build();				
-                        }
+                        a = f.actions().buildSetMplsTtl()
+                        .setMplsTtl(ParseUtils.parseHexOrDecShort(pair))
+                        .build();	
                         break;
                     case STR_NW_TOS_SET:
                         a = decode_set_tos_bits(pair, v); // should only be used by OF1.0
@@ -893,54 +808,30 @@ public class ActionUtils {
                         a = decode_set_dst_ip(pair, v);
                         break;
                     case STR_NW_ECN_SET: // loxi does not support DSCP set for OF1.1
-                        if (pair.startsWith("0x")) {
-                            a = f.actions().buildSetNwEcn()
-                                    .setNwEcn(IpEcn.of(Byte.parseByte(pair.replaceFirst("0x", ""), 16)))
-                                    .build();		
-                        } else {
-                            a = f.actions().buildSetNwEcn()
-                                    .setNwEcn(IpEcn.of(Byte.parseByte(pair)))
-                                    .build();							
-                        }
+                        a = f.actions().buildSetNwEcn() 
+                        .setNwEcn(IpEcn.of(ParseUtils.parseHexOrDecByte(pair)))
+                        .build();		
                         break;
                     case STR_NW_TTL_DEC:
                         a = f.actions().decNwTtl();
                         break;
                     case STR_NW_TTL_SET:
-                        if (pair.startsWith("0x")) {
-                            a = f.actions().buildSetNwTtl()
-                                    .setNwTtl(Short.parseShort(pair.replaceFirst("0x", ""), 16))
-                                    .build();
-                        } else {
-                            a = f.actions().buildSetNwTtl()
-                                    .setNwTtl(Short.parseShort(pair))
-                                    .build();						
-                        }
+                        a = f.actions().buildSetNwTtl()
+                        .setNwTtl(ParseUtils.parseHexOrDecShort(pair))
+                        .build();
                         break;
                     case STR_PBB_POP:
                         a = f.actions().popPbb();
                         break;
                     case STR_PBB_PUSH:
-                        if (pair.startsWith("0x")) {
-                            a = f.actions().buildPushPbb()
-                                    .setEthertype(EthType.of(Integer.parseInt(pair.replaceFirst("0x", ""), 16)))
-                                    .build();				
-                        } else {
-                            a = f.actions().buildPushPbb()
-                                    .setEthertype(EthType.of(Integer.parseInt(pair)))
-                                    .build();					
-                        }
+                        a = f.actions().buildPushPbb()
+                        .setEthertype(EthType.of(ParseUtils.parseHexOrDecInt(pair)))
+                        .build();				
                         break;
                     case STR_QUEUE_SET:
-                        if (pair.startsWith("0x")) {
-                            a = f.actions().buildSetQueue()
-                                    .setQueueId(Long.parseLong(pair.replaceFirst("0x", ""), 16))
-                                    .build();	
-                        } else {
-                            a = f.actions().buildSetQueue()
-                                    .setQueueId(Long.parseLong(pair))
-                                    .build();					
-                        }
+                        a = f.actions().buildSetQueue()
+                        .setQueueId(ParseUtils.parseHexOrDecLong(pair))
+                        .build();	
                         break;
                     case STR_TP_SRC_SET:
                         a = decode_set_src_port(pair, v);
@@ -958,15 +849,9 @@ public class ActionUtils {
                         a = f.actions().popVlan();
                         break;
                     case STR_VLAN_PUSH:
-                        if (pair.startsWith("0x")) {
-                            a = f.actions().buildPushVlan()
-                                    .setEthertype(EthType.of(Integer.parseInt(pair.replaceFirst("0x", ""), 16)))
-                                    .build();
-                        } else {
-                            a = f.actions().buildPushVlan()
-                                    .setEthertype(EthType.of(Integer.parseInt(pair)))
-                                    .build();		
-                        }
+                        a = f.actions().buildPushVlan()
+                        .setEthertype(EthType.of(ParseUtils.parseHexOrDecInt(pair)))
+                        .build();
                         break;
                     case STR_VLAN_STRIP:
                         a = f.actions().stripVlan();
@@ -978,15 +863,9 @@ public class ActionUtils {
                         a = decode_set_vlan_priority(pair, v);
                         break;
                     case STR_METER:
-                        if (pair.startsWith("0x")) {
-                            a = f.actions().buildMeter()
-                                    .setMeterId(Long.parseLong(pair.replaceFirst("0x", ""), 16))
-                                    .build();
-                        } else {
-                            a = f.actions().buildMeter()
-                                    .setMeterId(Long.parseLong(pair))
-                                    .build();	
-                        }
+                        a = f.actions().buildMeter()
+                        .setMeterId(ParseUtils.parseHexOrDecLong(pair))
+                        .build();
                         break;
                     case STR_FIELD_COPY:
                         a = (OFAction) copyFieldFromJson(pair, f.getVersion());
@@ -1177,7 +1056,7 @@ public class ActionUtils {
     public static OFPort portFromString(String s) {
         return MatchUtils.portFromString(s);
     }
-    
+
     public static String portToString(OFPort p) {
         return MatchUtils.portToString(p);
     }
@@ -1234,7 +1113,7 @@ public class ActionUtils {
             int queueid = 0;
             if (n.group(2) != null) {
                 try {
-                    queueid = get_int(n.group(2));
+                    queueid = ParseUtils.parseHexOrDecInt(n.group(2));
                 }
                 catch (NumberFormatException e) {
                     log.debug("Invalid queue-id in: '{}' (error ignored)", actionToDecode);
@@ -1268,7 +1147,7 @@ public class ActionUtils {
         if (n.matches()) {            
             if (n.group(1) != null) {
                 try {
-                    VlanVid vlanid = VlanVid.ofVlan(get_short(n.group(1)));
+                    VlanVid vlanid = VlanVid.ofVlan(ParseUtils.parseHexOrDecShort(n.group(1)));
                     OFActionSetVlanVid a = OFFactories.getFactory(version).actions().buildSetVlanVid()
                             .setVlanVid(vlanid)
                             .build();
@@ -1303,7 +1182,7 @@ public class ActionUtils {
             if (n.group(1) != null) {
                 try {
                     OFActionSetVlanPcp a = OFFactories.getFactory(version).actions().buildSetVlanPcp()
-                            .setVlanPcp(VlanPcp.of(get_byte(n.group(1))))
+                            .setVlanPcp(VlanPcp.of(ParseUtils.parseHexOrDecByte(n.group(1))))
                             .build();
                     log.debug("action {}", a);
                     return a;
@@ -1382,7 +1261,7 @@ public class ActionUtils {
             if (n.group(1) != null) {
                 try {
                     OFActionSetNwTos a = OFFactories.getFactory(version).actions().buildSetNwTos()
-                            .setNwTos(get_byte(n.group(1)))
+                            .setNwTos(ParseUtils.parseHexOrDecByte(n.group(1)))
                             .build();
                     log.debug("action {}", a);
                     return a;
@@ -1488,32 +1367,5 @@ public class ActionUtils {
             log.debug("Invalid src-port in: {} (error ignored)", actionToDecode);
             return null;
         }
-    }
-
-    /**
-     * Parse int as decimal, hex (start with 0x or #) or octal (starts with 0)
-     * @param str
-     * @return
-     */
-    private static int get_int(String str) {
-        return Integer.parseInt(str);
-    }
-
-    /**
-     * Parse short as decimal, hex (start with 0x or #) or octal (starts with 0)
-     * @param str
-     * @return
-     */
-    private static short get_short(String str) {
-        return (short) Integer.parseInt(str);
-    }
-
-    /**
-     * Parse byte as decimal, hex (start with 0x or #) or octal (starts with 0)
-     * @param str
-     * @return
-     */
-    private static byte get_byte(String str) {
-        return (byte) Integer.parseInt(str);
     }
 }

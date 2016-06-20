@@ -150,11 +150,7 @@ public class InstructionUtils {
 		OFInstructionGotoTable.Builder ib = OFFactories.getFactory(fmb.getVersion()).instructions().buildGotoTable();
 
 		// Get the table ID
-		if (inst.startsWith("0x")) {
-			ib.setTableId(TableId.of(Integer.parseInt(inst.replaceFirst("0x", ""), 16)));
-		} else {
-			ib.setTableId(TableId.of(Integer.parseInt(inst))).build();
-		}
+		ib.setTableId(TableId.of(ParseUtils.parseHexOrDecInt(inst)));
 
 		log.debug("Appending GotoTable instruction: {}", ib.build());
 		appendInstruction(fmb, ib.build());
@@ -209,19 +205,11 @@ public class InstructionUtils {
 		}
 
 		// Get the metadata
-		if (keyValue[0].startsWith("0x")) {
-			ib.setMetadata(U64.of(Long.valueOf(keyValue[0].replaceFirst("0x", ""), 16)));
-		} else {
-			ib.setMetadata(U64.of(Long.valueOf(keyValue[0])));
-		}
+		ib.setMetadata(U64.of(ParseUtils.parseHexOrDecLong(keyValue[0])));
 
 		// Get the optional mask
 		if (keyValue.length == 2) {
-			if (keyValue[1].startsWith("0x")) {
-				ib.setMetadataMask(U64.of(Long.valueOf(keyValue[1].replaceFirst("0x", ""), 16)));
-			} else {
-				ib.setMetadataMask(U64.of(Long.valueOf(keyValue[1])));
-			}
+			ib.setMetadataMask(U64.of(ParseUtils.parseHexOrDecLong(keyValue[1])));
 		} else {
 			ib.setMetadataMask(U64.NO_MASK);
 		}
@@ -370,11 +358,7 @@ public class InstructionUtils {
 
 		OFInstructionMeter.Builder ib = OFFactories.getFactory(fmb.getVersion()).instructions().buildMeter();
 
-		if (inst.startsWith("0x")) {
-			ib.setMeterId(Long.valueOf(inst.replaceFirst("0x", ""), 16));
-		} else {
-			ib.setMeterId(Long.valueOf(inst));
-		}		
+		ib.setMeterId(ParseUtils.parseHexOrDecLong(inst));		
 
 		log.debug("Appending (Goto)Meter instruction: {}", ib.build());
 		appendInstruction(fmb, ib.build());
@@ -507,7 +491,7 @@ public class InstructionUtils {
 								}
 								break;
 							case "value":
-								value = U64.of(Long.parseLong(jp.getText()));
+								value = U64.of(ParseUtils.parseHexOrDecLong(jp.getText()));
 								break;
 							default:
 								log.warn("Unexpected OXS threshold key {}", jp.getCurrentName());

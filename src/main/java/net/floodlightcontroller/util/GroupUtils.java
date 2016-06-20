@@ -118,7 +118,7 @@ public class GroupUtils {
             } else if (s.equals(GROUP_ID_MAX)) {
                 return OFGroup.MAX;
             } else {
-                return OFGroup.of(s.startsWith("0x") ? Integer.parseInt(s.replaceFirst("0x", ""), 16) : Integer.parseInt(s));
+                return OFGroup.of(ParseUtils.parseHexOrDecInt(s));
             }
         } catch (Exception e) {
             log.error("Could not parse group ID {}", s);
@@ -332,7 +332,7 @@ public class GroupUtils {
                     String value = jp.getText().toLowerCase().trim();
                     switch (key) {
                     case BUCKET_ID:
-                        bucketId = value.startsWith("0x") ? Integer.parseInt(value.replaceFirst("0x", ""), 16) : Integer.parseInt(value);
+                        bucketId = ParseUtils.parseHexOrDecInt(value);
                         break;
                     case BUCKET_WATCH_GROUP:
                         b.setWatchGroup(groupIdFromString(key));
@@ -341,7 +341,7 @@ public class GroupUtils {
                         b.setWatchPort(MatchUtils.portFromString(key));
                         break;
                     case BUCKET_WEIGHT:
-                        b.setWeight(value.startsWith("0x") ? Integer.parseInt(value.replaceFirst("0x", ""), 16) : Integer.parseInt(value));
+                        b.setWeight(ParseUtils.parseHexOrDecInt(value));
                         break;
                     case BUCKET_ACTIONS:
                         b.setActions(ActionUtils.fromString(value, b.getVersion())); // TODO update to JSON 
