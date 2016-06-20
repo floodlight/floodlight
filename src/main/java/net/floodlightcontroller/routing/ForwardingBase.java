@@ -64,6 +64,7 @@ import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFBufferId;
 import org.projectfloodlight.openflow.types.OFPort;
+import org.projectfloodlight.openflow.types.TableId;
 import org.projectfloodlight.openflow.types.U64;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -82,6 +83,8 @@ public abstract class ForwardingBase implements IOFMessageListener {
 	public static int FLOWMOD_DEFAULT_IDLE_TIMEOUT = 5; // in seconds
 	public static int FLOWMOD_DEFAULT_HARD_TIMEOUT = 0; // infinite
 	public static int FLOWMOD_DEFAULT_PRIORITY = 1; // 0 is the default table-miss flow in OF1.3+, so we need to use 1
+	
+	public static TableId FLOWMOD_DEFAULT_TABLE_ID = TableId.ZERO;
 
 	protected static boolean FLOWMOD_DEFAULT_SET_SEND_FLOW_REM_FLAG = false;
 
@@ -260,6 +263,9 @@ public abstract class ForwardingBase implements IOFMessageListener {
 			.setPriority(FLOWMOD_DEFAULT_PRIORITY);
 
 			FlowModUtils.setActions(fmb, actions, sw);
+			
+			/* Configure for particular switch pipeline */
+			fmb.setTableId(FLOWMOD_DEFAULT_TABLE_ID);
 
 			try {
 				if (log.isTraceEnabled()) {

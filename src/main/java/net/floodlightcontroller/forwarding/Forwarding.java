@@ -59,6 +59,7 @@ import net.floodlightcontroller.util.OFDPAUtils;
 import net.floodlightcontroller.util.OFMessageUtils;
 import net.floodlightcontroller.util.OFPortMode;
 import net.floodlightcontroller.util.OFPortModeTuple;
+import net.floodlightcontroller.util.ParseUtils;
 
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
 import org.projectfloodlight.openflow.protocol.OFFlowModCommand;
@@ -139,15 +140,18 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 		OFFlowMod.Builder fmb = sw.getOFFactory().buildFlowAdd(); // this will be a drop-flow; a flow that will not output to any ports
 		List<OFAction> actions = new ArrayList<OFAction>(); // set no action to drop
 		U64 cookie = AppCookie.makeCookie(FORWARDING_APP_ID, 0);
-		log.info("Droppingggg");
+		log.info("Dropping");
 		fmb.setCookie(cookie)
 		.setHardTimeout(FLOWMOD_DEFAULT_HARD_TIMEOUT)
 		.setIdleTimeout(FLOWMOD_DEFAULT_IDLE_TIMEOUT)
-		.setBufferId(OFBufferId.NO_BUFFER)
+		.setBufferId(OFBufferId.NO_BUFFER) 
 		.setMatch(m)
 		.setPriority(FLOWMOD_DEFAULT_PRIORITY);
 
 		FlowModUtils.setActions(fmb, actions, sw);
+		
+        /* Configure for particular switch pipeline */
+        fmb.setTableId(FLOWMOD_DEFAULT_TABLE_ID);
 
 		try {
 			if (log.isDebugEnabled()) {
@@ -469,21 +473,28 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 		Map<String, String> configParameters = context.getConfigParams(this);
 		String tmp = configParameters.get("hard-timeout");
 		if (tmp != null) {
-			FLOWMOD_DEFAULT_HARD_TIMEOUT = Integer.parseInt(tmp);
+			FLOWMOD_DEFAULT_HARD_TIMEOUT = ParseUtils.parseHexOrDecInt(tmp);
 			log.info("Default hard timeout set to {}.", FLOWMOD_DEFAULT_HARD_TIMEOUT);
 		} else {
 			log.info("Default hard timeout not configured. Using {}.", FLOWMOD_DEFAULT_HARD_TIMEOUT);
 		}
 		tmp = configParameters.get("idle-timeout");
 		if (tmp != null) {
-			FLOWMOD_DEFAULT_IDLE_TIMEOUT = Integer.parseInt(tmp);
+			FLOWMOD_DEFAULT_IDLE_TIMEOUT = ParseUtils.parseHexOrDecInt(tmp);
 			log.info("Default idle timeout set to {}.", FLOWMOD_DEFAULT_IDLE_TIMEOUT);
 		} else {
 			log.info("Default idle timeout not configured. Using {}.", FLOWMOD_DEFAULT_IDLE_TIMEOUT);
 		}
+		tmp = configParameters.get("table-id");
+        if (tmp != null) {
+            FLOWMOD_DEFAULT_TABLE_ID = TableId.of(ParseUtils.parseHexOrDecInt(tmp));
+            log.info("Default idle timeout set to {}.", FLOWMOD_DEFAULT_IDLE_TIMEOUT);
+        } else {
+            log.info("Default idle timeout not configured. Using {}.", FLOWMOD_DEFAULT_IDLE_TIMEOUT);
+        }
 		tmp = configParameters.get("priority");
 		if (tmp != null) {
-			FLOWMOD_DEFAULT_PRIORITY = 35777;
+			FLOWMOD_DEFAULT_PRIORITY = ParseUtils.parseHexOrDecInt(tmp);
 			log.info("Default priority set to {}.", FLOWMOD_DEFAULT_PRIORITY);
 		} else {
 			log.info("Default priority not configured. Using {}.", FLOWMOD_DEFAULT_PRIORITY);
@@ -491,7 +502,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 		tmp = configParameters.get("set-send-flow-rem-flag");
 		if (tmp != null) {
 			FLOWMOD_DEFAULT_SET_SEND_FLOW_REM_FLAG = Boolean.parseBoolean(tmp);
-			log.info("Default flags will be set to SEND_FLOW_REM.");
+			log.info("Default flags will be set to SEND_FLOW_REM {}.", FLOWMOD_DEFAULT_SET_SEND_FLOW_REM_FLAG);
 		} else {
 			log.info("Default flags will be empty.");
 		}
