@@ -16,7 +16,7 @@
 
 package net.floodlightcontroller.util;
 
-import java.io.IOException;
+import java.util.Collection;
 import java.util.EnumSet;
 import java.util.Set;
 
@@ -116,9 +116,8 @@ public class OFMessageDamper {
      * @param msg
      * @return true if the message was written to the switch, false if
      * the message was dampened. 
-     * @throws IOException
      */
-    public boolean write(IOFSwitch sw, OFMessage msg) throws IOException {
+    public boolean write(IOFSwitch sw, OFMessage msg) {
         if (!msgTypesToCache.contains(msg.getType())) {
             log.debug("Not dampening this type of msg {}", msg);
             sw.write(msg);
@@ -135,5 +134,21 @@ public class OFMessageDamper {
             sw.write(msg);
             return true;
         }
+    }
+    
+    /**
+     * Wrapper around {@link OFMessageDamper#write(IOFSwitch, OFMessage)}. 
+     * @param sw
+     * @param msgs
+     * @return false if *any* message was dampened; true if no messages were dampened
+     */
+    public boolean write(IOFSwitch sw, Collection<OFMessage> msgs) {
+        boolean allWritten = true;
+        for (OFMessage msg : msgs) {
+            if (!write(sw, msg)) {
+                allWritten = false;
+            }
+        }
+        return allWritten;
     }
 }
