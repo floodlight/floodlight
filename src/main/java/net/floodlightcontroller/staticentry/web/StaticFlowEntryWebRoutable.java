@@ -43,26 +43,25 @@ import org.restlet.routing.Router;
  * timeouts configured. IMHO, it's still okay to call the SEP
  * static though, since this feature isn't used very often at all.
  */
-public class StaticEntryWebRoutable implements RestletRoutable {
+public class StaticFlowEntryWebRoutable implements RestletRoutable {
     /**
      * Create the Restlet router and bind to the proper resources.
      */
     @Override
     public Restlet getRestlet(Context context) {
         Router router = new Router(context);
-        
-        router.attach("/json", StaticEntryPusherResource.class); /* v2.0 advertised API */       
+        router.attach("/json", StaticEntryPusherResource.class); /* v0.91, v0.90, and below */
         router.attach("/clear/{switch}/json", ClearStaticEntriesResource.class);
         router.attach("/list/{switch}/json", ListStaticEntriesResource.class);
-        router.attach("/usage/json", StaticEntryUsageResource.class);      
+        router.attach("/usage/json", StaticEntryUsageResource.class);
         return router;
     }
 
     /**
-     * Set the base path for the SEP
+     * Set the base path for the SFEP
      */
     @Override
     public String basePath() {
-        return "/wm/staticentrypusher";
+        return "/wm/staticflowentrypusher";
     }
 }

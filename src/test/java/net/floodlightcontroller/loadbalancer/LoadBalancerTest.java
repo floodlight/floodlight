@@ -56,7 +56,6 @@ import org.projectfloodlight.openflow.types.VlanVid;
 import org.projectfloodlight.openflow.protocol.OFPacketInReason;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
-import org.projectfloodlight.openflow.util.HexString;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.sdnplatform.sync.ISyncService;
 import org.sdnplatform.sync.test.MockSyncService;
@@ -504,7 +503,7 @@ public class LoadBalancerTest extends FloodlightTestCase {
 		// Mock proxy arp packet-out
 		arpReply1 = new Ethernet()
 		.setSourceMACAddress(LBVip.LB_PROXY_MAC)
-		.setDestinationMACAddress(HexString.fromHexString("00:00:00:00:00:01"))
+		.setDestinationMACAddress(MacAddress.of("00:00:00:00:00:01"))
 		.setEtherType(EthType.ARP)
 		.setVlanID((short) 0)
 		.setPriorityCode((byte) 0)

@@ -24,14 +24,14 @@ public class FlowModInfo {
 	private static final Set<FlowMatchProperty> matches = new HashSet<FlowMatchProperty>();
 	private static final Set<FlowActionProperty> actions = new HashSet<FlowActionProperty>();
 	//private static final Set<FlowInstructionProperty> instructions = new HashSet<FlowInstructionProperty>();
-
+	
 	private FlowModInfo() {}
 	private static volatile FlowModInfo instance = null;
 	public static synchronized FlowModInfo getInstance() {
 		if (instance == null) {
 			instance = new FlowModInfo();
 		}
-		
+				
 		for (MatchFields m : MatchFields.values()) {
 			FlowMatchProperty fp = new FlowMatchProperty();
 			fp.property = MatchUtils.getMatchField(m);

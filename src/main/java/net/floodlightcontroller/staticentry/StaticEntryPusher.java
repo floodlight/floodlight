@@ -46,6 +46,8 @@ import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.core.util.AppCookie;
 import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.staticentry.web.StaticEntryWebRoutable;
+import net.floodlightcontroller.staticentry.web.StaticFlowEntryWebRoutable;
+import net.floodlightcontroller.staticentry.web.StaticFlowWebRoutable;
 import net.floodlightcontroller.storage.IResultSet;
 import net.floodlightcontroller.storage.IStorageSourceListener;
 import net.floodlightcontroller.storage.IStorageSourceService;
@@ -847,7 +849,9 @@ implements IOFSwitchListener, IFloodlightModule, IStaticEntryPusherService, ISto
 		storageSourceService.addListener(TABLE_NAME, this);
 		entriesFromStorage = readEntriesFromStorage();
 		entry2dpid = computeEntry2DpidMap(entriesFromStorage);
-		restApiService.addRestletRoutable(new StaticEntryWebRoutable());
+		restApiService.addRestletRoutable(new StaticEntryWebRoutable()); /* current */
+	    restApiService.addRestletRoutable(new StaticFlowWebRoutable()); /* v1.0 - v1.2 (v1.3?) */
+	    restApiService.addRestletRoutable(new StaticFlowEntryWebRoutable()); /* v0.91, v0.90, and before */
 	}
 
 	// IStaticFlowEntryPusherService methods
