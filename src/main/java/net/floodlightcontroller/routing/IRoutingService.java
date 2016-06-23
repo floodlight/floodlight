@@ -72,6 +72,9 @@ public interface IRoutingService extends IFloodlightService {
 
     /** return all routes, if available */
     public ArrayList<Route> getRoutes(DatapathId longSrcDpid, DatapathId longDstDpid, boolean tunnelEnabled);
+    
+    /** return random route from all routes **/
+    public Route getMultipath(DatapathId srcId, OFPort srcPort, DatapathId dstId, OFPort dstPort, boolean tunnelEnabled);
 
     /** Check if a route exists between src and dst, including tunnel links
      *  in the path.

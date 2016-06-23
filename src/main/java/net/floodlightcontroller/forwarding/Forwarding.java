@@ -234,8 +234,19 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 				doFlood(sw, pi, cntx);
 				return; 
 			}				
-
-			Route route = routingEngineService.getRoute(source, 
+			
+			Route route = null;
+			if(USE_MULTIPATH_ROUTING) {
+				route = routingEngineService.getMultipath(source, 
+					inPort,
+					dstDap.getSwitchDPID(),
+					dstDap.getPort(), false);
+				log.info("Using path:");
+				log.info(route.getId().toString());
+				log.info(route.getPath().toString());
+			}
+			else
+				route = routingEngineService.getRoute(source, 
 					inPort,
 					dstDap.getSwitchDPID(),
 					dstDap.getPort(), U64.of(0)); //cookie = 0, i.e., default route
@@ -530,6 +541,19 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 			log.info("Flows will be removed on link/port down events");
 		} else {
 			log.info("Flows will not be removed on link/port down events");
+		}
+		
+		tmp = configParameters.get("useMultipathRouting");
+		if(tmp != null) {
+			try {
+				USE_MULTIPATH_ROUTING = Boolean.parseBoolean(tmp);
+			} catch (Exception e) {
+				log.error("Could not parse 'useMultipath'. Using default forwarding");
+				USE_MULTIPATH_ROUTING = false;
+			}
+		} else {
+			log.info("Could not read 'useMultipath' parameter. Using default forwarding.");
+			USE_MULTIPATH_ROUTING = false;
 		}
 	}
 

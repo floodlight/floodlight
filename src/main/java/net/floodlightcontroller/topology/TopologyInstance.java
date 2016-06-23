@@ -19,12 +19,15 @@ package net.floodlightcontroller.topology;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
+
 import net.floodlightcontroller.core.types.NodePortTuple;
 import net.floodlightcontroller.routing.BroadcastTree;
 import net.floodlightcontroller.routing.Link;
+import net.floodlightcontroller.routing.MultipathTree;
 import net.floodlightcontroller.routing.Route;
 import net.floodlightcontroller.routing.RouteId;
 import net.floodlightcontroller.util.ClusterDFS;
+
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.U64;
@@ -89,6 +92,12 @@ public class TopologyInstance {
     protected Map<DatapathId, Set<OFPort>> broadcastPortMap;
 
     protected Set<Archipelago> archipelagos;
+    
+    protected Map<DatapathId, MultipathTree> desinationRootedMultipathTrees;
+
+	protected static Stack<NodePortTuple> route = new Stack<NodePortTuple>();
+	protected static ArrayList<Stack<NodePortTuple>> routesList = new ArrayList<Stack<NodePortTuple>>();
+	protected static Stack<DatapathId> nvisited = new Stack<DatapathId>();
 
     protected class PathCacheLoader extends CacheLoader<RouteId, Route> {
         TopologyInstance ti;
@@ -101,11 +110,28 @@ public class TopologyInstance {
             return ti.buildroute(rid);
         }
     }
+    
+    protected class MultipathCacheLoader extends CacheLoader<RouteId, List<Route>> {
+
+    	TopologyInstance ti;
+
+    	MultipathCacheLoader(TopologyInstance ti) {
+    		this.ti = ti;
+    	}
+
+    	@Override
+    	public ArrayList<Route> load(RouteId rid) {
+    		return ti.buildL2Routes(rid);
+    	}
+    }
 
     // Path cache loader is defined for loading a path when it not present
     // in the cache.
     private final PathCacheLoader pathCacheLoader = new PathCacheLoader(this);
     protected LoadingCache<RouteId, Route> pathcache;
+    
+    private final MultipathCacheLoader multipathCacheLoader = new MultipathCacheLoader(this);
+	protected LoadingCache<RouteId, ArrayList<Route>> multipathCache;
 	
     public TopologyInstance(Map<DatapathId, Set<OFPort>> switchPorts,
                             Set<NodePortTuple> blockedPorts,
@@ -154,6 +180,7 @@ public class TopologyInstance {
         this.switchClusterMap = new HashMap<DatapathId, Cluster>();
         this.destinationRootedTrees = new HashMap<DatapathId, BroadcastTree>();
         this.destinationRootedFullTrees= new HashMap<DatapathId, BroadcastTree>();
+        this.desinationRootedMultipathTrees = new HashMap<DatapathId, MultipathTree>();
 		this.broadcastNodePorts= new HashSet<NodePortTuple>();
 		this.broadcastPortMap = new HashMap<DatapathId,Set<OFPort>>();
         this.clusterBroadcastTrees = new HashMap<DatapathId, BroadcastTree>();
@@ -167,6 +194,14 @@ public class TopologyInstance {
                                     return pathCacheLoader.load(rid);
                                 }
                             });
+        
+		multipathCache = CacheBuilder.newBuilder().concurrencyLevel(4)
+				.maximumSize(1000L)
+				.build(new CacheLoader<RouteId, ArrayList<Route>>() {
+					public ArrayList<Route> load(RouteId rid) {
+						return multipathCacheLoader.load(rid);
+					}
+				});
     }
 	
     public void compute() {
@@ -211,7 +246,12 @@ public class TopologyInstance {
 		// Step 6. Compute set of ports for broadcasting. Edge ports are included.
        	calculateBroadcastPortMap();
        	
-        // Step 7. print topology.
+       	// Step 7. Compute e2e mulipaths tree on entire topology
+       	// The trees are rooted at the destination.
+        // Cost for tunnel links and direct links are the same.
+       	calculateMultiPaths();
+       	
+        // Step 8. print topology.
         printTopology();
     }
 
@@ -785,6 +825,41 @@ public class TopologyInstance {
 //			this.finiteBroadcastTree = destinationRootedFullTrees.values().iterator().next();
 //        }
     }
+    
+    protected void calculateMultiPaths() {
+
+		desinationRootedMultipathTrees.clear();
+
+		Map<DatapathId, Set<Link>> linkDpidMap = new HashMap<DatapathId, Set<Link>>();
+		for (DatapathId s : switches) {
+			if (switchPorts.get(s) == null)
+				continue;
+			for (OFPort p : switchPorts.get(s)) {
+				NodePortTuple np = new NodePortTuple(s, p);
+				if (allLinks.get(np) == null)
+					continue;
+				for (Link l : allLinks.get(np)) {
+					if (linkDpidMap.containsKey(s)) {
+						linkDpidMap.get(s).add(l);
+					} else {
+						linkDpidMap.put(s, new HashSet<Link>(Arrays.asList(l)));
+					}
+				}
+			}
+		}
+
+		for (DatapathId node : linkDpidMap.keySet()) {
+			MultipathTree multipathTree = new MultipathTree();
+			for (DatapathId src : linkDpidMap.keySet()) {
+				if (!src.equals(node)) {
+					List<List<NodePortTuple>> paths = computeAllPaths(src,
+							node, linkDpidMap);
+					multipathTree.getDpidPaths().put(src, paths);
+				}
+			}
+			desinationRootedMultipathTrees.put(node, multipathTree);
+		}
+	}
 
     protected void calculateShortestPathTreeInClusters() {
         pathcache.invalidateAll();
@@ -923,6 +998,94 @@ public class TopologyInstance {
         }
         return result;
     }
+    
+    protected ArrayList<Route> buildL2Routes(RouteId rid) {
+
+		DatapathId srcId = rid.getSrc();
+		DatapathId dstId = rid.getDst();
+
+		ArrayList<Route> routes = new ArrayList<Route>();
+
+		if (desinationRootedMultipathTrees == null)
+			return null;
+		if (desinationRootedMultipathTrees.get(dstId) == null)
+			return null;
+
+		List<List<NodePortTuple>> paths = desinationRootedMultipathTrees.get(
+				dstId).getPaths(srcId);
+		for (List<NodePortTuple> nptList : paths) {
+			Route r = new Route(new RouteId(srcId, dstId), nptList);
+			routes.add(r);
+		}
+		
+		log.info("Available paths from " + srcId + " to " + dstId);
+		for(Route r : routes) 
+			log.info(r.toString());
+
+		return routes;
+	}
+
+	public List<List<NodePortTuple>> computeAllPaths(DatapathId srcDpid,
+			DatapathId dstDpid, Map<DatapathId, Set<Link>> linkDpidMap) {
+
+		List<List<NodePortTuple>> paths = new ArrayList<List<NodePortTuple>>();
+		route.clear();
+		routesList.clear();
+		nvisited.clear();
+
+		// find all paths
+		this.searchDfs(srcDpid, dstDpid, nvisited, linkDpidMap);
+
+		for (Stack<NodePortTuple> r : routesList) {
+			ArrayList<NodePortTuple> npts = new ArrayList<NodePortTuple>();
+			for (NodePortTuple npt : r) {
+				npts.add(npt);
+			}
+			paths.add(npts);
+		}
+
+		return paths;
+
+	}
+
+	private void searchDfs(DatapathId current, DatapathId target,
+			Stack<DatapathId> visited, Map<DatapathId, Set<Link>> linkDpidMap) {
+
+		visited.add(current);
+
+		if (current.equals(target)) {
+			// Target has been reached -> add the route to the routes list
+			Stack<NodePortTuple> temp = new Stack<NodePortTuple>();
+			for (NodePortTuple np : route) {
+				temp.add(np);
+			}
+			routesList.add(temp);
+
+		} else {
+
+			for (Link l : linkDpidMap.get(current)) {
+
+				// There are two links (bidirectional link)
+				// we only need one of the two links to get to the next node
+				if (!l.getDst().equals(current)) {
+
+					// go to the next node into DFS subtree
+					route.push(new NodePortTuple(l.getSrc(), l.getSrcPort()));
+					route.push(new NodePortTuple(l.getDst(), l.getDstPort()));
+					if (!visited.contains(l.getDst())) {
+						searchDfs(l.getDst(), target, visited, linkDpidMap);
+					}
+					// search in subtree is completed -> return to upper level
+					route.pop();
+					route.pop();
+				}
+
+			}
+		}
+
+		visited.remove(current);
+
+	}
 
     /*
      * Getter Functions
@@ -1001,6 +1164,64 @@ public class TopologyInstance {
         }
         return result;
     }
+    
+ // method implementing multipath routing
+ 	protected ArrayList<Route> getL2Routes(DatapathId srcId, DatapathId dstId) {
+
+ 		if (srcId.equals(dstId))
+ 			return null;
+
+ 		RouteId id = new RouteId(srcId, dstId);
+ 		ArrayList<Route> result = null;
+
+ 		try {
+ 			result = multipathCache.get(id);
+ 			Collections.sort(result);
+ 		} catch(IndexOutOfBoundsException ex) {
+ 			
+ 		} catch (Exception e) {
+ 			log.error("{}", e);
+ 		}
+
+ 		if (log.isTraceEnabled()) {
+ 			log.trace("getRoutes: {} -> {}", id, result);
+ 		}
+
+ 		return result;
+
+ 	}
+ 	
+ 	protected Route getL2Multipath(DatapathId srcId, OFPort srcPort, DatapathId dstId, OFPort dstPort, Integer numberOfMultipaths) {
+ 		
+ 		if (srcId.equals(dstId))
+ 			return null;
+ 		
+ 		List<NodePortTuple> nptList;
+ 		List<Route> paths = getL2Routes(srcId, dstId);
+ 		
+ 		Route r = null;
+ 		
+ 		if(paths.size()>=numberOfMultipaths)
+ 			r = paths.get(new Random().nextInt(numberOfMultipaths));
+ 		else
+ 			r = paths.get(new Random().nextInt(paths.size()));
+ 		
+ 		if (r != null) {
+ 			nptList = new ArrayList<NodePortTuple>(r.getPath());
+ 		} else {
+ 			nptList = new ArrayList<NodePortTuple>();
+ 		}
+ 		NodePortTuple npt = new NodePortTuple(srcId, srcPort);
+ 		nptList.add(0, npt); // add src port to the front
+ 		npt = new NodePortTuple(dstId, dstPort);
+ 		nptList.add(npt); // add dst port to the end
+
+ 		RouteId id = new RouteId(srcId, dstId);
+ 		r = new Route(id, nptList);
+
+ 		return r;
+ 		
+ 	}
 
     protected BroadcastTree getBroadcastTreeForCluster(long clusterId){
         Cluster c = switchClusterMap.get(clusterId);
