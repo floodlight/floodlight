@@ -51,6 +51,8 @@ import net.floodlightcontroller.packet.TCP;
 import net.floodlightcontroller.packet.UDP;
 import net.floodlightcontroller.routing.ForwardingBase;
 import net.floodlightcontroller.routing.IRoutingDecision;
+import net.floodlightcontroller.routing.IRoutingDecisionChange;
+import net.floodlightcontroller.routing.IRoutingDecisionChangedListener;
 import net.floodlightcontroller.routing.IRoutingService;
 import net.floodlightcontroller.routing.Route;
 import net.floodlightcontroller.topology.ITopologyService;
@@ -87,7 +89,7 @@ import org.projectfloodlight.openflow.types.VlanVid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class Forwarding extends ForwardingBase implements IFloodlightModule, IOFSwitchListener, ILinkDiscoveryListener {
+public class Forwarding extends ForwardingBase implements IFloodlightModule, IOFSwitchListener, ILinkDiscoveryListener, IRoutingDecisionChangedListener {
 	protected static Logger log = LoggerFactory.getLogger(Forwarding.class);
 	private final U64 DEFAULT_FORWARDING_COOKIE = AppCookie.makeCookie(FORWARDING_APP_ID, 0);
 
@@ -160,6 +162,11 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 		return AppCookie.makeCookie(FORWARDING_APP_ID, user_fields);
 	}
 
+	/** */
+	public void routingDecisionChanged(IRoutingDecisionChange event) {
+		//FIXME
+	}
+	
 	/**
 	 * Converts a sequence of masked IRoutingDecision descriptors into masked Forwarding cookies.
 	 *
@@ -627,6 +634,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 	public void startUp(FloodlightModuleContext context) {
 		super.startUp();
 		switchService.addOFSwitchListener(this);
+		routingEngineService.addRoutingDecisionChangedListener(this);
 
 		/* Register only if we want to remove stale flows */
 		if (REMOVE_FLOWS_ON_LINK_OR_PORT_DOWN) {
@@ -634,6 +642,10 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 		}
 	}
 
+	
+	
+	
+	
 	@Override
 	public void switchAdded(DatapathId switchId) {
 	}
