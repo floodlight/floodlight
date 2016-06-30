@@ -960,15 +960,14 @@ public class ForwardingTest extends FloodlightTestCase {
 		assertTrue(wc1.hasCaptured());
 		assertTrue(wc2.hasCaptured());
 		
-		/*Masked<U64> masked_cookie = Masked.of(	AppCookie.makeCookie(forwarding.FORWARDING_APP_ID, (int)4294967295L),
+		Masked<U64> masked_cookie = Masked.of(	AppCookie.makeCookie(forwarding.FORWARDING_APP_ID, (int)4294967295L),
 													AppCookie.getAppFieldMask().or(U64.of(0xffffffffL)));
 		Set<OFMessage> msgs_test = new HashSet<OFMessage>();
 		msgs_test.add( 	factory.buildFlowDelete()
 						.setCookie(masked_cookie.getValue())
 						.setCookieMask(masked_cookie.getMask())
 						.build());
-
-		expect(sw1.write(msgs_test)).once();
-		expect(sw2.write(msgs_test)).once();*/
+		
+		assertTrue(OFMessageUtils.equalsIgnoreXid((OFMessage)wc1.getValue().toArray()[0], (OFMessage)msgs_test.toArray()[0]));
 	}
 }
