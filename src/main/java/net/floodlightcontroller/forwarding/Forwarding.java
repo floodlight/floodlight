@@ -89,7 +89,7 @@ import org.slf4j.LoggerFactory;
 
 public class Forwarding extends ForwardingBase implements IFloodlightModule, IOFSwitchListener, ILinkDiscoveryListener {
 	protected static Logger log = LoggerFactory.getLogger(Forwarding.class);
-	private final U64 DEFAULT_FORWARDING_COOKIE = AppCookie.makeCookie(FORWARDING_APP_ID, 0);
+	final static U64 DEFAULT_FORWARDING_COOKIE = AppCookie.makeCookie(FORWARDING_APP_ID, 0);
 
 	// This mask determines how much of each cookie will contain IRoutingDecision descriptor bits.
 	private final long DECISION_MASK = 0x00000000ffffffffL; // TODO: shrink this mask if you need to add more sub-fields.
