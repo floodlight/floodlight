@@ -17,7 +17,6 @@
 
 package net.floodlightcontroller.routing;
 
-import java.io.IOException;
 import java.util.EnumSet;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -64,6 +63,7 @@ import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFBufferId;
 import org.projectfloodlight.openflow.types.OFPort;
+import org.projectfloodlight.openflow.types.TableId;
 import org.projectfloodlight.openflow.types.U64;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -74,402 +74,400 @@ import org.slf4j.LoggerFactory;
  * decision.
  */
 public abstract class ForwardingBase implements IOFMessageListener {
-	protected static Logger log = LoggerFactory.getLogger(ForwardingBase.class);
+    protected static Logger log = LoggerFactory.getLogger(ForwardingBase.class);
 
-	protected static int OFMESSAGE_DAMPER_CAPACITY = 10000; // TODO: find sweet spot
-	protected static int OFMESSAGE_DAMPER_TIMEOUT = 250; // ms
+    protected static int OFMESSAGE_DAMPER_CAPACITY = 10000; // TODO: find sweet spot
+    protected static int OFMESSAGE_DAMPER_TIMEOUT = 250; // ms
 
-	public static int FLOWMOD_DEFAULT_IDLE_TIMEOUT = 5; // in seconds
-	public static int FLOWMOD_DEFAULT_HARD_TIMEOUT = 0; // infinite
-	public static int FLOWMOD_DEFAULT_PRIORITY = 1; // 0 is the default table-miss flow in OF1.3+, so we need to use 1
-	
-	protected static boolean FLOWMOD_DEFAULT_SET_SEND_FLOW_REM_FLAG = false;
-		
-	protected static boolean FLOWMOD_DEFAULT_MATCH_VLAN = true;
-	protected static boolean FLOWMOD_DEFAULT_MATCH_MAC = true;
-	protected static boolean FLOWMOD_DEFAULT_MATCH_IP_ADDR = true;
-	protected static boolean FLOWMOD_DEFAULT_MATCH_TRANSPORT = true;
+    public static int FLOWMOD_DEFAULT_IDLE_TIMEOUT = 5; // in seconds
+    public static int FLOWMOD_DEFAULT_HARD_TIMEOUT = 0; // infinite
+    public static int FLOWMOD_DEFAULT_PRIORITY = 1; // 0 is the default table-miss flow in OF1.3+, so we need to use 1
 
-	protected static final short FLOWMOD_DEFAULT_IDLE_TIMEOUT_CONSTANT = 5;
-	protected static final short FLOWMOD_DEFAULT_HARD_TIMEOUT_CONSTANT = 0;
-	
-	protected static boolean FLOOD_ALL_ARP_PACKETS = false;
-	
-	protected static boolean REMOVE_FLOWS_ON_LINK_OR_PORT_DOWN = true;
+    public static TableId FLOWMOD_DEFAULT_TABLE_ID = TableId.ZERO;
 
-	protected IFloodlightProviderService floodlightProviderService;
-	protected IOFSwitchService switchService;
-	protected IDeviceService deviceManagerService;
-	protected IRoutingService routingEngineService;
-	protected ITopologyService topologyService;
-	protected IDebugCounterService debugCounterService;
-	protected ILinkDiscoveryService linkService;
+    protected static boolean FLOWMOD_DEFAULT_SET_SEND_FLOW_REM_FLAG = false;
 
-	protected OFMessageDamper messageDamper;
+    protected static boolean FLOWMOD_DEFAULT_MATCH_VLAN = true;
+    protected static boolean FLOWMOD_DEFAULT_MATCH_MAC = true;
+    protected static boolean FLOWMOD_DEFAULT_MATCH_IP_ADDR = true;
+    protected static boolean FLOWMOD_DEFAULT_MATCH_TRANSPORT = true;
 
-	// for broadcast loop suppression
-	protected boolean broadcastCacheFeature = true;
-	public final int prime1 = 2633;  // for hash calculation
-	public final static int prime2 = 4357;  // for hash calculation
-	public TimedCache<Long> broadcastCache = new TimedCache<Long>(100, 5*1000);  // 5 seconds interval;
+    protected static final short FLOWMOD_DEFAULT_IDLE_TIMEOUT_CONSTANT = 5;
+    protected static final short FLOWMOD_DEFAULT_HARD_TIMEOUT_CONSTANT = 0;
 
-	// flow-mod - for use in the cookie
-	public static final int FORWARDING_APP_ID = 2; // TODO: This must be managed
-	// by a global APP_ID class
-	static {
-		AppCookie.registerApp(FORWARDING_APP_ID, "Forwarding");
-	}
-	public static final U64 appCookie = AppCookie.makeCookie(FORWARDING_APP_ID, 0);
+    protected static boolean FLOOD_ALL_ARP_PACKETS = false;
 
-	// Comparator for sorting by SwitchCluster
-	public Comparator<SwitchPort> clusterIdComparator =
-			new Comparator<SwitchPort>() {
-		@Override
-		public int compare(SwitchPort d1, SwitchPort d2) {
-			DatapathId d1ClusterId = topologyService.getOpenflowDomainId(d1.getSwitchDPID());
-			DatapathId d2ClusterId = topologyService.getOpenflowDomainId(d2.getSwitchDPID());
-			return d1ClusterId.compareTo(d2ClusterId);
-		}
-	};
+    protected static boolean REMOVE_FLOWS_ON_LINK_OR_PORT_DOWN = true;
 
-	protected void init() {
-		messageDamper = new OFMessageDamper(OFMESSAGE_DAMPER_CAPACITY,
-				EnumSet.of(OFType.FLOW_MOD),
-				OFMESSAGE_DAMPER_TIMEOUT);
-	}
+    protected IFloodlightProviderService floodlightProviderService;
+    protected IOFSwitchService switchService;
+    protected IDeviceService deviceManagerService;
+    protected IRoutingService routingEngineService;
+    protected ITopologyService topologyService;
+    protected IDebugCounterService debugCounterService;
+    protected ILinkDiscoveryService linkService;
 
-	protected void startUp() {
-		floodlightProviderService.addOFMessageListener(OFType.PACKET_IN, this);
-	}
+    protected OFMessageDamper messageDamper;
 
-	@Override
-	public String getName() {
-		return "forwarding";
-	}
+    // for broadcast loop suppression
+    protected boolean broadcastCacheFeature = true;
+    public final int prime1 = 2633;  // for hash calculation
+    public final static int prime2 = 4357;  // for hash calculation
+    public TimedCache<Long> broadcastCache = new TimedCache<Long>(100, 5*1000);  // 5 seconds interval;
 
-	/**
-	 * All subclasses must define this function if they want any specific
-	 * forwarding action
-	 *
-	 * @param sw
-	 *            Switch that the packet came in from
-	 * @param pi
-	 *            The packet that came in
-	 * @param decision
-	 *            Any decision made by a policy engine
-	 */
-	public abstract Command processPacketInMessage(IOFSwitch sw, OFPacketIn pi, 
-			IRoutingDecision decision, FloodlightContext cntx);
+    // flow-mod - for use in the cookie
+    public static final int FORWARDING_APP_ID = 2; // TODO: This must be managed
+    // by a global APP_ID class
+    static {
+        AppCookie.registerApp(FORWARDING_APP_ID, "Forwarding");
+    }
+    public static final U64 appCookie = AppCookie.makeCookie(FORWARDING_APP_ID, 0);
 
-	@Override
-	public Command receive(IOFSwitch sw, OFMessage msg, FloodlightContext cntx) {
-		switch (msg.getType()) {
-		case PACKET_IN:
-			IRoutingDecision decision = null;
-			if (cntx != null) {
-				decision = RoutingDecision.rtStore.get(cntx, IRoutingDecision.CONTEXT_DECISION);
-			}
+    // Comparator for sorting by SwitchCluster
+    public Comparator<SwitchPort> clusterIdComparator =
+            new Comparator<SwitchPort>() {
+        @Override
+        public int compare(SwitchPort d1, SwitchPort d2) {
+            DatapathId d1ClusterId = topologyService.getOpenflowDomainId(d1.getNodeId());
+            DatapathId d2ClusterId = topologyService.getOpenflowDomainId(d2.getNodeId());
+            return d1ClusterId.compareTo(d2ClusterId);
+        }
+    };
 
-			return this.processPacketInMessage(sw, (OFPacketIn) msg, decision, cntx);
-		default:
-			break;
-		}
-		return Command.CONTINUE;
-	}
+    protected void init() {
+        messageDamper = new OFMessageDamper(OFMESSAGE_DAMPER_CAPACITY,
+                EnumSet.of(OFType.FLOW_MOD),
+                OFMESSAGE_DAMPER_TIMEOUT);
+    }
 
-	/**
-	 * Push routes from back to front
-	 * @param route Route to push
-	 * @param match OpenFlow fields to match on
-	 * @param srcSwPort Source switch port for the first hop
-	 * @param dstSwPort Destination switch port for final hop
-	 * @param cookie The cookie to set in each flow_mod
-	 * @param cntx The floodlight context
-	 * @param requestFlowRemovedNotification if set to true then the switch would
-	 *        send a flow mod removal notification when the flow mod expires
-	 * @param flowModCommand flow mod. command to use, e.g. OFFlowMod.OFPFC_ADD,
-	 *        OFFlowMod.OFPFC_MODIFY etc.
-	 * @return true if a packet out was sent on the first-hop switch of this route
-	 */
-	public boolean pushRoute(Route route, Match match, OFPacketIn pi,
-			DatapathId pinSwitch, U64 cookie, FloodlightContext cntx,
-			boolean requestFlowRemovedNotification, OFFlowModCommand flowModCommand) {
+    protected void startUp() {
+        floodlightProviderService.addOFMessageListener(OFType.PACKET_IN, this);
+    }
 
-		boolean packetOutSent = false;
+    @Override
+    public String getName() {
+        return "forwarding";
+    }
 
-		List<NodePortTuple> switchPortList = route.getPath();
+    /**
+     * All subclasses must define this function if they want any specific
+     * forwarding action
+     *
+     * @param sw
+     *            Switch that the packet came in from
+     * @param pi
+     *            The packet that came in
+     * @param decision
+     *            Any decision made by a policy engine
+     */
+    public abstract Command processPacketInMessage(IOFSwitch sw, OFPacketIn pi, 
+            IRoutingDecision decision, FloodlightContext cntx);
 
-		for (int indx = switchPortList.size() - 1; indx > 0; indx -= 2) {
-			// indx and indx-1 will always have the same switch DPID.
-			DatapathId switchDPID = switchPortList.get(indx).getNodeId();
-			IOFSwitch sw = switchService.getSwitch(switchDPID);
+    @Override
+    public Command receive(IOFSwitch sw, OFMessage msg, FloodlightContext cntx) {
+        switch (msg.getType()) {
+        case PACKET_IN:
+            IRoutingDecision decision = null;
+            if (cntx != null) {
+                decision = RoutingDecision.rtStore.get(cntx, IRoutingDecision.CONTEXT_DECISION);
+            }
 
-			if (sw == null) {
-				if (log.isWarnEnabled()) {
-					log.warn("Unable to push route, switch at DPID {} " + "not available", switchDPID);
-				}
-				return packetOutSent;
-			}
-			
-			// need to build flow mod based on what type it is. Cannot set command later
-			OFFlowMod.Builder fmb;
-			switch (flowModCommand) {
-			case ADD:
-				fmb = sw.getOFFactory().buildFlowAdd();
-				break;
-			case DELETE:
-				fmb = sw.getOFFactory().buildFlowDelete();
-				break;
-			case DELETE_STRICT:
-				fmb = sw.getOFFactory().buildFlowDeleteStrict();
-				break;
-			case MODIFY:
-				fmb = sw.getOFFactory().buildFlowModify();
-				break;
-			default:
-				log.error("Could not decode OFFlowModCommand. Using MODIFY_STRICT. (Should another be used as the default?)");        
-			case MODIFY_STRICT:
-				fmb = sw.getOFFactory().buildFlowModifyStrict();
-				break;			
-			}
-			
-			OFActionOutput.Builder aob = sw.getOFFactory().actions().buildOutput();
-			List<OFAction> actions = new ArrayList<OFAction>();	
- 			Match.Builder mb = MatchUtils.convertToVersion(match, sw.getOFFactory().getVersion());
- 			
-			// set input and output ports on the switch
-			OFPort outPort = switchPortList.get(indx).getPortId();
-			OFPort inPort = switchPortList.get(indx - 1).getPortId();
-			mb.setExact(MatchField.IN_PORT, inPort);
-			aob.setPort(outPort);
-			aob.setMaxLen(Integer.MAX_VALUE);
-			actions.add(aob.build());
-			
-			if (FLOWMOD_DEFAULT_SET_SEND_FLOW_REM_FLAG || requestFlowRemovedNotification) {
-				Set<OFFlowModFlags> flags = new HashSet<>();
-				flags.add(OFFlowModFlags.SEND_FLOW_REM);
-				fmb.setFlags(flags);
-			}
-			
-			fmb.setMatch(mb.build())
-			.setIdleTimeout(FLOWMOD_DEFAULT_IDLE_TIMEOUT)
-			.setHardTimeout(FLOWMOD_DEFAULT_HARD_TIMEOUT)
-			.setBufferId(OFBufferId.NO_BUFFER)
-			.setCookie(cookie)
-			.setOutPort(outPort)
-			.setPriority(FLOWMOD_DEFAULT_PRIORITY);
-			
-			FlowModUtils.setActions(fmb, actions, sw);
-			
-			try {
-				if (log.isTraceEnabled()) {
-					log.trace("Pushing Route flowmod routeIndx={} " +
-							"sw={} inPort={} outPort={}",
-							new Object[] {indx,
-							sw,
-							fmb.getMatch().get(MatchField.IN_PORT),
-							outPort });
-				}
-				
-				if (OFDPAUtils.isOFDPASwitch(sw)) {
-					OFDPAUtils.addLearningSwitchFlow(sw, cookie, 
-							FLOWMOD_DEFAULT_PRIORITY, 
-							FLOWMOD_DEFAULT_HARD_TIMEOUT,
-							FLOWMOD_DEFAULT_IDLE_TIMEOUT,
-							fmb.getMatch(), 
-							null, // TODO how to determine output VLAN for lookup of L2 interface group
-							outPort);
-				} else {
-					messageDamper.write(sw, fmb.build());
-				}
+            return this.processPacketInMessage(sw, (OFPacketIn) msg, decision, cntx);
+        default:
+            break;
+        }
+        return Command.CONTINUE;
+    }
 
-				/* Push the packet out the first hop switch */
-				if (sw.getId().equals(pinSwitch) &&
-						!fmb.getCommand().equals(OFFlowModCommand.DELETE) &&
-						!fmb.getCommand().equals(OFFlowModCommand.DELETE_STRICT)) {
-					/* Use the buffered packet at the switch, if there's one stored */
-					pushPacket(sw, pi, outPort, true, cntx);
-					packetOutSent = true;
-				}
-			} catch (IOException e) {
-				log.error("Failure writing flow mod", e);
-			}
-		}
+    /**
+     * Push routes from back to front
+     * @param route Route to push
+     * @param match OpenFlow fields to match on
+     * @param srcSwPort Source switch port for the first hop
+     * @param dstSwPort Destination switch port for final hop
+     * @param cookie The cookie to set in each flow_mod
+     * @param cntx The floodlight context
+     * @param requestFlowRemovedNotification if set to true then the switch would
+     *        send a flow mod removal notification when the flow mod expires
+     * @param flowModCommand flow mod. command to use, e.g. OFFlowMod.OFPFC_ADD,
+     *        OFFlowMod.OFPFC_MODIFY etc.
+     * @return true if a packet out was sent on the first-hop switch of this route
+     */
+    public boolean pushRoute(Route route, Match match, OFPacketIn pi,
+            DatapathId pinSwitch, U64 cookie, FloodlightContext cntx,
+            boolean requestFlowRemovedNotification, OFFlowModCommand flowModCommand) {
 
-		return packetOutSent;
-	}
-	
-	/**
-	 * Pushes a packet-out to a switch. The assumption here is that
-	 * the packet-in was also generated from the same switch. Thus, if the input
-	 * port of the packet-in and the outport are the same, the function will not
-	 * push the packet-out.
-	 * @param sw switch that generated the packet-in, and from which packet-out is sent
-	 * @param pi packet-in
-	 * @param outport output port
-	 * @param useBufferedPacket use the packet buffered at the switch, if possible
-	 * @param cntx context of the packet
-	 */
-	protected void pushPacket(IOFSwitch sw, OFPacketIn pi, OFPort outport, boolean useBufferedPacket, FloodlightContext cntx) {
-		if (pi == null) {
-			return;
-		}
+        boolean packetOutSent = false;
 
-		// The assumption here is (sw) is the switch that generated the
-		// packet-in. If the input port is the same as output port, then
-		// the packet-out should be ignored.
-		if ((pi.getVersion().compareTo(OFVersion.OF_12) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT)).equals(outport)) {
-			if (log.isDebugEnabled()) {
-				log.debug("Attempting to do packet-out to the same " +
-						"interface as packet-in. Dropping packet. " +
-						" SrcSwitch={}, pi={}",
-						new Object[]{sw, pi});
-				return;
-			}
-		}
+        List<NodePortTuple> switchPortList = route.getPath();
 
-		if (log.isTraceEnabled()) {
-			log.trace("PacketOut srcSwitch={} pi={}",
-					new Object[] {sw, pi});
-		}
+        for (int indx = switchPortList.size() - 1; indx > 0; indx -= 2) {
+            // indx and indx-1 will always have the same switch DPID.
+            DatapathId switchDPID = switchPortList.get(indx).getNodeId();
+            IOFSwitch sw = switchService.getSwitch(switchDPID);
 
-		OFPacketOut.Builder pob = sw.getOFFactory().buildPacketOut();
-		List<OFAction> actions = new ArrayList<OFAction>();
-		actions.add(sw.getOFFactory().actions().output(outport, Integer.MAX_VALUE));
-		pob.setActions(actions);
+            if (sw == null) {
+                if (log.isWarnEnabled()) {
+                    log.warn("Unable to push route, switch at DPID {} " + "not available", switchDPID);
+                }
+                return packetOutSent;
+            }
 
-		/* Use packet in buffer if there is a buffer ID set */
-		if (useBufferedPacket) {
-			pob.setBufferId(pi.getBufferId()); /* will be NO_BUFFER if there isn't one */
-		} else {
-			pob.setBufferId(OFBufferId.NO_BUFFER);
-		}
+            // need to build flow mod based on what type it is. Cannot set command later
+            OFFlowMod.Builder fmb;
+            switch (flowModCommand) {
+            case ADD:
+                fmb = sw.getOFFactory().buildFlowAdd();
+                break;
+            case DELETE:
+                fmb = sw.getOFFactory().buildFlowDelete();
+                break;
+            case DELETE_STRICT:
+                fmb = sw.getOFFactory().buildFlowDeleteStrict();
+                break;
+            case MODIFY:
+                fmb = sw.getOFFactory().buildFlowModify();
+                break;
+            default:
+                log.error("Could not decode OFFlowModCommand. Using MODIFY_STRICT. (Should another be used as the default?)");        
+            case MODIFY_STRICT:
+                fmb = sw.getOFFactory().buildFlowModifyStrict();
+                break;			
+            }
 
-		if (pob.getBufferId().equals(OFBufferId.NO_BUFFER)) {
-			byte[] packetData = pi.getData();
-			pob.setData(packetData);
-		}
+            OFActionOutput.Builder aob = sw.getOFFactory().actions().buildOutput();
+            List<OFAction> actions = new ArrayList<OFAction>();	
+            Match.Builder mb = MatchUtils.convertToVersion(match, sw.getOFFactory().getVersion());
 
-		pob.setInPort((pi.getVersion().compareTo(OFVersion.OF_12) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT)));
+            // set input and output ports on the switch
+            OFPort outPort = switchPortList.get(indx).getPortId();
+            OFPort inPort = switchPortList.get(indx - 1).getPortId();
+            mb.setExact(MatchField.IN_PORT, inPort);
+            aob.setPort(outPort);
+            aob.setMaxLen(Integer.MAX_VALUE);
+            actions.add(aob.build());
 
-		try {
-			messageDamper.write(sw, pob.build());
-		} catch (IOException e) {
-			log.error("Failure writing packet out", e);
-		}
-	}
+            if (FLOWMOD_DEFAULT_SET_SEND_FLOW_REM_FLAG || requestFlowRemovedNotification) {
+                Set<OFFlowModFlags> flags = new HashSet<>();
+                flags.add(OFFlowModFlags.SEND_FLOW_REM);
+                fmb.setFlags(flags);
+            }
 
-	/**
-	 * Write packetout message to sw with output actions to one or more
-	 * output ports with inPort/outPorts passed in.
-	 * @param packetData
-	 * @param sw
-	 * @param inPort
-	 * @param ports
-	 * @param cntx
-	 */
-	public void packetOutMultiPort(byte[] packetData, IOFSwitch sw, 
-			OFPort inPort, Set<OFPort> outPorts, FloodlightContext cntx) {
-		//setting actions
-		List<OFAction> actions = new ArrayList<OFAction>();
+            fmb.setMatch(mb.build())
+            .setIdleTimeout(FLOWMOD_DEFAULT_IDLE_TIMEOUT)
+            .setHardTimeout(FLOWMOD_DEFAULT_HARD_TIMEOUT)
+            .setBufferId(OFBufferId.NO_BUFFER)
+            .setCookie(cookie)
+            .setOutPort(outPort)
+            .setPriority(FLOWMOD_DEFAULT_PRIORITY);
 
-		Iterator<OFPort> j = outPorts.iterator();
+            FlowModUtils.setActions(fmb, actions, sw);
 
-		while (j.hasNext()) {
-			actions.add(sw.getOFFactory().actions().output(j.next(), 0));
-		}
+            /* Configure for particular switch pipeline */
+            if (sw.getOFFactory().getVersion().compareTo(OFVersion.OF_10) != 0) {
+                fmb.setTableId(FLOWMOD_DEFAULT_TABLE_ID);
+            }
+            
+            if (log.isTraceEnabled()) {
+                log.trace("Pushing Route flowmod routeIndx={} " +
+                        "sw={} inPort={} outPort={}",
+                        new Object[] {indx,
+                                sw,
+                                fmb.getMatch().get(MatchField.IN_PORT),
+                                outPort });
+            }
 
-		OFPacketOut.Builder pob = sw.getOFFactory().buildPacketOut();
-		pob.setActions(actions);
+            if (OFDPAUtils.isOFDPASwitch(sw)) {
+                OFDPAUtils.addLearningSwitchFlow(sw, cookie, 
+                        FLOWMOD_DEFAULT_PRIORITY, 
+                        FLOWMOD_DEFAULT_HARD_TIMEOUT,
+                        FLOWMOD_DEFAULT_IDLE_TIMEOUT,
+                        fmb.getMatch(), 
+                        null, // TODO how to determine output VLAN for lookup of L2 interface group
+                        outPort);
+            } else {
+                messageDamper.write(sw, fmb.build());
+            }
 
-		pob.setBufferId(OFBufferId.NO_BUFFER);
-		pob.setInPort(inPort);
+            /* Push the packet out the first hop switch */
+            if (sw.getId().equals(pinSwitch) &&
+                    !fmb.getCommand().equals(OFFlowModCommand.DELETE) &&
+                    !fmb.getCommand().equals(OFFlowModCommand.DELETE_STRICT)) {
+                /* Use the buffered packet at the switch, if there's one stored */
+                pushPacket(sw, pi, outPort, true, cntx);
+                packetOutSent = true;
+            }
+        }
 
-		pob.setData(packetData);
+        return packetOutSent;
+    }
 
-		try {
-			if (log.isTraceEnabled()) {
-				log.trace("write broadcast packet on switch-id={} " +
-						"interfaces={} packet-out={}",
-						new Object[] {sw.getId(), outPorts, pob.build()});
-			}
-			messageDamper.write(sw, pob.build());
+    /**
+     * Pushes a packet-out to a switch. The assumption here is that
+     * the packet-in was also generated from the same switch. Thus, if the input
+     * port of the packet-in and the outport are the same, the function will not
+     * push the packet-out.
+     * @param sw switch that generated the packet-in, and from which packet-out is sent
+     * @param pi packet-in
+     * @param outport output port
+     * @param useBufferedPacket use the packet buffered at the switch, if possible
+     * @param cntx context of the packet
+     */
+    protected void pushPacket(IOFSwitch sw, OFPacketIn pi, OFPort outport, boolean useBufferedPacket, FloodlightContext cntx) {
+        if (pi == null) {
+            return;
+        }
 
-		} catch (IOException e) {
-			log.error("Failure writing packet out", e);
-		}
-	}
+        // The assumption here is (sw) is the switch that generated the
+        // packet-in. If the input port is the same as output port, then
+        // the packet-out should be ignored.
+        if ((pi.getVersion().compareTo(OFVersion.OF_12) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT)).equals(outport)) {
+            if (log.isDebugEnabled()) {
+                log.debug("Attempting to do packet-out to the same " +
+                        "interface as packet-in. Dropping packet. " +
+                        " SrcSwitch={}, pi={}",
+                        new Object[]{sw, pi});
+                return;
+            }
+        }
 
-	/**
-	 * @see packetOutMultiPort
-	 * Accepts a PacketIn instead of raw packet data. Note that the inPort
-	 * and switch can be different than the packet in switch/port
-	 */
-	public void packetOutMultiPort(OFPacketIn pi, IOFSwitch sw,
-			OFPort inPort, Set<OFPort> outPorts, FloodlightContext cntx) {
-		packetOutMultiPort(pi.getData(), sw, inPort, outPorts, cntx);
-	}
+        if (log.isTraceEnabled()) {
+            log.trace("PacketOut srcSwitch={} pi={}",
+                    new Object[] {sw, pi});
+        }
 
-	/**
-	 * @see packetOutMultiPort
-	 * Accepts an IPacket instead of raw packet data. Note that the inPort
-	 * and switch can be different than the packet in switch/port
-	 */
-	public void packetOutMultiPort(IPacket packet, IOFSwitch sw,
-			OFPort inPort, Set<OFPort> outPorts, FloodlightContext cntx) {
-		packetOutMultiPort(packet.serialize(), sw, inPort, outPorts, cntx);
-	}
+        OFPacketOut.Builder pob = sw.getOFFactory().buildPacketOut();
+        List<OFAction> actions = new ArrayList<OFAction>();
+        actions.add(sw.getOFFactory().actions().output(outport, Integer.MAX_VALUE));
+        pob.setActions(actions);
 
-	public static boolean blockHost(IOFSwitchService switchService,
-			SwitchPort sw_tup, MacAddress host_mac, short hardTimeout, U64 cookie) {
+        /* Use packet in buffer if there is a buffer ID set */
+        if (useBufferedPacket) {
+            pob.setBufferId(pi.getBufferId()); /* will be NO_BUFFER if there isn't one */
+        } else {
+            pob.setBufferId(OFBufferId.NO_BUFFER);
+        }
 
-		if (sw_tup == null) {
-			return false;
-		}
+        if (pob.getBufferId().equals(OFBufferId.NO_BUFFER)) {
+            byte[] packetData = pi.getData();
+            pob.setData(packetData);
+        }
 
-		IOFSwitch sw = switchService.getSwitch(sw_tup.getSwitchDPID());
-		if (sw == null) {
-			return false;
-		}
+        pob.setInPort((pi.getVersion().compareTo(OFVersion.OF_12) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT)));
 
-		OFPort inputPort = sw_tup.getPort();
-		log.debug("blockHost sw={} port={} mac={}",
-				new Object[] { sw, sw_tup.getPort(), host_mac.getLong() });
+        messageDamper.write(sw, pob.build());
+    }
 
-		// Create flow-mod based on packet-in and src-switch
-		OFFlowMod.Builder fmb = sw.getOFFactory().buildFlowAdd();
+    /**
+     * Write packetout message to sw with output actions to one or more
+     * output ports with inPort/outPorts passed in.
+     * @param packetData
+     * @param sw
+     * @param inPort
+     * @param ports
+     * @param cntx
+     */
+    public void packetOutMultiPort(byte[] packetData, IOFSwitch sw, 
+            OFPort inPort, Set<OFPort> outPorts, FloodlightContext cntx) {
+        //setting actions
+        List<OFAction> actions = new ArrayList<OFAction>();
 
-		Match.Builder mb = sw.getOFFactory().buildMatch();
-		List<OFAction> actions = new ArrayList<OFAction>(); // Set no action to drop
-		mb.setExact(MatchField.IN_PORT, inputPort);
-		if (host_mac.getLong() != -1L) {
-			mb.setExact(MatchField.ETH_SRC, host_mac);
-		}
+        Iterator<OFPort> j = outPorts.iterator();
 
-		fmb.setCookie(cookie)
-		.setHardTimeout(hardTimeout)
-		.setIdleTimeout(FLOWMOD_DEFAULT_IDLE_TIMEOUT)
-		.setPriority(FLOWMOD_DEFAULT_PRIORITY)
-		.setBufferId(OFBufferId.NO_BUFFER)
-		.setMatch(mb.build());
-		
-		FlowModUtils.setActions(fmb, actions, sw);
+        while (j.hasNext()) {
+            actions.add(sw.getOFFactory().actions().output(j.next(), 0));
+        }
 
-		log.debug("write drop flow-mod sw={} match={} flow-mod={}",
-					new Object[] { sw, mb.build(), fmb.build() });
-		// TODO: can't use the message damper since this method is static
-		sw.write(fmb.build());
-		
-		return true;
-	}
+        OFPacketOut.Builder pob = sw.getOFFactory().buildPacketOut();
+        pob.setActions(actions);
 
-	@Override
-	public boolean isCallbackOrderingPrereq(OFType type, String name) {
-		return (type.equals(OFType.PACKET_IN) && (name.equals("topology") || name.equals("devicemanager")));
-	}
+        pob.setBufferId(OFBufferId.NO_BUFFER);
+        pob.setInPort(inPort);
 
-	@Override
-	public boolean isCallbackOrderingPostreq(OFType type, String name) {
-		return false;
-	}
+        pob.setData(packetData);
+
+        if (log.isTraceEnabled()) {
+            log.trace("write broadcast packet on switch-id={} " +
+                    "interfaces={} packet-out={}",
+                    new Object[] {sw.getId(), outPorts, pob.build()});
+        }
+        messageDamper.write(sw, pob.build());
+    }
+
+    /**
+     * @see packetOutMultiPort
+     * Accepts a PacketIn instead of raw packet data. Note that the inPort
+     * and switch can be different than the packet in switch/port
+     */
+    public void packetOutMultiPort(OFPacketIn pi, IOFSwitch sw,
+            OFPort inPort, Set<OFPort> outPorts, FloodlightContext cntx) {
+        packetOutMultiPort(pi.getData(), sw, inPort, outPorts, cntx);
+    }
+
+    /**
+     * @see packetOutMultiPort
+     * Accepts an IPacket instead of raw packet data. Note that the inPort
+     * and switch can be different than the packet in switch/port
+     */
+    public void packetOutMultiPort(IPacket packet, IOFSwitch sw,
+            OFPort inPort, Set<OFPort> outPorts, FloodlightContext cntx) {
+        packetOutMultiPort(packet.serialize(), sw, inPort, outPorts, cntx);
+    }
+
+    public boolean blockHost(IOFSwitchService switchService,
+            SwitchPort sw_tup, MacAddress host_mac, short hardTimeout, U64 cookie) {
+
+        if (sw_tup == null) {
+            return false;
+        }
+
+        IOFSwitch sw = switchService.getSwitch(sw_tup.getNodeId());
+        if (sw == null) {
+            return false;
+        }
+
+        OFPort inputPort = sw_tup.getPortId();
+        if (log.isDebugEnabled()) {
+            log.debug("blockHost sw={} port={} mac={}",
+                    new Object[] { sw, sw_tup.getPortId(), host_mac.getLong() });
+        }
+
+        // Create flow-mod based on packet-in and src-switch
+        OFFlowMod.Builder fmb = sw.getOFFactory().buildFlowAdd();
+
+        Match.Builder mb = sw.getOFFactory().buildMatch();
+        List<OFAction> actions = new ArrayList<OFAction>(); // Set no action to drop
+        mb.setExact(MatchField.IN_PORT, inputPort);
+        if (host_mac.getLong() != -1L) {
+            mb.setExact(MatchField.ETH_SRC, host_mac);
+        }
+
+        fmb.setCookie(cookie)
+        .setHardTimeout(hardTimeout)
+        .setIdleTimeout(FLOWMOD_DEFAULT_IDLE_TIMEOUT)
+        .setPriority(FLOWMOD_DEFAULT_PRIORITY)
+        .setBufferId(OFBufferId.NO_BUFFER)
+        .setMatch(mb.build());
+
+        FlowModUtils.setActions(fmb, actions, sw);
+
+        if (log.isDebugEnabled()) {
+            log.debug("write drop flow-mod sw={} match={} flow-mod={}",
+                    new Object[] { sw, mb.build(), fmb.build() });
+        }
+
+        messageDamper.write(sw, fmb.build());
+
+        return true;
+    }
+
+    @Override
+    public boolean isCallbackOrderingPrereq(OFType type, String name) {
+        return (type.equals(OFType.PACKET_IN) && (name.equals("topology") || name.equals("devicemanager")));
+    }
+
+    @Override
+    public boolean isCallbackOrderingPostreq(OFType type, String name) {
+        return false;
+    }
 }

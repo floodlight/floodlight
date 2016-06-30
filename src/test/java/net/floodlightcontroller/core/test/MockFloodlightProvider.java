@@ -27,7 +27,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentMap;
@@ -36,7 +35,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
-import io.netty.util.Timer;
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.HAListenerTypeMarker;
 import net.floodlightcontroller.core.HARole;
@@ -60,8 +58,6 @@ import net.floodlightcontroller.core.util.ListenerDispatcher;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.OFType;
-import org.projectfloodlight.openflow.types.IPv4Address;
-import org.projectfloodlight.openflow.types.TransportPort;
 
 import net.floodlightcontroller.packet.Ethernet;
 
@@ -77,8 +73,6 @@ public class MockFloodlightProvider implements IFloodlightModule, IFloodlightPro
     protected ConcurrentMap<OFType, ListenerDispatcher<OFType,IOFMessageListener>> listeners;
     protected ListenerDispatcher<HAListenerTypeMarker, IHAListener> haListeners;
     private HARole role;
-    private final Set<IPv4Address> openFlowHostname = Collections.singleton(IPv4Address.of("127.0.0.1"));
-    private final TransportPort openFlowPort = TransportPort.of(6653);
     private final boolean useAsyncUpdates;
     private volatile ExecutorService executorService;
     private volatile Future<?> mostRecentUpdateFuture;
@@ -387,24 +381,9 @@ public class MockFloodlightProvider implements IFloodlightModule, IFloodlightPro
     }
 
     @Override
-    public Set<IPv4Address> getOFAddresses() {
-        return openFlowHostname;
-    }
-
-    @Override
-    public TransportPort getOFPort() {
-        return openFlowPort;
-    }
-
-    @Override
     public void handleMessage(IOFSwitch sw, OFMessage m,
                               FloodlightContext bContext) {
         // do nothing
-    }
-
-    @Override
-    public Timer getTimer() {
-        return null;
     }
 
     @Override
@@ -420,16 +399,6 @@ public class MockFloodlightProvider implements IFloodlightModule, IFloodlightPro
     @Override
     public String getControllerId() {
         return null;
-    }
-
-    @Override
-    public Set<String> getUplinkPortPrefixSet() {
-        return null;
-    }
-
-    @Override
-    public int getWorkerThreads() {
-        return 0;
     }
 
     // paag

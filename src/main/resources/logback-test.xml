@@ -4,8 +4,6 @@
       <pattern>%d{HH:mm:ss.SSS} %level [%logger{20}:%thread] %msg%n</pattern>
     </encoder>
   </appender>
-  <appender name="EV_WARN_ERR" class="net.floodlightcontroller.debugevent.DebugEventAppender">
-  </appender>
   <root level="DEBUG">
     <appender-ref ref="STDOUT" />
     <appender-ref ref="EV_WARN_ERR" />
@@ -29,8 +27,8 @@
   <logger name="net.floodlightcontroller.core.internal.OFSwitchManager" level="INFO"></logger>
   <logger name="net.floodlightcontroller.core.internal.OFSwitchHandshakeHandler" level="INFO"></logger>
   <logger name="net.floodlightcontroller.core.internal.OFChannelHandler" level="INFO"></logger>
-  <logger name="net.floodlightcontroller.staticflowentry.StaticFlowEntries" level="INFO"></logger>
-  <logger name="net.floodlightcontroller.staticflowentry.StaticFlowEntryPusher" level="INFO"></logger>
+  <logger name="net.floodlightcontroller.staticentry.StaticEntries" level="INFO"></logger>
+  <logger name="net.floodlightcontroller.staticentry.StaticEntryPusher" level="INFO"></logger>
   
   <logger name="net.floodlightcontroller.simpleft.FT" level="INFO"></logger>
   
