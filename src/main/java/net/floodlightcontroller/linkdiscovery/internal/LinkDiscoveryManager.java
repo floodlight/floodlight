@@ -97,7 +97,6 @@ import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFBufferId;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.U64;
-import org.projectfloodlight.openflow.util.HexString;
 import org.projectfloodlight.openflow.protocol.OFType;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
@@ -156,7 +155,7 @@ IFloodlightModule, IInfoProvider {
 
 	// LLDP and BDDP fields
 	private static final byte[] LLDP_STANDARD_DST_MAC_STRING =
-			HexString.fromHexString("01:80:c2:00:00:0e");
+			MacAddress.of("01:80:c2:00:00:0e").getBytes();
 	private static final long LINK_LOCAL_MASK = 0xfffffffffff0L;
 	private static final long LINK_LOCAL_VALUE = 0x0180c2000000L;
 	protected static int EVENT_HISTORY_SIZE = 1024; // in seconds
@@ -410,7 +409,7 @@ IFloodlightModule, IInfoProvider {
 		.setData(data);
 		OFMessageUtils.setInPort(pob, OFPort.CONTROLLER);
 
-		log.info("{}", pob.build());
+		log.debug("{}", pob.build());
 		return pob.build();
 	}
 

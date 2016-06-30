@@ -140,6 +140,7 @@ public class AllSwitchStatisticsResource extends SwitchResourceBase {
 			rType = REQUESTTYPE.OFSTATS;
 			break;
 		default:
+		    model.put("error", new StatsReply()); // will generate error message when serializer is invoked
 			return model;
 		}
 
