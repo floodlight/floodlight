@@ -300,7 +300,7 @@ implements IOFSwitchListener, IFloodlightModule, IStaticEntryPusherService, ISto
 		}
 		
 		try {
-			switchName = (String) row.get(Columns.COLUMN_SWITCH);
+			switchName = DatapathId.of((String) row.get(Columns.COLUMN_SWITCH)).toString();
 			entryName = (String) row.get(Columns.COLUMN_NAME);
 
 			String tmp = (String) row.get(Columns.COLUMN_ENTRY_TYPE);
@@ -399,7 +399,7 @@ implements IOFSwitchListener, IFloodlightModule, IStaticEntryPusherService, ISto
 					matchString.append(key + "=" + row.get(key).toString());
 				}
 			}
-		} catch (ClassCastException e) {
+		} catch (Exception e) {
 			if (entryName != null && switchName != null) {
 				log.warn("Skipping entry {} on switch {} with bad data : " + e.getMessage(), entryName, switchName);
 			} else {

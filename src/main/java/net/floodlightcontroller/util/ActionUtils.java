@@ -110,6 +110,7 @@ import org.slf4j.LoggerFactory;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonToken;
+
 import com.fasterxml.jackson.core.JsonGenerator.Feature;
 import com.fasterxml.jackson.core.JsonParser;
 
@@ -184,7 +185,7 @@ public class ActionUtils {
             }
             switch(a.getType()) {
             case OUTPUT:
-                sb.append(STR_OUTPUT).append("=").append(Integer.toString(((OFActionOutput)a).getPort().getPortNumber()));
+                sb.append(STR_OUTPUT).append("=").append(ActionUtils.portToString(((OFActionOutput)a).getPort()));
                 break;
             case ENQUEUE:
                 long queue = ((OFActionEnqueue)a).getQueueId();
