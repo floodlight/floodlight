@@ -293,6 +293,7 @@ IFloodlightModule {
 		floodlightProvider = context.getServiceImpl(IFloodlightProviderService.class);
 		storageSource = context.getServiceImpl(IStorageSourceService.class);
 		restApi = context.getServiceImpl(IRestApiService.class);
+		routingService = context.getServiceImpl(IRoutingService.class);
 		rules = new ArrayList<FirewallRule>();
 		logger = LoggerFactory.getLogger(Firewall.class);
 

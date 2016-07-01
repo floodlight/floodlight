@@ -59,7 +59,6 @@ import net.floodlightcontroller.packet.BSN;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.LLDP;
 import net.floodlightcontroller.restserver.IRestApiService;
-import net.floodlightcontroller.routing.IRoutingDecisionChange;
 import net.floodlightcontroller.routing.IRoutingDecisionChangedListener;
 import net.floodlightcontroller.routing.IRoutingService;
 import net.floodlightcontroller.routing.Link;
@@ -860,6 +859,7 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 		topologyAware = new ArrayList<ITopologyListener>();
 		ldUpdates = new LinkedBlockingQueue<LDUpdate>();
 		haListener = new HAListenerDelegate();
+		this.decisionChangedListeners = new ArrayList<IRoutingDecisionChangedListener>();
 		registerTopologyDebugCounters();
 		registerTopologyDebugEvents();
 	}
@@ -1539,12 +1539,11 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 	}
 	
 	public void addRoutingDecisionChangedListener(IRoutingDecisionChangedListener listener) {
-		this.decisionChangedListeners.add(listener);
+		decisionChangedListeners.add(listener);
 	}
 		
 	public void removeRoutingDecisionChangedListener(IRoutingDecisionChangedListener listener) {
-		/**TODO remove the listener now */
-		this.decisionChangedListeners.remove(listener);
+		decisionChangedListeners.remove(listener);
 	}
 
 	public void handleRoutingDecisionChange(Iterable<Masked<U64>> event) {

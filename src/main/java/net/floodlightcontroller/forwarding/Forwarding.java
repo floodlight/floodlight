@@ -51,7 +51,6 @@ import net.floodlightcontroller.packet.TCP;
 import net.floodlightcontroller.packet.UDP;
 import net.floodlightcontroller.routing.ForwardingBase;
 import net.floodlightcontroller.routing.IRoutingDecision;
-import net.floodlightcontroller.routing.IRoutingDecisionChange;
 import net.floodlightcontroller.routing.IRoutingDecisionChangedListener;
 import net.floodlightcontroller.routing.IRoutingService;
 import net.floodlightcontroller.routing.Route;
@@ -162,9 +161,11 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 		return AppCookie.makeCookie(FORWARDING_APP_ID, user_fields);
 	}
 
-	/** */
-	public void routingDecisionChanged(IRoutingDecisionChange event) {
-		//FIXME
+	/** Called when the handleDecisionChange is triggered by an event (routing decision was changed in firewall).
+	 *  
+	 *  @param eventDescriptors Collection of descriptors that should be deleted from the switch.*/
+	public void routingDecisionChanged(Iterable<Masked<U64>> eventDescriptors) {
+		deleteFlowsByDescriptor(eventDescriptors);
 	}
 	
 	/**
