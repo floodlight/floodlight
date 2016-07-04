@@ -233,7 +233,7 @@ public class TopologyInstance {
 	 */
     public Set<OFPort> swBroadcastPorts(DatapathId sw) {
     	if (!broadcastPortMap.containsKey(sw) || broadcastPortMap.get(sw) == null) {
-    		log.warn("Could not locate broadcast ports for switch {}", sw);
+    		log.debug("Could not locate broadcast ports for switch {}", sw);
     		return Collections.emptySet();
     	} else {
     		if (log.isDebugEnabled()) {
