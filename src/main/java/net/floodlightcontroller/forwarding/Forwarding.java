@@ -150,7 +150,9 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         FlowModUtils.setActions(fmb, actions, sw);
 
         /* Configure for particular switch pipeline */
-        fmb.setTableId(FLOWMOD_DEFAULT_TABLE_ID);
+        if (sw.getOFFactory().getVersion().compareTo(OFVersion.OF_10) != 0) {
+            fmb.setTableId(FLOWMOD_DEFAULT_TABLE_ID);
+        }
 
         if (log.isDebugEnabled()) {
             log.debug("write drop flow-mod sw={} match={} flow-mod={}",
@@ -478,9 +480,9 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         tmp = configParameters.get("table-id");
         if (tmp != null) {
             FLOWMOD_DEFAULT_TABLE_ID = TableId.of(ParseUtils.parseHexOrDecInt(tmp));
-            log.info("Default idle timeout set to {}.", FLOWMOD_DEFAULT_IDLE_TIMEOUT);
+            log.info("Default table ID set to {}.", FLOWMOD_DEFAULT_TABLE_ID);
         } else {
-            log.info("Default idle timeout not configured. Using {}.", FLOWMOD_DEFAULT_IDLE_TIMEOUT);
+            log.info("Default table ID not configured. Using {}.", FLOWMOD_DEFAULT_TABLE_ID);
         }
         tmp = configParameters.get("priority");
         if (tmp != null) {
