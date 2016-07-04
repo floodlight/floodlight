@@ -150,7 +150,9 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         FlowModUtils.setActions(fmb, actions, sw);
 
         /* Configure for particular switch pipeline */
-        fmb.setTableId(FLOWMOD_DEFAULT_TABLE_ID);
+        if (sw.getOFFactory().getVersion().compareTo(OFVersion.OF_10) != 0) {
+            fmb.setTableId(FLOWMOD_DEFAULT_TABLE_ID);
+        }
 
         if (log.isDebugEnabled()) {
             log.debug("write drop flow-mod sw={} match={} flow-mod={}",
