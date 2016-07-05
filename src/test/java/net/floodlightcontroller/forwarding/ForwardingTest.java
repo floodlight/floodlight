@@ -969,5 +969,53 @@ public class ForwardingTest extends FloodlightTestCase {
 						.build());
 		
 		assertTrue(OFMessageUtils.equalsIgnoreXid((OFMessage)wc1.getValue().toArray()[0], (OFMessage)msgs_test.toArray()[0]));
+		assertTrue(OFMessageUtils.equalsIgnoreXid((OFMessage)wc2.getValue().toArray()[0], (OFMessage)msgs_test.toArray()[0]));
+	}
+	
+	@Test
+	public void testForwardDeleteFlowsByDescriptorMultiple() throws Exception {
+		// Probably a tomorrow thing but there is a crash when it gets to "getActiveSwitch" in MockSwitchManager
+		Capture<Set<OFMessage>> wc1 = EasyMock.newCapture(CaptureType.ALL);
+		Capture<Set<OFMessage>> wc2 = EasyMock.newCapture(CaptureType.ALL);
+		
+		List<Masked<U64>> descriptors = new ArrayList<Masked<U64>>();
+		descriptors.add(Masked.of(U64.of(0x00000000FFffFFffL),U64.of(0x00200000FFffFFffL))); // Mask = 0xffFFffFFL which is forwarding.DECISION_MASK/AppCookie.USER_MASK
+		descriptors.add(Masked.of(U64.of(0x00000000FFffFFffL),U64.of(0x0020000000000000L)));
+		
+		MockSwitchManager switchService = getMockSwitchService();
+		expect(sw1.getStatus()).andReturn(IOFSwitch.SwitchStatus.MASTER).anyTimes();
+		expect(sw2.getStatus()).andReturn(IOFSwitch.SwitchStatus.MASTER).anyTimes();
+		
+		expect(sw1.write(capture(wc1))).andReturn(null).once();//.andReturn(true).once();
+		expect(sw2.write(capture(wc2))).andReturn(null).once();//.andReturn(true).once();
+		
+		replay(sw1, sw2, routingEngine);
+		forwarding.deleteFlowsByDescriptor(descriptors);
+		verify(sw1, sw2, routingEngine);
+		
+		assertTrue(wc1.hasCaptured());
+		assertTrue(wc2.hasCaptured());
+		
+		// Cookies
+		Masked<U64> masked_cookie = Masked.of(	AppCookie.makeCookie(forwarding.FORWARDING_APP_ID, (int)4294967295L),
+												AppCookie.getAppFieldMask().or(U64.of(0xffffffffL)));
+		Masked<U64> masked_cookie2 = Masked.of(	AppCookie.makeCookie(forwarding.FORWARDING_APP_ID, 0),
+												AppCookie.getAppFieldMask().or(U64.of(0x0L)));
+		// Add cookies to a msg set
+		Set<OFMessage> msgs_test = new HashSet<OFMessage>();
+		msgs_test.add( 	factory.buildFlowDelete()
+						.setCookie(masked_cookie.getValue())
+						.setCookieMask(masked_cookie.getMask())
+						.build());
+		msgs_test.add( 	factory.buildFlowDelete()
+						.setCookie(masked_cookie2.getValue())
+						.setCookieMask(masked_cookie2.getMask())
+						.build());
+		// I would like to do a .containsIgnoreXid because the packets to delete should not need to be in a particular order
+		// as long as all packets are sent to the switch, but I do not (at this time) feel like making that function
+		assertTrue(OFMessageUtils.equalsIgnoreXid((OFMessage)wc1.getValue().toArray()[1], (OFMessage)msgs_test.toArray()[0]));
+		assertTrue(OFMessageUtils.equalsIgnoreXid((OFMessage)wc2.getValue().toArray()[0], (OFMessage)msgs_test.toArray()[0]));
+		assertTrue(OFMessageUtils.equalsIgnoreXid((OFMessage)wc1.getValue().toArray()[0], (OFMessage)msgs_test.toArray()[1]));
+		assertTrue(OFMessageUtils.equalsIgnoreXid((OFMessage)wc2.getValue().toArray()[1], (OFMessage)msgs_test.toArray()[1]));
 	}
 }
