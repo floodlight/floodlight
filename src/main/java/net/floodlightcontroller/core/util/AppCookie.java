@@ -77,6 +77,13 @@ public class AppCookie {
     }
 
     /**
+     * Returns a mask suitable for matching the User field within a cookie.
+     */
+    static public U64 getUserFieldMask() {
+        return U64.of(USER_MASK);
+    }
+    
+    /**
      * Encapsulate an application ID and a user block of stuff into a cookie
      *
      * @param application An ID to identify the application

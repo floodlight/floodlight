@@ -59,6 +59,7 @@ import net.floodlightcontroller.packet.BSN;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.LLDP;
 import net.floodlightcontroller.restserver.IRestApiService;
+import net.floodlightcontroller.routing.IRoutingDecisionChangedListener;
 import net.floodlightcontroller.routing.IRoutingService;
 import net.floodlightcontroller.routing.Link;
 import net.floodlightcontroller.routing.Route;
@@ -73,6 +74,7 @@ import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.Masked;
 import org.projectfloodlight.openflow.types.OFBufferId;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.U64;
@@ -176,6 +178,9 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 	 * Topology Event Updater
 	 */
 	protected IEventCategory<TopologyEvent> eventCategory;
+	
+	/** Array list that contains all of the decisionChangedListeners */
+	protected ArrayList<IRoutingDecisionChangedListener> decisionChangedListeners;
 
 	/**
 	 * Topology Information exposed for a Topology related event - used inside
@@ -854,6 +859,7 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 		topologyAware = new ArrayList<ITopologyListener>();
 		ldUpdates = new LinkedBlockingQueue<LDUpdate>();
 		haListener = new HAListenerDelegate();
+		this.decisionChangedListeners = new ArrayList<IRoutingDecisionChangedListener>();
 		registerTopologyDebugCounters();
 		registerTopologyDebugEvents();
 	}
@@ -1531,4 +1537,19 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 
 		return ports;
 	}
+	
+	public void addRoutingDecisionChangedListener(IRoutingDecisionChangedListener listener) {
+		decisionChangedListeners.add(listener);
+	}
+		
+	public void removeRoutingDecisionChangedListener(IRoutingDecisionChangedListener listener) {
+		decisionChangedListeners.remove(listener);
+	}
+
+	public void handleRoutingDecisionChange(Iterable<Masked<U64>> event) {
+		for(IRoutingDecisionChangedListener listener : decisionChangedListeners) {
+			listener.routingDecisionChanged(event);
+		}
+	}
+
 }
