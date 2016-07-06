@@ -4,11 +4,11 @@
       <pattern>%date{yyyy-MM-dd HH:mm:ss.S} %-5level [%logger{15}] %msg%n</pattern>
     </encoder>
   </appender>
-  <root level="DEBUG">
+  <root level="INFO">
     <appender-ref ref="STDOUT" />
   </root>
   <logger name="io" level="INFO"></logger> <!-- Netty logging -->
-  <logger name="LogService" level="DEBUG"/> <!-- Restlet access logging -->
+  <logger name="LogService" level="INFO"/> <!-- Restlet access logging -->
   <logger name="net.floodlightcontroller" level="INFO"/>
   <logger name="org.sdnplatform" level="INFO"/>
 </configuration>

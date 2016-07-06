@@ -9,7 +9,6 @@ import net.floodlightcontroller.core.IOFSwitchDriver;
 import net.floodlightcontroller.core.IOFSwitchListener;
 import net.floodlightcontroller.core.LogicalOFMessageCategory;
 import net.floodlightcontroller.core.module.IFloodlightService;
-import net.floodlightcontroller.core.rest.SwitchRepresentation;
 
 import org.projectfloodlight.openflow.types.DatapathId;
 
@@ -84,19 +83,6 @@ public interface IOFSwitchService extends IFloodlightService {
      * @param plugin the app handshake plugin to be used during switch handshaking.
      */
     void registerHandshakePlugin(IAppHandshakePluginFactory plugin);
-
-    /**
-     * Get the REST representations of the active switches.
-     * @return Representation wrappers of the active switches.
-     */
-    List<SwitchRepresentation> getSwitchRepresentations();
-
-    /**
-     * Get the REST representation of a switch.
-     * @param dpid the dpid of the desired switch representation.
-     * @return The switch representation.
-     */
-    SwitchRepresentation getSwitchRepresentation(DatapathId dpid);
 
     /**
      * Returns a snapshot of the set DPIDs for all known switches.

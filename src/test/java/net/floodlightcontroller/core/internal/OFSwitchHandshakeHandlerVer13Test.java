@@ -106,7 +106,7 @@ public class OFSwitchHandshakeHandlerVer13Test extends OFSwitchHandlerTestBase {
         sw.setPortDescStats(anyObject(OFPortDescStatsReply.class));
         expectLastCall().once();
        
-        expect(sw.getOFFactory()).andReturn(factory).once();
+        expect(sw.getOFFactory()).andReturn(factory).anyTimes();
         replay(sw);
 
         reset(switchManager);

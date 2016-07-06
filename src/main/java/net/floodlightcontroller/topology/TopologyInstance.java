@@ -16,32 +16,22 @@
 
 package net.floodlightcontroller.topology;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.PriorityQueue;
-import java.util.Set;
-
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
 import net.floodlightcontroller.core.types.NodePortTuple;
 import net.floodlightcontroller.routing.BroadcastTree;
 import net.floodlightcontroller.routing.Link;
 import net.floodlightcontroller.routing.Route;
 import net.floodlightcontroller.routing.RouteId;
 import net.floodlightcontroller.util.ClusterDFS;
-
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.U64;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.cache.CacheBuilder;
-import com.google.common.cache.CacheLoader;
-import com.google.common.cache.LoadingCache;
+import java.util.*;
 
 /**
  * A representation of a network topology.  Used internally by
@@ -93,9 +83,12 @@ public class TopologyInstance {
     protected Map<NodePortTuple, Set<Link>> allLinks;
 	//Set of all ports organized by DatapathId. Note that switchPorts map contains only ports with links.
 	protected Map<DatapathId, Set<OFPort>> allPorts;
+    //Set of all the inter-island or "external" links. Also known as portBroadcastDomainLinks in TopologyManager.
+    protected Map<NodePortTuple, Set<Link>> externalLinks;
 	// Maps broadcast ports to DatapathId
     protected Map<DatapathId, Set<OFPort>> broadcastPortMap;
-    
+
+    protected Set<Archipelago> archipelagos;
 
     protected class PathCacheLoader extends CacheLoader<RouteId, Route> {
         TopologyInstance ti;
@@ -119,8 +112,9 @@ public class TopologyInstance {
                             Map<NodePortTuple, Set<Link>> switchPortLinks,
                             Set<NodePortTuple> broadcastDomainPorts,
                             Set<NodePortTuple> tunnelPorts, 
-                            Map<NodePortTuple, Set<Link>> allLinks, 
-                            Map<DatapathId, Set<OFPort>> allPorts) {
+                            Map<NodePortTuple, Set<Link>> allLinks,
+                            Map<DatapathId, Set<OFPort>> allPorts,
+                            Map<NodePortTuple, Set<Link>> externalLinks) {
 	
         this.switches = new HashSet<DatapathId>(switchPorts.keySet());
         this.switchPorts = new HashMap<DatapathId, Set<OFPort>>();
@@ -143,6 +137,13 @@ public class TopologyInstance {
         for (NodePortTuple npt : allLinks.keySet()) {
             this.allLinks.put(npt, new HashSet<Link>(allLinks.get(npt)));
         }
+
+        this.externalLinks = new HashMap<NodePortTuple, Set<Link>>();
+        for (NodePortTuple npt : externalLinks.keySet()) {
+            this.externalLinks.put(npt, new HashSet<Link>(externalLinks.get(npt)));
+        }
+
+        this.archipelagos = new HashSet<Archipelago>();
         
         this.broadcastDomainPorts = new HashSet<NodePortTuple>(broadcastDomainPorts);
         this.tunnelPorts = new HashSet<NodePortTuple>(tunnelPorts);
@@ -194,6 +195,11 @@ public class TopologyInstance {
 		// The trees are rooted at the destination.
         // Cost for tunnel links and direct links are the same.
 		calculateAllShortestPaths();
+
+        // Compute the archipelagos (def: cluster of islands). An archipelago will
+        // simply be a group of connected islands. Each archipelago will have its own
+        // finiteBroadcastTree which will be randomly chosen.
+        calculateArchipelagos();
 		
 		// Step 5. Compute broadcast tree for the whole topology (needed to avoid loops).
         // Cost for tunnel links are high to discourage use of
@@ -225,20 +231,31 @@ public class TopologyInstance {
 	/*
 	 * Returns broadcast ports for the given DatapathId
 	 */
-    public Set<OFPort> swBroadcastPorts(DatapathId sw){
-    	return this.broadcastPortMap.get(sw);
-
+    public Set<OFPort> swBroadcastPorts(DatapathId sw) {
+    	if (!broadcastPortMap.containsKey(sw) || broadcastPortMap.get(sw) == null) {
+    		log.debug("Could not locate broadcast ports for switch {}", sw);
+    		return Collections.emptySet();
+    	} else {
+    		if (log.isDebugEnabled()) {
+    			log.debug("Found broadcast ports {} for switch {}", broadcastPortMap.get(sw), sw);
+    		}
+    		return broadcastPortMap.get(sw);
+    	}
     }
 
     public void printTopology() {
         log.debug("-----------------Topology-----------------------");
         log.debug("All Links: {}", allLinks);
-		log.debug("Broadcast Tree: {}", finiteBroadcastTree);
-        log.debug("Broadcast Domain Ports: {}", broadcastDomainPorts);
+		log.debug("Cluser Broadcast Trees: {}", clusterBroadcastTrees);
+        log.debug("Cluster Ports: {}", clusterPorts);
         log.debug("Tunnel Ports: {}", tunnelPorts);
         log.debug("Clusters: {}", clusters);
         log.debug("Destination Rooted Full Trees: {}", destinationRootedFullTrees);
-        log.debug("Broadcast Node Ports: {}", broadcastNodePorts);
+        log.debug("Cluser Broadcast Node Ports: {}", clusterBroadcastNodePorts);
+        log.debug("Broadcast Ports Per Node (!!): {}", broadcastPortMap);
+        log.debug("Broadcast Domain Ports: {}", broadcastDomainPorts);
+        log.debug("Broadcast Node Ports: {}", broadcastDomainPorts);
+        log.debug("Archipelagos: {}", archipelagos);
         log.debug("-----------------------------------------------");  
     }
 
@@ -584,6 +601,75 @@ public class TopologyInstance {
         BroadcastTree ret = new BroadcastTree(nexthoplinks, cost);
         return ret;
     }
+
+    private void calculateArchipelagos() {
+        // Iterate through each external link and create/merge archipelagos based on the
+        // islands that each link is connected to
+        Cluster srcCluster = null;
+        Cluster dstCluster = null;
+        Archipelago srcArchipelago = null;
+        Archipelago dstArchipelago = null;
+        Set<Link> links = new HashSet<Link>();
+
+        for (Set<Link> linkset : externalLinks.values()) {
+            links.addAll(linkset);
+        }
+        
+        /* Base case of 1:1 mapping b/t clusters and archipelagos */
+        if (links.isEmpty()) {
+        	if (!clusters.isEmpty()) {
+        		clusters.forEach(c -> archipelagos.add(new Archipelago().add(c)));
+        	}
+        } else { /* Only for two or more adjacent clusters that form archipelagos */
+            for (Link l : links) {
+                for (Cluster c : clusters) {
+                    if (c.getNodes().contains(l.getSrc())) srcCluster = c;
+                    if (c.getNodes().contains(l.getDst())) dstCluster = c;
+                }
+                for (Archipelago a : archipelagos) {
+                    // Is source cluster a part of an existing archipelago?
+                    if (a.isMember(srcCluster)) srcArchipelago = a;
+                    // Is destination cluster a part of an existing archipelago?
+                    if (a.isMember(dstCluster)) dstArchipelago = a;
+                }
+
+                // Are they both found in an archipelago? If so, then merge the two.
+                if (srcArchipelago != null && dstArchipelago != null && !srcArchipelago.equals(dstArchipelago)) {
+                    srcArchipelago.merge(dstArchipelago);
+                    archipelagos.remove(dstArchipelago);
+                }
+
+                // If neither were found in an existing, then form a new archipelago.
+                else if (srcArchipelago == null && dstArchipelago == null) {
+                    archipelagos.add(new Archipelago().add(srcCluster).add(dstCluster));
+                }
+
+                // If only one is found in an existing, then add the one not found to the existing.
+                else if (srcArchipelago != null && dstArchipelago == null) {
+                    srcArchipelago.add(dstCluster);
+                }
+
+                else if (srcArchipelago == null && dstArchipelago != null) {
+                    dstArchipelago.add(srcCluster);
+                }
+
+                srcCluster = null;
+                dstCluster = null;
+                srcArchipelago = null;
+                dstArchipelago = null;
+            }
+        }
+        
+        // Choose a broadcast tree for each archipelago
+        for (Archipelago a : archipelagos) {
+            for (DatapathId id : destinationRootedFullTrees.keySet()) {
+                if (a.isMember(id)) {
+                    a.setBroadcastTree(destinationRootedFullTrees.get(id));
+                    break;
+                }
+            }
+        }
+    }
     
 	/*
 	 * Dijkstra that calculates destination rooted trees over the entire topology.
@@ -695,9 +781,9 @@ public class TopologyInstance {
         }
         
 		//finiteBroadcastTree is randomly chosen in this implementation
-        if (this.destinationRootedFullTrees.size() > 0) {
-			this.finiteBroadcastTree = destinationRootedFullTrees.values().iterator().next();
-        }         	
+//        if (this.destinationRootedFullTrees.size() > 0) {
+//			this.finiteBroadcastTree = destinationRootedFullTrees.values().iterator().next();
+//        }
     }
 
     protected void calculateShortestPathTreeInClusters() {
@@ -724,7 +810,7 @@ public class TopologyInstance {
     }
 
     protected void calculateBroadcastTreeInClusters() {
-        for(Cluster c: clusters) {
+        for (Cluster c : clusters) {
             // c.id is the smallest node that's in the cluster
             BroadcastTree tree = destinationRootedTrees.get(c.id);
             clusterBroadcastTrees.put(c.id, tree);
@@ -734,21 +820,23 @@ public class TopologyInstance {
 	protected Set<NodePortTuple> getAllBroadcastNodePorts() {
 		return this.broadcastNodePorts;
 	}
-	
+
     protected void calculateAllBroadcastNodePorts() {
-		if (this.destinationRootedFullTrees.size() > 0) {
-			this.finiteBroadcastTree = destinationRootedFullTrees.values().iterator().next();
-			Map<DatapathId, Link> links = finiteBroadcastTree.getLinks();
-			if (links == null) return;
-			for (DatapathId nodeId : links.keySet()) {
-				Link l = links.get(nodeId);
-				if (l == null) continue;
-				NodePortTuple npt1 = new NodePortTuple(l.getSrc(), l.getSrcPort());
-				NodePortTuple npt2 = new NodePortTuple(l.getDst(), l.getDstPort());
-				this.broadcastNodePorts.add(npt1);
-				this.broadcastNodePorts.add(npt2);
-			}    
-		}		
+        if (this.destinationRootedFullTrees.size() > 0) {
+            //this.finiteBroadcastTree = destinationRootedFullTrees.values().iterator().next();
+            for (Archipelago a : archipelagos) {
+                Map<DatapathId, Link> links = a.getBroadcastTree().getLinks();
+                if (links == null) return;
+                for (DatapathId nodeId : links.keySet()) {
+                    Link l = links.get(nodeId);
+                    if (l == null) continue;
+                    NodePortTuple npt1 = new NodePortTuple(l.getSrc(), l.getSrcPort());
+                    NodePortTuple npt2 = new NodePortTuple(l.getDst(), l.getDstPort());
+                    this.broadcastNodePorts.add(npt1);
+                    this.broadcastNodePorts.add(npt2);
+                }
+            }
+        }
     }
 
     protected void calculateBroadcastPortMap(){
@@ -905,7 +993,7 @@ public class TopologyInstance {
         try {
             result = pathcache.get(id);
         } catch (Exception e) {
-            log.error("{}", e);
+            log.warn("Could not find route from {} to {}. If the path exists, wait for the topology to settle, and it will be detected", srcId, dstId);
         }
 
         if (log.isTraceEnabled()) {

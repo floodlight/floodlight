@@ -37,7 +37,6 @@ import net.floodlightcontroller.core.util.SingletonTask;
 import net.floodlightcontroller.debugcounter.DebugCounterResource;
 import net.floodlightcontroller.debugcounter.IDebugCounter;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
-import net.floodlightcontroller.flowcache.FlowReconcileQuery.FlowReconcileQueryDebugEvent;
 import net.floodlightcontroller.flowcache.IFlowReconcileListener;
 import net.floodlightcontroller.flowcache.OFMatchReconcile;
 import net.floodlightcontroller.flowcache.PriorityPendingQueue.EventPriority;
@@ -312,15 +311,6 @@ public class FlowReconcileManager implements IFloodlightModule, IFlowReconcileSe
 				retCmd = flowReconciler.reconcileFlows(ofmRcList);
 				if (retCmd == IFlowReconcileListener.Command.STOP) {
 					break;
-				}
-			}
-			for (OFMatchReconcile ofmRc : ofmRcList) {
-				if (ofmRc.origReconcileQueryEvent != null) {
-					ofmRc.origReconcileQueryEvent.evType.getDebugEvent()
-					.newEventWithFlush(new FlowReconcileQueryDebugEvent(
-							ofmRc.origReconcileQueryEvent,
-							"Flow Reconciliation Complete",
-							ofmRc));
 				}
 			}
 			// Flush the flowCache counters.

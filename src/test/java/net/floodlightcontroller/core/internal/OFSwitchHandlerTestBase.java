@@ -56,6 +56,7 @@ import org.projectfloodlight.openflow.protocol.OFDescStatsReply;
 import org.projectfloodlight.openflow.protocol.OFErrorMsg;
 import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFFeaturesReply;
+import org.projectfloodlight.openflow.protocol.OFFlowRemovedReason;
 import org.projectfloodlight.openflow.protocol.OFGetConfigReply;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
@@ -455,7 +456,7 @@ public abstract class OFSwitchHandlerTestBase {
 		// need to build/set this match object
 
 		Match match = factory.buildMatch().build();
-		OFMessage m = factory.buildFlowRemoved().setMatch(match).build();
+		OFMessage m = factory.buildFlowRemoved().setReason(OFFlowRemovedReason.DELETE).setMatch(match).build();
 		resetToStrict(sw);
 		sw.processDriverHandshakeMessage(m);
 		expectLastCall().once();

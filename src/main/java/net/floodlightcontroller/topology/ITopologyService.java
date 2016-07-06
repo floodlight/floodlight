@@ -16,16 +16,15 @@
 
 package net.floodlightcontroller.topology;
 
-import java.util.Date;
-import java.util.Map;
-import java.util.Set;
-
-import org.projectfloodlight.openflow.types.DatapathId;
-import org.projectfloodlight.openflow.types.OFPort;
-
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.core.types.NodePortTuple;
 import net.floodlightcontroller.routing.Link;
+import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.OFPort;
+
+import java.util.Date;
+import java.util.Map;
+import java.util.Set;
 
 public interface ITopologyService extends IFloodlightService  {
 	
@@ -102,7 +101,7 @@ public interface ITopologyService extends IFloodlightService  {
 	 * Determines if the switch+port is blocked. If blocked, it
 	 * should not be allowed to send/receive any traffic.
 	 * @param sw
-	 * @param port
+	 * @param portId
 	 * @return
 	 */
 	public boolean isAllowed(DatapathId sw, OFPort portId);
@@ -111,7 +110,7 @@ public interface ITopologyService extends IFloodlightService  {
 	 * Determines if the switch+port is blocked. If blocked, it
 	 * should not be allowed to send/receive any traffic.
 	 * @param sw
-	 * @param port
+	 * @param portId
 	 * @param tunnelEnabled
 	 * @return
 	 */
@@ -211,7 +210,7 @@ public interface ITopologyService extends IFloodlightService  {
 	 * broadcast, this method provides the topologically equivalent
 	 * incoming broadcast-allowed src port.
 	 * @param src
-	 * @param dst
+	 * @param srcPort
 	 * @return
 	 */
 	public NodePortTuple getAllowedIncomingBroadcastPort(DatapathId src, OFPort srcPort);
@@ -221,7 +220,7 @@ public interface ITopologyService extends IFloodlightService  {
 	 * broadcast, this method provides the topologically equivalent
 	 * incoming broadcast-allowed src port.
 	 * @param src
-	 * @param dst
+	 * @param srcPort
 	 * @param tunnelEnabled
 	 * @return
 	 */

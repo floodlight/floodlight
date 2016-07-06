@@ -52,6 +52,7 @@ import org.projectfloodlight.openflow.protocol.OFFactories;
 import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFFeaturesReply;
 import org.projectfloodlight.openflow.protocol.OFFlowRemoved;
+import org.projectfloodlight.openflow.protocol.OFFlowRemovedReason;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsReply;
 import org.projectfloodlight.openflow.protocol.OFGetConfigReply;
 import org.projectfloodlight.openflow.protocol.OFMessage;
@@ -397,7 +398,7 @@ public class OFChannelHandlerVer10Test {
 
 
         // Send packet in. expect dispatch
-        OFFlowRemoved flowRemoved = factory.buildFlowRemoved()
+        OFFlowRemoved flowRemoved = factory.buildFlowRemoved().setReason(OFFlowRemovedReason.DELETE)
                 .build();
 
         resetAndExpectConnectionListener(flowRemoved);
