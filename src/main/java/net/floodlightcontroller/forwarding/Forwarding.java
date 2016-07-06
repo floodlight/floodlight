@@ -177,6 +177,9 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 	 * @return A collection of masked cookies suitable for flow-mod operations
 	 */
 	protected Collection<Masked<U64>> convertRoutingDecisionDescriptors(Iterable<Masked<U64>> maskedDescriptors) {
+		if(maskedDescriptors == null){
+			return null;
+		}
 		List<Masked<U64>> result = new ArrayList<Masked<U64>>();
 
 		for (Masked<U64> maskedDescriptor : maskedDescriptors) {
@@ -643,10 +646,6 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 		}
 	}
 
-	
-	
-	
-	
 	@Override
 	public void switchAdded(DatapathId switchId) {
 	}

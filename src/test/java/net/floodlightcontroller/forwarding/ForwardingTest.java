@@ -57,6 +57,7 @@ import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.packet.IPv6;
 import net.floodlightcontroller.packet.UDP;
 import net.floodlightcontroller.routing.IRoutingDecision.RoutingAction;
+import net.floodlightcontroller.routing.IRoutingDecisionChangedListener;
 import net.floodlightcontroller.routing.IRoutingService;
 import net.floodlightcontroller.routing.IRoutingDecision;
 import net.floodlightcontroller.routing.Route;
@@ -456,6 +457,7 @@ public class ForwardingTest extends FloodlightTestCase {
 		nptList.add(new NodePortTuple(DatapathId.of(2L), OFPort.of(1)));
 		nptList.add(new NodePortTuple(DatapathId.of(2L), OFPort.of(3)));
 		route.setPath(nptList);
+		reset(routingEngine);
 		expect(routingEngine.getRoute(DatapathId.of(1L), OFPort.of(1), DatapathId.of(2L), OFPort.of(3), Forwarding.DEFAULT_FORWARDING_COOKIE)).andReturn(route).atLeastOnce();
 		
 		// Expected Flow-mods
@@ -526,6 +528,7 @@ public class ForwardingTest extends FloodlightTestCase {
 		nptList.add(new NodePortTuple(DatapathId.of(2L), OFPort.of(1)));
 		nptList.add(new NodePortTuple(DatapathId.of(2L), OFPort.of(3)));
 		route.setPath(nptList);
+		reset(routingEngine);
 		expect(routingEngine.getRoute(DatapathId.of(1L), OFPort.of(1), DatapathId.of(2L), OFPort.of(3), Forwarding.DEFAULT_FORWARDING_COOKIE)).andReturn(route).atLeastOnce();
 		
 		// Expected Flow-mods
@@ -592,13 +595,14 @@ public class ForwardingTest extends FloodlightTestCase {
 		Route route = new  Route(DatapathId.of(1L), DatapathId.of(1L));
 		route.getPath().add(new NodePortTuple(DatapathId.of(1L), OFPort.of(1)));
 		route.getPath().add(new NodePortTuple(DatapathId.of(1L), OFPort.of(3)));
-		expect(routingEngine.getRoute(DatapathId.of(1L), OFPort.of(1), DatapathId.of(1L), OFPort.of(3), Forwarding.DEFAULT_FORWARDING_COOKIE)).andReturn(route).atLeastOnce();
 		
 		// Expected Flow-mods
 		Match match = packetIn.getMatch();
 		OFActionOutput action = factory.actions().output(OFPort.of(3), Integer.MAX_VALUE);
 		List<OFAction> actions = new ArrayList<OFAction>();
 		actions.add(action);
+		
+		//routingEngine.addRoutingDecisionChangedListener(anyObject(IRoutingDecisionChangedListener.class));
 
 		OFFlowMod fm1 = factory.buildFlowAdd()
 				.setIdleTimeout((short)5)
@@ -623,6 +627,8 @@ public class ForwardingTest extends FloodlightTestCase {
 		expect(topology.isEdge(DatapathId.of(1L), OFPort.of(3))).andReturn(true).anyTimes();
 
 		// Reset mocks, trigger the packet in, and validate results
+		reset(routingEngine);
+		expect(routingEngine.getRoute(DatapathId.of(1L), OFPort.of(1), DatapathId.of(1L), OFPort.of(3), Forwarding.DEFAULT_FORWARDING_COOKIE)).andReturn(route).atLeastOnce();
 		replay(sw1, sw2, routingEngine, topology);
 		forwarding.receive(sw1, this.packetIn, cntx);
 		verify(sw1, sw2, routingEngine);
@@ -646,6 +652,7 @@ public class ForwardingTest extends FloodlightTestCase {
 		Route route = new  Route(DatapathId.of(1L), DatapathId.of(1L));
 		route.getPath().add(new NodePortTuple(DatapathId.of(1L), OFPort.of(1)));
 		route.getPath().add(new NodePortTuple(DatapathId.of(1L), OFPort.of(3)));
+		reset(routingEngine);
 		expect(routingEngine.getRoute(DatapathId.of(1L), OFPort.of(1), DatapathId.of(1L), OFPort.of(3), Forwarding.DEFAULT_FORWARDING_COOKIE)).andReturn(route).atLeastOnce();
 		
 		// Expected Flow-mods
@@ -754,8 +761,10 @@ public class ForwardingTest extends FloodlightTestCase {
 
 		// Set no destination attachment point or route
 		// expect no Flow-mod but expect the packet to be flooded
+		reset(routingEngine);
 
 		Capture<OFMessage> wc1 = EasyMock.newCapture(CaptureType.ALL);
+		Capture<IRoutingDecisionChangedListener> test1 = EasyMock.newCapture(CaptureType.ALL);
 		
 		Set<OFPort> bcastPorts = new HashSet<OFPort>();
 		bcastPorts.add(OFPort.of(10));
@@ -782,6 +791,8 @@ public class ForwardingTest extends FloodlightTestCase {
 	@Test
 	public void testForwardNoPathIPv6() throws Exception {
 		learnDevicesIPv6(DestDeviceToLearn.NONE);
+		
+		reset(routingEngine);
 
 		// Set no destination attachment point or route
 		// expect no Flow-mod but expect the packet to be flooded
@@ -813,11 +824,6 @@ public class ForwardingTest extends FloodlightTestCase {
 	}
 	
 	/*
-	 * Need test for Decision == null (DONE)
-	 * Need test for Decision != null Cookie == 0 (DONE)
-	 * Need test for Decision != null Cookie != 0 (DONE)
-	 * Need to Test "deleteFlowsByDescriptor"
-	 * Need to Test "convertRoutingDecisionDescriptors"
 	 * TODO Consider adding test cases for other Decision != null paths (I only added FORWARD and none of the paths had test cases)
 	 */
 	@Test
@@ -830,6 +836,7 @@ public class ForwardingTest extends FloodlightTestCase {
 		Route route = new  Route(DatapathId.of(1L), DatapathId.of(1L));
 		route.getPath().add(new NodePortTuple(DatapathId.of(1L), OFPort.of(1)));
 		route.getPath().add(new NodePortTuple(DatapathId.of(1L), OFPort.of(3)));
+		reset(routingEngine);
 		expect(routingEngine.getRoute(DatapathId.of(1L), OFPort.of(1), DatapathId.of(1L), OFPort.of(3), forwarding.DEFAULT_FORWARDING_COOKIE)).andReturn(route).atLeastOnce();
 		
 		// Expected Flow-mods
@@ -888,7 +895,7 @@ public class ForwardingTest extends FloodlightTestCase {
 		Route route = new  Route(DatapathId.of(1L), DatapathId.of(1L));
 		route.getPath().add(new NodePortTuple(DatapathId.of(1L), OFPort.of(1)));
 		route.getPath().add(new NodePortTuple(DatapathId.of(1L), OFPort.of(3)));
-		//expect(routingEngine.getRoute(DatapathId.of(1L), OFPort.of(1), DatapathId.of(1L), OFPort.of(3), forwarding.DEFAULT_FORWARDING_COOKIE)).andReturn(route).atLeastOnce();
+		reset(routingEngine);
 		expect(routingEngine.getRoute(DatapathId.of(1L), OFPort.of(1), DatapathId.of(1L), OFPort.of(3), U64.of(0x200000FFffFFffL))).andReturn(route).atLeastOnce();
 		
 		// Expected Flow-mods
@@ -938,7 +945,9 @@ public class ForwardingTest extends FloodlightTestCase {
 	}
 
 	@Test
-	public void testForwardDeleteFlowsByDescriptorSimple() throws Exception {
+	public void testForwardDeleteFlowsByDescriptorSingle() throws Exception {
+		reset(routingEngine);
+		
 		// Probably a tomorrow thing but there is a crash when it gets to "getActiveSwitch" in MockSwitchManager
 		Capture<Set<OFMessage>> wc1 = EasyMock.newCapture(CaptureType.ALL);
 		Capture<Set<OFMessage>> wc2 = EasyMock.newCapture(CaptureType.ALL);
@@ -946,7 +955,6 @@ public class ForwardingTest extends FloodlightTestCase {
 		List<Masked<U64>> descriptors = new ArrayList<Masked<U64>>();
 		descriptors.add(Masked.of(U64.of(0x00000000FFffFFffL),U64.of(0x00200000FFffFFffL))); // Mask = 0xffFFffFFL which is forwarding.DECISION_MASK/AppCookie.USER_MASK//descriptors.add(Masked.of(U64.of(0x00000000FFffFFffL),U64.of(0x0020000000000000L)));//descriptors.add(Masked.of(U64.of(0xffFFffFFffFFffFFL),U64.of(0x00200000FFffFFffL))); // Mask = 0xffFFffFFffFFffFFL which is the value returned by forwarding.AppCookie.getAppFieldMask()//descriptors.add(Masked.of(U64.of(0xffFFffFFffFFffFFL),U64.of(0x0020000000000000L)));
 		
-		MockSwitchManager switchService = getMockSwitchService();
 		expect(sw1.getStatus()).andReturn(IOFSwitch.SwitchStatus.MASTER).anyTimes();
 		expect(sw2.getStatus()).andReturn(IOFSwitch.SwitchStatus.MASTER).anyTimes();
 		
@@ -974,6 +982,9 @@ public class ForwardingTest extends FloodlightTestCase {
 	
 	@Test
 	public void testForwardDeleteFlowsByDescriptorMultiple() throws Exception {
+		// TODO solve ERROR
+		reset(routingEngine);
+		
 		// Probably a tomorrow thing but there is a crash when it gets to "getActiveSwitch" in MockSwitchManager
 		Capture<Set<OFMessage>> wc1 = EasyMock.newCapture(CaptureType.ALL);
 		Capture<Set<OFMessage>> wc2 = EasyMock.newCapture(CaptureType.ALL);
@@ -982,7 +993,6 @@ public class ForwardingTest extends FloodlightTestCase {
 		descriptors.add(Masked.of(U64.of(0x00000000FFffFFffL),U64.of(0x00200000FFffFFffL))); // Mask = 0xffFFffFFL which is forwarding.DECISION_MASK/AppCookie.USER_MASK
 		descriptors.add(Masked.of(U64.of(0x00000000FFffFFffL),U64.of(0x0020000000000000L)));
 		
-		MockSwitchManager switchService = getMockSwitchService();
 		expect(sw1.getStatus()).andReturn(IOFSwitch.SwitchStatus.MASTER).anyTimes();
 		expect(sw2.getStatus()).andReturn(IOFSwitch.SwitchStatus.MASTER).anyTimes();
 		
@@ -1013,9 +1023,38 @@ public class ForwardingTest extends FloodlightTestCase {
 						.build());
 		// I would like to do a .containsIgnoreXid because the packets to delete should not need to be in a particular order
 		// as long as all packets are sent to the switch, but I do not (at this time) feel like making that function
-		assertTrue(OFMessageUtils.equalsIgnoreXid((OFMessage)wc1.getValue().toArray()[1], (OFMessage)msgs_test.toArray()[0]));
-		assertTrue(OFMessageUtils.equalsIgnoreXid((OFMessage)wc2.getValue().toArray()[0], (OFMessage)msgs_test.toArray()[0]));
-		assertTrue(OFMessageUtils.equalsIgnoreXid((OFMessage)wc1.getValue().toArray()[0], (OFMessage)msgs_test.toArray()[1]));
-		assertTrue(OFMessageUtils.equalsIgnoreXid((OFMessage)wc2.getValue().toArray()[1], (OFMessage)msgs_test.toArray()[1]));
+		if(OFMessageUtils.equalsIgnoreXid((OFMessage)wc2.getValue().toArray()[0], (OFMessage)msgs_test.toArray()[0])){
+			assertTrue(OFMessageUtils.equalsIgnoreXid((OFMessage)wc1.getValue().toArray()[0], (OFMessage)msgs_test.toArray()[1]));
+			assertTrue(OFMessageUtils.equalsIgnoreXid((OFMessage)wc1.getValue().toArray()[1], (OFMessage)msgs_test.toArray()[0]));
+			assertTrue(OFMessageUtils.equalsIgnoreXid((OFMessage)wc2.getValue().toArray()[0], (OFMessage)msgs_test.toArray()[0]));
+			assertTrue(OFMessageUtils.equalsIgnoreXid((OFMessage)wc2.getValue().toArray()[1], (OFMessage)msgs_test.toArray()[1]));
+		}else{
+			assertTrue(OFMessageUtils.equalsIgnoreXid((OFMessage)wc1.getValue().toArray()[0], (OFMessage)msgs_test.toArray()[1]));
+			assertTrue(OFMessageUtils.equalsIgnoreXid((OFMessage)wc1.getValue().toArray()[1], (OFMessage)msgs_test.toArray()[0]));
+			assertTrue(OFMessageUtils.equalsIgnoreXid((OFMessage)wc2.getValue().toArray()[0], (OFMessage)msgs_test.toArray()[1]));
+			assertTrue(OFMessageUtils.equalsIgnoreXid((OFMessage)wc2.getValue().toArray()[1], (OFMessage)msgs_test.toArray()[0]));
+		}
+	}
+	
+	@Test
+	public void testForwardDeleteFlowsByDescriptorNoCookies() throws Exception {
+		reset(routingEngine);
+		
+		List<Masked<U64>> descriptors = new ArrayList<Masked<U64>>();
+		
+		replay(routingEngine);
+		forwarding.deleteFlowsByDescriptor(descriptors);
+		verify(routingEngine);
+	}
+	
+	@Test
+	public void testForwardDeleteFlowsByDescriptorNoCookiesContainer() throws Exception {
+		reset(routingEngine);
+		
+		List<Masked<U64>> descriptors = null;
+		
+		replay(routingEngine);
+		forwarding.deleteFlowsByDescriptor(descriptors);
+		verify(routingEngine);
 	}
 }

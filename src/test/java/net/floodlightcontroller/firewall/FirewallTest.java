@@ -17,6 +17,7 @@
 
 package net.floodlightcontroller.firewall;
 
+import static org.easymock.EasyMock.createMock;
 import static org.easymock.EasyMock.expect;
 import static org.easymock.EasyMock.replay;
 import static org.easymock.EasyMock.verify;
@@ -44,9 +45,11 @@ import net.floodlightcontroller.packet.UDP;
 import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.restserver.RestApiServer;
 import net.floodlightcontroller.routing.IRoutingDecision;
+import net.floodlightcontroller.routing.IRoutingService;
 import net.floodlightcontroller.storage.IStorageSourceService;
 import net.floodlightcontroller.storage.memory.MemoryStorageSource;
 import net.floodlightcontroller.test.FloodlightTestCase;
+import net.floodlightcontroller.topology.TopologyManager;
 
 import org.easymock.EasyMock;
 import org.junit.Before;
@@ -105,6 +108,7 @@ public class FirewallTest extends FloodlightTestCase {
         firewall = new Firewall();
         MemoryStorageSource storageService = new MemoryStorageSource();
         RestApiServer restApi = new RestApiServer();
+        IRoutingService routingService = createMock(IRoutingService.class);
 
         // Mock switches
         DatapathId dpid = DatapathId.of(TestSwitch1DPID);
@@ -124,6 +128,7 @@ public class FirewallTest extends FloodlightTestCase {
         fmc.addService(IFirewallService.class, firewall);
         fmc.addService(IStorageSourceService.class, storageService);
         fmc.addService(IRestApiService.class, restApi);
+        fmc.addService(IRoutingService.class, routingService);
 
         debugCounterService.init(fmc);
         storageService.init(fmc);
