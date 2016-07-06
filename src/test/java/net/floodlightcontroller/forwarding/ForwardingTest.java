@@ -41,8 +41,6 @@ import net.floodlightcontroller.core.types.NodePortTuple;
 import net.floodlightcontroller.core.util.AppCookie;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
 import net.floodlightcontroller.debugcounter.MockDebugCounterService;
-import net.floodlightcontroller.debugevent.IDebugEventService;
-import net.floodlightcontroller.debugevent.MockDebugEventService;
 import net.floodlightcontroller.devicemanager.internal.DefaultEntityClassifier;
 import net.floodlightcontroller.devicemanager.test.MockDeviceManager;
 import net.floodlightcontroller.devicemanager.IDevice;
@@ -157,7 +155,6 @@ public class ForwardingTest extends FloodlightTestCase {
 		fmc.addService(IEntityClassifierService.class, entityClassifier);
 		fmc.addService(ISyncService.class, mockSyncService);
 		fmc.addService(IDebugCounterService.class, new MockDebugCounterService());
-		fmc.addService(IDebugEventService.class, new MockDebugEventService());
 		fmc.addService(IOFSwitchService.class, getMockSwitchService());
 		fmc.addService(ILinkDiscoveryService.class, linkService);
 

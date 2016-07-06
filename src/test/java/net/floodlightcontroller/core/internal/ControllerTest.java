@@ -41,8 +41,6 @@ import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.test.MockThreadPoolService;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
 import net.floodlightcontroller.debugcounter.DebugCounterServiceImpl;
-import net.floodlightcontroller.debugevent.DebugEventService;
-import net.floodlightcontroller.debugevent.IDebugEventService;
 import net.floodlightcontroller.packet.ARP;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPacket;
@@ -134,9 +132,6 @@ public class ControllerTest extends FloodlightTestCase {
         DebugCounterServiceImpl debugCounterService = new DebugCounterServiceImpl();
         fmc.addService(IDebugCounterService.class, debugCounterService);
 
-        DebugEventService debugEventService = new DebugEventService();
-        fmc.addService(IDebugEventService.class, debugEventService);
-
         IShutdownService shutdownService = createMock(IShutdownService.class);
         shutdownService.registerShutdownListener(anyObject(IShutdownListener.class));
         expectLastCall().anyTimes();
@@ -156,7 +151,6 @@ public class ControllerTest extends FloodlightTestCase {
         memstorage.init(fmc);
         tp.init(fmc);
         debugCounterService.init(fmc);
-        debugEventService.init(fmc);
         syncService.init(fmc);
         cm.init(fmc);
 
@@ -166,7 +160,6 @@ public class ControllerTest extends FloodlightTestCase {
         memstorage.startUp(fmc);
         tp.startUp(fmc);
         debugCounterService.startUp(fmc);
-        debugEventService.startUp(fmc);
         syncService.startUp(fmc);
         cm.startUp(fmc);
 

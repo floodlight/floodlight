@@ -43,18 +43,18 @@ import org.slf4j.LoggerFactory;
  * @author Ryan Izard, ryan.izard@bigswitch.com, rizard@g.clemson.edu
  */
 public class OFFlowModSerializer extends JsonSerializer<OFFlowMod> {
-    protected static Logger logger = LoggerFactory.getLogger(OFFlowModSerializer.class);
+	protected static Logger logger = LoggerFactory.getLogger(OFFlowModSerializer.class);
 
 	@Override
 	public void serialize(OFFlowMod fm, JsonGenerator jGen, SerializerProvider serializer)
 			throws IOException, JsonProcessingException {
-		
+		serializeFlowMod(jGen, fm);
 	}
 
 	public static void serializeFlowMod(JsonGenerator jGen, OFFlowMod flowMod) throws IOException, JsonProcessingException {
-		
-        jGen.configure(Feature.WRITE_NUMBERS_AS_STRINGS, true); // IMHO this just looks nicer and is easier to read if everything is quoted
-		
+
+		jGen.configure(Feature.WRITE_NUMBERS_AS_STRINGS, true); // IMHO this just looks nicer and is easier to read if everything is quoted
+
 		jGen.writeStartObject();
 		jGen.writeStringField("version", flowMod.getVersion().toString()); // return the enum names
 		jGen.writeStringField("command", flowMod.getCommand().toString());
@@ -90,8 +90,14 @@ public class OFFlowModSerializer extends JsonSerializer<OFFlowMod> {
 			jGen.writeStringField("outGroup", flowMod.getOutGroup().toString());
 			jGen.writeStringField("tableId", flowMod.getTableId().toString());
 			break;
+		case OF_15:
+			jGen.writeNumberField("flags", OFFlowModFlagsSerializerVer14.toWireValue(flowMod.getFlags()));
+			jGen.writeNumberField("cookieMask", flowMod.getCookieMask().getValue());
+			jGen.writeStringField("outGroup", flowMod.getOutGroup().toString());
+			jGen.writeStringField("tableId", flowMod.getTableId().toString());
+			break;
 		default:
-			logger.error("Could not decode OFVersion {}", flowMod.getVersion());
+			logger.error("Unimplemented serializer for OFVersion {}", flowMod.getVersion());
 			break;
 		}
 

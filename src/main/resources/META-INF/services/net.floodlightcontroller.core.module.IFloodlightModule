@@ -4,7 +4,6 @@ net.floodlightcontroller.flowcache.FlowReconcileManager
 net.floodlightcontroller.hub.Hub
 net.floodlightcontroller.jython.JythonDebugInterface
 net.floodlightcontroller.debugcounter.DebugCounterServiceImpl
-net.floodlightcontroller.debugevent.DebugEventService
 net.floodlightcontroller.threadpool.ThreadPool
 net.floodlightcontroller.perfmon.PktInProcessingTime
 net.floodlightcontroller.restserver.RestApiServer
@@ -17,8 +16,7 @@ net.floodlightcontroller.core.internal.ShutdownServiceImpl
 org.sdnplatform.sync.internal.SyncManager
 org.sdnplatform.sync.internal.SyncTorture
 net.floodlightcontroller.simpleft.FT
-net.floodlightcontroller.staticflowentry.StaticFlowEntryPusher
-net.floodlightcontroller.testmodule.TestModule
+net.floodlightcontroller.staticentry.StaticEntryPusher
 net.floodlightcontroller.topology.TopologyManager
 net.floodlightcontroller.forwarding.Forwarding
 net.floodlightcontroller.loadbalancer.LoadBalancer

@@ -202,7 +202,7 @@ public class RoleManager {
                 log.debug("Dispatching HA Role update newRole = {}",
                           newRole);
             }
-            for (IHAListener listener : controller.haListeners.getOrderedListeners()) {
+            for (IHAListener listener : Controller.haListeners.getOrderedListeners()) {
                 if (log.isTraceEnabled()) {
                     log.trace("Calling HAListener {} with transitionTo{}",
                               listener.getName(), newRole);

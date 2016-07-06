@@ -791,8 +791,8 @@ public class Device implements IDevice {
 	public VlanVid[] getSwitchPortVlanIds(SwitchPort swp) {
 		TreeSet<VlanVid> vals = new TreeSet<VlanVid>();
 		for (Entity e : entities) {
-			if (e.switchDPID.equals(swp.getSwitchDPID())
-					&& e.switchPort.equals(swp.getPort())) {
+			if (e.switchDPID.equals(swp.getNodeId())
+					&& e.switchPort.equals(swp.getPortId())) {
 				if (e.getVlan() == null)
 					vals.add(VlanVid.ZERO);
 				else

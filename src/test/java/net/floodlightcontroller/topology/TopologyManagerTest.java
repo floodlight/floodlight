@@ -22,8 +22,6 @@ import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.test.MockThreadPoolService;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
 import net.floodlightcontroller.debugcounter.MockDebugCounterService;
-import net.floodlightcontroller.debugevent.IDebugEventService;
-import net.floodlightcontroller.debugevent.MockDebugEventService;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscovery;
 import net.floodlightcontroller.test.FloodlightTestCase;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
@@ -49,7 +47,6 @@ public class TopologyManagerTest extends FloodlightTestCase {
         fmc = new FloodlightModuleContext();
         fmc.addService(IFloodlightProviderService.class, getMockFloodlightProvider());
         fmc.addService(IDebugCounterService.class, new MockDebugCounterService());
-        fmc.addService(IDebugEventService.class, new MockDebugEventService());
         MockThreadPoolService tp = new MockThreadPoolService();
         fmc.addService(IThreadPoolService.class, tp);
         tm  = new TopologyManager();

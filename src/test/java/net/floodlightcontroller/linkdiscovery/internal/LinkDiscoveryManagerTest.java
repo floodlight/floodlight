@@ -46,8 +46,6 @@ import net.floodlightcontroller.core.test.MockThreadPoolService;
 import net.floodlightcontroller.core.types.NodePortTuple;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
 import net.floodlightcontroller.debugcounter.MockDebugCounterService;
-import net.floodlightcontroller.debugevent.IDebugEventService;
-import net.floodlightcontroller.debugevent.MockDebugEventService;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryListener;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryService;
 import net.floodlightcontroller.packet.Data;
@@ -141,7 +139,6 @@ public class LinkDiscoveryManagerTest extends FloodlightTestCase {
         TopologyManager routingEngine = new TopologyManager();
         ldm.linkDiscoveryAware = new ArrayList<ILinkDiscoveryListener>();
         IDebugCounterService debugCounterService = new MockDebugCounterService();
-        IDebugEventService debugEventService = new MockDebugEventService();
         MockThreadPoolService tp = new MockThreadPoolService();
         RestApiServer restApi = new RestApiServer();
         MemoryStorageSource storageService = new MemoryStorageSource();
@@ -153,7 +150,6 @@ public class LinkDiscoveryManagerTest extends FloodlightTestCase {
         cntx.addService(IStorageSourceService.class, storageService);
         cntx.addService(IFloodlightProviderService.class, getMockFloodlightProvider());
         cntx.addService(IDebugCounterService.class, debugCounterService);
-        cntx.addService(IDebugEventService.class, debugEventService);
         cntx.addService(IOFSwitchService.class, getMockSwitchService());
         restApi.init(cntx);
         tp.init(cntx);
