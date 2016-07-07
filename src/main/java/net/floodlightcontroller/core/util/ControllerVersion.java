@@ -136,7 +136,7 @@ public class ControllerVersion {
                         if (title.isEmpty()) {
                             return "unknown";
                         } else {
-                            log.info("Floodlight name {} found in manifest", title);
+                            log.info("Floodlight name {} found in pom.xml", title);
                             return title;
                         }
                     }
