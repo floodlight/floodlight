@@ -7,8 +7,8 @@
   <root level="INFO">
     <appender-ref ref="STDOUT" />
   </root>
-  <logger name="io" level="INFO"></logger> <!-- Netty logging -->
-  <logger name="LogService" level="INFO"/> <!-- Restlet access logging -->
-  <logger name="net.floodlightcontroller" level="INFO"/>
-  <logger name="org.sdnplatform" level="INFO"/>
+  <logger name="io" level="ERROR"></logger> <!-- Netty logging -->
+  <logger name="LogService" level="ERROR"/> <!-- Restlet access logging -->
+  <logger name="net.floodlightcontroller" level="ERROR"/>
+  <logger name="org.sdnplatform" level="ERROR"/>
 </configuration>
