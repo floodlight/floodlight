@@ -21,6 +21,7 @@
 	<build>
 		<plugins>
 			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
 				<version>3.0</version>
 				<configuration>
@@ -47,6 +48,10 @@
 						</configuration>
 					</execution>
 				</executions>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-assembly-plugin</artifactId>
 			</plugin>
 		</plugins>
 		<pluginManagement>
@@ -83,6 +88,38 @@
 						</lifecycleMappingMetadata>
 					</configuration>
 				</plugin>
+				<plugin>
+                   			<groupId>org.apache.maven.plugins</groupId>
+                    			<version>2.5</version>
+                    			<artifactId>maven-assembly-plugin</artifactId>
+                    			<configuration>
+                        			<descriptorRefs>
+                            				<descriptorRef>jar-with-dependencies</descriptorRef>
+                        			</descriptorRefs>
+                        			<archive>     
+                            				<manifestEntries>
+                                				<Class-Path>.</Class-Path>
+                            				</manifestEntries>
+                            				<manifest>
+                                				<!-- <addClasspath>true</addClasspath>
+                                				<classpathPrefix>../lib/</classpathPrefix> -->
+                                				<mainClass>net.floodlightcontroller.core.Main</mainClass>
+                                				<addDefaultImplementationEntries>true</addDefaultImplementationEntries>
+                                				<addDefaultSpecificationEntries>true</addDefaultSpecificationEntries>
+                            				</manifest>
+                        			</archive>
+                        			<appendAssemblyId>false</appendAssemblyId>
+                        			<finalName>floodlight</finalName>
+                    			</configuration>
+                    			<executions>
+                        			<execution>
+                            				<phase>package</phase>
+                            				<goals>
+                                				<goal>single</goal>
+                            				</goals>
+                        			</execution>
+                    			</executions>
+                		</plugin>
 			</plugins>
 		</pluginManagement>
 		<resources>
@@ -94,6 +131,12 @@
 					<include>README.md</include>
 				</includes>
 			</resource>
+			<resource>
+                		<directory>src/main/resources</directory>
+			</resource>
+            		<resource>
+                		<directory>src/test/resources</directory>
+            		</resource>
 		</resources>
 	</build>
 	<dependencies>
