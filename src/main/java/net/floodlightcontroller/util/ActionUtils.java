@@ -1014,13 +1014,13 @@ public class ActionUtils {
                     dstField = OXMUtils.oxmStringToOxm(value, v);
                     break;
                 case "src_offset_bits":
-                    b.setSrcOffset(Integer.parseInt(value));
+                    b.setSrcOffset(ParseUtils.parseHexOrDecInt(value));
                     break;
                 case "dst_offset_bits":
-                    b.setDstOffset(Integer.parseInt(value));
+                    b.setDstOffset(ParseUtils.parseHexOrDecInt(value));
                     break;
                 case "num_bits":
-                    b.setNBits(Integer.parseInt(value));
+                    b.setNBits(ParseUtils.parseHexOrDecInt(value));
                     break;
                 default:
                     log.warn("Unexpected OFActionCopyField key {}", key);
