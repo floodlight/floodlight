@@ -16,11 +16,13 @@
 
 package net.floodlightcontroller.core.web;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
 import org.restlet.resource.ServerResource;
 
+import net.floodlightcontroller.core.HARole;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.RoleInfo;
 
@@ -30,17 +32,16 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.databind.MappingJsonFactory;
 
 public class ControllerRoleResource extends ServerResource {
 
     protected static Logger log = LoggerFactory.getLogger(ControllerRoleResource.class);
     
-    private static final String STR_ACTIVE = "ACTIVE";
-    private static final String STR_STANDBY = "STANDBY";
     private static final String STR_ROLE = "role";
-    private static final String STR_ROLE_CHANGE_DESC = "role-change-description";
-    private static final String STR_ROLE_CHANGE_DATE_TIME = "role-change-date-time";
+    private static final String STR_ROLE_CHANGE_DESC = "role_change_description";
+    private static final String STR_ROLE_CHANGE_DATE_TIME = "role_change_date_time";
 
     @Get("json")
     public Map<String, String> getRole() {
@@ -68,12 +69,9 @@ public class ControllerRoleResource extends ServerResource {
 		String role = null;
 		String roleChangeDesc = null;
 		
-		retValue.put("TBD", "Not yet implemented");
-		return retValue;
-		/*
 		try {
 			try {
-				jp = f.createJsonParser(json);
+				jp = f.createParser(json);
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
@@ -106,16 +104,14 @@ public class ControllerRoleResource extends ServerResource {
 			}
 		} catch (IOException e) {
 			e.printStackTrace();
-			retValue.put("ERROR", "Caught IOException while parsing JSON POST request in role request.");
+			retValue.put("ERROR", "Caught exception while parsing controller role request. Supported roles: ACTIVE, STANDBY (or MASTER, SLAVE)");
 		}
     
         HARole harole = null;
         try {
-        	harole = HARole.valueOfBackwardsCompatible(role);
+        	harole = HARole.valueOfBackwardsCompatible(role.toUpperCase().trim());
         } catch (IllegalArgumentException | NullPointerException e) {
-            // The role value in the REST call didn't match a valid
-            // role name, so just leave the role as null and handle
-            // the error below.
+            retValue.put("ERROR", "Caught exception while parsing controller role request. Supported roles: ACTIVE, STANDBY (or MASTER, SLAVE)");
         }
 
         if (roleChangeDesc == null) {
@@ -129,6 +125,6 @@ public class ControllerRoleResource extends ServerResource {
         retValue.put(STR_ROLE_CHANGE_DESC, ri.getRoleChangeDescription());
         retValue.put(STR_ROLE_CHANGE_DATE_TIME, ri.getRoleChangeDateTime().toString());
         
-		return retValue;*/
+		return retValue;
     }
 }

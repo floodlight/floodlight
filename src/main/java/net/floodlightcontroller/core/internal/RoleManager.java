@@ -219,7 +219,7 @@ public class RoleManager {
 
            controller.setNotifiedRole(newRole);
 
-           if(newRole == HARole.STANDBY) {
+           if (newRole == HARole.STANDBY && Controller.shutdownOnTransitionToStandby) {
                String reason = String.format("Received role request to "
                        + "transition from ACTIVE to STANDBY (reason: %s)",
                        getRoleInfo().getRoleChangeDescription());
