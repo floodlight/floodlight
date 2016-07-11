@@ -17,12 +17,12 @@
 
 package net.floodlightcontroller.core.internal;
 
+import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.lang.management.RuntimeMXBean;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -36,8 +36,6 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.LinkedBlockingQueue;
 
-import io.netty.util.HashedWheelTimer;
-import io.netty.util.Timer;
 import net.floodlightcontroller.core.ControllerId;
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.HAListenerTypeMarker;
@@ -46,31 +44,17 @@ import net.floodlightcontroller.core.IControllerCompletionListener;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IHAListener;
 import net.floodlightcontroller.core.IInfoProvider;
-import net.floodlightcontroller.core.IShutdownService;
 import net.floodlightcontroller.core.IListener.Command;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
-import net.floodlightcontroller.core.IOFSwitchListener;
+import net.floodlightcontroller.core.IShutdownService;
 import net.floodlightcontroller.core.LogicalOFMessageCategory;
-import net.floodlightcontroller.core.PortChangeType;
 import net.floodlightcontroller.core.RoleInfo;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.FloodlightModuleLoader;
 import net.floodlightcontroller.core.util.ListenerDispatcher;
 import net.floodlightcontroller.core.web.CoreWebRoutable;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
-import net.floodlightcontroller.debugevent.IDebugEventService;
-import net.floodlightcontroller.notification.INotificationManager;
-import net.floodlightcontroller.notification.NotificationManagerFactory;
-
-import org.projectfloodlight.openflow.protocol.OFMessage;
-import org.projectfloodlight.openflow.protocol.OFPacketIn;
-import org.projectfloodlight.openflow.protocol.OFPortDesc;
-import org.projectfloodlight.openflow.protocol.OFType;
-import org.projectfloodlight.openflow.types.DatapathId;
-import org.projectfloodlight.openflow.types.IPv4Address;
-import org.projectfloodlight.openflow.types.TransportPort;
-
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.perfmon.IPktInProcessingTimeService;
 import net.floodlightcontroller.restserver.IRestApiService;
@@ -79,14 +63,15 @@ import net.floodlightcontroller.storage.IStorageSourceListener;
 import net.floodlightcontroller.storage.IStorageSourceService;
 import net.floodlightcontroller.storage.StorageException;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
+import net.floodlightcontroller.util.LoadMonitor;
 
+import org.projectfloodlight.openflow.protocol.OFMessage;
+import org.projectfloodlight.openflow.protocol.OFPacketIn;
+import org.projectfloodlight.openflow.protocol.OFType;
 import org.sdnplatform.sync.ISyncService;
 import org.sdnplatform.sync.ISyncService.Scope;
 import org.sdnplatform.sync.error.SyncException;
 import org.sdnplatform.sync.internal.config.ClusterConfig;
-
-import net.floodlightcontroller.util.LoadMonitor;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -94,69 +79,64 @@ import com.google.common.base.Optional;
 import com.google.common.base.Strings;
 
 /**
- * The main controller class.  Handles all setup and network listeners
+ * The main controller class
  */
 public class Controller implements IFloodlightProviderService, IStorageSourceListener, IInfoProvider {
-
     protected static final Logger log = LoggerFactory.getLogger(Controller.class);
-    protected static final INotificationManager notifier = NotificationManagerFactory.getNotificationManager(Controller.class);
 
-    static final String ERROR_DATABASE = "The controller could not communicate with the system database.";
+    /* OpenFlow message listeners and dispatchers */
+    protected static ConcurrentMap<OFType, ListenerDispatcher<OFType,IOFMessageListener>> messageListeners;
+    protected static ConcurrentLinkedQueue<IControllerCompletionListener> completionListeners;
+    
+    /* 
+     * The controllerNodeIPsCache maps Controller IDs to their IP address.
+     * It's only used by handleControllerNodeIPsChanged 
+     */
+    protected static HashMap<String, String> controllerNodeIPsCache;
 
-    protected ConcurrentMap<OFType, ListenerDispatcher<OFType,IOFMessageListener>> messageListeners;
+    protected static ListenerDispatcher<HAListenerTypeMarker,IHAListener> haListeners;
+    protected static Map<String, List<IInfoProvider>> providerMap;
+    protected static BlockingQueue<IUpdate> updates;
+    protected static ControllerCounters counters;
     
-    // paag
-    protected ConcurrentLinkedQueue<IControllerCompletionListener> completionListeners;
-    
-    // The controllerNodeIPsCache maps Controller IDs to their IP address.
-    // It's only used by handleControllerNodeIPsChanged
-    protected HashMap<String, String> controllerNodeIPsCache;
-
-    protected ListenerDispatcher<HAListenerTypeMarker,IHAListener> haListeners;
-    protected Map<String, List<IInfoProvider>> providerMap;
-    protected BlockingQueue<IUpdate> updates;
-    protected ControllerCounters counters;
-    protected Timer timer;
-    
-    // Module Loader State
-    private ModuleLoaderState moduleLoaderState;
+    /* Module Loader State */
+    private static ModuleLoaderState moduleLoaderState;
     public enum ModuleLoaderState {
         INIT, STARTUP, COMPLETE
     }
 
-    // Module dependencies
-    private IStorageSourceService storageSourceService;
-    private IOFSwitchService switchService;
-    private IDebugCounterService debugCounterService;
-    protected IDebugEventService debugEventService;
-    private IRestApiService restApiService;
-    private IPktInProcessingTimeService pktinProcTimeService;
-    private IThreadPoolService threadPoolService;
-    private ISyncService syncService;
-    private IShutdownService shutdownService;
+    /* Module dependencies */
+    private static IStorageSourceService storageSourceService;
+    private static IOFSwitchService switchService;
+    private static IDebugCounterService debugCounterService;
+    private static IRestApiService restApiService;
+    private static IPktInProcessingTimeService pktinProcTimeService;
+    private static IThreadPoolService threadPoolService;
+    private static ISyncService syncService;
+    private static IShutdownService shutdownService;
 
-    // Configuration options
-    private static TransportPort openFlowPort = TransportPort.of(6653); // new registered OF port number
-	private static Set<IPv4Address> openFlowAddresses = new HashSet<IPv4Address>();
-	public static final int SEND_BUFFER_SIZE = 4 * 1024 * 1024;
-    protected int workerThreads = 16;
-    
-    // The id for this controller node. Should be unique for each controller
-    // node in a controller cluster.
+    /*
+     * The id for this controller node. Should be unique for each controller
+     * node in a controller cluster.
+     */
     protected String controllerId = "my-floodlight-controller";
 
-    // This controller's current role that modules can use/query to decide
-    // if they should operate in ACTIVE / STANDBY
+    /*
+     *  This controller's current role that modules can use/query to decide
+     * if they should operate in ACTIVE / STANDBY
+     */
     protected volatile HARole notifiedRole;
 
     private static final String INITIAL_ROLE_CHANGE_DESCRIPTION = "Controller startup.";
-    /**
+    
+    /*
      * NOTE: roleManager is not 'final' because it's initialized at run time
      * based on parameters that are only available in init()
      */
-    private RoleManager roleManager;
+    private static RoleManager roleManager;
+    protected static boolean shutdownOnTransitionToStandby = false;
 
-    // Storage table names
+    /* Storage table names */
     protected static final String CONTROLLER_TABLE_NAME = "controller_controller";
     protected static final String CONTROLLER_ID = "id";
 
@@ -170,7 +150,6 @@ public class Controller implements IFloodlightProviderService, IStorageSourceLis
     protected static final String CONTROLLER_INTERFACE_NUMBER = "number";
     protected static final String CONTROLLER_INTERFACE_DISCOVERED_IP = "discovered_ip";
 
-    // FIXME: don't use "forwardingconfig" as table name
     private static final String FLOW_PRIORITY_TABLE_NAME = "controller_forwardingconfig";
     private static final String FLOW_COLUMN_PRIMARY_KEY = "id";
     private static final String FLOW_VALUE_PRIMARY_KEY = "forwarding";
@@ -181,67 +160,17 @@ public class Controller implements IFloodlightProviderService, IStorageSourceLis
             FLOW_COLUMN_ACCESS_PRIORITY,
             FLOW_COLUMN_CORE_PRIORITY
     };
-    protected static final boolean ALWAYS_DECODE_ETH = true;
-
-    // Set of port name prefixes that will be classified as uplink ports,
-    // hence will not be autoportfast.
-    Set<String> uplinkPortPrefixSet;
-
-    @Override
-    public Set<String> getUplinkPortPrefixSet() {
-        return uplinkPortPrefixSet;
-    }
-
-    public void setUplinkPortPrefixSet(Set<String> prefixSet) {
-        this.uplinkPortPrefixSet = prefixSet;
-    }
+    
+    protected static boolean alwaysDecodeEth = true;
 
     @Override
     public ModuleLoaderState getModuleLoaderState(){
-        return this.moduleLoaderState;
+        return moduleLoaderState;
     }
 
     // Load monitor for overload protection
     protected final boolean overload_drop = Boolean.parseBoolean(System.getProperty("overload_drop", "false"));
     protected final LoadMonitor loadmonitor = new LoadMonitor(log);
-    
-    private static class NotificationSwitchListener implements IOFSwitchListener {
-
-        @Override
-        public void switchAdded(DatapathId switchId) {
-            notifier.postNotification("Switch " +  switchId + " connected.");
-        }
-
-        @Override
-        public void switchRemoved(DatapathId switchId) {
-            notifier.postNotification("Switch " + switchId + " disconnected.");
-        }
-
-        @Override
-        public void switchActivated(DatapathId switchId) {
-
-        }
-
-        @Override
-        public void switchPortChanged(DatapathId switchId, OFPortDesc port,
-                                      PortChangeType type) {
-            String msg = String.format("Switch %s port %s changed: %s",
-                                       switchId,
-                                       port.getName(),
-                                       type.toString());
-            notifier.postNotification(msg);
-        }
-
-        @Override
-        public void switchChanged(DatapathId switchId) {
-        }
-
-		@Override
-		public void switchDeactivated(DatapathId switchId) {
-			// TODO Auto-generated method stub
-			
-		}
-    }
                 
     /**
      *  Updates handled by the main loop
@@ -292,63 +221,54 @@ public class Controller implements IFloodlightProviderService, IStorageSourceLis
     // ***************
 
     void setStorageSourceService(IStorageSourceService storageSource) {
-        this.storageSourceService = storageSource;
+        storageSourceService = storageSource;
     }
 
     IStorageSourceService getStorageSourceService() {
-        return this.storageSourceService;
+        return storageSourceService;
     }
     
     IShutdownService getShutdownService() {
-    	return this.shutdownService;
+    	return shutdownService;
     }
     
     void setShutdownService(IShutdownService shutdownService) {
-    	this.shutdownService = shutdownService;
-    }
-
-    public void setDebugEvent(IDebugEventService debugEvent) {
-        this.debugEventService = debugEvent;
+    	Controller.shutdownService = shutdownService;
     }
     
     void setDebugCounter(IDebugCounterService debugCounters) {
-        this.debugCounterService = debugCounters;
+        debugCounterService = debugCounters;
     }
 
     IDebugCounterService getDebugCounter() {
-        return this.debugCounterService;
+        return debugCounterService;
     }
 
     void setSyncService(ISyncService syncService) {
-        this.syncService = syncService;
+        Controller.syncService = syncService;
     }
     void setPktInProcessingService(IPktInProcessingTimeService pits) {
-        this.pktinProcTimeService = pits;
+        Controller.pktinProcTimeService = pits;
     }
     
     void setRestApiService(IRestApiService restApi) {
-        this.restApiService = restApi;
+        Controller.restApiService = restApi;
     }
 
     
     void setThreadPoolService(IThreadPoolService tp) {
-        this.threadPoolService = tp;
+        threadPoolService = tp;
     }
     IThreadPoolService getThreadPoolService() {
-        return this.threadPoolService;
+        return threadPoolService;
     }
 
     
     public void setSwitchService(IOFSwitchService switchService) {
-       this.switchService = switchService;
+       Controller.switchService = switchService;
     }
     public IOFSwitchService getSwitchService() {
-        return this.switchService;
-    }
-
-    @Override
-    public int getWorkerThreads() {
-        return this.workerThreads;
+        return Controller.switchService;
     }
 
     @Override
@@ -447,7 +367,7 @@ public class Controller implements IFloodlightProviderService, IStorageSourceLis
                     return;
                 }
 
-                if (Controller.ALWAYS_DECODE_ETH) {
+                if (alwaysDecodeEth) {
                     eth = new Ethernet();
                     eth.deserialize(pi.getData(), 0, pi.getData().length);
                 }
@@ -492,16 +412,11 @@ public class Controller implements IFloodlightProviderService, IStorageSourceLis
                         }
                     }
                     pktinProcTimeService.recordEndTimePktIn(sw, m, bc);
-                } else {
-                    if (m.getType() != OFType.BARRIER_REPLY)
-                        log.warn("Unhandled OF Message: {} from {}", m, sw);
-                    else
-                        log.debug("Received a Barrier Reply, no listeners for it");
                 }
                 // paag
                 // And just before we exit the controller loop we see if anyone
                 // is interested in knowing that we are exiting the loop
-                for (IControllerCompletionListener listener:completionListeners)
+                for (IControllerCompletionListener listener : completionListeners)
                 	listener.onMessageConsumed(sw, m, bc);
                 
                 if ((bContext == null) && (bc != null)) flcontext_free(bc);
@@ -525,24 +440,12 @@ public class Controller implements IFloodlightProviderService, IStorageSourceLis
     public String getControllerId() {
         return controllerId;
     }
-    
-    @Override
-    public Set<IPv4Address> getOFAddresses() {
-        return Collections.unmodifiableSet(openFlowAddresses);
-    }
-    
-    @Override
-    public TransportPort getOFPort() {
-        return openFlowPort;
-    }
 
-    // paag
     @Override
     public synchronized void addCompletionListener(IControllerCompletionListener listener) {
     	completionListeners.add(listener);
     }
     
-    //paag
     @Override
     public synchronized void removeCompletionListener(IControllerCompletionListener listener) {
     	String listenerName = listener.getName();
@@ -682,7 +585,7 @@ public class Controller implements IFloodlightProviderService, IStorageSourceLis
      */
     @Override
     public void run() {
-        this.moduleLoaderState = ModuleLoaderState.COMPLETE;
+        moduleLoaderState = ModuleLoaderState.COMPLETE;
 
         if (log.isDebugEnabled()) {
             logListeners();
@@ -709,51 +612,41 @@ public class Controller implements IFloodlightProviderService, IStorageSourceLis
     }
     
     private void setConfigParams(Map<String, String> configParams) throws FloodlightModuleException {
-        String ofPort = configParams.get("openFlowPort");
-        if (!Strings.isNullOrEmpty(ofPort)) {
-            try {
-                openFlowPort = TransportPort.of(Integer.parseInt(ofPort));
-            } catch (Exception e) {
-                log.error("Invalid OpenFlow port {}, {}", ofPort, e);
-                throw new FloodlightModuleException("Invalid OpenFlow port of " + ofPort + " in config");
-            }
-        }
-        log.info("OpenFlow port set to {}", openFlowPort);
-
-        String threads = configParams.get("workerThreads");
-        if (!Strings.isNullOrEmpty(threads)) {
-            this.workerThreads = Integer.parseInt(threads);
-        }
-        log.info("Number of worker threads set to {}", this.workerThreads);
-        
-        
         /**
          * Tulio Ribeiro
          */
         String controllerId = configParams.get("controllerId");
         if (!Strings.isNullOrEmpty(controllerId)) {
-            try {
-            	this.controllerId = controllerId;
-            } catch (Exception e) {
-                log.error("Invalid controlelrId {}, {}", controllerId, e);
-                throw new FloodlightModuleException("Invalid controllerId of " + controllerId + " in config");
-            }
+            this.controllerId = controllerId;
         }        
         log.info("ControllerId set to {}", this.controllerId);
         
-        
-        
-        String addresses = configParams.get("openFlowAddresses");
-        if (!Strings.isNullOrEmpty(addresses)) {
+        String shutdown = configParams.get("shutdownOnTransitionToStandby");
+        if (!Strings.isNullOrEmpty(shutdown)) {
             try {
-                openFlowAddresses = Collections.singleton(IPv4Address.of(addresses)); //TODO support list of addresses for multi-honed controllers
+                shutdownOnTransitionToStandby = Boolean.parseBoolean(shutdown.trim());
             } catch (Exception e) {
-                log.error("Invalid OpenFlow address {}, {}", addresses, e);
-                throw new FloodlightModuleException("Invalid OpenFlow address of " + addresses + " in config");
+                log.error("Could not parse 'shutdownOnTransitionToStandby' of {}. Using default setting of {}", 
+                        shutdown, shutdownOnTransitionToStandby);
             }
-            log.info("OpenFlow addresses set to {}", openFlowAddresses);
+        }        
+        log.info("Shutdown when controller transitions to STANDBY HA role: {}", shutdownOnTransitionToStandby);
+        
+        String decodeEth = configParams.get("deserializeEthPacketIns");
+        if (!Strings.isNullOrEmpty(decodeEth)) {
+        	try {
+        		alwaysDecodeEth = Boolean.parseBoolean(decodeEth.trim());
+        	} catch (Exception e) {
+        		log.error("Could not parse 'deserializeEthPacketIns' of {}. Using default setting of {}", decodeEth, alwaysDecodeEth);
+        	}
+        }        
+        if (alwaysDecodeEth) {
+	        log.warn("Controller will automatically deserialize all Ethernet packet-in messages. "
+	        		+ "Set 'deserializeEthPacketIns' to 'FALSE' if this feature is not "
+	        		+ "required or when benchmarking core performance");
         } else {
-        	openFlowAddresses.add(IPv4Address.NONE);
+            log.info("Controller will not automatically deserialize all Ethernet packet-in messages. "
+            		+ "Set 'deserializeEthPacketIns' to 'TRUE' to enable this feature");
         }
     }
 
@@ -762,33 +655,29 @@ public class Controller implements IFloodlightProviderService, IStorageSourceLis
      */
     public void init(Map<String, String> configParams) throws FloodlightModuleException {
 
-        this.moduleLoaderState = ModuleLoaderState.INIT;
+        moduleLoaderState = ModuleLoaderState.INIT;
 
         // These data structures are initialized here because other
         // module's startUp() might be called before ours        
-        this.messageListeners = new ConcurrentHashMap<OFType, ListenerDispatcher<OFType, IOFMessageListener>>();
-        this.haListeners = new ListenerDispatcher<HAListenerTypeMarker, IHAListener>();
-        this.controllerNodeIPsCache = new HashMap<String, String>();
-        this.updates = new LinkedBlockingQueue<IUpdate>();
-        this.providerMap = new HashMap<String, List<IInfoProvider>>();
-        this.completionListeners = new ConcurrentLinkedQueue<IControllerCompletionListener>();
+        messageListeners = new ConcurrentHashMap<OFType, ListenerDispatcher<OFType, IOFMessageListener>>();
+        haListeners = new ListenerDispatcher<HAListenerTypeMarker, IHAListener>();
+        controllerNodeIPsCache = new HashMap<String, String>();
+        updates = new LinkedBlockingQueue<IUpdate>();
+        providerMap = new HashMap<String, List<IInfoProvider>>();
+        completionListeners = new ConcurrentLinkedQueue<IControllerCompletionListener>();
         
         setConfigParams(configParams);
 
         HARole initialRole = getInitialRole(configParams);
-        this.notifiedRole = initialRole;
-        this.shutdownService = new ShutdownServiceImpl();
+        notifiedRole = initialRole;
+        shutdownService = new ShutdownServiceImpl();
 
-        this.roleManager = new RoleManager(this, this.shutdownService,
-                                           this.notifiedRole,
+        roleManager = new RoleManager(this, shutdownService,
+                                           notifiedRole,
                                            INITIAL_ROLE_CHANGE_DESCRIPTION);
-        this.timer = new HashedWheelTimer();
-
         // Switch Service Startup
-        this.switchService.registerLogicalOFMessageCategory(LogicalOFMessageCategory.MAIN);
-        this.switchService.addOFSwitchListener(new NotificationSwitchListener());
-
-        this.counters = new ControllerCounters(debugCounterService);
+        switchService.registerLogicalOFMessageCategory(LogicalOFMessageCategory.MAIN);
+        counters = new ControllerCounters(debugCounterService);
      }
 
     /**
@@ -797,7 +686,7 @@ public class Controller implements IFloodlightProviderService, IStorageSourceLis
      */
     public void startupComponents(FloodlightModuleLoader floodlightModuleLoader) throws FloodlightModuleException {
 
-        this.moduleLoaderState = ModuleLoaderState.STARTUP;
+        moduleLoaderState = ModuleLoaderState.STARTUP;
 
         // Create the table names we use
         storageSourceService.createTable(CONTROLLER_TABLE_NAME, null);
@@ -813,14 +702,14 @@ public class Controller implements IFloodlightProviderService, IStorageSourceLis
         
         // Startup load monitoring
         if (overload_drop) {
-            this.loadmonitor.startMonitoring(this.threadPoolService.getScheduledExecutor());
+            this.loadmonitor.startMonitoring(threadPoolService.getScheduledExecutor());
         }
 
         // Add our REST API
         restApiService.addRestletRoutable(new CoreWebRoutable());
                 
         try {
-            this.syncService.registerStore(OFSwitchManager.SWITCH_SYNC_STORE_NAME, Scope.LOCAL);
+            syncService.registerStore(OFSwitchManager.SWITCH_SYNC_STORE_NAME, Scope.LOCAL);
         } catch (SyncException e) {
             throw new FloodlightModuleException("Error while setting up sync service", e);
         }
@@ -891,12 +780,12 @@ public class Controller implements IFloodlightProviderService, IStorageSourceLis
 
     @Override
     public void addHAListener(IHAListener listener) {
-        this.haListeners.addListener(null,listener);
+        haListeners.addListener(null,listener);
     }
 
     @Override
     public void removeHAListener(IHAListener listener) {
-        this.haListeners.removeListener(listener);
+        haListeners.removeListener(listener);
     }
 
     /**
@@ -1007,7 +896,7 @@ public class Controller implements IFloodlightProviderService, IStorageSourceLis
         m.put("free", runtime.freeMemory());
         return m;
     }
-
+    
     @Override
     public Long getUptime() {
         RuntimeMXBean rb = ManagementFactory.getRuntimeMXBean();
@@ -1017,7 +906,7 @@ public class Controller implements IFloodlightProviderService, IStorageSourceLis
     @Override
     public void addUpdateToQueue(IUpdate update) {
         try {
-            this.updates.put(update);
+            updates.put(update);
         } catch (InterruptedException e) {
             // This should never happen
             log.error("Failure adding update {} to queue.", update);
@@ -1029,7 +918,7 @@ public class Controller implements IFloodlightProviderService, IStorageSourceLis
      * Dispatch all updates in the update queue until queue is empty
      */
     void processUpdateQueueForTesting() {
-        while(!updates.isEmpty()) {
+        while (!updates.isEmpty()) {
             IUpdate update = updates.poll();
             if (update != null)
                 update.dispatch();
@@ -1041,14 +930,14 @@ public class Controller implements IFloodlightProviderService, IStorageSourceLis
      * check if update queue is empty
      */
     boolean isUpdateQueueEmptyForTesting() {
-        return this.updates.isEmpty();
+        return updates.isEmpty();
     }
 
     /**
      * FOR TESTING ONLY
      */
     void resetModuleState() {
-        this.moduleLoaderState = ModuleLoaderState.INIT;
+        moduleLoaderState = ModuleLoaderState.INIT;
     }
 
     /**
@@ -1056,7 +945,7 @@ public class Controller implements IFloodlightProviderService, IStorageSourceLis
      * sets module loader state
      */
     void setModuleLoaderStateForTesting(ModuleLoaderState state) {
-        this.moduleLoaderState = state;
+        moduleLoaderState = state;
     }
 
     @Override
@@ -1065,7 +954,7 @@ public class Controller implements IFloodlightProviderService, IStorageSourceLis
 
         Map<String, Object> info = new HashMap<String, Object>();
 
-        info.put("# Switches", this.switchService.getAllSwitchDpids().size());
+        info.put("# Switches", switchService.getAllSwitchDpids().size());
         return info;
     }
 
@@ -1075,25 +964,18 @@ public class Controller implements IFloodlightProviderService, IStorageSourceLis
 
     @Override
     public RoleManager getRoleManager() {
-        return this.roleManager;
+        return roleManager;
     }
 
     public Optional<ControllerId> getId() {
-        short nodeId = this.syncService.getLocalNodeId();
+        short nodeId = syncService.getLocalNodeId();
         if(nodeId == ClusterConfig.NODE_ID_UNCONFIGURED)
             return Optional.absent();
         else
             return Optional.of(ControllerId.of(nodeId));
     }
-
-    @Override
-    public Timer getTimer() {
-        return this.timer;
-    }
-
+    
     public ControllerCounters getCounters() {
-        return this.counters;
+        return counters;
     }
 }
-
-

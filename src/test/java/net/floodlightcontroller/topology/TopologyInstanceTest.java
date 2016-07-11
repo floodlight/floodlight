@@ -32,8 +32,6 @@ import net.floodlightcontroller.core.test.MockThreadPoolService;
 import net.floodlightcontroller.core.types.NodePortTuple;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
 import net.floodlightcontroller.debugcounter.MockDebugCounterService;
-import net.floodlightcontroller.debugevent.IDebugEventService;
-import net.floodlightcontroller.debugevent.MockDebugEventService;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscovery;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryService;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
@@ -69,7 +67,6 @@ public class TopologyInstanceTest {
         fmc.addService(IOFSwitchService.class, new MockSwitchManager());
         fmc.addService(ILinkDiscoveryService.class, linkDiscovery);
         fmc.addService(IDebugCounterService.class, new MockDebugCounterService());
-        fmc.addService(IDebugEventService.class, new MockDebugEventService());
         MockThreadPoolService tp = new MockThreadPoolService();
         topologyManager = new TopologyManager();
         fmc.addService(IThreadPoolService.class, tp);

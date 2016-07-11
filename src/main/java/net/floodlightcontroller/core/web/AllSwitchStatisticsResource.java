@@ -68,8 +68,20 @@ public class AllSwitchStatisticsResource extends SwitchResourceBase {
 			type = OFStatsType.QUEUE;
 			rType = REQUESTTYPE.OFSTATS;
 			break;
+		case OFStatsTypeStrings.QUEUE_DESC:
+			type = OFStatsType.QUEUE_DESC;
+			rType = REQUESTTYPE.OFSTATS;
+			break;
 		case OFStatsTypeStrings.FLOW:
 			type = OFStatsType.FLOW;
+			rType = REQUESTTYPE.OFSTATS;
+			break;
+		case OFStatsTypeStrings.FLOW_LIGHTWEIGHT:
+			type = OFStatsType.FLOW_LIGHTWEIGHT;
+			rType = REQUESTTYPE.OFSTATS;
+			break;
+		case OFStatsTypeStrings.FLOW_MONITOR:
+			type = OFStatsType.FLOW_MONITOR;
 			rType = REQUESTTYPE.OFSTATS;
 			break;
 		case OFStatsTypeStrings.AGGREGATE:
@@ -88,7 +100,10 @@ public class AllSwitchStatisticsResource extends SwitchResourceBase {
 			type = OFStatsType.TABLE_FEATURES;
 			rType = REQUESTTYPE.OFSTATS;
 			break;
-
+		case OFStatsTypeStrings.TABLE_DESC:
+			type = OFStatsType.TABLE_DESC;
+			rType = REQUESTTYPE.OFSTATS;
+			break;
 		case OFStatsTypeStrings.GROUP:
 			type = OFStatsType.GROUP;
 			rType = REQUESTTYPE.OFSTATS;
@@ -116,7 +131,16 @@ public class AllSwitchStatisticsResource extends SwitchResourceBase {
 		case OFStatsTypeStrings.FEATURES:
 			rType = REQUESTTYPE.OFFEATURES;
 			break;
+		case OFStatsTypeStrings.BUNDLE_FEATURES:
+			type = OFStatsType.BUNDLE_FEATURES;
+			rType = REQUESTTYPE.OFSTATS;
+			break;
+		case OFStatsTypeStrings.CONTROLLER_STATUS:
+			type = OFStatsType.CONTROLLER_STATUS;
+			rType = REQUESTTYPE.OFSTATS;
+			break;
 		default:
+		    model.put("error", new StatsReply()); // will generate error message when serializer is invoked
 			return model;
 		}
 

@@ -109,4 +109,17 @@ public class AppCookieTest {
 
 
     }
+    
+    @Test
+    public void testAppFieldMask(){
+    	final int myAppId = 71;
+    	AppCookie.registerApp(myAppId, "TestFieldMask");
+    	U64 result = AppCookie.getAppFieldMask();
+    	U64 expectedMask = U64.of(0xfff0000000000000L);
+    	assertEquals(expectedMask, result);
+    	
+    	U64 cookie = AppCookie.makeCookie(myAppId, -1);
+    	U64 maskAppField = cookie.and(result);
+    	assertEquals(U64.of(0x470000000000000L),maskAppField);
+    }
 }

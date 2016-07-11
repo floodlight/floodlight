@@ -21,23 +21,19 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
-import net.floodlightcontroller.core.internal.IOFSwitchService;
-import net.floodlightcontroller.core.internal.Controller;
-import net.floodlightcontroller.core.module.Run;
-
-import org.sdnplatform.sync.ISyncService;
-
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
+import net.floodlightcontroller.core.module.Run;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
-import net.floodlightcontroller.debugevent.IDebugEventService;
 import net.floodlightcontroller.perfmon.IPktInProcessingTimeService;
 import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.storage.IStorageSourceService;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
+
+import org.sdnplatform.sync.ISyncService;
 
 public class FloodlightProvider implements IFloodlightModule {
     Controller controller;
@@ -75,7 +71,6 @@ public class FloodlightProvider implements IFloodlightModule {
         dependencies.add(IPktInProcessingTimeService.class);
         dependencies.add(IRestApiService.class);
         dependencies.add(IDebugCounterService.class);
-        dependencies.add(IDebugEventService.class);
         dependencies.add(IOFSwitchService.class);
         dependencies.add(IThreadPoolService.class);
         dependencies.add(ISyncService.class);
@@ -90,8 +85,6 @@ public class FloodlightProvider implements IFloodlightModule {
            context.getServiceImpl(IPktInProcessingTimeService.class));
        controller.setDebugCounter(
            context.getServiceImpl(IDebugCounterService.class));
-       controller.setDebugEvent(
-           context.getServiceImpl(IDebugEventService.class));
        controller.setRestApiService(
            context.getServiceImpl(IRestApiService.class));
        controller.setThreadPoolService(

@@ -60,6 +60,7 @@ public class OFConnectionCounters {
     private final IDebugCounter ctrWriteRequestForward;
     private final IDebugCounter ctrWriteBundleControl;
     private final IDebugCounter ctrWriteBundleAdd;
+    private final IDebugCounter ctrWriteControllerStatus;
 
     // Read Counters
     //
@@ -98,6 +99,7 @@ public class OFConnectionCounters {
     private final IDebugCounter ctrReadBundleAdd;
     private final IDebugCounter ctrReadBundleControl;
     private final IDebugCounter ctrReadRequestForward;
+    private final IDebugCounter ctrReadControllerStatus;
 
     private static final Logger logger =
             LoggerFactory.getLogger(OFConnectionCounters.class);
@@ -326,6 +328,12 @@ public class OFConnectionCounters {
                                      hierarchy,
                                      stringId,
                                      OFType.TABLE_STATUS.toString());
+        
+        ctrWriteControllerStatus =
+        		registerCounterLocal(counters,
+                hierarchy,
+                stringId,
+                OFType.CONTROLLER_STATUS.toString());
 
         // Register Read Counters
         //
@@ -515,6 +523,12 @@ public class OFConnectionCounters {
                                      hierarchy,
                                      stringId,
                                      OFType.TABLE_STATUS.toString());
+        
+        ctrReadControllerStatus =
+        		registerCounterLocal(counters,
+                hierarchy,
+                stringId,
+                OFType.CONTROLLER_STATUS.toString());
     }
     
     /**
@@ -673,10 +687,15 @@ public class OFConnectionCounters {
                 ctrWriteTableStatus.increment();
                 break;
                 
+            case CONTROLLER_STATUS:
+            	ctrWriteControllerStatus.increment();
+    			break;   
+    			
             default:
                 logger.warn(ofm.getType().toString() +
                             ": Invalid OpenFlow Messaqe!");
                 break;
+		
          }
     }
 
@@ -826,6 +845,10 @@ public class OFConnectionCounters {
                ctrReadTableStatus.increment();
                break;
 
+           case CONTROLLER_STATUS:
+           		ctrReadControllerStatus.increment();
+           		break;   
+               
            default:
                logger.warn(ofm.getType().toString() +
                            ": Invalid OpenFlow Messaqe!");

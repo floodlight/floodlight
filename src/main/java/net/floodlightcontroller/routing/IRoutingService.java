@@ -20,6 +20,7 @@ package net.floodlightcontroller.routing;
 import java.util.ArrayList;
 
 import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.Masked;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.U64;
 
@@ -82,5 +83,20 @@ public interface IRoutingService extends IFloodlightService {
      *  or not have tunnels as part of the path.
      */
     public boolean routeExists(DatapathId src, DatapathId dst, boolean tunnelEnabled);
+    
+    /** Register the RDCListener 
+     * @param listener - The module that wants to listen for events
+     * */
+    public void addRoutingDecisionChangedListener(IRoutingDecisionChangedListener listener);
+    
+    /** Remove the RDCListener
+     * @param listener - The module that wants to stop listening for events
+     * */
+    public void removeRoutingDecisionChangedListener(IRoutingDecisionChangedListener listener);
+    
+    /** Handles what the listener actually does 
+     * @param 
+     * */
+    public void handleRoutingDecisionChange(Iterable<Masked<U64>> event/* IRoutingDecisionChange event */);
 
 }

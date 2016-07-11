@@ -10,6 +10,7 @@ import org.projectfloodlight.openflow.protocol.instruction.OFInstructionApplyAct
 import org.projectfloodlight.openflow.protocol.instruction.OFInstructionExperimenter;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstructionGotoTable;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstructionMeter;
+import org.projectfloodlight.openflow.protocol.instruction.OFInstructionStatTrigger;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstructionWriteActions;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstructionWriteMetadata;
 
@@ -68,9 +69,13 @@ public class OFInstructionListSerializer extends JsonSerializer<List<OFInstructi
                 case WRITE_ACTIONS:
                     jGen.writeObjectFieldStart(InstructionUtils.STR_WRITE_ACTIONS);
                     OFActionListSerializer.serializeActions(jGen, ((OFInstructionWriteActions)i).getActions());
-                default:
-                    // shouldn't ever get here
-                    break;
+				case DEPRECATED:
+                    jGen.writeObjectFieldStart(InstructionUtils.STR_DEPRECATED);
+					break;
+				case STAT_TRIGGER:
+					jGen.writeFieldName(InstructionUtils.STR_STAT_TRIGGER);
+					InstructionUtils.statTriggerToJsonString(jGen, (OFInstructionStatTrigger)i);
+					break;
                 } // end switch on instruction
                 jGen.writeEndObject(); // end specific instruction
             } // end for instructions

@@ -23,6 +23,7 @@ import java.util.HashSet;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.IOFSwitch;
 
+import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.restlet.resource.Get;
 import org.restlet.resource.ServerResource;
@@ -40,35 +41,43 @@ public class ControllerSwitchesResource extends ServerResource {
         private final DatapathId dpid;
         private final String inetAddress; 
         private final long connectedSince;
-        public DatapathIDJsonSerializerWrapper(DatapathId dpid, String inetAddress, long connectedSince) {
+        private final String version;
+        public DatapathIDJsonSerializerWrapper(DatapathId dpid, String inetAddress, long connectedSince, OFVersion version) {
             this.dpid = dpid;
             this.inetAddress = inetAddress;
             this.connectedSince = connectedSince;
+            this.version = version.toString();
         }
         
         @JsonSerialize(using=DPIDSerializer.class)
         public DatapathId getSwitchDPID() {
             return dpid;
         }
+        
         public String getInetAddress() {
             return inetAddress;
         }
+        
         public long getConnectedSince() {
             return connectedSince;
         }
-
-
-
+        
+        public String getOpenFlowVersion() {
+            return version;
+        }
     }
 
     @Get("json")
-    public Set<DatapathIDJsonSerializerWrapper> retrieve(){
+    public Set<DatapathIDJsonSerializerWrapper> retrieve() {
         IOFSwitchService switchService = 
             (IOFSwitchService) getContext().getAttributes().
                 get(IOFSwitchService.class.getCanonicalName());
         Set<DatapathIDJsonSerializerWrapper> dpidSets = new HashSet<DatapathIDJsonSerializerWrapper>();
-        for(IOFSwitch sw: switchService.getAllSwitchMap().values()) {
-            dpidSets.add(new DatapathIDJsonSerializerWrapper(sw.getId(), sw.getInetAddress().toString(),  sw.getConnectedSince().getTime()));
+        for (IOFSwitch sw: switchService.getAllSwitchMap().values()) {
+            dpidSets.add(new DatapathIDJsonSerializerWrapper(sw.getId(), 
+                    sw.getInetAddress().toString(), 
+                    sw.getConnectedSince().getTime(),
+                    sw.getOFFactory().getVersion()));
 
         }
         return dpidSets;
