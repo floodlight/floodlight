@@ -87,7 +87,7 @@ IFloodlightModule {
 	private static final U64 DENY_BCAST_COOKIE = AppCookie.makeCookie(APP_ID, 0xaaaaaaaa);
 	private static final U64 ALLOW_BCAST_COOKIE = AppCookie.makeCookie(APP_ID, 0x55555555);
 	private static final U64 RULE_MISS_COOKIE = AppCookie.makeCookie(APP_ID, -1);
-	private static final U64 DEFAULT_COOKIE = AppCookie.makeCookie(APP_ID, 0);
+	static final U64 DEFAULT_COOKIE = AppCookie.makeCookie(APP_ID, 0);
 
 	// service modules needed
 	protected IFloodlightProviderService floodlightProvider;
@@ -440,8 +440,6 @@ IFloodlightModule {
 		entry.put(COLUMN_PRIORITY, Integer.toString(rule.priority));
 		entry.put(COLUMN_ACTION, Integer.toString(rule.action.ordinal()));
 		storageSource.insertRow(TABLE_NAME, entry);
-		
-		
 		
 		U64 singleRuleMask = AppCookie.getAppFieldMask().or(AppCookie.getUserFieldMask());
 		List<Masked<U64>> changes = new ArrayList<Masked<U64>>();

@@ -21,8 +21,11 @@ import static org.easymock.EasyMock.createMock;
 import static org.easymock.EasyMock.expect;
 import static org.easymock.EasyMock.replay;
 import static org.easymock.EasyMock.verify;
+import static org.easymock.EasyMock.capture;
+import static org.easymock.EasyMock.reset;
 import static org.junit.Assert.*;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -51,6 +54,8 @@ import net.floodlightcontroller.storage.memory.MemoryStorageSource;
 import net.floodlightcontroller.test.FloodlightTestCase;
 import net.floodlightcontroller.topology.TopologyManager;
 
+import org.easymock.Capture;
+import org.easymock.CaptureType;
 import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
@@ -65,6 +70,7 @@ import org.projectfloodlight.openflow.types.IPv4Address;
 import org.projectfloodlight.openflow.types.IPv4AddressWithMask;
 import org.projectfloodlight.openflow.types.IpProtocol;
 import org.projectfloodlight.openflow.types.MacAddress;
+import org.projectfloodlight.openflow.types.Masked;
 import org.projectfloodlight.openflow.types.OFBufferId;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.TransportPort;
@@ -76,6 +82,7 @@ import org.projectfloodlight.openflow.types.U64;
  * @author Amer Tahir
  */
 public class FirewallTest extends FloodlightTestCase {
+	protected IRoutingService routingService;
     protected FloodlightContext cntx;
     protected OFPacketIn packetIn;
     protected IOFSwitch sw;
@@ -108,7 +115,7 @@ public class FirewallTest extends FloodlightTestCase {
         firewall = new Firewall();
         MemoryStorageSource storageService = new MemoryStorageSource();
         RestApiServer restApi = new RestApiServer();
-        IRoutingService routingService = createMock(IRoutingService.class);
+        routingService = createMock(IRoutingService.class);
 
         // Mock switches
         DatapathId dpid = DatapathId.of(TestSwitch1DPID);
@@ -255,6 +262,33 @@ public class FirewallTest extends FloodlightTestCase {
                 IFloodlightProviderService.CONTEXT_PI_PAYLOAD,
                 (Ethernet)packet);
     }
+    
+    public boolean compareU64ListsOrdered(List<Masked<U64>> a,List<Masked<U64>> b){
+    	Object[] aArray = a.toArray();
+    	Object[] bArray = b.toArray();
+    	if (aArray.length != bArray.length) return false;
+    	for(int i = 0; i<aArray.length; i++){
+    		if(aArray[i].equals(bArray[i]) == false){
+    			return false;
+    		}
+    	}
+    	return true;
+    }
+    
+    @Test
+    public void enableFirewall() throws Exception{
+    	Capture<ArrayList<Masked<U64>>> wc1 = EasyMock.newCapture(CaptureType.ALL);
+    	routingService.handleRoutingDecisionChange(capture(wc1));
+        ArrayList<Masked<U64>> test_changes = new ArrayList<Masked<U64>>();
+        U64 singleRuleMask = AppCookie.getAppFieldMask().or(AppCookie.getUserFieldMask());
+        
+        replay(routingService);
+    	firewall.enableFirewall(true);
+        verify(routingService);
+        test_changes.add(Masked.of(firewall.DEFAULT_COOKIE, AppCookie.getAppFieldMask()));
+    	
+    	assertTrue(compareU64ListsOrdered(wc1.getValue(),test_changes));
+    }
 
     @Test
     public void testNoRules() throws Exception {
@@ -275,6 +309,10 @@ public class FirewallTest extends FloodlightTestCase {
 
     @Test
     public void testReadRulesFromStorage() throws Exception {
+    	Capture<ArrayList<Masked<U64>>> wc1 = EasyMock.newCapture(CaptureType.ALL);
+        routingService.handleRoutingDecisionChange(capture(wc1));
+        ArrayList<Masked<U64>> test_changes = new ArrayList<Masked<U64>>();
+        U64 singleRuleMask = AppCookie.getAppFieldMask().or(AppCookie.getUserFieldMask());
         // add 2 rules first
         FirewallRule rule = new FirewallRule();
         rule.in_port = OFPort.of(2);
@@ -282,7 +320,17 @@ public class FirewallTest extends FloodlightTestCase {
         rule.dl_dst = MacAddress.of("00:00:00:00:00:02");
         rule.priority = 1;
         rule.action = FirewallRule.FirewallAction.DROP;
+        replay(routingService);
         firewall.addRule(rule);
+        verify(routingService);
+        test_changes.add(Masked.of(AppCookie.makeCookie(APP_ID, rule.ruleid), singleRuleMask));
+        test_changes.add(Masked.of(RULE_MISS_COOKIE, singleRuleMask));
+        assertEquals(compareU64ListsOrdered(wc1.getValue(),test_changes),true);
+        reset(routingService);
+        // next rule
+        wc1 = EasyMock.newCapture(CaptureType.ALL);
+        test_changes = new ArrayList<Masked<U64>>();
+        routingService.handleRoutingDecisionChange(capture(wc1));
         rule = new FirewallRule();
         rule.in_port = OFPort.of(3);
         rule.dl_src = MacAddress.of("00:00:00:00:00:02");
@@ -292,9 +340,16 @@ public class FirewallTest extends FloodlightTestCase {
         rule.tp_dst = TransportPort.of(80);
         rule.priority = 2;
         rule.action = FirewallRule.FirewallAction.ALLOW;
+        replay(routingService);
         firewall.addRule(rule);
-
+        verify(routingService);
+        test_changes.add(Masked.of(AppCookie.makeCookie(APP_ID, rule.ruleid), singleRuleMask));
+        test_changes.add(Masked.of(RULE_MISS_COOKIE, singleRuleMask));
+        assertTrue(compareU64ListsOrdered(wc1.getValue(),test_changes));
+        reset(routingService);
+        
         List<FirewallRule> rules = firewall.readRulesFromStorage();
+        
         // verify rule 1
         FirewallRule r = rules.get(0);
         assertEquals(r.in_port, OFPort.of(2));
@@ -337,15 +392,26 @@ public class FirewallTest extends FloodlightTestCase {
         rule.priority = 1;
         firewall.addRule(rule);
         int rid = rule.ruleid;
+        reset(routingService);
+
+    	Capture<ArrayList<Masked<U64>>> wc1 = EasyMock.newCapture(CaptureType.ALL);
+    	routingService.handleRoutingDecisionChange(capture(wc1));
+        ArrayList<Masked<U64>> test_changes = new ArrayList<Masked<U64>>();
+        U64 singleRuleMask = AppCookie.getAppFieldMask().or(AppCookie.getUserFieldMask());
 
         List<Map<String, Object>> rulesFromStorage = firewall.getStorageRules();
         assertEquals(1, rulesFromStorage.size());
         assertEquals(Integer.parseInt((String)rulesFromStorage.get(0).get("ruleid")), rid);
 
         // delete rule
+        replay(routingService);
         firewall.deleteRule(rid);
+        verify(routingService);
+        test_changes.add(Masked.of(AppCookie.makeCookie(APP_ID, rule.ruleid), singleRuleMask));
         rulesFromStorage = firewall.getStorageRules();
         assertEquals(0, rulesFromStorage.size());
+        assertTrue(compareU64ListsOrdered(wc1.getValue(),test_changes));
+        reset(routingService);
     }
 
     @Test
