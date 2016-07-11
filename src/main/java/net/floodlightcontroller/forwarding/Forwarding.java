@@ -218,7 +218,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 
 				// Would like to swap these for loops and only build the message set once,
 				// but doing so would assume all switches are using the same OF protocol version.
-				Set<OFMessage> msgs = new HashSet<OFMessage>();
+				List<OFMessage> msgs = new ArrayList<OFMessage>();
 				for (Masked<U64> masked_cookie : masked_cookies) {
 					msgs.add(
 						sw.getOFFactory().buildFlowDelete()

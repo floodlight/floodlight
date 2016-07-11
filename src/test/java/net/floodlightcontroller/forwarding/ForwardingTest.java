@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -31,11 +32,9 @@ import java.util.Set;
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
-import net.floodlightcontroller.core.IOFSwitch.SwitchStatus;
 import net.floodlightcontroller.core.SwitchDescription;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
-import net.floodlightcontroller.core.test.MockSwitchManager;
 import net.floodlightcontroller.core.test.MockThreadPoolService;
 import net.floodlightcontroller.core.types.NodePortTuple;
 import net.floodlightcontroller.core.util.AppCookie;
@@ -55,9 +54,7 @@ import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.packet.IPv6;
 import net.floodlightcontroller.packet.UDP;
 import net.floodlightcontroller.routing.IRoutingDecision.RoutingAction;
-import net.floodlightcontroller.routing.IRoutingDecisionChangedListener;
 import net.floodlightcontroller.routing.IRoutingService;
-import net.floodlightcontroller.routing.IRoutingDecision;
 import net.floodlightcontroller.routing.Route;
 import net.floodlightcontroller.routing.RoutingDecision;
 import net.floodlightcontroller.test.FloodlightTestCase;
@@ -99,6 +96,8 @@ import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.action.OFActionOutput;
 import org.sdnplatform.sync.ISyncService;
 import org.sdnplatform.sync.test.MockSyncService;
+
+import com.google.common.collect.ImmutableList;
 
 public class ForwardingTest extends FloodlightTestCase {
 	protected FloodlightContext cntx;
@@ -323,6 +322,36 @@ public class ForwardingTest extends FloodlightTestCase {
 		IFloodlightProviderService.bcStore.
 		remove(cntx,
 				IDeviceService.CONTEXT_DST_DEVICE);
+	}
+
+	static boolean messageListsEqualIgnoreXid(List<OFMessage> c1, List<OFMessage> c2) {
+		if (c1 == c2) {
+			return true;
+		}
+
+		if (c1 == null || c2 == null) {
+			return false;
+		}
+
+		if (c1.size() != c2.size()) {
+			return false;
+		}
+
+		Iterator<OFMessage> it1 = c1.iterator();
+		Iterator<OFMessage> it2 = c2.iterator();
+		while (it1.hasNext()) {
+			OFMessage m1 = it1.next();
+			OFMessage m2 = it2.next();
+			if (m1 == m2) {
+				continue;
+			}
+
+			if (m1 == null || m2 == null || !m1.equalsIgnoreXid(m2)) {
+				return false;
+			}
+		}
+
+		return true;
 	}
 
 	enum DestDeviceToLearn { NONE, DEVICE1 ,DEVICE2 };
@@ -761,7 +790,6 @@ public class ForwardingTest extends FloodlightTestCase {
 		reset(routingEngine);
 
 		Capture<OFMessage> wc1 = EasyMock.newCapture(CaptureType.ALL);
-		Capture<IRoutingDecisionChangedListener> test1 = EasyMock.newCapture(CaptureType.ALL);
 		
 		Set<OFPort> bcastPorts = new HashSet<OFPort>();
 		bcastPorts.add(OFPort.of(10));
@@ -834,7 +862,7 @@ public class ForwardingTest extends FloodlightTestCase {
 		route.getPath().add(new NodePortTuple(DatapathId.of(1L), OFPort.of(1)));
 		route.getPath().add(new NodePortTuple(DatapathId.of(1L), OFPort.of(3)));
 		reset(routingEngine);
-		expect(routingEngine.getRoute(DatapathId.of(1L), OFPort.of(1), DatapathId.of(1L), OFPort.of(3), forwarding.DEFAULT_FORWARDING_COOKIE)).andReturn(route).atLeastOnce();
+		expect(routingEngine.getRoute(DatapathId.of(1L), OFPort.of(1), DatapathId.of(1L), OFPort.of(3), Forwarding.DEFAULT_FORWARDING_COOKIE)).andReturn(route).atLeastOnce();
 		
 		// Expected Flow-mods
 		Match match = packetIn.getMatch();
@@ -945,18 +973,19 @@ public class ForwardingTest extends FloodlightTestCase {
 	public void testForwardDeleteFlowsByDescriptorSingle() throws Exception {
 		reset(routingEngine);
 		
-		// Probably a tomorrow thing but there is a crash when it gets to "getActiveSwitch" in MockSwitchManager
-		Capture<Set<OFMessage>> wc1 = EasyMock.newCapture(CaptureType.ALL);
-		Capture<Set<OFMessage>> wc2 = EasyMock.newCapture(CaptureType.ALL);
+		Capture<List<OFMessage>> wc1 = EasyMock.newCapture(CaptureType.ALL);
+		Capture<List<OFMessage>> wc2 = EasyMock.newCapture(CaptureType.ALL);
 		
 		List<Masked<U64>> descriptors = new ArrayList<Masked<U64>>();
-		descriptors.add(Masked.of(U64.of(0x00000000FFffFFffL),U64.of(0x00200000FFffFFffL))); // Mask = 0xffFFffFFL which is forwarding.DECISION_MASK/AppCookie.USER_MASK//descriptors.add(Masked.of(U64.of(0x00000000FFffFFffL),U64.of(0x0020000000000000L)));//descriptors.add(Masked.of(U64.of(0xffFFffFFffFFffFFL),U64.of(0x00200000FFffFFffL))); // Mask = 0xffFFffFFffFFffFFL which is the value returned by forwarding.AppCookie.getAppFieldMask()//descriptors.add(Masked.of(U64.of(0xffFFffFFffFFffFFL),U64.of(0x0020000000000000L)));
+		descriptors.add(Masked.of(
+				U64.of(0x00000000FFffFFffL),
+				U64.of(0x00200000FFffFFffL))); // User mask = 0xffFFffFFL which is forwarding.DECISION_MASK/AppCookie.USER_MASK//descriptors.add(Masked.of(U64.of(0x00000000FFffFFffL),U64.of(0x0020000000000000L)));//descriptors.add(Masked.of(U64.of(0xffFFffFFffFFffFFL),U64.of(0x00200000FFffFFffL))); // Mask = 0xffFFffFFffFFffFFL which is the value returned by forwarding.AppCookie.getAppFieldMask()//descriptors.add(Masked.of(U64.of(0xffFFffFFffFFffFFL),U64.of(0x0020000000000000L)));
 		
 		expect(sw1.getStatus()).andReturn(IOFSwitch.SwitchStatus.MASTER).anyTimes();
 		expect(sw2.getStatus()).andReturn(IOFSwitch.SwitchStatus.MASTER).anyTimes();
 		
-		expect(sw1.write(capture(wc1))).andReturn(null).once();//.andReturn(true).once();
-		expect(sw2.write(capture(wc2))).andReturn(null).once();//.andReturn(true).once();
+		expect(sw1.write(capture(wc1))).andReturn(ImmutableList.of()).once();
+		expect(sw2.write(capture(wc2))).andReturn(ImmutableList.of()).once();
 		
 		replay(sw1, sw2, routingEngine);
 		forwarding.deleteFlowsByDescriptor(descriptors);
@@ -965,36 +994,39 @@ public class ForwardingTest extends FloodlightTestCase {
 		assertTrue(wc1.hasCaptured());
 		assertTrue(wc2.hasCaptured());
 		
-		Masked<U64> masked_cookie = Masked.of(	AppCookie.makeCookie(forwarding.FORWARDING_APP_ID, (int)4294967295L),
-													AppCookie.getAppFieldMask().or(U64.of(0xffffffffL)));
-		Set<OFMessage> msgs_test = new HashSet<OFMessage>();
+		Masked<U64> masked_cookie = Masked.of(
+				AppCookie.makeCookie(Forwarding.FORWARDING_APP_ID, (int)4294967295L),
+				AppCookie.getAppFieldMask().or(U64.of(0xffffffffL)));
+		List<OFMessage> msgs_test = new ArrayList<>();
 		msgs_test.add( 	factory.buildFlowDelete()
 						.setCookie(masked_cookie.getValue())
 						.setCookieMask(masked_cookie.getMask())
 						.build());
 		
-		assertTrue(OFMessageUtils.equalsIgnoreXid((OFMessage)wc1.getValue().toArray()[0], (OFMessage)msgs_test.toArray()[0]));
-		assertTrue(OFMessageUtils.equalsIgnoreXid((OFMessage)wc2.getValue().toArray()[0], (OFMessage)msgs_test.toArray()[0]));
+		assertTrue(messageListsEqualIgnoreXid(wc1.getValue(), msgs_test));
+		assertTrue(messageListsEqualIgnoreXid(wc2.getValue(), msgs_test));
 	}
 	
 	@Test
 	public void testForwardDeleteFlowsByDescriptorMultiple() throws Exception {
-		// TODO solve ERROR
 		reset(routingEngine);
 		
-		// Probably a tomorrow thing but there is a crash when it gets to "getActiveSwitch" in MockSwitchManager
-		Capture<Set<OFMessage>> wc1 = EasyMock.newCapture(CaptureType.ALL);
-		Capture<Set<OFMessage>> wc2 = EasyMock.newCapture(CaptureType.ALL);
+		Capture<List<OFMessage>> wc1 = EasyMock.newCapture(CaptureType.ALL);
+		Capture<List<OFMessage>> wc2 = EasyMock.newCapture(CaptureType.ALL);
 		
 		List<Masked<U64>> descriptors = new ArrayList<Masked<U64>>();
-		descriptors.add(Masked.of(U64.of(0x00000000FFffFFffL),U64.of(0x00200000FFffFFffL))); // Mask = 0xffFFffFFL which is forwarding.DECISION_MASK/AppCookie.USER_MASK
-		descriptors.add(Masked.of(U64.of(0x00000000FFffFFffL),U64.of(0x0020000000000000L)));
+		descriptors.add(Masked.of(
+				U64.of(0x00000000FFffFFffL),
+				U64.of(0x00200000FFffFFffL))); // User mask = 0xffFFffFFL which is forwarding.DECISION_MASK/AppCookie.USER_MASK
+		descriptors.add(Masked.of(
+				U64.of(0x00000000FFffFFffL),
+				U64.of(0x0020000000000000L)));
 		
 		expect(sw1.getStatus()).andReturn(IOFSwitch.SwitchStatus.MASTER).anyTimes();
 		expect(sw2.getStatus()).andReturn(IOFSwitch.SwitchStatus.MASTER).anyTimes();
 		
-		expect(sw1.write(capture(wc1))).andReturn(null).once();//.andReturn(true).once();
-		expect(sw2.write(capture(wc2))).andReturn(null).once();//.andReturn(true).once();
+		expect(sw1.write(capture(wc1))).andReturn(ImmutableList.of()).once();
+		expect(sw2.write(capture(wc2))).andReturn(ImmutableList.of()).once();
 		
 		replay(sw1, sw2, routingEngine);
 		forwarding.deleteFlowsByDescriptor(descriptors);
@@ -1004,12 +1036,12 @@ public class ForwardingTest extends FloodlightTestCase {
 		assertTrue(wc2.hasCaptured());
 		
 		// Cookies
-		Masked<U64> masked_cookie = Masked.of(	AppCookie.makeCookie(forwarding.FORWARDING_APP_ID, (int)4294967295L),
+		Masked<U64> masked_cookie = Masked.of(	AppCookie.makeCookie(Forwarding.FORWARDING_APP_ID, (int)4294967295L),
 												AppCookie.getAppFieldMask().or(U64.of(0xffffffffL)));
-		Masked<U64> masked_cookie2 = Masked.of(	AppCookie.makeCookie(forwarding.FORWARDING_APP_ID, 0),
+		Masked<U64> masked_cookie2 = Masked.of(	AppCookie.makeCookie(Forwarding.FORWARDING_APP_ID, 0),
 												AppCookie.getAppFieldMask().or(U64.of(0x0L)));
 		// Add cookies to a msg set
-		Set<OFMessage> msgs_test = new HashSet<OFMessage>();
+		List<OFMessage> msgs_test = new ArrayList<OFMessage>();
 		msgs_test.add( 	factory.buildFlowDelete()
 						.setCookie(masked_cookie.getValue())
 						.setCookieMask(masked_cookie.getMask())
@@ -1018,19 +1050,8 @@ public class ForwardingTest extends FloodlightTestCase {
 						.setCookie(masked_cookie2.getValue())
 						.setCookieMask(masked_cookie2.getMask())
 						.build());
-		// I would like to do a .containsIgnoreXid because the packets to delete should not need to be in a particular order
-		// as long as all packets are sent to the switch, but I do not (at this time) feel like making that function
-		if(OFMessageUtils.equalsIgnoreXid((OFMessage)wc2.getValue().toArray()[0], (OFMessage)msgs_test.toArray()[0])){
-			assertTrue(OFMessageUtils.equalsIgnoreXid((OFMessage)wc1.getValue().toArray()[0], (OFMessage)msgs_test.toArray()[1]));
-			assertTrue(OFMessageUtils.equalsIgnoreXid((OFMessage)wc1.getValue().toArray()[1], (OFMessage)msgs_test.toArray()[0]));
-			assertTrue(OFMessageUtils.equalsIgnoreXid((OFMessage)wc2.getValue().toArray()[0], (OFMessage)msgs_test.toArray()[0]));
-			assertTrue(OFMessageUtils.equalsIgnoreXid((OFMessage)wc2.getValue().toArray()[1], (OFMessage)msgs_test.toArray()[1]));
-		}else{
-			assertTrue(OFMessageUtils.equalsIgnoreXid((OFMessage)wc1.getValue().toArray()[0], (OFMessage)msgs_test.toArray()[1]));
-			assertTrue(OFMessageUtils.equalsIgnoreXid((OFMessage)wc1.getValue().toArray()[1], (OFMessage)msgs_test.toArray()[0]));
-			assertTrue(OFMessageUtils.equalsIgnoreXid((OFMessage)wc2.getValue().toArray()[0], (OFMessage)msgs_test.toArray()[1]));
-			assertTrue(OFMessageUtils.equalsIgnoreXid((OFMessage)wc2.getValue().toArray()[1], (OFMessage)msgs_test.toArray()[0]));
-		}
+		assertTrue(messageListsEqualIgnoreXid(wc1.getValue(), msgs_test));
+		assertTrue(messageListsEqualIgnoreXid(wc2.getValue(), msgs_test));
 	}
 	
 	@Test
