@@ -1817,9 +1817,9 @@ IFloodlightModule, IInfoProvider {
 		}
 
 		if (autoPortFastFeature)
-			log.info("Setting autoportfast feature to ON");
+			log.debug("Setting autoportfast feature to ON");
 		else
-			log.info("Setting autoportfast feature to OFF");
+			log.debug("Setting autoportfast feature to OFF");
 	}
 
 	/**
@@ -2017,6 +2017,7 @@ IFloodlightModule, IInfoProvider {
 		this.ignoreMACSet = Collections.newSetFromMap(
 				new ConcurrentHashMap<MACRange,Boolean>());
 		this.haListener = new HAListenerDelegate();
+		this.floodlightProviderService.addHAListener(this.haListener);
 		registerLinkDiscoveryDebugCounters();
 	}
 
@@ -2056,7 +2057,9 @@ IFloodlightModule, IInfoProvider {
 			@Override
 			public void run() {
 				try {
-					discoverLinks();
+					if (role == null || role == HARole.ACTIVE) { /* don't send if we just transitioned to STANDBY */
+					    discoverLinks();
+					}
 				} catch (StorageException e) {
 					shutdownService.terminate("Storage exception in LLDP send timer. Terminating process " + e, 0);
 				} catch (Exception e) {
@@ -2171,14 +2174,11 @@ IFloodlightModule, IInfoProvider {
 	private class HAListenerDelegate implements IHAListener {
 		@Override
 		public void transitionToActive() {
-			if (log.isTraceEnabled()) {
-				log.trace("Sending LLDPs "
-						+ "to HA change from STANDBY->MASTER");
-			}
+			log.warn("Sending LLDPs due to HA change from STANDBY->ACTIVE");
 			LinkDiscoveryManager.this.role = HARole.ACTIVE;
 			clearAllLinks();
 			readTopologyConfigFromStorage();
-			log.debug("Role Change to Master: Rescheduling discovery task.");
+			log.debug("Role Change to Master: Rescheduling discovery tasks");
 			discoveryTask.reschedule(1, TimeUnit.MICROSECONDS);
 		}
 
@@ -2191,13 +2191,13 @@ IFloodlightModule, IInfoProvider {
 
 		@Override
 		public String getName() {
-			return LinkDiscoveryManager.this.getName();
+			return MODULE_NAME;
 		}
 
 		@Override
 		public boolean isCallbackOrderingPrereq(HAListenerTypeMarker type,
 				String name) {
-			return ("topology".equals(name));
+			return false;
 		}
 
 		@Override
@@ -2208,13 +2208,11 @@ IFloodlightModule, IInfoProvider {
 
 		@Override
 		public void transitionToStandby() {
-			//no-op
+            log.warn("Disabling LLDPs due to HA change from ACTIVE->STANDBY");
+            LinkDiscoveryManager.this.role = HARole.STANDBY;
 		}
 	}
 
 	@Override
-	public void switchDeactivated(DatapathId switchId) {
-		// TODO Auto-generated method stub
-		
-	}
+	public void switchDeactivated(DatapathId switchId) { }
 }
