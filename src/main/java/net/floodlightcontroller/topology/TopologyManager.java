@@ -673,8 +673,7 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 		@Override
 		public boolean isCallbackOrderingPrereq(HAListenerTypeMarker type,
 				String name) {
-			return "linkdiscovery".equals(name) ||
-					"tunnelmanager".equals(name);
+			return "linkdiscovery".equals(name);
 		}
 
 		@Override
