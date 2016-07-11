@@ -134,6 +134,7 @@ public class Controller implements IFloodlightProviderService, IStorageSourceLis
      * based on parameters that are only available in init()
      */
     private static RoleManager roleManager;
+    protected static boolean shutdownOnTransitionToStandby = false;
 
     /* Storage table names */
     protected static final String CONTROLLER_TABLE_NAME = "controller_controller";
@@ -620,10 +621,21 @@ public class Controller implements IFloodlightProviderService, IStorageSourceLis
         }        
         log.info("ControllerId set to {}", this.controllerId);
         
+        String shutdown = configParams.get("shutdownOnTransitionToStandby");
+        if (!Strings.isNullOrEmpty(shutdown)) {
+            try {
+                shutdownOnTransitionToStandby = Boolean.parseBoolean(shutdown.trim());
+            } catch (Exception e) {
+                log.error("Could not parse 'shutdownOnTransitionToStandby' of {}. Using default setting of {}", 
+                        shutdown, shutdownOnTransitionToStandby);
+            }
+        }        
+        log.info("Shutdown when controller transitions to STANDBY HA role: {}", shutdownOnTransitionToStandby);
+        
         String decodeEth = configParams.get("deserializeEthPacketIns");
         if (!Strings.isNullOrEmpty(decodeEth)) {
         	try {
-        		alwaysDecodeEth = Boolean.parseBoolean(decodeEth);
+        		alwaysDecodeEth = Boolean.parseBoolean(decodeEth.trim());
         	} catch (Exception e) {
         		log.error("Could not parse 'deserializeEthPacketIns' of {}. Using default setting of {}", decodeEth, alwaysDecodeEth);
         	}
