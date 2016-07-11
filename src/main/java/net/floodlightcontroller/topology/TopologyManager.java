@@ -610,6 +610,38 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 		result.add(getRoute(srcDpid, dstDpid, U64.of(0), tunnelEnabled));
 		return result;
 	}
+	
+    /** 
+     *  Registers an IRoutingDecisionChangedListener.
+     *   
+     *  @param {IRoutingDecisionChangedListener} listener - 
+     *  @return {void}
+     */
+	public void addRoutingDecisionChangedListener(IRoutingDecisionChangedListener listener) {
+		decisionChangedListeners.add(listener);
+	}
+	
+	/** 
+     *  Deletes an IRoutingDecisionChangedListener.
+     *   
+     *  @param {IRoutingDecisionChangedListener} listener - 
+     *  @return {void}
+     */
+	public void removeRoutingDecisionChangedListener(IRoutingDecisionChangedListener listener) {
+		decisionChangedListeners.remove(listener);
+	}
+
+	/** 
+     *  Listens for the event to the IRoutingDecisionChanged listener and calls routingDecisionChanged().
+     *   
+     *  @param {Iterable<Masked<U64>>} - event
+     *  @return {void}
+     */
+	public void handleRoutingDecisionChange(Iterable<Masked<U64>> event) {
+		for(IRoutingDecisionChangedListener listener : decisionChangedListeners) {
+			listener.routingDecisionChanged(event);
+		}
+	}
 
 	// ******************
 	// IOFMessageListener
@@ -1411,18 +1443,4 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 
         return ports;
     }
-    
-    public void addRoutingDecisionChangedListener(IRoutingDecisionChangedListener listener) {
-		decisionChangedListeners.add(listener);
-	}
-		
-	public void removeRoutingDecisionChangedListener(IRoutingDecisionChangedListener listener) {
-		decisionChangedListeners.remove(listener);
-	}
-
-	public void handleRoutingDecisionChange(Iterable<Masked<U64>> event) {
-		for(IRoutingDecisionChangedListener listener : decisionChangedListeners) {
-			listener.routingDecisionChanged(event);
-		}
-	}
 }
