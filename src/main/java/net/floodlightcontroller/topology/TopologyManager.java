@@ -617,6 +617,7 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
      *  @param {IRoutingDecisionChangedListener} listener - 
      *  @return {void}
      */
+	@Override
 	public void addRoutingDecisionChangedListener(IRoutingDecisionChangedListener listener) {
 		decisionChangedListeners.add(listener);
 	}
@@ -627,6 +628,7 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
      *  @param {IRoutingDecisionChangedListener} listener - 
      *  @return {void}
      */
+	@Override
 	public void removeRoutingDecisionChangedListener(IRoutingDecisionChangedListener listener) {
 		decisionChangedListeners.remove(listener);
 	}
@@ -637,9 +639,10 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
      *  @param {Iterable<Masked<U64>>} - event
      *  @return {void}
      */
-	public void handleRoutingDecisionChange(Iterable<Masked<U64>> event) {
+	@Override
+	public void handleRoutingDecisionChange(Iterable<Masked<U64>> changedDecisions) {
 		for(IRoutingDecisionChangedListener listener : decisionChangedListeners) {
-			listener.routingDecisionChanged(event);
+			listener.routingDecisionChanged(changedDecisions);
 		}
 	}
 

@@ -328,7 +328,6 @@ IFloodlightModule {
 				logger.warn("Firewall unable to request packet drop: FloodlightContext is null.");
 			} else {
 				decision = IRoutingDecision.rtStore.get(cntx, IRoutingDecision.CONTEXT_DECISION);
-
 				return this.processPacketInMessage(sw, (OFPacketIn) msg, decision, cntx);
 			}
 			break;
@@ -352,7 +351,6 @@ IFloodlightModule {
 			// Add announcement that all firewall decisions changed
 			routingService.handleRoutingDecisionChange(changes);
 		}
-		
 	}
 
 	@Override
@@ -453,7 +451,6 @@ IFloodlightModule {
 		}
 		changes.add(Masked.of(RULE_MISS_COOKIE, singleRuleMask));
 		routingService.handleRoutingDecisionChange(changes);
-		
 	}
 
 	@Override
@@ -481,7 +478,6 @@ IFloodlightModule {
 		//Add announcement that rule is added
 		// should we try to delete the flow even if not found in this.rules
 		routingService.handleRoutingDecisionChange(changes);
-		
 	}
 
 	/**

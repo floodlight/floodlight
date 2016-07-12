@@ -111,7 +111,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                 return Command.CONTINUE;
             case FORWARD_OR_FLOOD:
             case FORWARD:
-            	doForwardFlow(sw, pi, decision, cntx, false);
+                doForwardFlow(sw, pi, decision, cntx, false);
                 return Command.CONTINUE;
             case MULTICAST:
                 // treat as broadcast
@@ -146,7 +146,6 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 	 * @return A cookie with our app id and the required routing fields masked-in
 	 */
 	protected U64 makeForwardingCookie(IRoutingDecision decision) {
-
 		int user_fields = 0;
 
 		U64 decision_cookie = (decision == null) ? null : decision.getDescriptor();
@@ -164,9 +163,11 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 
 	/** Called when the handleDecisionChange is triggered by an event (routing decision was changed in firewall).
 	 *  
-	 *  @param eventDescriptors Collection of descriptors that should be deleted from the switch.*/
-	public void routingDecisionChanged(Iterable<Masked<U64>> eventDescriptors) {
-		deleteFlowsByDescriptor(eventDescriptors);
+	 *  @param changedDecisions Masked routing descriptors for flows that should be deleted from the switch.
+	 */
+	@Override
+	public void routingDecisionChanged(Iterable<Masked<U64>> changedDecisions) {
+		deleteFlowsByDescriptor(changedDecisions);
 	}
 	
 	/**

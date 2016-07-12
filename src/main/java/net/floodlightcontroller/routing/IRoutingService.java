@@ -86,17 +86,22 @@ public interface IRoutingService extends IFloodlightService {
     
     /** Register the RDCListener 
      * @param listener - The module that wants to listen for events
-     * */
+     */
     public void addRoutingDecisionChangedListener(IRoutingDecisionChangedListener listener);
     
     /** Remove the RDCListener
      * @param listener - The module that wants to stop listening for events
-     * */
+     */
     public void removeRoutingDecisionChangedListener(IRoutingDecisionChangedListener listener);
     
-    /** Handles what the listener actually does 
-     * @param 
-     * */
-    public void handleRoutingDecisionChange(Iterable<Masked<U64>> event/* IRoutingDecisionChange event */);
+    /** Notifies listeners that routing logic has changed, requiring certain past routing decisions
+     * to become invalid.  The caller provides a sequence of masked values that match against
+     * past values of IRoutingDecision.getDescriptor().  Services that have operated on past
+     * routing decisions are then able to remove the results of past decisions, normally by deleting
+     * flows.
+     * 
+     * @param changedDecisions Masked descriptors identifying routing decisions that are now obsolete or invalid  
+     */
+    public void handleRoutingDecisionChange(Iterable<Masked<U64>> changedDecisions);
 
 }

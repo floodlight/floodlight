@@ -871,10 +871,8 @@ public class ForwardingTest extends FloodlightTestCase {
 		actions.add(action);
 		
 		RoutingDecision decision = new RoutingDecision(DatapathId.of(1L), OFPort.of(1), dstDevice1, RoutingAction.FORWARD);
-		//decision.setDescriptor(U64.of(0x00000000ffffffffL));
+		decision.setDescriptor(U64.ZERO);
 		decision.addToContext(cntx);
-		//RoutingDecision de2 = (RoutingDecision) RoutingDecision.rtStore.get(cntx, IRoutingDecision.CONTEXT_DECISION); // Same as decision
-		//(DatapathId swDipd, OFPort inPort, IDevice srcDevice, RoutingAction action);
 		
 		OFFlowMod fm1 = factory.buildFlowAdd()
 				.setIdleTimeout((short)5)

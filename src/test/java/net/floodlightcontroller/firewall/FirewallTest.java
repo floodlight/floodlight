@@ -52,7 +52,6 @@ import net.floodlightcontroller.routing.IRoutingService;
 import net.floodlightcontroller.storage.IStorageSourceService;
 import net.floodlightcontroller.storage.memory.MemoryStorageSource;
 import net.floodlightcontroller.test.FloodlightTestCase;
-import net.floodlightcontroller.topology.TopologyManager;
 
 import org.easymock.Capture;
 import org.easymock.CaptureType;
@@ -277,17 +276,16 @@ public class FirewallTest extends FloodlightTestCase {
     
     @Test
     public void enableFirewall() throws Exception{
-    	Capture<ArrayList<Masked<U64>>> wc1 = EasyMock.newCapture(CaptureType.ALL);
-    	routingService.handleRoutingDecisionChange(capture(wc1));
-        ArrayList<Masked<U64>> test_changes = new ArrayList<Masked<U64>>();
-        U64 singleRuleMask = AppCookie.getAppFieldMask().or(AppCookie.getUserFieldMask());
-        
-        replay(routingService);
-    	firewall.enableFirewall(true);
-        verify(routingService);
-        test_changes.add(Masked.of(firewall.DEFAULT_COOKIE, AppCookie.getAppFieldMask()));
-    	
-    	assertTrue(compareU64ListsOrdered(wc1.getValue(),test_changes));
+		Capture<ArrayList<Masked<U64>>> wc1 = EasyMock.newCapture(CaptureType.ALL);
+		routingService.handleRoutingDecisionChange(capture(wc1));
+		ArrayList<Masked<U64>> test_changes = new ArrayList<Masked<U64>>();
+
+		replay(routingService);
+		firewall.enableFirewall(true);
+		verify(routingService);
+		test_changes.add(Masked.of(Firewall.DEFAULT_COOKIE, AppCookie.getAppFieldMask()));
+
+		assertTrue(compareU64ListsOrdered(wc1.getValue(),test_changes));
     }
 
     @Test
@@ -309,7 +307,7 @@ public class FirewallTest extends FloodlightTestCase {
 
     @Test
     public void testReadRulesFromStorage() throws Exception {
-    	Capture<ArrayList<Masked<U64>>> wc1 = EasyMock.newCapture(CaptureType.ALL);
+        Capture<ArrayList<Masked<U64>>> wc1 = EasyMock.newCapture(CaptureType.ALL);
         routingService.handleRoutingDecisionChange(capture(wc1));
         ArrayList<Masked<U64>> test_changes = new ArrayList<Masked<U64>>();
         U64 singleRuleMask = AppCookie.getAppFieldMask().or(AppCookie.getUserFieldMask());
@@ -545,7 +543,6 @@ public class FirewallTest extends FloodlightTestCase {
         assertEquals(IRoutingDecision.RoutingAction.MULTICAST, decision.getRoutingAction());
         assertEquals(ALLOW_BCAST_COOKIE, decision.getDescriptor());
 
-
         // clear decision
         IRoutingDecision.rtStore.remove(cntx, IRoutingDecision.CONTEXT_DECISION);
 
@@ -559,7 +556,6 @@ public class FirewallTest extends FloodlightTestCase {
         decision = IRoutingDecision.rtStore.get(cntx, IRoutingDecision.CONTEXT_DECISION);
         assertEquals(decision.getRoutingAction(), IRoutingDecision.RoutingAction.DROP);
         assertEquals(RULE_MISS_COOKIE, decision.getDescriptor());
-
     }
 
     @Test
@@ -582,7 +578,6 @@ public class FirewallTest extends FloodlightTestCase {
         IRoutingDecision decision = IRoutingDecision.rtStore.get(cntx, IRoutingDecision.CONTEXT_DECISION);
         assertEquals(IRoutingDecision.RoutingAction.MULTICAST, decision.getRoutingAction());
         assertEquals(ALLOW_BCAST_COOKIE, decision.getDescriptor());
-
     }
 
     @Test
@@ -601,10 +596,7 @@ public class FirewallTest extends FloodlightTestCase {
         // malformed broadcast traffic should NOT be allowed
         IRoutingDecision decision = IRoutingDecision.rtStore.get(cntx, IRoutingDecision.CONTEXT_DECISION);
         assertEquals(decision.getRoutingAction(), IRoutingDecision.RoutingAction.DROP);
-//        assertEquals(IRoutingDecision.RoutingAction.MULTICAST, decision.getRoutingAction());
         assertEquals(DENY_BCAST_COOKIE, decision.getDescriptor());
-        
-
     }
 
     @Test
