@@ -35,6 +35,7 @@ import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.routing.IRoutingService;
 import net.floodlightcontroller.routing.Link;
 import net.floodlightcontroller.routing.Route;
+import net.floodlightcontroller.statistics.IStatisticsService;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
 import net.floodlightcontroller.topology.web.TopologyWebRoutable;
 import org.projectfloodlight.openflow.protocol.*;
@@ -61,6 +62,11 @@ import java.util.concurrent.TimeUnit;
 public class TopologyManager implements IFloodlightModule, ITopologyService, IRoutingService, ILinkDiscoveryListener, IOFMessageListener {
 	protected static Logger log = LoggerFactory.getLogger(TopologyManager.class);
 	public static final String MODULE_NAME = "topology";
+
+	protected static IStatisticsService statisticsService;
+
+	protected static volatile ROUTE_METRIC routeMetric = ROUTE_METRIC.HOPCOUNT_AVOID_TUNNELS; //default: route on hop count
+	protected static boolean collectStatistics = false;
 
 	/**
 	 * Role of the controller.
@@ -323,6 +329,21 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 	public boolean isAllowed(DatapathId sw, OFPort portId, boolean tunnelEnabled) {
 		TopologyInstance ti = getCurrentInstance(tunnelEnabled);
 		return ti.isAllowed(sw, portId);
+	}
+
+	@Override
+	public ROUTE_METRIC setRouteMetric(ROUTE_METRIC metric) {
+		routeMetric = metric;
+		return routeMetric;
+	}
+
+	@Override
+	public ROUTE_METRIC getRouteMetric() {
+		return routeMetric;
+	}
+
+	static protected ROUTE_METRIC getRouteMetricInternal() {
+		return routeMetric;
 	}
 
 	////////////////////////////////////////////////////////////////////////
@@ -606,6 +627,15 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 		return result;
 	}
 
+	public ArrayList<Route> getRoutes(DatapathId srcDpid, DatapathId dstDpid, Integer k) {
+		return getCurrentInstance().getRoutes(srcDpid, dstDpid, k);
+	}
+
+	public Map<Link, Integer> getLinkCostMap(boolean tunnelEnabled) {
+		TopologyInstance ti = getCurrentInstance(tunnelEnabled);
+		return ti.initLinkCostMap();
+	}
+
 	// ******************
 	// IOFMessageListener
 	// ******************
@@ -734,6 +764,7 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 		switchService = context.getServiceImpl(IOFSwitchService.class);
 		restApiService = context.getServiceImpl(IRestApiService.class);
 		debugCounterService = context.getServiceImpl(IDebugCounterService.class);
+		statisticsService = context.getServiceImpl(IStatisticsService.class);
 
 		switchPorts = new HashMap<DatapathId, Set<OFPort>>();
 		switchPortLinks = new HashMap<NodePortTuple, Set<Link>>();
@@ -744,6 +775,34 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 		ldUpdates = new LinkedBlockingQueue<LDUpdate>();
 		haListener = new HAListenerDelegate();
 		registerTopologyDebugCounters();
+
+		Map<String, String> configOptions = context.getConfigParams(this);
+		String metric = configOptions.get("routeMetric") != null
+				? configOptions.get("routeMetric").trim().toLowerCase() : null;
+		if (metric != null) {
+			switch (metric) {
+				case "latency":
+					routeMetric = ROUTE_METRIC.LATENCY;
+					break;
+				case "utilization":
+					routeMetric = ROUTE_METRIC.UTILIZATION;
+					break;
+				case "hopcount":
+					routeMetric = ROUTE_METRIC.HOPCOUNT;
+					break;
+				case "hopcount_avoid_tunnels":
+					routeMetric = ROUTE_METRIC.HOPCOUNT_AVOID_TUNNELS;
+					break;
+				case "link_speed":
+					routeMetric = ROUTE_METRIC.LINK_SPEED;
+					break;
+				default:
+					log.error("Invalid input {}", metric);
+					break;
+			}
+		}
+
+		log.info("Route Metrics set to {}", routeMetric);
 	}
 
 	@Override

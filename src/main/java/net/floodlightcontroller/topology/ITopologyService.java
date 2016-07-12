@@ -27,7 +27,12 @@ import java.util.Map;
 import java.util.Set;
 
 public interface ITopologyService extends IFloodlightService  {
-	
+
+	public enum ROUTE_METRIC { LATENCY, HOPCOUNT, HOPCOUNT_AVOID_TUNNELS, UTILIZATION, LINK_SPEED };
+
+	public ROUTE_METRIC setRouteMetric(ROUTE_METRIC metric);
+	public ROUTE_METRIC getRouteMetric();
+
 	/*******************************************************
 	 * GENERAL TOPOLOGY FUNCTIONS
 	 *******************************************************/

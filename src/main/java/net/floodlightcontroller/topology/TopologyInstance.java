@@ -740,6 +740,112 @@ public class TopologyInstance {
 
 		return ret;
 	}
+
+    /*
+	 * Creates a map of links and the cost associated with each link
+	 *
+	 *
+	 */
+
+    protected Map<Link,Integer> initLinkCostMap() {
+        Map<Link, Integer> linkCost = new HashMap<Link, Integer>();
+        long rawLinkSpeed;
+        int linkSpeedMBps;
+        int tunnel_weight = switchPorts.size() + 1;
+
+    		/* routeMetrics:
+        	 *  1: Hop Count(Default Metrics)
+         	 *  2: Hop Count (Treat Tunnels same as link)
+         	 *  3: Latency
+         	 *  4: Link Speed (Needs to be tested)
+         	*/
+        switch (TopologyManager.getRouteMetricInternal()){
+            case HOPCOUNT_AVOID_TUNNELS:
+                if(TopologyManager.collectStatistics == true){
+                    TopologyManager.statisticsService.collectStatistics(false);
+                    TopologyManager.collectStatistics = false;
+                }
+                log.info("Using Default: Hop Count with Tunnel Bias for Metrics");
+                for (NodePortTuple npt : tunnelPorts) {
+                    if (allLinks.get(npt) == null) continue;
+                    for (Link link : allLinks.get(npt)) {
+                        if (link == null) continue;
+                        linkCost.put(link, tunnel_weight);
+                    }
+                }
+                return linkCost;
+
+            case HOPCOUNT:
+                if(TopologyManager.collectStatistics == true){
+                    TopologyManager.statisticsService.collectStatistics(false);
+                    TopologyManager.collectStatistics = false;
+                }
+                log.info("Using Hop Count without Tunnel Bias for Metrics");
+                for (NodePortTuple npt : allLinks.keySet()) {
+                    if (allLinks.get(npt) == null) continue;
+                    for (Link link : allLinks.get(npt)) {
+                        if (link == null) continue;
+                        linkCost.put(link,1);
+                    }
+                }
+                return linkCost;
+
+            case LATENCY:
+                if(TopologyManager.collectStatistics == true){
+                    TopologyManager.statisticsService.collectStatistics(false);
+                    TopologyManager.collectStatistics = false;
+                }
+                log.info("Using Latency for Route Metrics");
+                for (NodePortTuple npt : allLinks.keySet()) {
+                    if (allLinks.get(npt) == null) continue;
+                    for (Link link : allLinks.get(npt)) {
+                        if (link == null) continue;
+                        if((int)link.getLatency().getValue() < 0 || (int)link.getLatency().getValue() > MAX_LINK_WEIGHT)
+                            linkCost.put(link, MAX_LINK_WEIGHT);
+                        else
+                            linkCost.put(link,(int)link.getLatency().getValue());
+                    }
+                }
+                return linkCost;
+
+            case LINK_SPEED:
+                if(TopologyManager.collectStatistics == false){
+                    TopologyManager.statisticsService.collectStatistics(true);
+                    TopologyManager.collectStatistics = true;
+                }
+                log.info("Using Link Speed for Route Metrics");
+                for (NodePortTuple npt : allLinks.keySet()) {
+                    if (allLinks.get(npt) == null) continue;
+                    rawLinkSpeed = TopologyManager.statisticsService.getLinkSpeed(npt);
+                    for (Link link : allLinks.get(npt)) {
+                        if (link == null) continue;
+
+                        if((rawLinkSpeed / 10^6) / 8 > 1){
+                            linkSpeedMBps = (int)(rawLinkSpeed / 10^6) / 8;
+                            linkCost.put(link, (1/linkSpeedMBps)*1000);
+                        }
+                        else
+                            linkCost.put(link, MAX_LINK_WEIGHT);
+                    }
+                }
+                return linkCost;
+
+            default:
+                if(TopologyManager.collectStatistics == true){
+                    TopologyManager.statisticsService.collectStatistics(false);
+                    TopologyManager.collectStatistics = false;
+                }
+                log.info("Invalid Selection: Using Default Hop Count with Tunnel Bias for Metrics");
+                for (NodePortTuple npt : tunnelPorts) {
+                    if (allLinks.get(npt) == null) continue;
+                    for (Link link : allLinks.get(npt)) {
+                        if (link == null) continue;
+                        linkCost.put(link, tunnel_weight);
+                    }
+                }
+                return linkCost;
+        }
+    }
 	
     /*
 	 * Modification of the calculateShortestPathTreeInClusters (dealing with whole topology, not individual clusters)
@@ -924,6 +1030,52 @@ public class TopologyInstance {
         return result;
     }
 
+    protected Route buildroute(RouteId id, BroadcastTree tree) {
+        NodePortTuple npt;
+        DatapathId srcId = id.getSrc();
+        DatapathId dstId = id.getDst();
+        //set of NodePortTuples on the route
+        LinkedList<NodePortTuple> sPorts = new LinkedList<NodePortTuple>();
+
+        if (tree == null) return null;
+
+        // TODO: Check if the src and dst are in the tree
+        // if (destinationRootedFullTrees.get(dstId) == null) return null;
+
+        Map<DatapathId, Link> nexthoplinks = tree.getLinks();
+
+        if (!switches.contains(srcId) || !switches.contains(dstId)) {
+            // This is a switch that is not connected to any other switch
+            // hence there was no update for links (and hence it is not
+            // in the network)
+            log.info("buildroute: Standalone switch: {}", srcId);
+
+            // The only possible non-null path for this case is
+            // if srcId equals dstId --- and that too is an 'empty' path []
+
+        } else if ((nexthoplinks!=null) && (nexthoplinks.get(srcId) != null)) {
+            while (!srcId.equals(dstId)) {
+                Link l = nexthoplinks.get(srcId);
+                npt = new NodePortTuple(l.getSrc(), l.getSrcPort());
+                sPorts.addLast(npt);
+                npt = new NodePortTuple(l.getDst(), l.getDstPort());
+                sPorts.addLast(npt);
+                srcId = nexthoplinks.get(srcId).getDst();
+            }
+        }
+        // else, no path exists, and path equals null
+
+        Route result = null;
+        if (sPorts != null && !sPorts.isEmpty()) {
+            result = new Route(id, sPorts);
+
+        }
+        if (log.isTraceEnabled()) {
+            log.trace("buildroute: {}", result);
+        }
+        return result;
+    }
+
     /*
      * Getter Functions
      */
@@ -944,6 +1096,260 @@ public class TopologyInstance {
         Link link = bt.getLinks().get(srcId);
         if (link == null) return false;
         return true;
+    }
+
+    /*
+    Function that calls Yen's algorithm and returns a list of routes
+    from A to B.
+	 */
+    protected ArrayList<Route> getRoutes(DatapathId src, DatapathId dst, Integer K) {
+        return yens(src, dst, K);
+    }
+
+    protected Map<DatapathId, Set<Link>> buildLinkDpidMap(Set<DatapathId> switches, Map<DatapathId,
+            Set<OFPort>> switchPorts, Map<NodePortTuple, Set<Link>> allLinks) {
+
+        Map<DatapathId, Set<Link>> linkDpidMap = new HashMap<DatapathId, Set<Link>>();
+        for (DatapathId s : switches) {
+            if (switchPorts.get(s) == null) continue;
+            for (OFPort p : switchPorts.get(s)) {
+                NodePortTuple np = new NodePortTuple(s, p);
+                if (allLinks.get(np) == null) continue;
+                for (Link l : allLinks.get(np)) {
+                    if (switches.contains(l.getSrc()) && switches.contains(l.getDst())) {
+                        if (linkDpidMap.containsKey(s)) {
+                            linkDpidMap.get(s).add(l);
+                        } else {
+                            linkDpidMap.put(s, new HashSet<Link>(Arrays.asList(l)));
+                        }
+                    }
+                }
+            }
+        }
+
+        return linkDpidMap;
+    }
+
+    protected void setRouteCosts(Route r) {
+        U64 cost = U64.ZERO;
+
+        // Set number of hops. Assuming the list of NPTs is always even.
+        r.setRouteHopCount(r.getPath().size()/2);
+
+        for (int i = 0; i <= r.getPath().size() - 2; i = i + 2) {
+            DatapathId src = r.getPath().get(i).getNodeId();
+            DatapathId dst = r.getPath().get(i + 1).getNodeId();
+            OFPort srcPort = r.getPath().get(i).getPortId();
+            OFPort dstPort = r.getPath().get(i + 1).getPortId();
+            for (Link l : allLinks.get(r.getPath().get(i))) {
+                //log.debug("Iterating through the links");
+                if (l.getSrc().equals(src) && l.getDst().equals(dst) &&
+                        l.getSrcPort().equals(srcPort) && l.getDstPort().equals(dstPort)) {
+                    log.info("Matching link found: {}", l);
+                    cost = cost.add(l.getLatency());
+                }
+            }
+        }
+
+        r.setRouteLatency(cost);
+        log.info("Total cost is {}", cost);
+        log.info(r.toString());
+
+    }
+
+    protected ArrayList<Route> yens(DatapathId src, DatapathId dst, Integer K) {
+
+        //log.debug("YENS ALGORITHM -----------------");
+        //log.debug("Asking for routes from {} to {}", src, dst);
+        //log.debug("Asking for {} routes", K);
+
+        // Find link costs
+        Map<Link, Integer> linkCost = initLinkCostMap();
+
+        Map<DatapathId, Set<Link>> linkDpidMap = buildLinkDpidMap(switches, switchPorts, allLinks);
+
+        Map<DatapathId, Set<Link>> copyOfLinkDpidMap = new HashMap<DatapathId, Set<Link>>(linkDpidMap);
+
+        // A is the list of shortest paths. The number in the list at the end should be less than or equal to K
+        // B is the list of possible shortest paths found in this function.
+        ArrayList<Route> A = new ArrayList<Route>();
+        ArrayList<Route> B = new ArrayList<Route>();
+
+        // The number of routes requested should never be less than 1.
+        if (K < 1) {
+            return A;
+        }
+
+        if (!switches.contains(src) || !switches.contains(dst)) {
+            return A;
+        }
+
+        // Using Dijkstra's to find the shortest path, which will also be the first path in A
+        Route newroute = buildroute(new RouteId(src, dst), dijkstra(copyOfLinkDpidMap, dst, linkCost, true));
+
+        if (newroute != null) {
+            setRouteCosts(newroute);
+            A.add(newroute);
+        }
+        else {
+            log.info("No routes found in Yen's!");
+            return A;
+        }
+
+        // Loop through K - 1 times to get other possible shortest paths
+        for (int k = 1; k < K; k++) {
+            log.info("k: {}", k);
+            //log.debug("Path Length 'A.get(k-1).getPath().size()-2': {}", A.get(k - 1).getPath().size() - 2);
+            // Iterate through i, which is the number of links in the most recent path added to A
+            for (int i = 0; i <= A.get(k - 1).getPath().size() - 2; i = i + 2) {
+                log.info("i: {}", i);
+                List<NodePortTuple> path = A.get(k - 1).getPath();
+                //log.debug("A(k-1): {}", A.get(k - 1).getPath());
+                // The spur node is the point in the topology where Dijkstra's is called again to find another path
+                DatapathId spurNode = path.get(i).getNodeId();
+                // rootPath is the path along the previous shortest path that is before the spur node
+                Route rootPath = new Route(new RouteId(path.get(0).getNodeId(), path.get(i).getNodeId()),
+                        path.subList(0, i));
+
+
+                Map<NodePortTuple, Set<Link>> allLinksCopy = new HashMap<NodePortTuple, Set<Link>>(allLinks);
+                // Remove the links after the spur node that are part of other paths in A so that new paths
+                // found are unique
+                for (Route r : A) {
+                    if (r.getPath().size() > (i + 1) && r.getPath().subList(0, i).equals(rootPath.getPath())) {
+                        allLinksCopy.remove(r.getPath().get(i));
+                        allLinksCopy.remove(r.getPath().get(i+1));
+                    }
+                }
+
+                // Removes the root path so Dijkstra's doesn't try to go through it to find a path
+                Set<DatapathId> switchesCopy = new HashSet<DatapathId>(switches);
+                for (NodePortTuple npt : rootPath.getPath()) {
+                    if (!npt.getNodeId().equals(spurNode)) {
+                        switchesCopy.remove(npt.getNodeId());
+                    }
+                }
+
+                // Builds the new topology without the parts we want removed
+                copyOfLinkDpidMap = buildLinkDpidMap(switchesCopy, switchPorts, allLinksCopy);
+
+                //log.debug("About to build route.");
+                //log.debug("Switches: {}", switchesCopy);
+                // Uses Dijkstra's to try to find a shortest path from the spur node to the destination
+                Route spurPath = buildroute(new RouteId(spurNode, dst), dijkstra(copyOfLinkDpidMap, dst, linkCost, true));
+                if (spurPath == null) {
+                    //log.debug("spurPath is null");
+                    continue;
+                }
+
+                // Adds the root path and spur path together to get a possible shortest path
+                List<NodePortTuple> totalNpt = new LinkedList<NodePortTuple>();
+                totalNpt.addAll(rootPath.getPath());
+                totalNpt.addAll(spurPath.getPath());
+                Route totalPath = new Route(new RouteId(src, dst), totalNpt);
+                setRouteCosts(totalPath);
+
+                log.info("Spur Node: {}", spurNode);
+                log.info("Root Path: {}", rootPath);
+                log.info("Spur Path: {}", spurPath);
+                log.info("Total Path: {}", totalPath);
+                // Adds the new path into B
+                int flag = 0;
+                for (Route r_B : B) {
+                    for (Route r_A : A) {
+                        if (r_B.getPath().equals(totalPath.getPath()) || r_A.getPath().equals(totalPath.getPath())) {
+                            flag = 1;
+                        }
+                    }
+                }
+                if (flag == 0) {
+                    B.add(totalPath);
+                }
+
+
+
+
+                // Restore edges and nodes to graph
+            }
+
+            // If we get out of the loop and there isn't a path in B to add to A, all possible paths have been
+            // found and return A
+            if (B.isEmpty()) {
+                //log.debug("B list is empty in Yen's");
+                break;
+            }
+
+            //log.debug("Removing shortest path from {}", B);
+            // Find the shortest path in B, remove it, and put it in A
+            log.info("--------------BEFORE------------------------");
+            for (Route r : B) {
+                log.info(r.toString());
+            }
+            log.info("--------------------------------------------");
+            Route shortestPath = removeShortestPath(B, linkCost);
+            log.info("--------------AFTER------------------------");
+            for (Route r : B) {
+                log.info(r.toString());
+            }
+            log.info("--------------------------------------------");
+
+            if (shortestPath != null) {
+                //log.debug("Adding new shortest path to {} in Yen's", shortestPath);
+                A.add(shortestPath);
+                log.info("A: {}", A);
+            }
+            else {
+                //log.debug("removeShortestPath returned {}", shortestPath);
+            }
+        }
+
+        // Set the route counts
+        for (Route r : A) {
+            r.setRouteCount(A.indexOf(r));
+        }
+        //log.debug("END OF YEN'S --------------------");
+        return A;
+    }
+
+    protected Route removeShortestPath(ArrayList<Route> routes, Map<Link, Integer> linkCost) {
+        log.debug("REMOVE SHORTEST PATH -------------");
+        // If there is nothing in B, return
+        if(routes == null){
+            log.debug("Routes == null");
+            return null;
+        }
+        Route shortestPath = null;
+        // Set the default shortest path to the max value
+        Integer shortestPathCost = Integer.MAX_VALUE;
+
+        // Iterate through B and find the shortest path
+        for (Route r : routes) {
+            Integer pathCost = 0;
+            // Add up the weights of each link in the path
+            // TODO Get the path cost from the route object
+            for (NodePortTuple npt : r.getPath()) {
+                if (allLinks.get(npt) ==  null || linkCost.get(allLinks.get(npt).iterator().next()) == null) {
+                    pathCost++;
+                }
+                else {
+                    pathCost += linkCost.get(allLinks.get(npt).iterator().next());
+                }
+            }
+            log.debug("Path {} with cost {}", r, pathCost);
+            // If it is smaller than the current smallest, replace variables with the path just found
+            if (pathCost < shortestPathCost) {
+                log.debug("New shortest path {} with cost {}", r, pathCost);
+                shortestPathCost = pathCost;
+                shortestPath = r;
+            }
+        }
+
+        log.debug("Remove {} from {}", shortestPath, routes);
+        // Remove the route from B and return it
+        routes.remove(shortestPath);
+
+        log.debug("Shortest path: {}", shortestPath);
+        return shortestPath;
     }
 
 	/*

@@ -73,6 +73,9 @@ public interface IRoutingService extends IFloodlightService {
     /** return all routes, if available */
     public ArrayList<Route> getRoutes(DatapathId longSrcDpid, DatapathId longDstDpid, boolean tunnelEnabled);
 
+    /** Another version of getRoutes that uses Yen's algorithm under the hood. */
+    public ArrayList<Route> getRoutes(DatapathId srcDpid, DatapathId dstDpid, Integer numOfRoutesToGet);
+
     /** Check if a route exists between src and dst, including tunnel links
      *  in the path.
      */
