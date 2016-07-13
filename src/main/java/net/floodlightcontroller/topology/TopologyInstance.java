@@ -1423,7 +1423,10 @@ public class TopologyInstance {
         Route result = null;
 
         try {
-            result = pathcache.get(id);
+            //result = pathcache.get(id);
+            if (!routecache.get(id).isEmpty()) {
+                result = routecache.get(id).get(0);
+            }
         } catch (Exception e) {
             log.warn("Could not find route from {} to {}. If the path exists, wait for the topology to settle, and it will be detected", srcId, dstId);
         }
