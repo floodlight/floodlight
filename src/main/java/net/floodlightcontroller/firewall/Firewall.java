@@ -70,6 +70,8 @@ import net.floodlightcontroller.storage.StorageException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.collect.ImmutableList;
+
 /**
  * Stateless firewall implemented as a Google Summer of Code project.
  * Configuration done through REST API
@@ -340,14 +342,14 @@ IFloodlightModule {
 
 	@Override
 	public void enableFirewall(boolean enabled) {
-		
 		if(this.enabled != enabled) {
 			logger.info("Setting firewall to {}", enabled);
 			this.enabled = enabled;
-		
-			List<Masked<U64>> changes = new ArrayList<Masked<U64>>();
-			changes.add(Masked.of(DEFAULT_COOKIE, AppCookie.getAppFieldMask()));
-		
+
+			List<Masked<U64>> changes = ImmutableList.of(
+						Masked.of(DEFAULT_COOKIE, AppCookie.getAppFieldMask())
+					);
+
 			// Add announcement that all firewall decisions changed
 			routingService.handleRoutingDecisionChange(changes);
 		}
@@ -440,17 +442,16 @@ IFloodlightModule {
 		storageSource.insertRow(TABLE_NAME, entry);
 		
 		U64 singleRuleMask = AppCookie.getAppFieldMask().or(AppCookie.getUserFieldMask());
-		List<Masked<U64>> changes = new ArrayList<Masked<U64>>();
+		ImmutableList.Builder<Masked<U64>> changesBuilder = ImmutableList.builder();
 		Iterator<FirewallRule> iter = this.rules.iterator();
 		while (iter.hasNext()) {
 			FirewallRule r = iter.next();
 			if (r.priority >= rule.priority) {
-				// 
-				changes.add(Masked.of(AppCookie.makeCookie(APP_ID, r.ruleid), singleRuleMask));
+				changesBuilder.add(Masked.of(AppCookie.makeCookie(APP_ID, r.ruleid), singleRuleMask));
 			}
 		}
-		changes.add(Masked.of(RULE_MISS_COOKIE, singleRuleMask));
-		routingService.handleRoutingDecisionChange(changes);
+		changesBuilder.add(Masked.of(RULE_MISS_COOKIE, singleRuleMask));
+		routingService.handleRoutingDecisionChange(changesBuilder.build());
 	}
 
 	@Override
@@ -472,8 +473,7 @@ IFloodlightModule {
 				AppCookie.makeCookie(APP_ID, ruleid),
 				AppCookie.getAppFieldMask().or(AppCookie.getUserFieldMask()));
 		
-		List<Masked<U64>> changes = new ArrayList<Masked<U64>>();
-		changes.add(delDescriptor);
+		List<Masked<U64>> changes = ImmutableList.of(delDescriptor);
 		
 		//Add announcement that rule is added
 		// should we try to delete the flow even if not found in this.rules

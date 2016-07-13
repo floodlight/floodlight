@@ -86,6 +86,8 @@ import org.projectfloodlight.openflow.types.OFVlanVidMatch;
 import org.projectfloodlight.openflow.types.TableId;
 import org.projectfloodlight.openflow.types.U64;
 import org.projectfloodlight.openflow.types.VlanVid;
+import org.python.google.common.collect.ImmutableList;
+import org.python.google.common.collect.Maps;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -179,18 +181,18 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 	 * @return A collection of masked cookies suitable for flow-mod operations
 	 */
 	protected Collection<Masked<U64>> convertRoutingDecisionDescriptors(Iterable<Masked<U64>> maskedDescriptors) {
-		if(maskedDescriptors == null){
+		if(maskedDescriptors == null) {
 			return null;
 		}
-		List<Masked<U64>> result = new ArrayList<Masked<U64>>();
 
+		ImmutableList.Builder<Masked<U64>> resultBuilder = ImmutableList.builder();
 		for (Masked<U64> maskedDescriptor : maskedDescriptors) {
 			long user_mask = AppCookie.extractUser(maskedDescriptor.getMask()) & DECISION_MASK;
 			long user_value = AppCookie.extractUser(maskedDescriptor.getValue()) & user_mask;
 
 			// TODO combine in any other cookie fields you need here.
 
-			result.add(
+			resultBuilder.add(
 					Masked.of(
 							AppCookie.makeCookie(FORWARDING_APP_ID, (int)user_value),
 							AppCookie.getAppFieldMask().or(U64.of(user_mask))
@@ -198,7 +200,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 			);
 		}
 
-		return result;
+		return resultBuilder.build();
 	}
 
 	/**
@@ -211,25 +213,32 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 		Collection<Masked<U64>> masked_cookies = convertRoutingDecisionDescriptors(descriptors);
 
 		if (masked_cookies != null && !masked_cookies.isEmpty()) {
+			Map<OFVersion, List<OFMessage>> cache = Maps.newHashMap();
+
 			for (DatapathId dpid : switchService.getAllSwitchDpids()) {
 				IOFSwitch sw = switchService.getActiveSwitch(dpid);
 				if (sw == null) {
 					continue;
 				}
 
-				// Would like to swap these for loops and only build the message set once,
-				// but doing so would assume all switches are using the same OF protocol version.
-				List<OFMessage> msgs = new ArrayList<OFMessage>();
-				for (Masked<U64> masked_cookie : masked_cookies) {
-					msgs.add(
-						sw.getOFFactory().buildFlowDelete()
-							.setCookie(masked_cookie.getValue())
-							.setCookieMask(masked_cookie.getMask())
-								.build()
-						);
-				}
+				OFVersion ver = sw.getOFFactory().getVersion();
+				if (cache.containsKey(ver)) {
+					sw.write(cache.get(ver));
+				} else {
+					ImmutableList.Builder<OFMessage> msgsBuilder = ImmutableList.builder();
+					for (Masked<U64> masked_cookie : masked_cookies) {
+						msgsBuilder.add(
+							sw.getOFFactory().buildFlowDelete()
+								.setCookie(masked_cookie.getValue())
+								.setCookieMask(masked_cookie.getMask())
+									.build()
+							);
+					}
 
-				sw.write(msgs);
+					List<OFMessage> msgs = msgsBuilder.build();
+					sw.write(msgs);
+					cache.put(ver, msgs);
+				}
 			}
 		}
 	}
