@@ -541,7 +541,7 @@ public class LoadBalancerTest extends FloodlightTestCase {
 
 		for (OFMessage m: msglist1) {
 			if (m instanceof OFPacketOut)
-				assertTrue(OFMessageUtils.equalsIgnoreXid(arpReplyPacketOut1, m));
+                assertEquals(OFMessageUtils.OFMessageIgnoreXid.of(arpReplyPacketOut1), OFMessageUtils.OFMessageIgnoreXid.of(m));
 			else
 				assertTrue(false); // unexpected message
 		}

@@ -175,7 +175,7 @@ public class StaticFlowTests extends FloodlightTestCase {
 		// dont' bother testing the cookie; just copy it over
 		goodFlowMod = goodFlowMod.createBuilder().setCookie(testFlowMod.getCookie()).build();
 		// .. so we can continue to use .equals()
-		assertTrue(OFMessageUtils.equalsIgnoreXid(goodFlowMod, testFlowMod));
+        assertEquals(OFMessageUtils.OFMessageIgnoreXid.of(goodFlowMod), OFMessageUtils.OFMessageIgnoreXid.of(testFlowMod));
 	}
 
 

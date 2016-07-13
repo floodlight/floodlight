@@ -488,15 +488,15 @@ public class ForwardingTest extends FloodlightTestCase {
 
 		for (OFMessage m: msglist) {
 			if (m instanceof OFFlowMod)
-				assertTrue(OFMessageUtils.equalsIgnoreXid(fm1, m));
+				assertEquals(OFMessageUtils.OFMessageIgnoreXid.of(fm1), OFMessageUtils.OFMessageIgnoreXid.of(m));
 			else if (m instanceof OFPacketOut) {
-				assertTrue(OFMessageUtils.equalsIgnoreXid(packetOut, m));
+                assertEquals(OFMessageUtils.OFMessageIgnoreXid.of(packetOut), OFMessageUtils.OFMessageIgnoreXid.of(m));
 			}
 		}
 
 		OFMessage m = wc2.getValue();
 		assert (m instanceof OFFlowMod);
-		assertTrue(OFMessageUtils.equalsIgnoreXid(m, fm2));
+        assertEquals(OFMessageUtils.OFMessageIgnoreXid.of(m), OFMessageUtils.OFMessageIgnoreXid.of(fm2));
 		
 		removeDeviceFromContext();
 	}
@@ -558,15 +558,15 @@ public class ForwardingTest extends FloodlightTestCase {
 
 		for (OFMessage m: msglist) {
 			if (m instanceof OFFlowMod)
-				assertTrue(OFMessageUtils.equalsIgnoreXid(fm1, m));
+                assertEquals(OFMessageUtils.OFMessageIgnoreXid.of(fm1), OFMessageUtils.OFMessageIgnoreXid.of(m));
 			else if (m instanceof OFPacketOut) {
-				assertTrue(OFMessageUtils.equalsIgnoreXid(packetOutIPv6, m));
+                assertEquals(OFMessageUtils.OFMessageIgnoreXid.of(packetOutIPv6), OFMessageUtils.OFMessageIgnoreXid.of(m));
 			}
 		}
 
 		OFMessage m = wc2.getValue();
 		assert (m instanceof OFFlowMod);
-		assertTrue(OFMessageUtils.equalsIgnoreXid(m, fm2));
+        assertEquals(OFMessageUtils.OFMessageIgnoreXid.of(m), OFMessageUtils.OFMessageIgnoreXid.of(fm2));
 		
 		removeDeviceFromContext();
 	}
@@ -619,8 +619,8 @@ public class ForwardingTest extends FloodlightTestCase {
 		assertTrue(wc1.hasCaptured());
 		assertTrue(wc2.hasCaptured());
 
-		assertTrue(OFMessageUtils.equalsIgnoreXid(wc1.getValue(), fm1));
-		assertTrue(OFMessageUtils.equalsIgnoreXid(wc2.getValue(), packetOut));
+        assertEquals(OFMessageUtils.OFMessageIgnoreXid.of(wc1.getValue()), OFMessageUtils.OFMessageIgnoreXid.of(fm1));
+        assertEquals(OFMessageUtils.OFMessageIgnoreXid.of(wc2.getValue()), OFMessageUtils.OFMessageIgnoreXid.of(packetOut));
 		
 		removeDeviceFromContext();
 	}
@@ -673,8 +673,8 @@ public class ForwardingTest extends FloodlightTestCase {
 		assertTrue(wc1.hasCaptured());
 		assertTrue(wc2.hasCaptured());
 
-		assertTrue(OFMessageUtils.equalsIgnoreXid(wc1.getValue(), fm1));
-		assertTrue(OFMessageUtils.equalsIgnoreXid(wc2.getValue(), packetOutIPv6));
+        assertEquals(OFMessageUtils.OFMessageIgnoreXid.of(wc1.getValue()), OFMessageUtils.OFMessageIgnoreXid.of(fm1));
+        assertEquals(OFMessageUtils.OFMessageIgnoreXid.of(wc2.getValue()), OFMessageUtils.OFMessageIgnoreXid.of(packetOutIPv6));
 		
 		removeDeviceFromContext();
 	}
@@ -763,7 +763,7 @@ public class ForwardingTest extends FloodlightTestCase {
 		verify(sw1, sw2, routingEngine);
 
 		assertTrue(wc1.hasCaptured());
-		assertTrue(OFMessageUtils.equalsIgnoreXid(wc1.getValue(), packetOutFlooded));
+        assertEquals(OFMessageUtils.OFMessageIgnoreXid.of(wc1.getValue()), OFMessageUtils.OFMessageIgnoreXid.of(packetOutFlooded));
 		
 		removeDeviceFromContext();
 	}
@@ -796,7 +796,7 @@ public class ForwardingTest extends FloodlightTestCase {
 		verify(sw1, sw2, routingEngine);
 
 		assertTrue(wc1.hasCaptured());
-		assertTrue(OFMessageUtils.equalsIgnoreXid(wc1.getValue(), packetOutFloodedIPv6));
+        assertEquals(OFMessageUtils.OFMessageIgnoreXid.of(wc1.getValue()), OFMessageUtils.OFMessageIgnoreXid.of(packetOutFloodedIPv6));
 		
 		removeDeviceFromContext();
 	}

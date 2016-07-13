@@ -138,7 +138,7 @@ public class HubTest extends FloodlightTestCase {
         
         assertTrue(wc1.hasCaptured());
         OFMessage m = wc1.getValue();
-        assertTrue(OFMessageUtils.equalsIgnoreXid(m, po));
+        assertEquals(OFMessageUtils.OFMessageIgnoreXid.of(m), OFMessageUtils.OFMessageIgnoreXid.of(po));
     }
 
     @Test
