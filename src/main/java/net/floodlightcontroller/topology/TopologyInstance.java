@@ -106,6 +106,10 @@ public class TopologyInstance {
     // in the cache.
     private final PathCacheLoader pathCacheLoader = new PathCacheLoader(this);
     protected LoadingCache<RouteId, Route> pathcache;
+
+    // routecache contains n (specified in floodlightdefault.properties) routes
+    // in order between every switch. Calculated using Yen's algorithm.
+    protected Map<RouteId, ArrayList<Route>> routecache;
 	
     public TopologyInstance(Map<DatapathId, Set<OFPort>> switchPorts,
                             Set<NodePortTuple> blockedPorts,
@@ -195,6 +199,9 @@ public class TopologyInstance {
 		// The trees are rooted at the destination.
         // Cost for tunnel links and direct links are the same.
 		calculateAllShortestPaths();
+
+        // Step 4.5 YENSSSSS
+        calculateAllOrderedRoutes();
 
         // Compute the archipelagos (def: cluster of islands). An archipelago will
         // simply be a group of connected islands. Each archipelago will have its own
@@ -890,6 +897,25 @@ public class TopologyInstance {
 //        if (this.destinationRootedFullTrees.size() > 0) {
 //			this.finiteBroadcastTree = destinationRootedFullTrees.values().iterator().next();
 //        }
+    }
+
+    /*
+    Calculates and stores n possible routes (specified in floodlightdefault.properties) using Yen's algorithm,
+    looping through every switch.
+    These lists of routes are stored in routecache.
+    */
+    protected void calculateAllOrderedRoutes() {
+        ArrayList<Route> routes;
+        RouteId routeId;
+        routecache.clear();
+
+        for (DatapathId src : switches) {
+            for (DatapathId dst : switches) {
+                routes = getRoutes(src, dst, 5); // Hard coded value needs to be replaced.
+                routeId = new RouteId(src, dst);
+                routecache.put(routeId, routes);
+            }
+        }
     }
 
     protected void calculateShortestPathTreeInClusters() {
