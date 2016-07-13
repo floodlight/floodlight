@@ -109,7 +109,7 @@ public class TopologyInstance {
 
     // routecache contains n (specified in floodlightdefault.properties) routes
     // in order between every switch. Calculated using Yen's algorithm.
-    protected Map<RouteId, ArrayList<Route>> routecache;
+    protected Map<RouteId, ArrayList<Route>> routecache = new HashMap<>();
 	
     public TopologyInstance(Map<DatapathId, Set<OFPort>> switchPorts,
                             Set<NodePortTuple> blockedPorts,
