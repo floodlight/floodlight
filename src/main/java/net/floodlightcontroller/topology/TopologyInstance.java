@@ -110,7 +110,7 @@ public class TopologyInstance {
     // routecache contains n (specified in floodlightdefault.properties) routes
     // in order between every switch. Calculated using Yen's algorithm.
     protected Map<RouteId, ArrayList<Route>> routecache;
-    protected static volatile int maximumRouteEntriesStored = 10;
+    protected int maximumRouteEntriesStored = 10;
 
     public TopologyInstance(Map<DatapathId, Set<OFPort>> switchPorts,
                             Set<NodePortTuple> blockedPorts,
@@ -174,6 +174,7 @@ public class TopologyInstance {
                             });
 
         this.routecache = new HashMap<RouteId, ArrayList<Route>>();
+        this.maximumRouteEntriesStored = TopologyManager.maximumRouteEntriesStored;
 
     }
 	

@@ -69,6 +69,11 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 	protected static boolean collectStatistics = false;
 
 	/**
+	 * Maximum number of route entries stored in memory.
+	 */
+	protected static volatile int maximumRouteEntriesStored = 10;
+
+	/**
 	 * Role of the controller.
 	 */
 	private HARole role;
@@ -809,8 +814,13 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 					break;
 			}
 		}
-
 		log.info("Route Metrics set to {}", routeMetric);
+
+		String maxroutes = configOptions.get("maximumRouteEntriesStored") != null
+				? configOptions.get("maximumRouteEntriesStored").trim() : null;
+		if (maxroutes != null) {
+			maximumRouteEntriesStored = Integer.parseInt(maxroutes);
+		}
 	}
 
 	@Override
