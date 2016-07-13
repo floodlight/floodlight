@@ -76,6 +76,34 @@ public interface IRoutingService extends IFloodlightService {
     /** Another version of getRoutes that uses Yen's algorithm under the hood. */
     public ArrayList<Route> getRoutes(DatapathId srcDpid, DatapathId dstDpid, Integer numOfRoutesToGet);
 
+    /**
+     *
+     * This function returns K number of routes between a source and destination IF THEY EXIST IN THE ROUTECACHE.
+     * If the user requests more routes than available, only the routes already stored in memory will be returned.
+     * This value can be adjusted in floodlightdefault.properties.
+     *
+     *
+     * @param srcDpid: DatapathId of the route source.
+     * @param dstDpid: DatapathId of the route destination.
+     * @param numOfRoutesToGet: The number of routes that you want. Must be positive integer.
+     * @return ArrayList of Routes or null if bad parameters
+     */
+    public ArrayList<Route> getRoutesFast(DatapathId srcDpid, DatapathId dstDpid, Integer numOfRoutesToGet);
+
+    /**
+     *
+     * This function returns K number of routes between a source and destination. It will attempt to retrieve
+     * these routes from the routecache. If the user requests more routes than are stored, Yen's algorithm will be
+     * run using the K value passed in.
+     *
+     *
+     * @param srcDpid: DatapathId of the route source.
+     * @param dstDpid: DatapathId of the route destination.
+     * @param numOfRoutesToGet: The number of routes that you want. Must be positive integer.
+     * @return ArrayList of Routes or null if bad parameters
+     */
+    public ArrayList<Route> getRoutesSlow(DatapathId srcDpid, DatapathId dstDpid, Integer numOfRoutesToGet);
+
     /** Check if a route exists between src and dst, including tunnel links
      *  in the path.
      */

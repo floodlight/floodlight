@@ -37,12 +37,11 @@ public class RoutesResource extends ServerResource {
                 (IRoutingService)getContext().getAttributes().
                         get(IRoutingService.class.getCanonicalName());
 
+        String url = getRequest().getResourceRef().toString();
+
         String srcDpid = (String) getRequestAttributes().get("src-dpid");
         String dstDpid = (String) getRequestAttributes().get("dst-dpid");
         Integer numRoutes = Integer.parseInt((String) getRequestAttributes().get("num-routes"));
-
-        log.info("REQUEST1: {}", getRequest().getRootRef().toString());
-        log.info("REQUEST2: {}", getRequest().getResourceRef().toString());
 
         log.debug("Asking for routes from {} to {}", srcDpid, dstDpid);
         log.debug("Asking for {} routes", numRoutes);
@@ -52,7 +51,13 @@ public class RoutesResource extends ServerResource {
 
         List<Route> results = null;
         try {
-            results = routing.getRoutes(longSrcDpid, longDstDpid, numRoutes);
+            if (url.contains("fast")) {
+                results = routing.getRoutesFast(longSrcDpid, longDstDpid, numRoutes);
+            } else if (url.contains("slow")) {
+                results = routing.getRoutesSlow(longSrcDpid, longDstDpid, numRoutes);
+            } else {
+                results = routing.getRoutes(longSrcDpid, longDstDpid, numRoutes);
+            }
         } catch (Exception e) {
             log.warn("{}", e);
             log.warn("EXCEPTION: No routes found in request for routes from {} to {}", srcDpid, dstDpid);

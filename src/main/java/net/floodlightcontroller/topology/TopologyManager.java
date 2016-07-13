@@ -631,6 +631,14 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 		return getCurrentInstance().getRoutes(srcDpid, dstDpid, k);
 	}
 
+	public ArrayList<Route> getRoutesFast(DatapathId srcDpid, DatapathId dstDpid, Integer k) {
+		return getCurrentInstance().getRoutesFast(srcDpid, dstDpid, k);
+	}
+
+	public ArrayList<Route> getRoutesSlow(DatapathId srcDpid, DatapathId dstDpid, Integer k) {
+		return getCurrentInstance().getRoutesSlow(srcDpid, dstDpid, k);
+	}
+
 	public Map<Link, Integer> getLinkCostMap(boolean tunnelEnabled) {
 		TopologyInstance ti = getCurrentInstance(tunnelEnabled);
 		return ti.initLinkCostMap();
