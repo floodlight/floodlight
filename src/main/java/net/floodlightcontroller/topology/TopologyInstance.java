@@ -109,8 +109,9 @@ public class TopologyInstance {
 
     // routecache contains n (specified in floodlightdefault.properties) routes
     // in order between every switch. Calculated using Yen's algorithm.
-    protected Map<RouteId, ArrayList<Route>> routecache = new HashMap<>();
-	
+    protected Map<RouteId, ArrayList<Route>> routecache;
+    protected static volatile int maximumRouteEntriesStored = 10;
+
     public TopologyInstance(Map<DatapathId, Set<OFPort>> switchPorts,
                             Set<NodePortTuple> blockedPorts,
                             Map<NodePortTuple, Set<Link>> switchPortLinks,
@@ -171,6 +172,9 @@ public class TopologyInstance {
                                     return pathCacheLoader.load(rid);
                                 }
                             });
+
+        this.routecache = new HashMap<RouteId, ArrayList<Route>>();
+
     }
 	
     public void compute() {
@@ -918,7 +922,7 @@ public class TopologyInstance {
 
         for (DatapathId src : switches) {
             for (DatapathId dst : switches) {
-                routes = getRoutes(src, dst, 5); // Hard coded value needs to be replaced.
+                routes = getRoutes(src, dst, maximumRouteEntriesStored);
                 routeId = new RouteId(src, dst);
                 routecache.put(routeId, routes);
             }
@@ -1161,6 +1165,60 @@ public class TopologyInstance {
         }
 
         return linkDpidMap;
+    }
+
+    /**
+     *
+     * This function returns K number of routes between a source and destination IF THEY EXIST IN THE ROUTECACHE.
+     * If the user requests more routes than available, only the routes already stored in memory will be returned.
+     * This value can be adjusted in floodlightdefault.properties.
+     *
+     *
+     * @param src: DatapathId of the route source.
+     * @param dst: DatapathId of the route destination.
+     * @param K: The number of routes that you want. Must be positive integer.
+     * @return ArrayList of Routes or null if bad parameters
+     */
+    protected ArrayList<Route> getRoutesFast(DatapathId src, DatapathId dst, Integer K) {
+        // TODO: Think about using int instead of Integer
+        RouteId routeId = new RouteId(src, dst);
+        ArrayList<Route> routes = routecache.get(routeId);
+
+        if (routes == null || K < 1) return null;
+
+        if (K >= maximumRouteEntriesStored || K >= routes.size()) {
+            return routes;
+        }
+        else {
+            return new ArrayList<Route>(routes.subList(0, K));
+        }
+    }
+
+    /**
+     *
+     * This function returns K number of routes between a source and destination. It will attempt to retrieve
+     * these routes from the routecache. If the user requests more routes than are stored, Yen's algorithm will be
+     * run using the K value passed in.
+     *
+     *
+     * @param src: DatapathId of the route source.
+     * @param dst: DatapathId of the route destination.
+     * @param K: The number of routes that you want. Must be positive integer.
+     * @return ArrayList of Routes or null if bad parameters
+     */
+    protected ArrayList<Route> getRoutesSlow(DatapathId src, DatapathId dst, Integer K) {
+        // TODO: Think about using int instead of Integer
+        RouteId routeId = new RouteId(src, dst);
+        ArrayList<Route> routes = routecache.get(routeId);
+
+        if (routes == null || K < 1) return null;
+
+        if (K >= maximumRouteEntriesStored || K >= routes.size()) {
+            return getRoutes(src, dst, K);
+        }
+        else {
+            return new ArrayList<Route>(routes.subList(0, K));
+        }
     }
 
     protected void setRouteCosts(Route r) {
