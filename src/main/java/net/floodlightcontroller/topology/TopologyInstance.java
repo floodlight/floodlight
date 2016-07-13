@@ -682,71 +682,78 @@ public class TopologyInstance {
 	 * Dijkstra that calculates destination rooted trees over the entire topology.
 	*/
     protected BroadcastTree dijkstra(Map<DatapathId, Set<Link>> links, DatapathId root,
-            Map<Link, Integer> linkCost,
-            boolean isDstRooted) {
-    	HashMap<DatapathId, Link> nexthoplinks = new HashMap<DatapathId, Link>();
-    	HashMap<DatapathId, Integer> cost = new HashMap<DatapathId, Integer>();
-    	int w;
-    	
-    	for (DatapathId node : links.keySet()) {
-    		nexthoplinks.put(node, null);
-    		cost.put(node, MAX_PATH_WEIGHT);
-    	}
-		
-    	HashMap<DatapathId, Boolean> seen = new HashMap<DatapathId, Boolean>();
-    	PriorityQueue<NodeDist> nodeq = new PriorityQueue<NodeDist>();
-    	nodeq.add(new NodeDist(root, 0));
-    	cost.put(root, 0);
-    	
-    	while (nodeq.peek() != null) {
-    		NodeDist n = nodeq.poll();
-    		DatapathId cnode = n.getNode();
-    		int cdist = n.getDist();
-    		
-    		if (cdist >= MAX_PATH_WEIGHT) break;
-    		if (seen.containsKey(cnode)) continue;
-    		seen.put(cnode, true);
+                                     Map<Link, Integer> linkCost,
+                                     boolean isDstRooted) {
+        HashMap<DatapathId, Link> nexthoplinks = new HashMap<DatapathId, Link>();
+        HashMap<DatapathId, Integer> cost = new HashMap<DatapathId, Integer>();
+        int w;
 
-    		for (Link link : links.get(cnode)) {
-    			DatapathId neighbor;
+        for (DatapathId node : links.keySet()) {
+            nexthoplinks.put(node, null);
+            cost.put(node, MAX_PATH_WEIGHT);
+            //log.debug("Added max cost to {}", node);
+        }
 
-    			if (isDstRooted == true) {
-    				neighbor = link.getSrc();
-    			} else {
-    				neighbor = link.getDst();
-    			}
-        
-    			// links directed toward cnode will result in this condition
-    			if (neighbor.equals(cnode)) continue;
+        HashMap<DatapathId, Boolean> seen = new HashMap<DatapathId, Boolean>();
+        PriorityQueue<NodeDist> nodeq = new PriorityQueue<NodeDist>();
+        nodeq.add(new NodeDist(root, 0));
+        cost.put(root, 0);
 
-    			if (seen.containsKey(neighbor)) continue;
+        //log.debug("{}", links);
 
-    			if (linkCost == null || linkCost.get(link) == null) {
-    				w = 1;
-    			} else {
-    				w = linkCost.get(link);
-    			}
-    			
-    			int ndist = cdist + w; // the weight of the link, always 1 in current version of floodlight.
-    			if (ndist < cost.get(neighbor)) {
-    				cost.put(neighbor, ndist);
-    				nexthoplinks.put(neighbor, link);
-    				
-    				NodeDist ndTemp = new NodeDist(neighbor, ndist);
-    				// Remove an object that's already in there.
-    				// Note that the comparison is based on only the node id,
-    				// and not node id and distance.
-    				nodeq.remove(ndTemp);
-    				// add the current object to the queue.
-    				nodeq.add(ndTemp);
-    			}
-    		}
-    	}
+        while (nodeq.peek() != null) {
+            NodeDist n = nodeq.poll();
+            DatapathId cnode = n.getNode();
+            int cdist = n.getDist();
 
-    	BroadcastTree ret = new BroadcastTree(nexthoplinks, cost);
+            if (cdist >= MAX_PATH_WEIGHT) break;
+            if (seen.containsKey(cnode)) continue;
+            seen.put(cnode, true);
 
-		return ret;
-	}
+            //log.debug("cnode {} and links {}", cnode, links.get(cnode));
+            if (links.get(cnode) == null) continue;
+            for (Link link : links.get(cnode)) {
+                DatapathId neighbor;
+
+                if (isDstRooted == true) {
+                    neighbor = link.getSrc();
+                } else {
+                    neighbor = link.getDst();
+                }
+
+                // links directed toward cnode will result in this condition
+                if (neighbor.equals(cnode)) continue;
+
+                if (seen.containsKey(neighbor)) continue;
+
+                if (linkCost == null || linkCost.get(link) == null) {
+                    w = 1;
+                } else {
+                    w = linkCost.get(link);
+                }
+
+                int ndist = cdist + w; // the weight of the link, always 1 in current version of floodlight.
+                //log.debug("Neighbor: {}", neighbor);
+                //log.debug("Cost: {}", cost.get(neighbor));
+                if (ndist < cost.get(neighbor)) {
+                    cost.put(neighbor, ndist);
+                    nexthoplinks.put(neighbor, link);
+
+                    NodeDist ndTemp = new NodeDist(neighbor, ndist);
+                    // Remove an object that's already in there.
+                    // Note that the comparison is based on only the node id,
+                    // and not node id and distance.
+                    nodeq.remove(ndTemp);
+                    // add the current object to the queue.
+                    nodeq.add(ndTemp);
+                }
+            }
+        }
+
+        BroadcastTree ret = new BroadcastTree(nexthoplinks, cost);
+
+        return ret;
+    }
 
     /*
 	 * Creates a map of links and the cost associated with each link
