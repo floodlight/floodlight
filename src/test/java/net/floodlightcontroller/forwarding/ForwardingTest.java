@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -36,6 +37,7 @@ import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.test.MockThreadPoolService;
 import net.floodlightcontroller.core.types.NodePortTuple;
+import net.floodlightcontroller.core.util.AppCookie;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
 import net.floodlightcontroller.debugcounter.MockDebugCounterService;
 import net.floodlightcontroller.devicemanager.internal.DefaultEntityClassifier;
@@ -51,8 +53,10 @@ import net.floodlightcontroller.packet.IPacket;
 import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.packet.IPv6;
 import net.floodlightcontroller.packet.UDP;
+import net.floodlightcontroller.routing.IRoutingDecision.RoutingAction;
 import net.floodlightcontroller.routing.IRoutingService;
 import net.floodlightcontroller.routing.Route;
+import net.floodlightcontroller.routing.RoutingDecision;
 import net.floodlightcontroller.test.FloodlightTestCase;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
 import net.floodlightcontroller.topology.ITopologyListener;
@@ -81,6 +85,7 @@ import org.projectfloodlight.openflow.types.IPv4Address;
 import org.projectfloodlight.openflow.types.IPv6Address;
 import org.projectfloodlight.openflow.types.IpProtocol;
 import org.projectfloodlight.openflow.types.MacAddress;
+import org.projectfloodlight.openflow.types.Masked;
 import org.projectfloodlight.openflow.types.OFBufferId;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.TransportPort;
@@ -91,6 +96,8 @@ import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.action.OFActionOutput;
 import org.sdnplatform.sync.ISyncService;
 import org.sdnplatform.sync.test.MockSyncService;
+
+import com.google.common.collect.ImmutableList;
 
 public class ForwardingTest extends FloodlightTestCase {
 	protected FloodlightContext cntx;
@@ -176,6 +183,7 @@ public class ForwardingTest extends FloodlightTestCase {
 		expect(sw1.getId()).andReturn(DatapathId.of(1L)).anyTimes();
 		expect(sw1.getOFFactory()).andReturn(factory).anyTimes();
 		expect(sw1.getBuffers()).andReturn(swFeatures.getNBuffers()).anyTimes();
+		
 
 		sw2 = EasyMock.createMock(IOFSwitch.class);
 		expect(sw2.getId()).andReturn(DatapathId.of(2L)).anyTimes();
@@ -316,6 +324,36 @@ public class ForwardingTest extends FloodlightTestCase {
 				IDeviceService.CONTEXT_DST_DEVICE);
 	}
 
+	static boolean messageListsEqualIgnoreXid(List<OFMessage> c1, List<OFMessage> c2) {
+		if (c1 == c2) {
+			return true;
+		}
+
+		if (c1 == null || c2 == null) {
+			return false;
+		}
+
+		if (c1.size() != c2.size()) {
+			return false;
+		}
+
+		Iterator<OFMessage> it1 = c1.iterator();
+		Iterator<OFMessage> it2 = c2.iterator();
+		while (it1.hasNext()) {
+			OFMessage m1 = it1.next();
+			OFMessage m2 = it2.next();
+			if (m1 == m2) {
+				continue;
+			}
+
+			if (m1 == null || m2 == null || !m1.equalsIgnoreXid(m2)) {
+				return false;
+			}
+		}
+
+		return true;
+	}
+
 	enum DestDeviceToLearn { NONE, DEVICE1 ,DEVICE2 };
 	public void learnDevices(DestDeviceToLearn destDeviceToLearn) {
 		// Build src and dest devices
@@ -445,8 +483,9 @@ public class ForwardingTest extends FloodlightTestCase {
 		nptList.add(new NodePortTuple(DatapathId.of(2L), OFPort.of(1)));
 		nptList.add(new NodePortTuple(DatapathId.of(2L), OFPort.of(3)));
 		route.setPath(nptList);
-		expect(routingEngine.getRoute(DatapathId.of(1L), OFPort.of(1), DatapathId.of(2L), OFPort.of(3), U64.ZERO)).andReturn(route).atLeastOnce();
-
+		reset(routingEngine);
+		expect(routingEngine.getRoute(DatapathId.of(1L), OFPort.of(1), DatapathId.of(2L), OFPort.of(3), Forwarding.DEFAULT_FORWARDING_COOKIE)).andReturn(route).atLeastOnce();
+		
 		// Expected Flow-mods
 		Match match = packetIn.getMatch();
 		OFActionOutput action = factory.actions().output(OFPort.of(3), Integer.MAX_VALUE);
@@ -515,8 +554,9 @@ public class ForwardingTest extends FloodlightTestCase {
 		nptList.add(new NodePortTuple(DatapathId.of(2L), OFPort.of(1)));
 		nptList.add(new NodePortTuple(DatapathId.of(2L), OFPort.of(3)));
 		route.setPath(nptList);
-		expect(routingEngine.getRoute(DatapathId.of(1L), OFPort.of(1), DatapathId.of(2L), OFPort.of(3), U64.ZERO)).andReturn(route).atLeastOnce();
-
+		reset(routingEngine);
+		expect(routingEngine.getRoute(DatapathId.of(1L), OFPort.of(1), DatapathId.of(2L), OFPort.of(3), Forwarding.DEFAULT_FORWARDING_COOKIE)).andReturn(route).atLeastOnce();
+		
 		// Expected Flow-mods
 		Match match = packetInIPv6.getMatch();
 		OFActionOutput action = factory.actions().output(OFPort.of(3), Integer.MAX_VALUE);
@@ -581,13 +621,14 @@ public class ForwardingTest extends FloodlightTestCase {
 		Route route = new  Route(DatapathId.of(1L), DatapathId.of(1L));
 		route.getPath().add(new NodePortTuple(DatapathId.of(1L), OFPort.of(1)));
 		route.getPath().add(new NodePortTuple(DatapathId.of(1L), OFPort.of(3)));
-		expect(routingEngine.getRoute(DatapathId.of(1L), OFPort.of(1), DatapathId.of(1L), OFPort.of(3), U64.ZERO)).andReturn(route).atLeastOnce();
-
+		
 		// Expected Flow-mods
 		Match match = packetIn.getMatch();
 		OFActionOutput action = factory.actions().output(OFPort.of(3), Integer.MAX_VALUE);
 		List<OFAction> actions = new ArrayList<OFAction>();
 		actions.add(action);
+		
+		//routingEngine.addRoutingDecisionChangedListener(anyObject(IRoutingDecisionChangedListener.class));
 
 		OFFlowMod fm1 = factory.buildFlowAdd()
 				.setIdleTimeout((short)5)
@@ -612,6 +653,8 @@ public class ForwardingTest extends FloodlightTestCase {
 		expect(topology.isEdge(DatapathId.of(1L), OFPort.of(3))).andReturn(true).anyTimes();
 
 		// Reset mocks, trigger the packet in, and validate results
+		reset(routingEngine);
+		expect(routingEngine.getRoute(DatapathId.of(1L), OFPort.of(1), DatapathId.of(1L), OFPort.of(3), Forwarding.DEFAULT_FORWARDING_COOKIE)).andReturn(route).atLeastOnce();
 		replay(sw1, sw2, routingEngine, topology);
 		forwarding.receive(sw1, this.packetIn, cntx);
 		verify(sw1, sw2, routingEngine);
@@ -635,8 +678,9 @@ public class ForwardingTest extends FloodlightTestCase {
 		Route route = new  Route(DatapathId.of(1L), DatapathId.of(1L));
 		route.getPath().add(new NodePortTuple(DatapathId.of(1L), OFPort.of(1)));
 		route.getPath().add(new NodePortTuple(DatapathId.of(1L), OFPort.of(3)));
-		expect(routingEngine.getRoute(DatapathId.of(1L), OFPort.of(1), DatapathId.of(1L), OFPort.of(3), U64.ZERO)).andReturn(route).atLeastOnce();
-
+		reset(routingEngine);
+		expect(routingEngine.getRoute(DatapathId.of(1L), OFPort.of(1), DatapathId.of(1L), OFPort.of(3), Forwarding.DEFAULT_FORWARDING_COOKIE)).andReturn(route).atLeastOnce();
+		
 		// Expected Flow-mods
 		Match match = packetInIPv6.getMatch();
 		OFActionOutput action = factory.actions().output(OFPort.of(3), Integer.MAX_VALUE);
@@ -743,6 +787,7 @@ public class ForwardingTest extends FloodlightTestCase {
 
 		// Set no destination attachment point or route
 		// expect no Flow-mod but expect the packet to be flooded
+		reset(routingEngine);
 
 		Capture<OFMessage> wc1 = EasyMock.newCapture(CaptureType.ALL);
 		
@@ -771,6 +816,8 @@ public class ForwardingTest extends FloodlightTestCase {
 	@Test
 	public void testForwardNoPathIPv6() throws Exception {
 		learnDevicesIPv6(DestDeviceToLearn.NONE);
+		
+		reset(routingEngine);
 
 		// Set no destination attachment point or route
 		// expect no Flow-mod but expect the packet to be flooded
@@ -799,5 +846,231 @@ public class ForwardingTest extends FloodlightTestCase {
 		assertTrue(OFMessageUtils.equalsIgnoreXid(wc1.getValue(), packetOutFloodedIPv6));
 		
 		removeDeviceFromContext();
+	}
+	
+	/*
+	 * TODO Consider adding test cases for other Decision != null paths (I only added FORWARD and none of the paths had test cases)
+	 */
+	@Test
+	public void testForwardDecisionForwardingCookieZero() throws Exception {
+		learnDevices(DestDeviceToLearn.DEVICE2);
+		
+		Capture<OFMessage> wc1 = EasyMock.newCapture(CaptureType.ALL);
+		Capture<OFMessage> wc2 = EasyMock.newCapture(CaptureType.ALL);
+
+		Route route = new  Route(DatapathId.of(1L), DatapathId.of(1L));
+		route.getPath().add(new NodePortTuple(DatapathId.of(1L), OFPort.of(1)));
+		route.getPath().add(new NodePortTuple(DatapathId.of(1L), OFPort.of(3)));
+		reset(routingEngine);
+		expect(routingEngine.getRoute(DatapathId.of(1L), OFPort.of(1), DatapathId.of(1L), OFPort.of(3), Forwarding.DEFAULT_FORWARDING_COOKIE)).andReturn(route).atLeastOnce();
+		
+		// Expected Flow-mods
+		Match match = packetIn.getMatch();
+		OFActionOutput action = factory.actions().output(OFPort.of(3), Integer.MAX_VALUE);
+		List<OFAction> actions = new ArrayList<OFAction>();
+		actions.add(action);
+		
+		RoutingDecision decision = new RoutingDecision(DatapathId.of(1L), OFPort.of(1), dstDevice1, RoutingAction.FORWARD);
+		decision.setDescriptor(U64.ZERO);
+		decision.addToContext(cntx);
+		
+		OFFlowMod fm1 = factory.buildFlowAdd()
+				.setIdleTimeout((short)5)
+				.setMatch(match)
+				.setActions(actions)
+				.setOutPort(OFPort.of(3))
+				.setBufferId(OFBufferId.NO_BUFFER)
+				.setCookie(U64.of(2L<< 52))
+				.setPriority(1)
+				.build();
+
+		// Record expected packet-outs/flow-mods
+		expect(sw1.write(capture(wc1))).andReturn(true).once();
+		expect(sw1.write(capture(wc2))).andReturn(true).once();
+
+		reset(topology);
+		expect(topology.isIncomingBroadcastAllowed(DatapathId.of(anyLong()), OFPort.of(anyShort()))).andReturn(true).anyTimes();
+		expect(topology.getOpenflowDomainId(DatapathId.of(1L))).andReturn(DatapathId.of(1L)).anyTimes();
+		expect(topology.isAttachmentPointPort(DatapathId.of(1L), OFPort.of(1))).andReturn(true).anyTimes();
+		expect(topology.isAttachmentPointPort(DatapathId.of(1L), OFPort.of(3))).andReturn(true).anyTimes();
+		expect(topology.isEdge(DatapathId.of(1L), OFPort.of(1))).andReturn(true).anyTimes();
+		expect(topology.isEdge(DatapathId.of(1L), OFPort.of(3))).andReturn(true).anyTimes();
+
+		// Reset mocks, trigger the packet in, and validate results
+		replay(sw1, sw2, routingEngine, topology);
+		forwarding.receive(sw1, this.packetIn, cntx);
+		verify(sw1, sw2, routingEngine);
+
+		assertTrue(wc1.hasCaptured());
+		assertTrue(wc2.hasCaptured());
+
+		assertTrue(OFMessageUtils.equalsIgnoreXid(wc1.getValue(), fm1));
+		assertTrue(OFMessageUtils.equalsIgnoreXid(wc2.getValue(), packetOut));
+	}
+	
+	@Test
+	public void testForwardDecisionForwardingCookieNotZero() throws Exception {
+		learnDevices(DestDeviceToLearn.DEVICE2);
+		
+		Capture<OFMessage> wc1 = EasyMock.newCapture(CaptureType.ALL);
+		Capture<OFMessage> wc2 = EasyMock.newCapture(CaptureType.ALL);
+
+		Route route = new  Route(DatapathId.of(1L), DatapathId.of(1L));
+		route.getPath().add(new NodePortTuple(DatapathId.of(1L), OFPort.of(1)));
+		route.getPath().add(new NodePortTuple(DatapathId.of(1L), OFPort.of(3)));
+		reset(routingEngine);
+		expect(routingEngine.getRoute(DatapathId.of(1L), OFPort.of(1), DatapathId.of(1L), OFPort.of(3), U64.of(0x200000FFffFFffL))).andReturn(route).atLeastOnce();
+		
+		// Expected Flow-mods
+		Match match = packetIn.getMatch();
+		OFActionOutput action = factory.actions().output(OFPort.of(3), Integer.MAX_VALUE);
+		List<OFAction> actions = new ArrayList<OFAction>();
+		actions.add(action);
+		
+		RoutingDecision decision = new RoutingDecision(DatapathId.of(1L), OFPort.of(1), dstDevice1, RoutingAction.FORWARD);
+		decision.setDescriptor(U64.of(0x00000000ffffffffL));
+		decision.addToContext(cntx);
+		//RoutingDecision de2 = (RoutingDecision) RoutingDecision.rtStore.get(cntx, IRoutingDecision.CONTEXT_DECISION); // Same as decision
+		//(DatapathId swDipd, OFPort inPort, IDevice srcDevice, RoutingAction action);
+		
+		OFFlowMod fm1 = factory.buildFlowAdd()
+				.setIdleTimeout((short)5)
+				.setMatch(match)
+				.setActions(actions)
+				.setOutPort(OFPort.of(3))
+				.setBufferId(OFBufferId.NO_BUFFER)
+				.setCookie(U64.of(2L<< 52 | 0xFFffFFffL))
+				.setPriority(1)
+				.build();
+
+		// Record expected packet-outs/flow-mods
+		expect(sw1.write(capture(wc1))).andReturn(true).once();
+		expect(sw1.write(capture(wc2))).andReturn(true).once();
+
+		reset(topology);
+		expect(topology.isIncomingBroadcastAllowed(DatapathId.of(anyLong()), OFPort.of(anyShort()))).andReturn(true).anyTimes();
+		expect(topology.getOpenflowDomainId(DatapathId.of(1L))).andReturn(DatapathId.of(1L)).anyTimes();
+		expect(topology.isAttachmentPointPort(DatapathId.of(1L), OFPort.of(1))).andReturn(true).anyTimes();
+		expect(topology.isAttachmentPointPort(DatapathId.of(1L), OFPort.of(3))).andReturn(true).anyTimes();
+		expect(topology.isEdge(DatapathId.of(1L), OFPort.of(1))).andReturn(true).anyTimes();
+		expect(topology.isEdge(DatapathId.of(1L), OFPort.of(3))).andReturn(true).anyTimes();
+
+		// Reset mocks, trigger the packet in, and validate results
+		replay(sw1, sw2, routingEngine, topology);
+		forwarding.receive(sw1, this.packetIn, cntx);
+		verify(sw1, sw2, routingEngine);
+
+		assertTrue(wc1.hasCaptured());
+		assertTrue(wc2.hasCaptured());
+		
+		assertTrue(OFMessageUtils.equalsIgnoreXid(wc1.getValue(), fm1));
+		assertTrue(OFMessageUtils.equalsIgnoreXid(wc2.getValue(), packetOut));
+	}
+
+	@Test
+	public void testForwardDeleteFlowsByDescriptorSingle() throws Exception {
+		reset(routingEngine);
+		
+		Capture<List<OFMessage>> wc1 = EasyMock.newCapture(CaptureType.ALL);
+		Capture<List<OFMessage>> wc2 = EasyMock.newCapture(CaptureType.ALL);
+		
+		List<Masked<U64>> descriptors = new ArrayList<Masked<U64>>();
+		descriptors.add(Masked.of(
+				U64.of(0x00000000FFffFFffL),
+				U64.of(0x00200000FFffFFffL))); // User mask = 0xffFFffFFL which is forwarding.DECISION_MASK/AppCookie.USER_MASK//descriptors.add(Masked.of(U64.of(0x00000000FFffFFffL),U64.of(0x0020000000000000L)));//descriptors.add(Masked.of(U64.of(0xffFFffFFffFFffFFL),U64.of(0x00200000FFffFFffL))); // Mask = 0xffFFffFFffFFffFFL which is the value returned by forwarding.AppCookie.getAppFieldMask()//descriptors.add(Masked.of(U64.of(0xffFFffFFffFFffFFL),U64.of(0x0020000000000000L)));
+		
+		expect(sw1.getStatus()).andReturn(IOFSwitch.SwitchStatus.MASTER).anyTimes();
+		expect(sw2.getStatus()).andReturn(IOFSwitch.SwitchStatus.MASTER).anyTimes();
+		
+		expect(sw1.write(capture(wc1))).andReturn(ImmutableList.of()).once();
+		expect(sw2.write(capture(wc2))).andReturn(ImmutableList.of()).once();
+		
+		replay(sw1, sw2, routingEngine);
+		forwarding.deleteFlowsByDescriptor(descriptors);
+		verify(sw1, sw2, routingEngine);
+		
+		assertTrue(wc1.hasCaptured());
+		assertTrue(wc2.hasCaptured());
+		
+		Masked<U64> masked_cookie = Masked.of(
+				AppCookie.makeCookie(Forwarding.FORWARDING_APP_ID, (int)4294967295L),
+				AppCookie.getAppFieldMask().or(U64.of(0xffffffffL)));
+		List<OFMessage> msgs_test = new ArrayList<>();
+		msgs_test.add( 	factory.buildFlowDelete()
+						.setCookie(masked_cookie.getValue())
+						.setCookieMask(masked_cookie.getMask())
+						.build());
+		
+		assertTrue(messageListsEqualIgnoreXid(wc1.getValue(), msgs_test));
+		assertTrue(messageListsEqualIgnoreXid(wc2.getValue(), msgs_test));
+	}
+	
+	@Test
+	public void testForwardDeleteFlowsByDescriptorMultiple() throws Exception {
+		reset(routingEngine);
+		
+		Capture<List<OFMessage>> wc1 = EasyMock.newCapture(CaptureType.ALL);
+		Capture<List<OFMessage>> wc2 = EasyMock.newCapture(CaptureType.ALL);
+		
+		List<Masked<U64>> descriptors = new ArrayList<Masked<U64>>();
+		descriptors.add(Masked.of(
+				U64.of(0x00000000FFffFFffL),
+				U64.of(0x00200000FFffFFffL))); // User mask = 0xffFFffFFL which is forwarding.DECISION_MASK/AppCookie.USER_MASK
+		descriptors.add(Masked.of(
+				U64.of(0x00000000FFffFFffL),
+				U64.of(0x0020000000000000L)));
+		
+		expect(sw1.getStatus()).andReturn(IOFSwitch.SwitchStatus.MASTER).anyTimes();
+		expect(sw2.getStatus()).andReturn(IOFSwitch.SwitchStatus.MASTER).anyTimes();
+		
+		expect(sw1.write(capture(wc1))).andReturn(ImmutableList.of()).once();
+		expect(sw2.write(capture(wc2))).andReturn(ImmutableList.of()).once();
+		
+		replay(sw1, sw2, routingEngine);
+		forwarding.deleteFlowsByDescriptor(descriptors);
+		verify(sw1, sw2, routingEngine);
+		
+		assertTrue(wc1.hasCaptured());
+		assertTrue(wc2.hasCaptured());
+		
+		// Cookies
+		Masked<U64> masked_cookie = Masked.of(	AppCookie.makeCookie(Forwarding.FORWARDING_APP_ID, (int)4294967295L),
+												AppCookie.getAppFieldMask().or(U64.of(0xffffffffL)));
+		Masked<U64> masked_cookie2 = Masked.of(	AppCookie.makeCookie(Forwarding.FORWARDING_APP_ID, 0),
+												AppCookie.getAppFieldMask().or(U64.of(0x0L)));
+		// Add cookies to a msg set
+		List<OFMessage> msgs_test = new ArrayList<OFMessage>();
+		msgs_test.add( 	factory.buildFlowDelete()
+						.setCookie(masked_cookie.getValue())
+						.setCookieMask(masked_cookie.getMask())
+						.build());
+		msgs_test.add( 	factory.buildFlowDelete()
+						.setCookie(masked_cookie2.getValue())
+						.setCookieMask(masked_cookie2.getMask())
+						.build());
+		assertTrue(messageListsEqualIgnoreXid(wc1.getValue(), msgs_test));
+		assertTrue(messageListsEqualIgnoreXid(wc2.getValue(), msgs_test));
+	}
+	
+	@Test
+	public void testForwardDeleteFlowsByDescriptorNoCookies() throws Exception {
+		reset(routingEngine);
+		
+		List<Masked<U64>> descriptors = new ArrayList<Masked<U64>>();
+		
+		replay(routingEngine);
+		forwarding.deleteFlowsByDescriptor(descriptors);
+		verify(routingEngine);
+	}
+	
+	@Test
+	public void testForwardDeleteFlowsByDescriptorNoCookiesContainer() throws Exception {
+		reset(routingEngine);
+		
+		List<Masked<U64>> descriptors = null;
+		
+		replay(routingEngine);
+		forwarding.deleteFlowsByDescriptor(descriptors);
+		verify(routingEngine);
 	}
 }

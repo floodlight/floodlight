@@ -32,6 +32,7 @@ import net.floodlightcontroller.packet.BSN;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.LLDP;
 import net.floodlightcontroller.restserver.IRestApiService;
+import net.floodlightcontroller.routing.IRoutingDecisionChangedListener;
 import net.floodlightcontroller.routing.IRoutingService;
 import net.floodlightcontroller.routing.Link;
 import net.floodlightcontroller.routing.Route;
@@ -41,6 +42,7 @@ import org.projectfloodlight.openflow.protocol.*;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.Masked;
 import org.projectfloodlight.openflow.types.OFBufferId;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.U64;
@@ -135,6 +137,9 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 	 */
 	protected static final String PACKAGE = TopologyManager.class.getPackage().getName();
 	protected IDebugCounter ctrIncoming;
+	
+	/** Array list that contains all of the decisionChangedListeners */
+	protected ArrayList<IRoutingDecisionChangedListener> decisionChangedListeners;
 
 	//  Getter/Setter methods
 	/**
@@ -605,6 +610,41 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 		result.add(getRoute(srcDpid, dstDpid, U64.of(0), tunnelEnabled));
 		return result;
 	}
+	
+    /** 
+     *  Registers an IRoutingDecisionChangedListener.
+     *   
+     *  @param {IRoutingDecisionChangedListener} listener - 
+     *  @return {void}
+     */
+	@Override
+	public void addRoutingDecisionChangedListener(IRoutingDecisionChangedListener listener) {
+		decisionChangedListeners.add(listener);
+	}
+	
+	/** 
+     *  Deletes an IRoutingDecisionChangedListener.
+     *   
+     *  @param {IRoutingDecisionChangedListener} listener - 
+     *  @return {void}
+     */
+	@Override
+	public void removeRoutingDecisionChangedListener(IRoutingDecisionChangedListener listener) {
+		decisionChangedListeners.remove(listener);
+	}
+
+	/** 
+     *  Listens for the event to the IRoutingDecisionChanged listener and calls routingDecisionChanged().
+     *   
+     *  @param {Iterable<Masked<U64>>} - event
+     *  @return {void}
+     */
+	@Override
+	public void handleRoutingDecisionChange(Iterable<Masked<U64>> changedDecisions) {
+		for(IRoutingDecisionChangedListener listener : decisionChangedListeners) {
+			listener.routingDecisionChanged(changedDecisions);
+		}
+	}
 
 	// ******************
 	// IOFMessageListener
@@ -743,6 +783,7 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 		topologyAware = new ArrayList<ITopologyListener>();
 		ldUpdates = new LinkedBlockingQueue<LDUpdate>();
 		haListener = new HAListenerDelegate();
+		this.decisionChangedListeners = new ArrayList<IRoutingDecisionChangedListener>();
 		registerTopologyDebugCounters();
 	}
 
