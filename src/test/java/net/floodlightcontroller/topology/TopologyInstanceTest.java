@@ -102,7 +102,7 @@ public class TopologyInstanceTest {
                     }
                 }
                 if (expectedCluster != null) {
-                    Set<DatapathId> cluster = ti.getSwitchesInOpenflowDomain(sw);
+                    Set<DatapathId> cluster = ti.getSwitchesInCluster(sw);
                     assertEquals(expectedCluster.length, cluster.size());
                     for (DatapathId sw2: cluster) {
                         assertTrue(Arrays.binarySearch(expectedCluster, (int)sw2.getLong()) >= 0);
@@ -690,7 +690,6 @@ public class TopologyInstanceTest {
          * NOTE: Output from the next four log.info should be mirrored!
          * Get paths based on latency.
          */
-        topologyManager.clearCurrentTopology();
         topologyManager.setPathMetric(LATENCY);
         configureTopology(linkArray, lat);
         List<Route> lat_paths = topologyManager.getPathsFast(one, three, k);

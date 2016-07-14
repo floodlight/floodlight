@@ -24,13 +24,13 @@ import net.floodlightcontroller.topology.ITopologyService;
 import org.restlet.resource.Get;
 import org.restlet.resource.ServerResource;
 
-public class BroadcastDomainPortsResource extends ServerResource {
+public class AllBroadcastPortsResource extends ServerResource {
     @Get("json")
     public Set<NodePortTuple> retrieve() {
         ITopologyService topology = 
                 (ITopologyService)getContext().getAttributes().
                     get(ITopologyService.class.getCanonicalName());
         
-        return topology.getBroadcastDomainPorts();
+        return topology.getAllBroadcastPorts();
     }
 }

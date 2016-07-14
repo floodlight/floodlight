@@ -128,8 +128,8 @@ public abstract class ForwardingBase implements IOFMessageListener {
             new Comparator<SwitchPort>() {
         @Override
         public int compare(SwitchPort d1, SwitchPort d2) {
-            DatapathId d1ClusterId = topologyService.getOpenflowDomainId(d1.getNodeId());
-            DatapathId d2ClusterId = topologyService.getOpenflowDomainId(d2.getNodeId());
+            DatapathId d1ClusterId = topologyService.getClusterId(d1.getNodeId());
+            DatapathId d2ClusterId = topologyService.getClusterId(d2.getNodeId());
             return d1ClusterId.compareTo(d2ClusterId);
         }
     };

@@ -128,8 +128,8 @@ public class LoadBalancer implements IFloodlightModule,
             new Comparator<SwitchPort>() {
                 @Override
                 public int compare(SwitchPort d1, SwitchPort d2) {
-                    DatapathId d1ClusterId = topologyService.getOpenflowDomainId(d1.getNodeId());
-                    DatapathId d2ClusterId = topologyService.getOpenflowDomainId(d2.getNodeId());
+                    DatapathId d1ClusterId = topologyService.getClusterId(d1.getNodeId());
+                    DatapathId d2ClusterId = topologyService.getClusterId(d2.getNodeId());
                     return d1ClusterId.compareTo(d2ClusterId);
                 }
             };
@@ -384,7 +384,7 @@ public class LoadBalancer implements IFloodlightModule,
         // srcDevice and/or dstDevice is null, no route can be pushed
         if (srcDevice == null || dstDevice == null) return;
         
-        DatapathId srcIsland = topologyService.getOpenflowDomainId(sw.getId());
+        DatapathId srcIsland = topologyService.getClusterId(sw.getId());
 
         if (srcIsland == null) {
             log.debug("No openflow island found for source {}/{}", 
@@ -398,7 +398,7 @@ public class LoadBalancer implements IFloodlightModule,
         boolean on_same_if = false;
         for (SwitchPort dstDap : dstDevice.getAttachmentPoints()) {
             DatapathId dstSwDpid = dstDap.getNodeId();
-            DatapathId dstIsland = topologyService.getOpenflowDomainId(dstSwDpid);
+            DatapathId dstIsland = topologyService.getClusterId(dstSwDpid);
             if ((dstIsland != null) && dstIsland.equals(srcIsland)) {
                 on_same_island = true;
                 if ((sw.getId().equals(dstSwDpid)) && OFMessageUtils.getInPort(pi).equals(dstDap.getPortId())) {
@@ -442,9 +442,9 @@ public class LoadBalancer implements IFloodlightModule,
             SwitchPort srcDap = srcDaps[iSrcDaps];
             SwitchPort dstDap = dstDaps[iDstDaps];
             DatapathId srcCluster = 
-                    topologyService.getOpenflowDomainId(srcDap.getNodeId());
+                    topologyService.getClusterId(srcDap.getNodeId());
             DatapathId dstCluster = 
-                    topologyService.getOpenflowDomainId(dstDap.getNodeId());
+                    topologyService.getClusterId(dstDap.getNodeId());
 
             int srcVsDest = srcCluster.compareTo(dstCluster);
             if (srcVsDest == 0) {

@@ -97,18 +97,6 @@ public interface ITopologyService extends IFloodlightService  {
 	public boolean isConsistent(DatapathId oldSw, OFPort oldPort, 
 			DatapathId newSw, OFPort newPort);
 
-	/**
-	 * Indicates if the two switch ports are connected to the same
-	 * broadcast domain or not.
-	 * @param s1
-	 * @param p1
-	 * @param s2
-	 * @param p2
-	 * @return
-	 */
-	public boolean isInSameBroadcastDomain(DatapathId s1, OFPort p1,
-			DatapathId s2, OFPort p2);
-
 	/** 
 	 * Get broadcast ports on a target switch for a given attachment point
 	 * point port.
@@ -138,10 +126,18 @@ public interface ITopologyService extends IFloodlightService  {
 	public NodePortTuple getAllowedIncomingBroadcastPort(DatapathId src, OFPort srcPort);
 
 	/**
-	 * Gets the set of ports that belong to a broadcast domain.
+	 * Gets the set of ports that participate in the broadcast within each archipelago
 	 * @return
 	 */
-	public Set<NodePortTuple> getBroadcastDomainPorts();
+	public Set<NodePortTuple> getAllBroadcastPorts();
+	
+	/**
+     * Gets the set of ports that participate in the broadcast trees for the
+     * archipelago in which the swtich belongs
+     * @param sw
+     * @return
+     */
+    public Set<NodePortTuple> getBroadcastPortsInArchipelago(DatapathId sw);
 	
 	/**
 	 * Gets the set of ports that belong to tunnels.
@@ -164,7 +160,7 @@ public interface ITopologyService extends IFloodlightService  {
      * @param portId
      * @return
      */
-    public boolean isAllowed(DatapathId sw, OFPort portId);
+    public boolean isNotBlocked(DatapathId sw, OFPort portId);
 
 	/**
 	 * Returns the enabled, non quarantined ports of the given switch. Returns
@@ -183,7 +179,15 @@ public interface ITopologyService extends IFloodlightService  {
 	 * @param switchId
 	 * @return
 	 */
-	public DatapathId getOpenflowDomainId(DatapathId switchId);
+	public DatapathId getClusterId(DatapathId switchId);
+	
+	/**
+     * Return the ID of the archipelago this switch is
+     * a part of. The ID is the lowest cluster DPID within the archipelago.
+     * @param switchId
+     * @return
+     */
+    public DatapathId getArchipelagoId(DatapathId switchId);
 	
 	/**
 	 * Determines if two switches are in the same domain/island/cluster.
@@ -191,14 +195,30 @@ public interface ITopologyService extends IFloodlightService  {
 	 * @param switch2
 	 * @return true if the switches are in the same cluster
 	 */
-	public boolean inSameOpenflowDomain(DatapathId switch1, DatapathId switch2);
+	public boolean isInSameCluster(DatapathId switch1, DatapathId switch2);
+	
+	/**
+     * Determines if two switches are in the same archipelago.
+     * @param switch1
+     * @param switch2
+     * @return true if the switches are in the same archipelago
+     */
+    public boolean isInSameArchipelago(DatapathId switch1, DatapathId switch2);
 
 	/**
 	 * Gets all switches in the same domain/island/cluster as the switch provided.
 	 * @param switchDPID
 	 * @return
 	 */
-	public Set<DatapathId> getSwitchesInOpenflowDomain(DatapathId switchDPID);
+	public Set<DatapathId> getSwitchesInCluster(DatapathId switchDPID);
+	
+	/**
+     * Gets all cluster IDs in the same archipelago as the switch provided.
+     * @param switchDPID
+     * @return
+     */
+    public Set<DatapathId> getClusterIdsInArchipelago(DatapathId switchDPID);
+    
 	
 	/*******************************************************
 	 * LINK FUNCTIONS
@@ -217,6 +237,24 @@ public interface ITopologyService extends IFloodlightService  {
 	 * @return
 	 */
 	public Set<OFPort> getPortsWithLinks(DatapathId sw);
+	
+	/**
+	 * Get all links that are:
+	 * --external
+	 * --detected via BDDP
+	 * --connect two clusters
+	 * @return
+	 */
+	public Set<Link> getExternalInterClusterLinks();
+	
+	/**
+     * Get all links that are:
+     * --internal
+     * --detected via LLDP
+     * --connect two clusters
+     * @return
+     */
+    public Set<Link> getInternalInterClusterLinks();
 
 	/*******************************************************
 	 * PATH-FINDING FUNCTIONS

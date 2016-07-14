@@ -48,6 +48,8 @@ import org.projectfloodlight.openflow.types.U64;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.collect.ImmutableSet;
+
 import java.util.*;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -96,7 +98,7 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 	/**
 	 * set of links that are broadcast domain links.
 	 */
-	protected Map<NodePortTuple, Set<Link>> portBroadcastDomainLinks;
+	protected Map<NodePortTuple, Set<Link>> interClusterLinks;
 
 	/**
 	 * set of tunnel links
@@ -222,7 +224,7 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 	// ****************
 
 	@Override
-	public Map<DatapathId, Set<Link>> getAllLinks(){
+	public Map<DatapathId, Set<Link>> getAllLinks() {
 
 		Map<DatapathId, Set<Link>> dpidLinks = new HashMap<DatapathId, Set<Link>>();
 		TopologyInstance ti = getCurrentInstance();
@@ -297,20 +299,21 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 	}
 
 	@Override
-	public DatapathId getOpenflowDomainId(DatapathId switchId) {
+	public DatapathId getClusterId(DatapathId switchId) {
 		TopologyInstance ti = getCurrentInstance();
-		return ti.getOpenflowDomainId(switchId);
+		return ti.getClusterId(switchId);
 	}
 
 	@Override
-	public boolean inSameOpenflowDomain(DatapathId switch1, DatapathId switch2) {
+	public boolean isInSameCluster(DatapathId switch1, DatapathId switch2) {
 		TopologyInstance ti = getCurrentInstance();
-		return ti.inSameOpenflowDomain(switch1, switch2);
+		return ti.isInSameCluster(switch1, switch2);
 	}
 
 	@Override
-	public boolean isAllowed(DatapathId sw, OFPort portId) {
-		return true;
+	public boolean isNotBlocked(DatapathId sw, OFPort port) {
+	    TopologyInstance ti = getCurrentInstance();
+	    return !ti.isBlockedPort(new NodePortTuple(sw, port));
 	}
 
 	@Override
@@ -354,7 +357,6 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 	////////////////////////////////////////////////////////////////////////
 	////////////////////////////////////////////////////////////////////////
 
-	/** Get all the ports connected to the switch */
 	@Override
 	public Set<OFPort> getPortsWithLinks(DatapathId sw) {
 		TopologyInstance ti = getCurrentInstance();
@@ -364,7 +366,8 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 	////////////////////////////////////////////////////////////////////////
 	////////////////////////////////////////////////////////////////////////
 	
-	/** Get all the ports on the target switch (targetSw) on which a
+	/** 
+	 * Get all the ports on the target switch (targetSw) on which a
 	 * broadcast packet must be sent from a host whose attachment point
 	 * is on switch port (src, srcPort).
 	 */
@@ -400,22 +403,17 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 
 	////////////////////////////////////////////////////////////////////////
 	////////////////////////////////////////////////////////////////////////
-	/**
-	 * Checks if the two switchports belong to the same broadcast domain.
-	 */
+
 	@Override
-	public boolean isInSameBroadcastDomain(DatapathId s1, OFPort p1,
-			DatapathId s2, OFPort p2) {
+	public boolean isInSameArchipelago(DatapathId s1, DatapathId s2) {
 		TopologyInstance ti = getCurrentInstance();
-		return ti.inSameBroadcastDomain(s1, p1, s2, p2);
+		return ti.isInSameArchipelago(s1, s2);
 
 	}
 
 	////////////////////////////////////////////////////////////////////////
 	////////////////////////////////////////////////////////////////////////
-	/**
-	 * Checks if the switchport is a broadcast port or not.
-	 */
+
 	@Override
 	public boolean isBroadcastPort(DatapathId sw, OFPort port) {
 		TopologyInstance ti = getCurrentInstance();
@@ -424,10 +422,7 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 
 	////////////////////////////////////////////////////////////////////////
 	////////////////////////////////////////////////////////////////////////
-	/**
-	 * Checks if the new attachment point port is consistent with the
-	 * old attachment point port.
-	 */
+
 	@Override
 	public boolean isConsistent(DatapathId oldSw, OFPort oldPort,
 			DatapathId newSw, OFPort newPort) {
@@ -461,17 +456,29 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 	////////////////////////////////////////////////////////////////////////
 
 	@Override
-	public Set<DatapathId> getSwitchesInOpenflowDomain(DatapathId switchDPID) {
+	public Set<DatapathId> getSwitchesInCluster(DatapathId switchDPID) {
 		TopologyInstance ti = getCurrentInstance();
-		return ti.getSwitchesInOpenflowDomain(switchDPID);
+		return ti.getSwitchesInCluster(switchDPID);
 	}
 	////////////////////////////////////////////////////////////////////////
 	////////////////////////////////////////////////////////////////////////
 
 	@Override
-	public Set<NodePortTuple> getBroadcastDomainPorts() {
-		return portBroadcastDomainLinks.keySet();
+	public Set<Link> getExternalInterClusterLinks() {
+	    ImmutableSet.Builder<Link> b = ImmutableSet.builder();
+        for (Collection<Link> c : interClusterLinks.values()) {
+            for (Link l : c) {
+                b.add(l);
+            }
+        }
+        return b.build();
 	}
+	
+	@Override
+    public Set<Link> getInternalInterClusterLinks() {
+        TopologyInstance ti = getCurrentInstance();
+        return ti.getInternalInterClusterLinks();
+    }
 
 	@Override
 	public Set<NodePortTuple> getTunnelPorts() {
@@ -663,7 +670,7 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 		switchPorts = new HashMap<DatapathId, Set<OFPort>>();
 		switchPortLinks = new HashMap<NodePortTuple, Set<Link>>();
 		directLinks = new HashMap<NodePortTuple, Set<Link>>();
-		portBroadcastDomainLinks = new HashMap<NodePortTuple, Set<Link>>();
+		interClusterLinks = new HashMap<NodePortTuple, Set<Link>>();
 		tunnelPorts = new HashSet<NodePortTuple>();
 		topologyAware = new ArrayList<ITopologyListener>();
 		ldUpdates = new LinkedBlockingQueue<LDUpdate>();
@@ -762,7 +769,7 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 
 		// If the input port is not allowed for data traffic, drop everything.
 		// BDDP packets will not reach this stage.
-		if (isAllowed(sw, inPort) == false) {
+		if (isNotBlocked(sw, inPort) == false) {
 			if (log.isTraceEnabled()) {
 				log.trace("Ignoring packet because of topology " +
 						"restriction on switch={}, port={}", sw.getLong(), inPort.getPortNumber());
@@ -856,7 +863,7 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 
 		TopologyInstance ti = getCurrentInstance();
 
-		Set<DatapathId> switches = ti.getSwitchesInOpenflowDomain(pinSwitch);
+		Set<DatapathId> switches = ti.getSwitchesInCluster(pinSwitch);
 
 		if (switches == null)
 		{
@@ -1063,7 +1070,7 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 				tunnelPorts,
 				switchPortLinks,
 				allPorts,
-				portBroadcastDomainLinks);
+				interClusterLinks);
 
 		nt.compute();
 		
@@ -1081,7 +1088,7 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 
 		Set<NodePortTuple> broadcastDomainPorts =
 				new HashSet<NodePortTuple>();
-		broadcastDomainPorts.addAll(this.portBroadcastDomainLinks.keySet());
+		broadcastDomainPorts.addAll(this.interClusterLinks.keySet());
 
 		Set<NodePortTuple> additionalNpt =
 				new HashSet<NodePortTuple>();
@@ -1246,7 +1253,7 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
             addPortToSwitch(dstId, dstPort);
             addLinkToStructure(switchPortLinks, link);
 
-            addLinkToStructure(portBroadcastDomainLinks, link);
+            addLinkToStructure(interClusterLinks, link);
             dtLinksUpdated = removeLinkFromStructure(directLinks, link);
             linksUpdated = true;
         } else if (type.equals(LinkType.DIRECT_LINK)) {
@@ -1255,7 +1262,7 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
             addLinkToStructure(switchPortLinks, link);
 
             addLinkToStructure(directLinks, link);
-            removeLinkFromStructure(portBroadcastDomainLinks, link);
+            removeLinkFromStructure(interClusterLinks, link);
             dtLinksUpdated = true;
             linksUpdated = true;
         } else if (type.equals(LinkType.TUNNEL)) {
@@ -1266,7 +1273,7 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
     public void removeLink(Link link) {
         linksUpdated = true;
         dtLinksUpdated = removeLinkFromStructure(directLinks, link);
-        removeLinkFromStructure(portBroadcastDomainLinks, link);
+        removeLinkFromStructure(interClusterLinks, link);
         removeLinkFromStructure(switchPortLinks, link);
 
         NodePortTuple srcNpt =
@@ -1305,7 +1312,7 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
         switchPorts.clear();
         tunnelPorts.clear();
         switchPortLinks.clear();
-        portBroadcastDomainLinks.clear();
+        interClusterLinks.clear();
         directLinks.clear();
     }
 
@@ -1325,16 +1332,12 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
     /**
      * Getters.  No Setters.
      */
-    public Map<DatapathId, Set<OFPort>> getSwitchPorts() {
+    public Map<DatapathId, Set<OFPort>> getPortsPerSwitch() {
         return switchPorts;
     }
 
-    public Map<NodePortTuple, Set<Link>> getSwitchPortLinks() {
+    public Map<NodePortTuple, Set<Link>> getPortsOnLinks() {
         return switchPortLinks;
-    }
-
-    public Map<NodePortTuple, Set<Link>> getPortBroadcastDomainLinks() {
-        return portBroadcastDomainLinks;
     }
 
     public TopologyInstance getCurrentInstance() {
@@ -1358,5 +1361,29 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
             ports.removeAll(qPorts);
 
         return ports;
+    }
+
+    @Override
+    public Set<NodePortTuple> getBroadcastPortsInArchipelago(DatapathId sw) {
+        TopologyInstance ti = getCurrentInstance();
+        return ti.getBroadcastPortsInArchipelago(sw);
+    }
+
+    @Override
+    public DatapathId getArchipelagoId(DatapathId switchId) {
+        TopologyInstance ti = getCurrentInstance();
+        return ti.getArchipelagoId(switchId);
+    }
+
+    @Override
+    public Set<DatapathId> getClusterIdsInArchipelago(DatapathId sw) {
+        TopologyInstance ti = getCurrentInstance();
+        return ti.getClusterIdsInArchipelago(sw);
+    }
+
+    @Override
+    public Set<NodePortTuple> getAllBroadcastPorts() {
+        TopologyInstance ti = getCurrentInstance();
+        return ti.getAllBroadcastPorts();
     }
 }

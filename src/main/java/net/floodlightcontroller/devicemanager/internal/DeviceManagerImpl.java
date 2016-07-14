@@ -340,12 +340,12 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 
 			DatapathId oldSw = oldAP.getSw();
 			OFPort oldPort = oldAP.getPort();
-			DatapathId oldDomain = topology.getOpenflowDomainId(oldSw);
+			DatapathId oldDomain = topology.getClusterId(oldSw);
 			boolean oldBD = topology.isBroadcastPort(oldSw, oldPort);
 
 			DatapathId newSw = newAP.getSw();
 			OFPort newPort = newAP.getPort();
-			DatapathId newDomain = topology.getOpenflowDomainId(newSw);
+			DatapathId newDomain = topology.getClusterId(newSw);
 			boolean newBD = topology.isBroadcastPort(newSw, newPort);
 
 			if (oldDomain.getLong() < newDomain.getLong()) return -1;
