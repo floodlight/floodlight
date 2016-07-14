@@ -676,18 +676,19 @@ public class TopologyInstanceTest {
          */
         int [][] linkArray = {
                 {1, 1, 2, 1, DIRECT_LINK},
+                //{3, 1, 1, 2, DIRECT_LINK},
                 {1, 2, 3, 1, DIRECT_LINK},
                 {2, 2, 3, 2, DIRECT_LINK},
         };
-        int [] lat = {1,50,1};
+        int [] lat = {1,/*50,*/50,1};
 
         /* 
          * NOTE: Output from the next four log.info should be mirrored!
          * Get paths based on latency.
          */
+        topologyManager.clearCurrentTopology();
         topologyManager.setPathMetric(LATENCY);
         configureTopology(linkArray, lat);
-        topologyManager.createNewInstance();
         List<Route> lat_paths = topologyManager.getPathsFast(one, three, k);
         log.info("Path 1: {}", lat_paths.get(0));
         log.info("Path 2: {}", lat_paths.get(1));

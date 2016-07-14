@@ -54,6 +54,16 @@ public class Archipelago {
             id = a.getId();
         }
     }
+    
+    Set<DatapathId> getSwitches() {
+        Set<DatapathId> allSwitches = new HashSet<DatapathId>();
+        for (Cluster c : clusters) {
+            for (DatapathId d : c.getNodes()) {
+                allSwitches.add(d);
+            }
+        }
+        return allSwitches;
+    }
 
     BroadcastTree getBroadcastTree() {
         return destinationRootedFullTree;
