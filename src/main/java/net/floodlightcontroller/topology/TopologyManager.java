@@ -65,13 +65,13 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 
 	protected static IStatisticsService statisticsService;
 
-	protected static volatile ROUTE_METRIC routeMetric = ROUTE_METRIC.HOPCOUNT_AVOID_TUNNELS; //default: route on hop count
+	protected static volatile PATH_METRIC pathMetric = PATH_METRIC.HOPCOUNT_AVOID_TUNNELS; //default: compute paths on hop count
 	protected static boolean collectStatistics = false;
 
 	/**
 	 * Maximum number of route entries stored in memory.
 	 */
-	protected static volatile int maximumRouteEntriesStored = 10;
+	private static volatile int maxPathsToCompute = 3;
 
 	/**
 	 * Role of the controller.
@@ -117,7 +117,6 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 
 	// These must be accessed using getCurrentInstance(), not directly
 	protected TopologyInstance currentInstance;
-	protected TopologyInstance currentInstanceWithoutTunnels;
 
 	protected SingletonTask newInstanceTask;
 	private Date lastUpdateTime;
@@ -226,7 +225,7 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 	public Map<DatapathId, Set<Link>> getAllLinks(){
 
 		Map<DatapathId, Set<Link>> dpidLinks = new HashMap<DatapathId, Set<Link>>();
-		TopologyInstance ti = getCurrentInstance(true);
+		TopologyInstance ti = getCurrentInstance();
 		Set<DatapathId> switches = ti.getSwitches();
 
 		for(DatapathId s: switches) {
@@ -251,13 +250,13 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 
 	@Override
 	public boolean isEdge(DatapathId sw, OFPort p){
-		TopologyInstance ti = getCurrentInstance(true);
+		TopologyInstance ti = getCurrentInstance();
 		return ti.isEdge(sw, p);
 	}
 
 	@Override
 	public Set<OFPort> getSwitchBroadcastPorts(DatapathId sw){
-		TopologyInstance ti = getCurrentInstance(true);
+		TopologyInstance ti = getCurrentInstance();
 		return ti.swBroadcastPorts(sw);
 	}
 
@@ -273,11 +272,6 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 
 	@Override
 	public boolean isAttachmentPointPort(DatapathId switchid, OFPort port) {
-		return isAttachmentPointPort(switchid, port, true);
-	}
-
-	@Override
-	public boolean isAttachmentPointPort(DatapathId switchid, OFPort port, boolean tunnelEnabled) {
 
 		// If the switch port is 'tun-bsn' port, it is not
 		// an attachment point port, irrespective of whether
@@ -285,7 +279,7 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 		if (linkDiscoveryService.isTunnelPort(switchid, port))
 			return false;
 
-		TopologyInstance ti = getCurrentInstance(tunnelEnabled);
+		TopologyInstance ti = getCurrentInstance();
 
 		// if the port is not attachment point port according to
 		// topology instance, then return false
@@ -304,84 +298,72 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 
 	@Override
 	public DatapathId getOpenflowDomainId(DatapathId switchId) {
-		return getOpenflowDomainId(switchId, true);
-	}
-
-	@Override
-	public DatapathId getOpenflowDomainId(DatapathId switchId, boolean tunnelEnabled) {
-		TopologyInstance ti = getCurrentInstance(tunnelEnabled);
+		TopologyInstance ti = getCurrentInstance();
 		return ti.getOpenflowDomainId(switchId);
 	}
 
 	@Override
 	public boolean inSameOpenflowDomain(DatapathId switch1, DatapathId switch2) {
-		return inSameOpenflowDomain(switch1, switch2, true);
-	}
-
-	@Override
-	public boolean inSameOpenflowDomain(DatapathId switch1, DatapathId switch2,
-			boolean tunnelEnabled) {
-		TopologyInstance ti = getCurrentInstance(tunnelEnabled);
+		TopologyInstance ti = getCurrentInstance();
 		return ti.inSameOpenflowDomain(switch1, switch2);
 	}
 
 	@Override
 	public boolean isAllowed(DatapathId sw, OFPort portId) {
-		return isAllowed(sw, portId, true);
+		return true;
 	}
 
 	@Override
-	public boolean isAllowed(DatapathId sw, OFPort portId, boolean tunnelEnabled) {
-		TopologyInstance ti = getCurrentInstance(tunnelEnabled);
-		return ti.isAllowed(sw, portId);
+	public PATH_METRIC setPathMetric(PATH_METRIC metric) {
+		pathMetric = metric;
+		return pathMetric;
 	}
 
 	@Override
-	public ROUTE_METRIC setRouteMetric(ROUTE_METRIC metric) {
-		routeMetric = metric;
-		return routeMetric;
+	public PATH_METRIC getPathMetric() {
+		return pathMetric;
 	}
 
+	protected static PATH_METRIC getPathMetricInternal() {
+		return pathMetric;
+	}
+	
+	protected static int getMaxPathsToComputeInternal() {
+	    return maxPathsToCompute;
+	}
+	
 	@Override
-	public ROUTE_METRIC getRouteMetric() {
-		return routeMetric;
+	public int getMaxPathsToCompute() {
+	    return maxPathsToCompute;
 	}
-
-	static protected ROUTE_METRIC getRouteMetricInternal() {
-		return routeMetric;
+	
+	@Override
+	public void setMaxPathsToCompute(int max) {
+	    maxPathsToCompute = max;
 	}
 
 	////////////////////////////////////////////////////////////////////////
 	////////////////////////////////////////////////////////////////////////
+
 	@Override
 	public boolean isIncomingBroadcastAllowed(DatapathId sw, OFPort portId) {
-		return isIncomingBroadcastAllowed(sw, portId, true);
-	}
-
-	@Override
-	public boolean isIncomingBroadcastAllowed(DatapathId sw, OFPort portId,
-			boolean tunnelEnabled) {
-		TopologyInstance ti = getCurrentInstance(tunnelEnabled);
+		TopologyInstance ti = getCurrentInstance();
 		return ti.isIncomingBroadcastAllowedOnSwitchPort(sw, portId);
 	}
 
 	////////////////////////////////////////////////////////////////////////
 	////////////////////////////////////////////////////////////////////////
-	/** Get all the ports connected to the switch */
-	@Override
-	public Set<OFPort> getPortsWithLinks(DatapathId sw) {
-		return getPortsWithLinks(sw, true);
-	}
 
 	/** Get all the ports connected to the switch */
 	@Override
-	public Set<OFPort> getPortsWithLinks(DatapathId sw, boolean tunnelEnabled) {
-		TopologyInstance ti = getCurrentInstance(tunnelEnabled);
+	public Set<OFPort> getPortsWithLinks(DatapathId sw) {
+		TopologyInstance ti = getCurrentInstance();
 		return ti.getPortsWithLinks(sw);
 	}
 
 	////////////////////////////////////////////////////////////////////////
 	////////////////////////////////////////////////////////////////////////
+	
 	/** Get all the ports on the target switch (targetSw) on which a
 	 * broadcast packet must be sent from a host whose attachment point
 	 * is on switch port (src, srcPort).
@@ -389,53 +371,29 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 	@Override
 	public Set<OFPort> getBroadcastPorts(DatapathId targetSw,
 			DatapathId src, OFPort srcPort) {
-		return getBroadcastPorts(targetSw, src, srcPort, true);
-	}
-
-	/** Get all the ports on the target switch (targetSw) on which a
-	 * broadcast packet must be sent from a host whose attachment point
-	 * is on switch port (src, srcPort).
-	 */
-	@Override
-	public Set<OFPort> getBroadcastPorts(DatapathId targetSw,
-			DatapathId src, OFPort srcPort,
-			boolean tunnelEnabled) {
-		TopologyInstance ti = getCurrentInstance(tunnelEnabled);
+		TopologyInstance ti = getCurrentInstance();
 		return ti.getBroadcastPorts(targetSw, src, srcPort);
 	}
 
 	////////////////////////////////////////////////////////////////////////
 	////////////////////////////////////////////////////////////////////////
+	
 	@Override
 	public NodePortTuple getOutgoingSwitchPort(DatapathId src, OFPort srcPort,
 			DatapathId dst, OFPort dstPort) {
 		// Use this function to redirect traffic if needed.
-		return getOutgoingSwitchPort(src, srcPort, dst, dstPort, true);
-	}
-
-	@Override
-	public NodePortTuple getOutgoingSwitchPort(DatapathId src, OFPort srcPort,
-			DatapathId dst, OFPort dstPort,
-			boolean tunnelEnabled) {
-		// Use this function to redirect traffic if needed.
-		TopologyInstance ti = getCurrentInstance(tunnelEnabled);
+		TopologyInstance ti = getCurrentInstance();
 		return ti.getOutgoingSwitchPort(src, srcPort,
 				dst, dstPort);
 	}
 
 	////////////////////////////////////////////////////////////////////////
 	////////////////////////////////////////////////////////////////////////
-	@Override
-	public NodePortTuple getIncomingSwitchPort(DatapathId src, OFPort srcPort,
-			DatapathId dst, OFPort dstPort) {
-		return getIncomingSwitchPort(src, srcPort, dst, dstPort, true);
-	}
 
 	@Override
 	public NodePortTuple getIncomingSwitchPort(DatapathId src, OFPort srcPort,
-			DatapathId dst, OFPort dstPort,
-			boolean tunnelEnabled) {
-		TopologyInstance ti = getCurrentInstance(tunnelEnabled);
+			DatapathId dst, OFPort dstPort) {
+		TopologyInstance ti = getCurrentInstance();
 		return ti.getIncomingSwitchPort(src, srcPort,
 				dst, dstPort);
 	}
@@ -446,17 +404,9 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 	 * Checks if the two switchports belong to the same broadcast domain.
 	 */
 	@Override
-	public boolean isInSameBroadcastDomain(DatapathId s1, OFPort p1, DatapathId s2,
-			OFPort p2) {
-		return isInSameBroadcastDomain(s1, p1, s2, p2, true);
-
-	}
-
-	@Override
 	public boolean isInSameBroadcastDomain(DatapathId s1, OFPort p1,
-			DatapathId s2, OFPort p2,
-			boolean tunnelEnabled) {
-		TopologyInstance ti = getCurrentInstance(tunnelEnabled);
+			DatapathId s2, OFPort p2) {
+		TopologyInstance ti = getCurrentInstance();
 		return ti.inSameBroadcastDomain(s1, p1, s2, p2);
 
 	}
@@ -468,13 +418,7 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 	 */
 	@Override
 	public boolean isBroadcastDomainPort(DatapathId sw, OFPort port) {
-		return isBroadcastDomainPort(sw, port, true);
-	}
-
-	@Override
-	public boolean isBroadcastDomainPort(DatapathId sw, OFPort port,
-			boolean tunnelEnabled) {
-		TopologyInstance ti = getCurrentInstance(tunnelEnabled);
+		TopologyInstance ti = getCurrentInstance();
 		return ti.isBroadcastDomainPort(new NodePortTuple(sw, port));
 	}
 
@@ -487,66 +431,38 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 	@Override
 	public boolean isConsistent(DatapathId oldSw, OFPort oldPort,
 			DatapathId newSw, OFPort newPort) {
-		return isConsistent(oldSw, oldPort,
-				newSw, newPort, true);
-	}
-
-	@Override
-	public boolean isConsistent(DatapathId oldSw, OFPort oldPort,
-			DatapathId newSw, OFPort newPort,
-			boolean tunnelEnabled) {
-		TopologyInstance ti = getCurrentInstance(tunnelEnabled);
+		TopologyInstance ti = getCurrentInstance();
 		return ti.isConsistent(oldSw, oldPort, newSw, newPort);
 	}
 
 	////////////////////////////////////////////////////////////////////////
 	////////////////////////////////////////////////////////////////////////
-	@Override
-	public NodePortTuple getAllowedOutgoingBroadcastPort(DatapathId src,
-			OFPort srcPort,
-			DatapathId dst,
-			OFPort dstPort) {
-		return getAllowedOutgoingBroadcastPort(src, srcPort,
-				dst, dstPort, true);
-	}
 
 	@Override
 	public NodePortTuple getAllowedOutgoingBroadcastPort(DatapathId src,
 			OFPort srcPort,
 			DatapathId dst,
-			OFPort dstPort,
-			boolean tunnelEnabled){
-		TopologyInstance ti = getCurrentInstance(tunnelEnabled);
+			OFPort dstPort){
+		TopologyInstance ti = getCurrentInstance();
 		return ti.getAllowedOutgoingBroadcastPort(src, srcPort,
 				dst, dstPort);
 	}
 	////////////////////////////////////////////////////////////////////////
 	////////////////////////////////////////////////////////////////////////
-	@Override
-	public NodePortTuple
-	getAllowedIncomingBroadcastPort(DatapathId src, OFPort srcPort) {
-		return getAllowedIncomingBroadcastPort(src,srcPort, true);
-	}
 
 	@Override
 	public NodePortTuple
-	getAllowedIncomingBroadcastPort(DatapathId src, OFPort srcPort,
-			boolean tunnelEnabled) {
-		TopologyInstance ti = getCurrentInstance(tunnelEnabled);
+	getAllowedIncomingBroadcastPort(DatapathId src, OFPort srcPort) {
+		TopologyInstance ti = getCurrentInstance();
 		return ti.getAllowedIncomingBroadcastPort(src,srcPort);
 	}
 
 	////////////////////////////////////////////////////////////////////////
 	////////////////////////////////////////////////////////////////////////
-	@Override
-	public Set<DatapathId> getSwitchesInOpenflowDomain(DatapathId switchDPID) {
-		return getSwitchesInOpenflowDomain(switchDPID, true);
-	}
 
 	@Override
-	public Set<DatapathId> getSwitchesInOpenflowDomain(DatapathId switchDPID,
-			boolean tunnelEnabled) {
-		TopologyInstance ti = getCurrentInstance(tunnelEnabled);
+	public Set<DatapathId> getSwitchesInOpenflowDomain(DatapathId switchDPID) {
+		TopologyInstance ti = getCurrentInstance();
 		return ti.getSwitchesInOpenflowDomain(switchDPID);
 	}
 	////////////////////////////////////////////////////////////////////////
@@ -568,13 +484,7 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 		Set<NodePortTuple> blockedPorts =
 				new HashSet<NodePortTuple>();
 
-		// As we might have two topologies, simply get the union of
-		// both of them and send it.
-		bp = getCurrentInstance(true).getBlockedPorts();
-		if (bp != null)
-			blockedPorts.addAll(bp);
-
-		bp = getCurrentInstance(false).getBlockedPorts();
+		bp = getCurrentInstance().getBlockedPorts();
 		if (bp != null)
 			blockedPorts.addAll(bp);
 
@@ -588,64 +498,40 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 	// ***************
 
 	@Override
-	public Route getRoute(DatapathId src, DatapathId dst, U64 cookie) {
-		return getRoute(src, dst, cookie, true);
+	public Route getPath(DatapathId src, DatapathId dst) {
+	    TopologyInstance ti = getCurrentInstance();
+        return ti.getPath(src, dst);
+	}
+	
+	@Override
+	public Route getPath(DatapathId src, OFPort srcPort, DatapathId dst, OFPort dstPort) {
+	    TopologyInstance ti = getCurrentInstance();
+        return ti.getPath(src, srcPort, dst, dstPort);
+    }
+
+	@Override
+	public boolean pathExists(DatapathId src, DatapathId dst) {
+	    TopologyInstance ti = getCurrentInstance();
+        return ti.pathExists(src, dst);
 	}
 
 	@Override
-	public Route getRoute(DatapathId src, DatapathId dst, U64 cookie, boolean tunnelEnabled) {
-		TopologyInstance ti = getCurrentInstance(tunnelEnabled);
-		return ti.getRoute(src, dst, cookie);
+	public List<Route> getPathsFast(DatapathId srcDpid, DatapathId dstDpid) {
+        return getCurrentInstance().getPathsFast(srcDpid, dstDpid, maxPathsToCompute);
 	}
 
 	@Override
-	public Route getRoute(DatapathId src, OFPort srcPort, DatapathId dst, OFPort dstPort, U64 cookie) {
-		return getRoute(src, srcPort, dst, dstPort, cookie, true);
+	public List<Route> getPathsFast(DatapathId srcDpid, DatapathId dstDpid, Integer k) {
+		return getCurrentInstance().getPathsFast(srcDpid, dstDpid, k);
 	}
 
 	@Override
-	public Route getRoute(DatapathId src, OFPort srcPort, DatapathId dst, OFPort dstPort, U64 cookie,
-			boolean tunnelEnabled) {
-		TopologyInstance ti = getCurrentInstance(tunnelEnabled);
-		return ti.getRoute(src, srcPort, dst, dstPort, cookie);
+	public List<Route> getPathsSlow(DatapathId srcDpid, DatapathId dstDpid, Integer k) {
+		return getCurrentInstance().getPathsSlow(srcDpid, dstDpid, k);
 	}
 
-	@Override
-	public boolean routeExists(DatapathId src, DatapathId dst) {
-		return routeExists(src, dst, true);
-	}
-
-	@Override
-	public boolean routeExists(DatapathId src, DatapathId dst, boolean tunnelEnabled) {
-		TopologyInstance ti = getCurrentInstance(tunnelEnabled);
-		return ti.routeExists(src, dst);
-	}
-
-	@Override
-	public ArrayList<Route> getRoutes(DatapathId srcDpid, DatapathId dstDpid,
-			boolean tunnelEnabled) {
-		// Floodlight supports single path routing now
-
-		// return single path now
-		ArrayList<Route> result=new ArrayList<Route>();
-		result.add(getRoute(srcDpid, dstDpid, U64.of(0), tunnelEnabled));
-		return result;
-	}
-
-	public ArrayList<Route> getRoutes(DatapathId srcDpid, DatapathId dstDpid, Integer k) {
-		return getCurrentInstance().getRoutes(srcDpid, dstDpid, k);
-	}
-
-	public ArrayList<Route> getRoutesFast(DatapathId srcDpid, DatapathId dstDpid, Integer k) {
-		return getCurrentInstance().getRoutesFast(srcDpid, dstDpid, k);
-	}
-
-	public ArrayList<Route> getRoutesSlow(DatapathId srcDpid, DatapathId dstDpid, Integer k) {
-		return getCurrentInstance().getRoutesSlow(srcDpid, dstDpid, k);
-	}
-
-	public Map<Link, Integer> getLinkCostMap(boolean tunnelEnabled) {
-		TopologyInstance ti = getCurrentInstance(tunnelEnabled);
+	public Map<Link, Integer> getLinkCostMap() {
+		TopologyInstance ti = getCurrentInstance();
 		return ti.initLinkCostMap();
 	}
 
@@ -700,7 +586,6 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 				Map<String, String> curControllerNodeIPs,
 				Map<String, String> addedControllerNodeIPs,
 				Map<String, String> removedControllerNodeIPs) {
-			// no-op
 		}
 
 		@Override
@@ -717,15 +602,11 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 		@Override
 		public boolean isCallbackOrderingPostreq(HAListenerTypeMarker type,
 				String name) {
-			// TODO Auto-generated method stub
 			return false;
 		}
 
 		@Override
-		public void transitionToStandby() {
-			// TODO Auto-generated method stub
-
-		}
+		public void transitionToStandby() { }
 	}
 
 	// *****************
@@ -790,37 +671,43 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 		registerTopologyDebugCounters();
 
 		Map<String, String> configOptions = context.getConfigParams(this);
-		String metric = configOptions.get("routeMetric") != null
-				? configOptions.get("routeMetric").trim().toLowerCase() : null;
+		String metric = configOptions.get("pathMetric") != null
+				? configOptions.get("pathMetric").trim().toLowerCase() : null;
 		if (metric != null) {
+		    metric = metric.toLowerCase().trim();
 			switch (metric) {
 				case "latency":
-					routeMetric = ROUTE_METRIC.LATENCY;
+				    pathMetric = PATH_METRIC.LATENCY;
 					break;
 				case "utilization":
-					routeMetric = ROUTE_METRIC.UTILIZATION;
+				    pathMetric = PATH_METRIC.UTILIZATION;
 					break;
 				case "hopcount":
-					routeMetric = ROUTE_METRIC.HOPCOUNT;
+				    pathMetric = PATH_METRIC.HOPCOUNT;
 					break;
 				case "hopcount_avoid_tunnels":
-					routeMetric = ROUTE_METRIC.HOPCOUNT_AVOID_TUNNELS;
+				    pathMetric = PATH_METRIC.HOPCOUNT_AVOID_TUNNELS;
 					break;
 				case "link_speed":
-					routeMetric = ROUTE_METRIC.LINK_SPEED;
+				    pathMetric = PATH_METRIC.LINK_SPEED;
 					break;
 				default:
-					log.error("Invalid input {}", metric);
+					log.error("Invalid routing metric {}. Using default {}", metric, pathMetric);
 					break;
 			}
 		}
-		log.info("Route Metrics set to {}", routeMetric);
+		log.info("Path metrics set to {}", pathMetric);
 
-		String maxroutes = configOptions.get("maximumRouteEntriesStored") != null
-				? configOptions.get("maximumRouteEntriesStored").trim() : null;
+		String maxroutes = configOptions.get("maxPathsToCompute") != null
+				? configOptions.get("maxPathsToCompute").trim() : null;
 		if (maxroutes != null) {
-			maximumRouteEntriesStored = Integer.parseInt(maxroutes);
+		    try {
+		        maxPathsToCompute = Integer.parseInt(maxroutes);
+		    } catch (NumberFormatException e) {
+		        log.error("Invalid 'maxPathsToCompute'. Using default {}", maxPathsToCompute);
+		    }
 		}
+		log.info("Will compute a max of {} paths upon topology updates", maxPathsToCompute);
 	}
 
 	@Override
@@ -886,8 +773,7 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 	}
 
 	/**
-	 * TODO This method must be moved to a layer below forwarding
-	 * so that anyone can use it.
+	 * Send a packet-out to multiple ports
 	 * @param packetData
 	 * @param sw
 	 * @param ports
@@ -968,7 +854,7 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 	protected void doFloodBDDP(DatapathId pinSwitch, OFPacketIn pi,
 			FloodlightContext cntx) {
 
-		TopologyInstance ti = getCurrentInstance(false);
+		TopologyInstance ti = getCurrentInstance();
 
 		Set<DatapathId> switches = ti.getSwitchesInOpenflowDomain(pinSwitch);
 
@@ -1180,11 +1066,8 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 				portBroadcastDomainLinks);
 
 		nt.compute();
-
-		// We set the instances with and without tunnels to be identical.
-		// If needed, we may compute them differently.
+		
 		currentInstance = nt;
-		currentInstanceWithoutTunnels = nt;
 
 		return true;
 	}
@@ -1454,14 +1337,8 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
         return portBroadcastDomainLinks;
     }
 
-    public TopologyInstance getCurrentInstance(boolean tunnelEnabled) {
-        if (tunnelEnabled)
-            return currentInstance;
-        else return this.currentInstanceWithoutTunnels;
-    }
-
     public TopologyInstance getCurrentInstance() {
-        return this.getCurrentInstance(true);
+        return this.currentInstance;
     }
 
     /**

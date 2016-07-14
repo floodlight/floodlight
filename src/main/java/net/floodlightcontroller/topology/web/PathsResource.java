@@ -19,52 +19,61 @@ package net.floodlightcontroller.topology.web;
 import net.floodlightcontroller.routing.IRoutingService;
 import net.floodlightcontroller.routing.Route;
 import org.projectfloodlight.openflow.types.DatapathId;
+import org.python.google.common.collect.ImmutableList;
 import org.restlet.resource.Get;
 import org.restlet.resource.ServerResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Collections;
+import com.google.common.collect.ImmutableMap;
+
 import java.util.List;
 
-public class RoutesResource extends ServerResource {
+public class PathsResource extends ServerResource {
 
-    protected static Logger log = LoggerFactory.getLogger(RoutesResource.class);
+    protected static Logger log = LoggerFactory.getLogger(PathsResource.class);
 
     @Get("json")
-    public List<Route> retrieve() {
+    public Object retrieve() {
         IRoutingService routing =
                 (IRoutingService)getContext().getAttributes().
                         get(IRoutingService.class.getCanonicalName());
 
         String url = getRequest().getResourceRef().toString();
 
-        String srcDpid = (String) getRequestAttributes().get("src-dpid");
-        String dstDpid = (String) getRequestAttributes().get("dst-dpid");
-        Integer numRoutes = Integer.parseInt((String) getRequestAttributes().get("num-routes"));
-
-        log.debug("Asking for routes from {} to {}", srcDpid, dstDpid);
-        log.debug("Asking for {} routes", numRoutes);
-
-        DatapathId longSrcDpid = DatapathId.of(srcDpid);
-        DatapathId longDstDpid = DatapathId.of(dstDpid);
+        DatapathId srcDpid;
+        DatapathId dstDpid;
+        try {
+            srcDpid = DatapathId.of((String) getRequestAttributes().get("src-dpid"));
+            dstDpid = DatapathId.of((String) getRequestAttributes().get("dst-dpid"));
+        } catch (Exception e) {
+            return ImmutableMap.of("ERROR", "Could not parse source or destination DPID from URI");
+        }     
+        log.debug("Asking for paths from {} to {}", srcDpid, dstDpid);
+        
+        Integer numRoutes;
+        try {
+            numRoutes = Integer.parseInt((String) getRequestAttributes().get("num-paths"));
+        } catch (NumberFormatException e) {
+            return ImmutableMap.of("ERROR", "Could not parse number of paths from URI");
+        }
+        log.debug("Asking for {} paths", numRoutes);
 
         List<Route> results = null;
         try {
             if (url.contains("fast")) {
-                results = routing.getRoutesFast(longSrcDpid, longDstDpid, numRoutes);
+                results = routing.getPathsFast(srcDpid, dstDpid, numRoutes);
             } else if (url.contains("slow")) {
-                results = routing.getRoutesSlow(longSrcDpid, longDstDpid, numRoutes);
+                results = routing.getPathsSlow(srcDpid, dstDpid, numRoutes);
             } else {
-                results = routing.getRoutes(longSrcDpid, longDstDpid, numRoutes);
+                results = routing.getPathsFast(srcDpid, dstDpid);
             }
         } catch (Exception e) {
-            log.warn("{}", e);
-            log.warn("EXCEPTION: No routes found in request for routes from {} to {}", srcDpid, dstDpid);
+            return ImmutableList.of();
         }
 
         if (results == null || results.isEmpty()) {
-            log.warn("No routes found in request for routes from {} to {}", srcDpid, dstDpid);
+            log.debug("No routes found in request for routes from {} to {}", srcDpid, dstDpid);
         } else {
             if (log.isDebugEnabled()) {
                 log.debug("Got {} routes from {} to {}", new Object[] { results.size(), srcDpid, dstDpid });
@@ -73,12 +82,8 @@ public class RoutesResource extends ServerResource {
                 log.debug("------------------------------------------------");
             }
 
-            if (results.size() > 0 && results.contains(null)) {
-                log.error("Geddings, Junaid, Scott, etc., how is this happening if there should be no routes? I tested b/t 2 non-existing switches and using the same switch as src and dst.");
-            } else {
-                return results;
-            }
+            return results;
         }
-        return Collections.emptyList();
+        return ImmutableList.of();
     }
 }

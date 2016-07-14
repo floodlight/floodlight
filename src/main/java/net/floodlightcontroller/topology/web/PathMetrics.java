@@ -17,7 +17,7 @@
 package net.floodlightcontroller.topology.web;
 
 import net.floodlightcontroller.topology.ITopologyService;
-import net.floodlightcontroller.topology.ITopologyService.ROUTE_METRIC;
+import net.floodlightcontroller.topology.ITopologyService.PATH_METRIC;
 import org.restlet.resource.Post;
 import org.restlet.resource.Put;
 import org.restlet.resource.ServerResource;
@@ -27,8 +27,8 @@ import org.slf4j.LoggerFactory;
 import java.util.Collections;
 import java.util.Map;
 
-public class RouteMetrics extends ServerResource {
-    private static final Logger log = LoggerFactory.getLogger(RouteMetrics.class);
+public class PathMetrics extends ServerResource {
+    private static final Logger log = LoggerFactory.getLogger(PathMetrics.class);
 
     @Put
     @Post
@@ -40,35 +40,35 @@ public class RouteMetrics extends ServerResource {
         String metric = (String) getRequestAttributes().get("metric");
         metric = metric.trim().toLowerCase();
 
-        ROUTE_METRIC type;
+        PATH_METRIC type;
 
         switch (metric) {
             case "latency":
-                type = ROUTE_METRIC.LATENCY;
+                type = PATH_METRIC.LATENCY;
                 break;
             case "utilization":
-                type = ROUTE_METRIC.UTILIZATION;
+                type = PATH_METRIC.UTILIZATION;
                 break;
             case "hopcount":
-                type = ROUTE_METRIC.HOPCOUNT;
+                type = PATH_METRIC.HOPCOUNT;
                 break;
             case "hopcount_avoid_tunnels":
-                type = ROUTE_METRIC.HOPCOUNT_AVOID_TUNNELS;
+                type = PATH_METRIC.HOPCOUNT_AVOID_TUNNELS;
                 break;
             case "link_speed":
-                type = ROUTE_METRIC.LINK_SPEED;
+                type = PATH_METRIC.LINK_SPEED;
                 break;
             default:
                 log.error("Invalid input {}", metric);
-                return Collections.singletonMap("error", "invalid route metric " + metric);
+                return Collections.singletonMap("error", "invalid path metric " + metric);
         }
 
-        if (topology.setRouteMetric(type) != type) {
-            log.error("Failed to set valid route metric {}. Bug?", metric);
-            return Collections.singletonMap("error", "failed to set valid route metric " + metric);
+        if (topology.setPathMetric(type) != type) {
+            log.error("Failed to set valid path metric {}. Bug?", metric);
+            return Collections.singletonMap("error", "failed to set valid path metric " + metric);
         }
 
-        log.debug("Set route metric to {}", metric);
-        return Collections.singletonMap("success", "route metric set to " + metric);
+        log.debug("Set path metric to {}", metric);
+        return Collections.singletonMap("success", "path metric set to " + metric);
     }
 }

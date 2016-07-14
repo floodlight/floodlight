@@ -17,11 +17,10 @@
 
 package net.floodlightcontroller.routing;
 
-import java.util.ArrayList;
+import java.util.List;
 
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFPort;
-import org.projectfloodlight.openflow.types.U64;
 
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.routing.Route;
@@ -29,89 +28,87 @@ import net.floodlightcontroller.routing.Route;
 public interface IRoutingService extends IFloodlightService {
 
     /**
-     * Provides a route between src and dst that allows tunnels. The cookie is provisioned
-     * for callers of getRoute to provide additional information to influence the route
-     * to be returned, if the underlying routing implementation supports choice among
-     * multiple routes.
-     * @param src Source switch DPID.
-     * @param dst Destination switch DPID.
-     * @param cookie cookie (usage determined by implementation; ignored by topology instance now).
+     * Do not compute more than max paths by default (fast).
+     * @param max
      */
-    public Route getRoute(DatapathId src, DatapathId dst, U64 cookie);
+    public void setMaxPathsToCompute(int max);
+    
+    /**
+     * Get the max paths that are computed by default (fast).
+     * @return
+     */
+    public int getMaxPathsToCompute();
+    
+    /**
+     * Locates a path between src and dst
+     * @param src source switch
+     * @param dst destination switch
+     * @return the lowest cost path
+     */
+    public Route getPath(DatapathId src, DatapathId dst);
 
     /**
-     * Provides a route between src and dst, with option to allow or
-     *  not allow tunnels in the path.
-     * @param src Source switch DPID.
-     * @param dst Destination switch DPID.
-     * @param cookie cookie (usage determined by implementation; ignored by topology instance now).
-     * @param tunnelEnabled boolean option.
+     * Provides a path between srcPort on src and dstPort on dst.
+     * @param src source switch
+     * @param srcPort source port on source switch
+     * @param dst destination switch
+     * @param dstPort destination port on destination switch
+     * @return the lowest cost path
      */
-    public Route getRoute(DatapathId src, DatapathId dst, U64 cookie, boolean tunnelEnabled);
+    public Route getPath(DatapathId srcId, OFPort srcPort, DatapathId dstId, OFPort dstPort);
 
     /**
-     * Provides a route between srcPort on src and dstPort on dst.
-     * @param src Source switch DPID.
-     * @param srcPort Source port on source switch.
-     * @param dst Destination switch DPID.
-     * @param dstPort dstPort on Destination switch.
-     * @param cookie cookie (usage determined by implementation; ignored by topology instance now).
+     * Return all possible paths up to quantity of the globally configured max.
+     * @param src source switch
+     * @param dst destination switch
+     * @return list of paths ordered least to greatest cost
      */
-    public Route getRoute(DatapathId srcId, OFPort srcPort, DatapathId dstId, OFPort dstPort, U64 cookie);
+    public List<Route> getPathsFast(DatapathId src, DatapathId dst);
 
     /**
-     * Provides a route between srcPort on src and dstPort on dst.
-     * @param src Source switch DPID.
-     * @param srcPort Source port on source switch.
-     * @param dst Destination switch DPID.
-     * @param dstPort dstPort on Destination switch.
-     * @param cookie cookie (usage determined by implementation; ignored by topology instance now).
-     * @param tunnelEnabled boolean option.
+     * This function returns K number of paths between a source and destination 
+     * **if they exist in the pathcache**. If the caller requests more paths than 
+     * available, only the paths already stored in memory will be returned.
+     * 
+     * See {@link #getPathsSlow(DatapathId, DatapathId, Integer)} to compute 
+     * additional paths in real-time.
+     * 
+     * The number of paths returned will be the min(numReqPaths, maxConfig),
+     * where maxConfig is the configured ceiling on paths to precompute.
+     *
+     * @param src source switch
+     * @param dst destination switch
+     * @param numReqPaths the requested quantity of paths
+     * @return list of paths ordered least to greatest cost
      */
-    public Route getRoute(DatapathId srcId, OFPort srcPort, DatapathId dstId, OFPort dstPort, U64 cookie, boolean tunnelEnabled);
-
-    /** return all routes, if available */
-    public ArrayList<Route> getRoutes(DatapathId longSrcDpid, DatapathId longDstDpid, boolean tunnelEnabled);
-
-    /** Another version of getRoutes that uses Yen's algorithm under the hood. */
-    public ArrayList<Route> getRoutes(DatapathId srcDpid, DatapathId dstDpid, Integer numOfRoutesToGet);
+    public List<Route> getPathsFast(DatapathId src, DatapathId dst, Integer numReqPaths);
 
     /**
-     *
-     * This function returns K number of routes between a source and destination IF THEY EXIST IN THE ROUTECACHE.
-     * If the user requests more routes than available, only the routes already stored in memory will be returned.
-     * This value can be adjusted in floodlightdefault.properties.
-     *
-     *
-     * @param srcDpid: DatapathId of the route source.
-     * @param dstDpid: DatapathId of the route destination.
-     * @param numOfRoutesToGet: The number of routes that you want. Must be positive integer.
-     * @return ArrayList of Routes or null if bad parameters
+     * This function returns K number of paths between a source and destination.
+     * It will attempt to retrieve these paths from the pathcache. If the caller 
+     * requests more paths than are stored, Yen's algorithm will be re-run in an
+     * attempt to located the desired quantity of paths (which can be expensive).
+     * 
+     * See {@link #getPathsFast(DatapathId, DatapathId, Integer)} or  
+     * {@link #getPathsFast(DatapathId, DatapathId)} to retrieve the
+     * precomputed paths without the risk of additional overhead.
+     * 
+     * The number of paths returned will be the min(numReqPaths, availablePaths),
+     * where availablePaths is the permutation of all possible paths in the topology
+     * from src to dst.
+     * 
+     * @param src source switch
+     * @param dst destination switch
+     * @param numReqPaths the requested quantity of paths
+     * @return list of paths ordered least to greatest cost
      */
-    public ArrayList<Route> getRoutesFast(DatapathId srcDpid, DatapathId dstDpid, Integer numOfRoutesToGet);
+    public List<Route> getPathsSlow(DatapathId srcDpid, DatapathId dstDpid, Integer numReqPaths);
 
-    /**
-     *
-     * This function returns K number of routes between a source and destination. It will attempt to retrieve
-     * these routes from the routecache. If the user requests more routes than are stored, Yen's algorithm will be
-     * run using the K value passed in.
-     *
-     *
-     * @param srcDpid: DatapathId of the route source.
-     * @param dstDpid: DatapathId of the route destination.
-     * @param numOfRoutesToGet: The number of routes that you want. Must be positive integer.
-     * @return ArrayList of Routes or null if bad parameters
+    /** 
+     * Check if a path exists between src and dst
+     * @param src source switch
+     * @param dst destination switch
+     * @return true if a path exists; false otherwise
      */
-    public ArrayList<Route> getRoutesSlow(DatapathId srcDpid, DatapathId dstDpid, Integer numOfRoutesToGet);
-
-    /** Check if a route exists between src and dst, including tunnel links
-     *  in the path.
-     */
-    public boolean routeExists(DatapathId src, DatapathId dst);
-
-    /** Check if a route exists between src and dst, with option to have
-     *  or not have tunnels as part of the path.
-     */
-    public boolean routeExists(DatapathId src, DatapathId dst, boolean tunnelEnabled);
-
+    public boolean pathExists(DatapathId src, DatapathId dst);
 }

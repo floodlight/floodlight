@@ -16,9 +16,6 @@
 
 package net.floodlightcontroller.topology;
 
-import com.google.common.cache.CacheBuilder;
-import com.google.common.cache.CacheLoader;
-import com.google.common.cache.LoadingCache;
 import net.floodlightcontroller.core.types.NodePortTuple;
 import net.floodlightcontroller.routing.BroadcastTree;
 import net.floodlightcontroller.routing.Link;
@@ -28,13 +25,14 @@ import net.floodlightcontroller.util.ClusterDFS;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.U64;
+import org.python.google.common.collect.ImmutableList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
 
 /**
- * A representation of a network topology.  Used internally by
+ * A representation of a network topology. Used internally by
  * {@link TopologyManager}
  */
 public class TopologyInstance {
@@ -47,72 +45,52 @@ public class TopologyInstance {
     public static final int MAX_PATH_WEIGHT = Integer.MAX_VALUE - MAX_LINK_WEIGHT - 1;
     public static final int PATH_CACHE_SIZE = 1000;
 
-    protected static Logger log = LoggerFactory.getLogger(TopologyInstance.class);
+    private static final Logger log = LoggerFactory.getLogger(TopologyInstance.class);
 
-    protected Map<DatapathId, Set<OFPort>> switchPorts; // Set of ports for each switch
+    private Map<DatapathId, Set<OFPort>> switchPorts; // Set of ports for each switch
     /** Set of switch ports that are marked as blocked.  A set of blocked
      * switch ports may be provided at the time of instantiation. In addition,
      * we may add additional ports to this set.
      */
-    protected Set<NodePortTuple> blockedPorts;
-    protected Map<NodePortTuple, Set<Link>> switchPortLinks; // Set of links organized by node port tuple
+    private Set<NodePortTuple> blockedPorts;
+    private Map<NodePortTuple, Set<Link>> switchPortLinks; // Set of links organized by node port tuple
     /** Set of links that are blocked. */
-    protected Set<Link> blockedLinks;
+    private Set<Link> blockedLinks;
   
-    protected Set<DatapathId> switches;
-    protected Set<NodePortTuple> broadcastDomainPorts;
-    protected Set<NodePortTuple> tunnelPorts;
+    private Set<DatapathId> switches;
+    private Set<NodePortTuple> broadcastDomainPorts;
+    private Set<NodePortTuple> tunnelPorts;
 
-    protected Set<Cluster> clusters;  // set of openflow domains
-    protected Map<DatapathId, Cluster> switchClusterMap; // switch to OF domain map
+    private Set<Cluster> clusters;  // set of openflow domains
+    private Map<DatapathId, Cluster> switchClusterMap; // switch to OF domain map
 
     // States for routing
-    protected Map<DatapathId, BroadcastTree> destinationRootedTrees;
+    private Map<DatapathId, BroadcastTree> destinationRootedTrees;
   
-    protected Map<DatapathId, Set<NodePortTuple>> clusterPorts;
-    protected Map<DatapathId, BroadcastTree> clusterBroadcastTrees;
+    private Map<DatapathId, Set<NodePortTuple>> clusterPorts;
+    private Map<DatapathId, BroadcastTree> clusterBroadcastTrees;
  
-    protected Map<DatapathId, Set<NodePortTuple>> clusterBroadcastNodePorts;
-	//Broadcast tree over whole topology which may be consisted of multiple clusters
-    protected BroadcastTree finiteBroadcastTree;
+    private Map<DatapathId, Set<NodePortTuple>> clusterBroadcastNodePorts;
 	//Set of NodePortTuples of the finiteBroadcastTree
-    protected Set<NodePortTuple> broadcastNodePorts;  
+    private Set<NodePortTuple> broadcastNodePorts;  
 	//destinationRootedTrees over whole topology (not only intra-cluster tree)
-    protected Map<DatapathId, BroadcastTree> destinationRootedFullTrees;
+    private Map<DatapathId, BroadcastTree> destinationRootedFullTrees;
 	//Set of all links organized by node port tuple. Note that switchPortLinks does not contain all links of multi-cluster topology.
-    protected Map<NodePortTuple, Set<Link>> allLinks;
+    private Map<NodePortTuple, Set<Link>> allLinks;
 	//Set of all ports organized by DatapathId. Note that switchPorts map contains only ports with links.
-	protected Map<DatapathId, Set<OFPort>> allPorts;
+	private Map<DatapathId, Set<OFPort>> allPorts;
     //Set of all the inter-island or "external" links. Also known as portBroadcastDomainLinks in TopologyManager.
-    protected Map<NodePortTuple, Set<Link>> externalLinks;
+    private Map<NodePortTuple, Set<Link>> externalLinks;
 	// Maps broadcast ports to DatapathId
-    protected Map<DatapathId, Set<OFPort>> broadcastPortMap;
+    private Map<DatapathId, Set<OFPort>> broadcastPortMap;
 
-    protected Set<Archipelago> archipelagos;
-
-    protected class PathCacheLoader extends CacheLoader<RouteId, Route> {
-        TopologyInstance ti;
-        PathCacheLoader(TopologyInstance ti) {
-            this.ti = ti;
-        }
-
-        @Override
-        public Route load(RouteId rid) {
-            return ti.buildroute(rid);
-        }
-    }
-
-    // Path cache loader is defined for loading a path when it not present
-    // in the cache.
-    private final PathCacheLoader pathCacheLoader = new PathCacheLoader(this);
-    protected LoadingCache<RouteId, Route> pathcache;
-
-    // routecache contains n (specified in floodlightdefault.properties) routes
+    private Set<Archipelago> archipelagos;
+    
+    // pathcache contains n (specified in floodlightdefault.properties) routes
     // in order between every switch. Calculated using Yen's algorithm.
-    protected Map<RouteId, ArrayList<Route>> routecache;
-    protected int maximumRouteEntriesStored = 10;
+    private Map<RouteId, List<Route>> pathcache;
 
-    public TopologyInstance(Map<DatapathId, Set<OFPort>> switchPorts,
+    protected TopologyInstance(Map<DatapathId, Set<OFPort>> switchPorts,
                             Set<NodePortTuple> blockedPorts,
                             Map<NodePortTuple, Set<Link>> switchPortLinks,
                             Set<NodePortTuple> broadcastDomainPorts,
@@ -164,18 +142,7 @@ public class TopologyInstance {
         this.clusterBroadcastTrees = new HashMap<DatapathId, BroadcastTree>();
         this.clusterBroadcastNodePorts = new HashMap<DatapathId, Set<NodePortTuple>>();
 
-        pathcache = CacheBuilder.newBuilder().concurrencyLevel(4)
-                    .maximumSize(1000L)
-                    .build(
-                            new CacheLoader<RouteId, Route>() {
-                                public Route load(RouteId rid) {
-                                    return pathCacheLoader.load(rid);
-                                }
-                            });
-
-        this.routecache = new HashMap<RouteId, ArrayList<Route>>();
-        this.maximumRouteEntriesStored = TopologyManager.maximumRouteEntriesStored;
-
+        this.pathcache = new HashMap<RouteId, List<Route>>();
     }
 	
     public void compute() {
@@ -205,7 +172,7 @@ public class TopologyInstance {
         // Cost for tunnel links and direct links are the same.
 		calculateAllShortestPaths();
 
-        // Step 4.5 YENSSSSS
+        // Step 4.5 YENS
         calculateAllOrderedRoutes();
 
         // Compute the archipelagos (def: cluster of islands). An archipelago will
@@ -738,9 +705,11 @@ public class TopologyInstance {
                 }
 
                 int ndist = cdist + w; // the weight of the link, always 1 in current version of floodlight.
-                //log.debug("Neighbor: {}", neighbor);
-                //log.debug("Cost: {}", cost.get(neighbor));
-                if (ndist < cost.get(neighbor)) {
+                log.info("Neighbor: {}", neighbor);
+                log.info("Cost: {}", cost);
+                log.info("Neighbor cost: {}", cost.get(neighbor));
+
+                if (!cost.containsKey(neighbor) || ndist < cost.get(neighbor)) {
                     cost.put(neighbor, ndist);
                     nexthoplinks.put(neighbor, link);
 
@@ -772,19 +741,19 @@ public class TopologyInstance {
         int linkSpeedMBps;
         int tunnel_weight = switchPorts.size() + 1;
 
-    		/* routeMetrics:
-        	 *  1: Hop Count(Default Metrics)
+    		/* pathMetrics:
+        	 *  1: Hop Count (Default Metrics)
          	 *  2: Hop Count (Treat Tunnels same as link)
          	 *  3: Latency
-         	 *  4: Link Speed (Needs to be tested)
+         	 *  4: Link Speed
          	*/
-        switch (TopologyManager.getRouteMetricInternal()){
+        switch (TopologyManager.getPathMetricInternal()){
             case HOPCOUNT_AVOID_TUNNELS:
                 if(TopologyManager.collectStatistics == true){
                     TopologyManager.statisticsService.collectStatistics(false);
                     TopologyManager.collectStatistics = false;
                 }
-                log.info("Using Default: Hop Count with Tunnel Bias for Metrics");
+                log.debug("Using Default: Hop Count with Tunnel Bias for Metrics");
                 for (NodePortTuple npt : tunnelPorts) {
                     if (allLinks.get(npt) == null) continue;
                     for (Link link : allLinks.get(npt)) {
@@ -799,7 +768,7 @@ public class TopologyInstance {
                     TopologyManager.statisticsService.collectStatistics(false);
                     TopologyManager.collectStatistics = false;
                 }
-                log.info("Using Hop Count without Tunnel Bias for Metrics");
+                log.debug("Using Hop Count without Tunnel Bias for Metrics");
                 for (NodePortTuple npt : allLinks.keySet()) {
                     if (allLinks.get(npt) == null) continue;
                     for (Link link : allLinks.get(npt)) {
@@ -814,7 +783,7 @@ public class TopologyInstance {
                     TopologyManager.statisticsService.collectStatistics(false);
                     TopologyManager.collectStatistics = false;
                 }
-                log.info("Using Latency for Route Metrics");
+                log.debug("Using Latency for Route Metrics");
                 for (NodePortTuple npt : allLinks.keySet()) {
                     if (allLinks.get(npt) == null) continue;
                     for (Link link : allLinks.get(npt)) {
@@ -832,7 +801,7 @@ public class TopologyInstance {
                     TopologyManager.statisticsService.collectStatistics(true);
                     TopologyManager.collectStatistics = true;
                 }
-                log.info("Using Link Speed for Route Metrics");
+                log.debug("Using Link Speed for Route Metrics");
                 for (NodePortTuple npt : allLinks.keySet()) {
                     if (allLinks.get(npt) == null) continue;
                     rawLinkSpeed = TopologyManager.statisticsService.getLinkSpeed(npt);
@@ -854,7 +823,7 @@ public class TopologyInstance {
                     TopologyManager.statisticsService.collectStatistics(false);
                     TopologyManager.collectStatistics = false;
                 }
-                log.info("Invalid Selection: Using Default Hop Count with Tunnel Bias for Metrics");
+                log.debug("Invalid Selection: Using Default Hop Count with Tunnel Bias for Metrics");
                 for (NodePortTuple npt : tunnelPorts) {
                     if (allLinks.get(npt) == null) continue;
                     for (Link link : allLinks.get(npt)) {
@@ -904,34 +873,28 @@ public class TopologyInstance {
         	BroadcastTree tree = dijkstra(linkDpidMap, node, linkCost, true);
             destinationRootedFullTrees.put(node, tree);
         }
-        
-		//finiteBroadcastTree is randomly chosen in this implementation
-//        if (this.destinationRootedFullTrees.size() > 0) {
-//			this.finiteBroadcastTree = destinationRootedFullTrees.values().iterator().next();
-//        }
     }
 
     /*
-    Calculates and stores n possible routes (specified in floodlightdefault.properties) using Yen's algorithm,
-    looping through every switch.
-    These lists of routes are stored in routecache.
-    */
+     * Calculates and stores n possible routes (specified in floodlightdefault.properties) using Yen's algorithm,
+     * looping through every switch.
+     * These lists of routes are stored in pathcache.
+     */
     protected void calculateAllOrderedRoutes() {
-        ArrayList<Route> routes;
+        List<Route> routes;
         RouteId routeId;
-        routecache.clear();
+        pathcache.clear();
 
         for (DatapathId src : switches) {
             for (DatapathId dst : switches) {
-                routes = getRoutes(src, dst, maximumRouteEntriesStored);
+                routes = yens(src, dst, TopologyManager.getMaxPathsToComputeInternal());
                 routeId = new RouteId(src, dst);
-                routecache.put(routeId, routes);
+                pathcache.put(routeId, routes);
             }
         }
     }
 
     protected void calculateShortestPathTreeInClusters() {
-        pathcache.invalidateAll();
         destinationRootedTrees.clear();
 
         Map<Link, Integer> linkCost = new HashMap<Link, Integer>();
@@ -1025,57 +988,14 @@ public class TopologyInstance {
         }
     }
 
-    protected Route buildroute(RouteId id) {
-        NodePortTuple npt;
-        DatapathId srcId = id.getSrc();
-        DatapathId dstId = id.getDst();
-		//set of NodePortTuples on the route
-        LinkedList<NodePortTuple> sPorts = new LinkedList<NodePortTuple>();
-
-        if (destinationRootedFullTrees == null) return null;
-        if (destinationRootedFullTrees.get(dstId) == null) return null;
-
-        Map<DatapathId, Link> nexthoplinks = destinationRootedFullTrees.get(dstId).getLinks();
-
-        if (!switches.contains(srcId) || !switches.contains(dstId)) {
-            // This is a switch that is not connected to any other switch
-            // hence there was no update for links (and hence it is not
-            // in the network)
-            log.info("buildroute: Standalone switch: {}", srcId);
-
-            // The only possible non-null path for this case is
-            // if srcId equals dstId --- and that too is an 'empty' path []
-
-        } else if ((nexthoplinks!=null) && (nexthoplinks.get(srcId) != null)) {
-            while (!srcId.equals(dstId)) {
-                Link l = nexthoplinks.get(srcId);
-                npt = new NodePortTuple(l.getSrc(), l.getSrcPort());
-                sPorts.addLast(npt);
-                npt = new NodePortTuple(l.getDst(), l.getDstPort());
-                sPorts.addLast(npt);
-                srcId = nexthoplinks.get(srcId).getDst();
-            }
-        }
-        // else, no path exists, and path equals null
-
-        Route result = null;
-        if (sPorts != null && !sPorts.isEmpty()) {
-            result = new Route(id, sPorts);
-        }
-        if (log.isTraceEnabled()) {
-            log.trace("buildroute: {}", result);
-        }
-        return result;
-    }
-
-    protected Route buildroute(RouteId id, BroadcastTree tree) {
+    protected Route buildPath(RouteId id, BroadcastTree tree) {
         NodePortTuple npt;
         DatapathId srcId = id.getSrc();
         DatapathId dstId = id.getDst();
         //set of NodePortTuples on the route
         LinkedList<NodePortTuple> sPorts = new LinkedList<NodePortTuple>();
 
-        if (tree == null) return null;
+        if (tree == null) return new Route(id, ImmutableList.of()); /* empty route */
 
         // TODO: Check if the src and dst are in the tree
         // if (destinationRootedFullTrees.get(dstId) == null) return null;
@@ -1086,7 +1006,7 @@ public class TopologyInstance {
             // This is a switch that is not connected to any other switch
             // hence there was no update for links (and hence it is not
             // in the network)
-            log.info("buildroute: Standalone switch: {}", srcId);
+            log.info("buildpath: Standalone switch: {}", srcId);
 
             // The only possible non-null path for this case is
             // if srcId equals dstId --- and that too is an 'empty' path []
@@ -1108,10 +1028,8 @@ public class TopologyInstance {
             result = new Route(id, sPorts);
 
         }
-        if (log.isTraceEnabled()) {
-            log.trace("buildroute: {}", result);
-        }
-        return result;
+        log.trace("buildpath: {}", result);
+        return result == null ? new Route(id, ImmutableList.of()) : result;
     }
 
     /*
@@ -1128,20 +1046,12 @@ public class TopologyInstance {
         return clusters;
     }
 
-    protected boolean routeExists(DatapathId srcId, DatapathId dstId) {
+    protected boolean pathExists(DatapathId srcId, DatapathId dstId) {
         BroadcastTree bt = destinationRootedTrees.get(dstId);
         if (bt == null) return false;
         Link link = bt.getLinks().get(srcId);
         if (link == null) return false;
         return true;
-    }
-
-    /*
-    Function that calls Yen's algorithm and returns a list of routes
-    from A to B.
-	 */
-    protected ArrayList<Route> getRoutes(DatapathId src, DatapathId dst, Integer K) {
-        return yens(src, dst, K);
     }
 
     protected Map<DatapathId, Set<Link>> buildLinkDpidMap(Set<DatapathId> switches, Map<DatapathId,
@@ -1177,52 +1087,51 @@ public class TopologyInstance {
      *
      * @param src: DatapathId of the route source.
      * @param dst: DatapathId of the route destination.
-     * @param K: The number of routes that you want. Must be positive integer.
+     * @param k: The number of routes that you want. Must be positive integer.
      * @return ArrayList of Routes or null if bad parameters
      */
-    protected ArrayList<Route> getRoutesFast(DatapathId src, DatapathId dst, Integer K) {
-        // TODO: Think about using int instead of Integer
+    protected List<Route> getPathsFast(DatapathId src, DatapathId dst, int k) {
         RouteId routeId = new RouteId(src, dst);
-        ArrayList<Route> routes = routecache.get(routeId);
+        List<Route> routes = pathcache.get(routeId);
 
-        if (routes == null || K < 1) return null;
-
-        if (K >= maximumRouteEntriesStored || K >= routes.size()) {
-            return routes;
+        if (routes == null || k < 1) {
+            return ImmutableList.of();
         }
-        else {
-            return new ArrayList<Route>(routes.subList(0, K));
+
+        if (k >= TopologyManager.getMaxPathsToComputeInternal() || k >= routes.size()) {
+            return routes;
+        } else {
+            return routes.subList(0, k);
         }
     }
 
     /**
      *
      * This function returns K number of routes between a source and destination. It will attempt to retrieve
-     * these routes from the routecache. If the user requests more routes than are stored, Yen's algorithm will be
+     * these routes from the pathcache. If the user requests more routes than are stored, Yen's algorithm will be
      * run using the K value passed in.
      *
      *
      * @param src: DatapathId of the route source.
      * @param dst: DatapathId of the route destination.
-     * @param K: The number of routes that you want. Must be positive integer.
+     * @param k: The number of routes that you want. Must be positive integer.
      * @return ArrayList of Routes or null if bad parameters
      */
-    protected ArrayList<Route> getRoutesSlow(DatapathId src, DatapathId dst, Integer K) {
-        // TODO: Think about using int instead of Integer
+    protected List<Route> getPathsSlow(DatapathId src, DatapathId dst, int k) {
         RouteId routeId = new RouteId(src, dst);
-        ArrayList<Route> routes = routecache.get(routeId);
+        List<Route> routes = pathcache.get(routeId);
 
-        if (routes == null || K < 1) return null;
+        if (routes == null || k < 1) return ImmutableList.of();
 
-        if (K >= maximumRouteEntriesStored || K >= routes.size()) {
-            return getRoutes(src, dst, K);
+        if (k >= TopologyManager.getMaxPathsToComputeInternal() || k >= routes.size()) {
+            return yens(src, dst, k); /* heavy computation */
         }
         else {
-            return new ArrayList<Route>(routes.subList(0, K));
+            return new ArrayList<Route>(routes.subList(0, k));
         }
     }
 
-    protected void setRouteCosts(Route r) {
+    protected void setPathCosts(Route r) {
         U64 cost = U64.ZERO;
 
         // Set number of hops. Assuming the list of NPTs is always even.
@@ -1234,26 +1143,25 @@ public class TopologyInstance {
             OFPort srcPort = r.getPath().get(i).getPortId();
             OFPort dstPort = r.getPath().get(i + 1).getPortId();
             for (Link l : allLinks.get(r.getPath().get(i))) {
-                //log.debug("Iterating through the links");
                 if (l.getSrc().equals(src) && l.getDst().equals(dst) &&
                         l.getSrcPort().equals(srcPort) && l.getDstPort().equals(dstPort)) {
-                    log.info("Matching link found: {}", l);
+                    log.debug("Matching link found: {}", l);
                     cost = cost.add(l.getLatency());
                 }
             }
         }
 
         r.setRouteLatency(cost);
-        log.info("Total cost is {}", cost);
-        log.info(r.toString());
+        log.debug("Total cost is {}", cost);
+        log.debug(r.toString());
 
     }
 
-    protected ArrayList<Route> yens(DatapathId src, DatapathId dst, Integer K) {
+    protected List<Route> yens(DatapathId src, DatapathId dst, Integer K) {
 
-        //log.debug("YENS ALGORITHM -----------------");
-        //log.debug("Asking for routes from {} to {}", src, dst);
-        //log.debug("Asking for {} routes", K);
+        log.debug("YENS ALGORITHM -----------------");
+        log.debug("Asking for routes from {} to {}", src, dst);
+        log.debug("Asking for {} routes", K);
 
         // Find link costs
         Map<Link, Integer> linkCost = initLinkCostMap();
@@ -1264,8 +1172,8 @@ public class TopologyInstance {
 
         // A is the list of shortest paths. The number in the list at the end should be less than or equal to K
         // B is the list of possible shortest paths found in this function.
-        ArrayList<Route> A = new ArrayList<Route>();
-        ArrayList<Route> B = new ArrayList<Route>();
+        List<Route> A = new ArrayList<Route>();
+        List<Route> B = new ArrayList<Route>();
 
         // The number of routes requested should never be less than 1.
         if (K < 1) {
@@ -1276,25 +1184,28 @@ public class TopologyInstance {
             return A;
         }
 
-        // Using Dijkstra's to find the shortest path, which will also be the first path in A
-        Route newroute = buildroute(new RouteId(src, dst), dijkstra(copyOfLinkDpidMap, dst, linkCost, true));
+        // Use Dijkstra's to find the shortest path, which will also be the first path in A
+        Route newroute = buildPath(new RouteId(src, dst), dijkstra(copyOfLinkDpidMap, dst, linkCost, true));
 
-        if (newroute != null) {
-            setRouteCosts(newroute);
+        if (newroute != null && !newroute.getPath().isEmpty()) { /* should never be null, but might be empty */
+            setPathCosts(newroute);
             A.add(newroute);
+            log.debug("Found shortest path in Yens {}", newroute);
         }
         else {
-            log.info("No routes found in Yen's!");
+            log.debug("No routes found in Yen's!");
             return A;
         }
 
         // Loop through K - 1 times to get other possible shortest paths
         for (int k = 1; k < K; k++) {
-            log.info("k: {}", k);
-            //log.debug("Path Length 'A.get(k-1).getPath().size()-2': {}", A.get(k - 1).getPath().size() - 2);
+            log.trace("k: {}", k);
+            if (log.isTraceEnabled()){
+                log.trace("Path Length 'A.get(k-1).getPath().size()-2': {}", A.get(k - 1).getPath().size() - 2);
+            }
             // Iterate through i, which is the number of links in the most recent path added to A
             for (int i = 0; i <= A.get(k - 1).getPath().size() - 2; i = i + 2) {
-                log.info("i: {}", i);
+                log.trace("i: {}", i);
                 List<NodePortTuple> path = A.get(k - 1).getPath();
                 //log.debug("A(k-1): {}", A.get(k - 1).getPath());
                 // The spur node is the point in the topology where Dijkstra's is called again to find another path
@@ -1328,8 +1239,8 @@ public class TopologyInstance {
                 //log.debug("About to build route.");
                 //log.debug("Switches: {}", switchesCopy);
                 // Uses Dijkstra's to try to find a shortest path from the spur node to the destination
-                Route spurPath = buildroute(new RouteId(spurNode, dst), dijkstra(copyOfLinkDpidMap, dst, linkCost, true));
-                if (spurPath == null) {
+                Route spurPath = buildPath(new RouteId(spurNode, dst), dijkstra(copyOfLinkDpidMap, dst, linkCost, true));
+                if (spurPath == null || spurPath.getPath().isEmpty()) {
                     //log.debug("spurPath is null");
                     continue;
                 }
@@ -1339,12 +1250,12 @@ public class TopologyInstance {
                 totalNpt.addAll(rootPath.getPath());
                 totalNpt.addAll(spurPath.getPath());
                 Route totalPath = new Route(new RouteId(src, dst), totalNpt);
-                setRouteCosts(totalPath);
+                setPathCosts(totalPath);
 
-                log.info("Spur Node: {}", spurNode);
-                log.info("Root Path: {}", rootPath);
-                log.info("Spur Path: {}", spurPath);
-                log.info("Total Path: {}", totalPath);
+                log.trace("Spur Node: {}", spurNode);
+                log.trace("Root Path: {}", rootPath);
+                log.trace("Spur Path: {}", spurPath);
+                log.trace("Total Path: {}", totalPath);
                 // Adds the new path into B
                 int flag = 0;
                 for (Route r_B : B) {
@@ -1358,9 +1269,6 @@ public class TopologyInstance {
                     B.add(totalPath);
                 }
 
-
-
-
                 // Restore edges and nodes to graph
             }
 
@@ -1371,27 +1279,27 @@ public class TopologyInstance {
                 break;
             }
 
-            //log.debug("Removing shortest path from {}", B);
+            log.debug("Removing shortest path from {}", B);
             // Find the shortest path in B, remove it, and put it in A
-            log.info("--------------BEFORE------------------------");
+            log.debug("--------------BEFORE------------------------");
             for (Route r : B) {
-                log.info(r.toString());
+                log.debug(r.toString());
             }
-            log.info("--------------------------------------------");
+            log.debug("--------------------------------------------");
             Route shortestPath = removeShortestPath(B, linkCost);
-            log.info("--------------AFTER------------------------");
+            log.debug("--------------AFTER------------------------");
             for (Route r : B) {
-                log.info(r.toString());
+                log.debug(r.toString());
             }
-            log.info("--------------------------------------------");
+            log.debug("--------------------------------------------");
 
             if (shortestPath != null) {
-                //log.debug("Adding new shortest path to {} in Yen's", shortestPath);
+                log.debug("Adding new shortest path to {} in Yen's", shortestPath);
                 A.add(shortestPath);
-                log.info("A: {}", A);
+                log.debug("A: {}", A);
             }
             else {
-                //log.debug("removeShortestPath returned {}", shortestPath);
+                log.debug("removeShortestPath returned {}", shortestPath);
             }
         }
 
@@ -1403,7 +1311,7 @@ public class TopologyInstance {
         return A;
     }
 
-    protected Route removeShortestPath(ArrayList<Route> routes, Map<Link, Integer> linkCost) {
+    protected Route removeShortestPath(List<Route> routes, Map<Link, Integer> linkCost) {
         log.debug("REMOVE SHORTEST PATH -------------");
         // If there is nothing in B, return
         if(routes == null){
@@ -1444,11 +1352,18 @@ public class TopologyInstance {
         return shortestPath;
     }
 
-	/*
-	* Calculates E2E route
-	*/
-    protected Route getRoute(DatapathId srcId, OFPort srcPort,
-            DatapathId dstId, OFPort dstPort, U64 cookie) {
+	/**
+	 * Computes end-to-end path including src/dst switch
+	 * ports in addition to the switches. This chains into
+	 * {@link #getPath(DatapathId, DatapathId)} below.
+	 * @param srcId
+	 * @param srcPort
+	 * @param dstId
+	 * @param dstPort
+	 * @return
+	 */
+    protected Route getPath(DatapathId srcId, OFPort srcPort,
+            DatapathId dstId, OFPort dstPort) {
         // Return null if the route source and destination are the
         // same switch ports.
         if (srcId.equals(dstId) && srcPort.equals(dstPort)) {
@@ -1457,7 +1372,7 @@ public class TopologyInstance {
 
         List<NodePortTuple> nptList;
         NodePortTuple npt;
-        Route r = getRoute(srcId, dstId, U64.of(0));
+        Route r = getPath(srcId, dstId);
         if (r == null && !srcId.equals(dstId)) {
         	return null;
         }
@@ -1478,10 +1393,14 @@ public class TopologyInstance {
     }
     
 
-    // NOTE: Return a null route if srcId equals dstId.  The null route
-    // need not be stored in the cache.  Moreover, the LoadingCache will
-    // throw an exception if null route is returned.
-    protected Route getRoute(DatapathId srcId, DatapathId dstId, U64 cookie) {
+    /**
+     * Get the fastest path from the pathcache.
+     * @param srcId
+     * @param dstId
+     * @return
+     */
+    
+    protected Route getPath(DatapathId srcId, DatapathId dstId) {
         // Return null route if srcId equals dstId
         if (srcId.equals(dstId)) return null;
 
@@ -1489,18 +1408,17 @@ public class TopologyInstance {
         Route result = null;
 
         try {
-            //result = pathcache.get(id);
-            if (!routecache.get(id).isEmpty()) {
-                result = routecache.get(id).get(0);
+            if (!pathcache.get(id).isEmpty()) {
+                result = pathcache.get(id).get(0);
             }
         } catch (Exception e) {
             log.warn("Could not find route from {} to {}. If the path exists, wait for the topology to settle, and it will be detected", srcId, dstId);
         }
 
         if (log.isTraceEnabled()) {
-            log.trace("getRoute: {} -> {}", id, result);
+            log.trace("getPath: {} -> {}", id, result);
         }
-        return result;
+        return result == null ? new Route(id, ImmutableList.of()) : result; /* return empty route instead of null */
     }
 
     protected BroadcastTree getBroadcastTreeForCluster(long clusterId){
@@ -1554,7 +1472,7 @@ public class TopologyInstance {
     }
 
     public boolean isAllowed(DatapathId sw, OFPort portId) {
-        return true;
+        return !isBlockedPort(new NodePortTuple(sw, portId));
     }
 
     /*

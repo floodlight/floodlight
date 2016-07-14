@@ -39,11 +39,11 @@ public class TopologyWebRoutable implements RestletRoutable {
         router.attach("/broadcastdomainports/json", BroadcastDomainPortsResource.class);
         router.attach("/enabledports/json", EnabledPortsResource.class);
         router.attach("/blockedports/json", BlockedPortsResource.class);
-        router.attach("/route/{src-dpid}/{src-port}/{dst-dpid}/{dst-port}/json", RouteResource.class);
-        router.attach("/routes/{src-dpid}/{dst-dpid}/{num-routes}/json", RoutesResource.class);
-        router.attach("/routes-fast/{src-dpid}/{dst-dpid}/{num-routes}/json", RoutesResource.class);
-        router.attach("/routes-slow/{src-dpid}/{dst-dpid}/{num-routes}/json", RoutesResource.class);
-        router.attach("/setroutemetric/{metric}/json", RouteMetrics.class);
+        router.attach("/path/{src-dpid}/{src-port}/{dst-dpid}/{dst-port}/json", PathResource.class);
+        router.attach("/paths/{src-dpid}/{dst-dpid}/{num-paths}/json", PathsResource.class);
+        router.attach("/paths/fast/{src-dpid}/{dst-dpid}/{num-paths}/json", PathsResource.class);
+        router.attach("/paths/slow/{src-dpid}/{dst-dpid}/{num-paths}/json", PathsResource.class);
+        router.attach("/setpathmetric/{metric}/json", PathMetrics.class);
 
         return router;
     }
