@@ -156,6 +156,13 @@ public class TopologyInstance {
         // Remaining links are inter-cluster links
         addIntraClusterLinks();
         
+        // Step 1.2 Compute the archipelagos (def: group of clusters). Each archipelago
+        // will have its own finiteBroadcastTree, which will be randomly chosen. This is
+        // because each achipelago is by definition isolated from all other archipelagos.
+        // The broadcast tree will not be set for each archipelago until after all paths
+        // have been computed. This is so we don't run dijkstras redundantly
+        calculateArchipelagos();
+        
         // Step 2. Compute shortest path trees in each cluster for
         // unicast routing.  The trees are rooted at the destination.
         // Cost for tunnel links and direct links are the same.
@@ -171,12 +178,9 @@ public class TopologyInstance {
         // Step 4. Compute e2e shortest path trees on entire topology for unicast routing.
         // The trees are rooted at the destination.
         // Cost for tunnel links and direct links are the same.
-        // calculateAllShortestPaths();
+        calculateAllShortestPaths();
         
-        // Compute the archipelagos (def: group of clusters). Each archipelago will
-        // have its own finiteBroadcastTree, which will be randomly chosen. This is
-        // because each achipelago is by definition isolated from all other archipelagos.
-        calculateArchipelagos();
+        selectBroadcastTreeForEachArchipelago();
         
         // Step 5. Determine broadcast switch ports for each archipelago
         computeBcastNPTsFromArchipelagos();
@@ -637,7 +641,9 @@ public class TopologyInstance {
                 dstArchipelago = null;
             }
         }
-        
+    }
+    
+    private void selectBroadcastTreeForEachArchipelago() {    
         // Choose a broadcast tree for each archipelago
         for (Archipelago a : archipelagos) {
             for (DatapathId id : destinationRootedFullTrees.keySet()) {
@@ -919,10 +925,6 @@ public class TopologyInstance {
             clusterBroadcastTrees.put(c.id, tree);
         }
     }
-    
-	private Set<NodePortTuple> getAllBroadcastNodePorts() {
-		return this.broadcastNodePorts;
-	}
 
     private void computeBcastNPTsFromArchipelagos() {
         if (this.destinationRootedFullTrees.size() > 0) {
@@ -1031,16 +1033,6 @@ public class TopologyInstance {
     /*
      * Getter Functions
      */
-
-    private int getCost(DatapathId srcId, DatapathId dstId) {
-        BroadcastTree bt = destinationRootedTrees.get(dstId);
-        if (bt == null) return -1;
-        return bt.getCost(srcId);
-    }
-    
-    private Set<Cluster> getClusters() {
-        return clusters;
-    }
 
     protected boolean pathExists(DatapathId srcId, DatapathId dstId) {
         BroadcastTree bt = destinationRootedTrees.get(dstId);
