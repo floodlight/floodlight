@@ -83,16 +83,7 @@ public interface ITopologyService extends IFloodlightService  {
 	 * @param port
 	 * @return
 	 */
-	public boolean isBroadcastDomainPort(DatapathId sw, OFPort port);
-
-	/**
-	 * Determines if the switch+port is blocked. If blocked, it
-	 * should not be allowed to send/receive any traffic.
-	 * @param sw
-	 * @param portId
-	 * @return
-	 */
-	public boolean isAllowed(DatapathId sw, OFPort portId);
+	public boolean isBroadcastPort(DatapathId sw, OFPort port);
 
 	/**
 	 * Indicates if an attachment point on the new switch port is consistent
@@ -165,6 +156,15 @@ public interface ITopologyService extends IFloodlightService  {
 	 * @return
 	 */
 	public Set<NodePortTuple> getBlockedPorts();
+	
+	/**
+     * Determines if the switch+port is blocked. If blocked, it
+     * should not be allowed to send/receive any traffic.
+     * @param sw
+     * @param portId
+     * @return
+     */
+    public boolean isAllowed(DatapathId sw, OFPort portId);
 
 	/**
 	 * Returns the enabled, non quarantined ports of the given switch. Returns

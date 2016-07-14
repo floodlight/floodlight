@@ -127,6 +127,7 @@ public class TopologyInstanceTest {
             TopologyInstance ti = topologyManager.getCurrentInstance();
             Set<NodePortTuple> computed = ti.getBroadcastNodePortsInCluster(npt.getNodeId());
             log.info("computed: {}", computed);
+            log.info("expected: {}", expected);
             if (computed != null)
                 assertTrue(computed.equals(expected));
             else if (computed == null)

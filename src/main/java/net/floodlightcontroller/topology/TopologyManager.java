@@ -414,12 +414,12 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 	////////////////////////////////////////////////////////////////////////
 	////////////////////////////////////////////////////////////////////////
 	/**
-	 * Checks if the switchport is a broadcast domain port or not.
+	 * Checks if the switchport is a broadcast port or not.
 	 */
 	@Override
-	public boolean isBroadcastDomainPort(DatapathId sw, OFPort port) {
+	public boolean isBroadcastPort(DatapathId sw, OFPort port) {
 		TopologyInstance ti = getCurrentInstance();
-		return ti.isBroadcastDomainPort(new NodePortTuple(sw, port));
+		return ti.isBroadcastPort(new NodePortTuple(sw, port));
 	}
 
 	////////////////////////////////////////////////////////////////////////
@@ -883,7 +883,7 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 				for (OFPort p : portsKnownToTopo) {
 					NodePortTuple npt =
 							new NodePortTuple(sid, p);
-					if (ti.isBroadcastDomainPort(npt) == false) {
+					if (ti.isBroadcastPort(npt) == false) {
 						ports.remove(p);
 					}
 				}
