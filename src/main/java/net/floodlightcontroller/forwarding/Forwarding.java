@@ -237,10 +237,10 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                 return; 
             }				
 
-            Route route = routingEngineService.getRoute(source, 
+            Route route = routingEngineService.getPath(source, 
                     inPort,
                     dstDap.getNodeId(),
-                    dstDap.getPortId(), U64.of(0)); //cookie = 0, i.e., default route
+                    dstDap.getPortId());
 
             Match m = createMatchFromPacket(sw, inPort, cntx);
             U64 cookie = AppCookie.makeCookie(FORWARDING_APP_ID, 0);

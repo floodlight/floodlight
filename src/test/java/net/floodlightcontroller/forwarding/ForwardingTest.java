@@ -445,7 +445,7 @@ public class ForwardingTest extends FloodlightTestCase {
 		nptList.add(new NodePortTuple(DatapathId.of(2L), OFPort.of(1)));
 		nptList.add(new NodePortTuple(DatapathId.of(2L), OFPort.of(3)));
 		route.setPath(nptList);
-		expect(routingEngine.getRoute(DatapathId.of(1L), OFPort.of(1), DatapathId.of(2L), OFPort.of(3), U64.ZERO)).andReturn(route).atLeastOnce();
+		expect(routingEngine.getPath(DatapathId.of(1L), OFPort.of(1), DatapathId.of(2L), OFPort.of(3))).andReturn(route).atLeastOnce();
 
 		// Expected Flow-mods
 		Match match = packetIn.getMatch();
@@ -515,7 +515,7 @@ public class ForwardingTest extends FloodlightTestCase {
 		nptList.add(new NodePortTuple(DatapathId.of(2L), OFPort.of(1)));
 		nptList.add(new NodePortTuple(DatapathId.of(2L), OFPort.of(3)));
 		route.setPath(nptList);
-		expect(routingEngine.getRoute(DatapathId.of(1L), OFPort.of(1), DatapathId.of(2L), OFPort.of(3), U64.ZERO)).andReturn(route).atLeastOnce();
+		expect(routingEngine.getPath(DatapathId.of(1L), OFPort.of(1), DatapathId.of(2L), OFPort.of(3))).andReturn(route).atLeastOnce();
 
 		// Expected Flow-mods
 		Match match = packetInIPv6.getMatch();
@@ -581,7 +581,7 @@ public class ForwardingTest extends FloodlightTestCase {
 		Route route = new  Route(DatapathId.of(1L), DatapathId.of(1L));
 		route.getPath().add(new NodePortTuple(DatapathId.of(1L), OFPort.of(1)));
 		route.getPath().add(new NodePortTuple(DatapathId.of(1L), OFPort.of(3)));
-		expect(routingEngine.getRoute(DatapathId.of(1L), OFPort.of(1), DatapathId.of(1L), OFPort.of(3), U64.ZERO)).andReturn(route).atLeastOnce();
+		expect(routingEngine.getPath(DatapathId.of(1L), OFPort.of(1), DatapathId.of(1L), OFPort.of(3))).andReturn(route).atLeastOnce();
 
 		// Expected Flow-mods
 		Match match = packetIn.getMatch();
@@ -635,7 +635,7 @@ public class ForwardingTest extends FloodlightTestCase {
 		Route route = new  Route(DatapathId.of(1L), DatapathId.of(1L));
 		route.getPath().add(new NodePortTuple(DatapathId.of(1L), OFPort.of(1)));
 		route.getPath().add(new NodePortTuple(DatapathId.of(1L), OFPort.of(3)));
-		expect(routingEngine.getRoute(DatapathId.of(1L), OFPort.of(1), DatapathId.of(1L), OFPort.of(3), U64.ZERO)).andReturn(route).atLeastOnce();
+		expect(routingEngine.getPath(DatapathId.of(1L), OFPort.of(1), DatapathId.of(1L), OFPort.of(3))).andReturn(route).atLeastOnce();
 
 		// Expected Flow-mods
 		Match match = packetInIPv6.getMatch();
@@ -694,7 +694,7 @@ public class ForwardingTest extends FloodlightTestCase {
 		Route route = new  Route(DatapathId.of(1L), DatapathId.of(1L));
 		route.getPath().add(new NodePortTuple(DatapathId.of(1L), OFPort.of(1)));
 		route.getPath().add(new NodePortTuple(DatapathId.of(1L), OFPort.of(3)));
-		expect(routingEngine.getRoute(DatapathId.of(1L), OFPort.of(1), DatapathId.of(1L), OFPort.of(3), U64.ZERO)).andReturn(route).atLeastOnce();
+		expect(routingEngine.getPath(DatapathId.of(1L), OFPort.of(1), DatapathId.of(1L), OFPort.of(3))).andReturn(route).atLeastOnce();
 
 		// Expected Flow-mods
 		Match match = packetIn.getMatch();
