@@ -30,7 +30,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
-import java.util.Map.Entry;
 
 /**
  * A representation of a network topology. Used internally by
@@ -178,11 +177,6 @@ public class TopologyInstance {
         // in the cluster + 1, to use as minimum number of
         // clusters as possible.
         calculateBroadcastNodePortsInClusters();
-
-        // Step 4. Compute e2e shortest path trees on entire topology for unicast routing.
-        // The trees are rooted at the destination.
-        // Cost for tunnel links and direct links are the same.
-        calculateAllShortestPaths();
 
         // Step 4.1 Use Yens algorithm to compute multiple paths 
         computeOrderedPaths();
@@ -827,46 +821,6 @@ public class TopologyInstance {
                 }
             }
             return linkCost;
-        }
-    }
-
-    /*
-     * Modification of the calculateShortestPathTreeInClusters (dealing with whole topology, not individual clusters)
-     */
-    private void calculateAllShortestPaths() {
-        this.broadcastNodePorts.clear();
-        this.destinationRootedFullTrees.clear();
-        Map<Link, Integer> linkCost = new HashMap<Link, Integer>();
-        int tunnel_weight = switchPorts.size() + 1;
-
-        for (NodePortTuple npt : tunnelPorts) {
-            if (allLinks.get(npt) == null) continue;
-            for (Link link : allLinks.get(npt)) {
-                if (link == null) continue;
-                linkCost.put(link, tunnel_weight);
-            }
-        }
-
-        Map<DatapathId, Set<Link>> linkDpidMap = new HashMap<DatapathId, Set<Link>>();
-        for (DatapathId s : switches) {
-            if (switchPorts.get(s) == null) continue;
-            for (OFPort p : switchPorts.get(s)) {
-                NodePortTuple np = new NodePortTuple(s, p);
-                if (allLinks.get(np) == null) continue;
-                for (Link l : allLinks.get(np)) {
-                    if (linkDpidMap.containsKey(s)) {
-                        linkDpidMap.get(s).add(l);
-                    }
-                    else {
-                        linkDpidMap.put(s, new HashSet<Link>(Arrays.asList(l)));
-                    }
-                }
-            }
-        }   
-
-        for (DatapathId node : linkDpidMap.keySet()) {
-            BroadcastTree tree = dijkstra(linkDpidMap, node, linkCost, true);
-            destinationRootedFullTrees.put(node, tree);
         }
     }
 

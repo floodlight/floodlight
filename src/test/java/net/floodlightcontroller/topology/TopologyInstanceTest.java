@@ -655,7 +655,6 @@ public class TopologyInstanceTest {
         DatapathId three = DatapathId.of(3);
         DatapathId six = DatapathId.of(6);
 
-
         /*
          * FIRST TOPOLOGY
          * Both link arrays and corresponding latency
