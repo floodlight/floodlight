@@ -660,7 +660,13 @@ public class TopologyInstanceTest {
          * FIRST TOPOLOGY
          * Both link arrays and corresponding latency
          * array used in this unit test. Shown below is
-         * a graphical representation of the topology
+         * a graphical representation of the topology.
+         * This topology is entirely weakly-connected
+         * and will form single-switch clusters despite
+         * each link being an inter-cluster/direct link.
+         * It will be detected as a single archipelago
+         * though, since some nodes can reach others
+         * over the weak links.
 
                                     -------
                                    |       |
@@ -676,11 +682,10 @@ public class TopologyInstanceTest {
          */
         int [][] linkArray = {
                 {1, 1, 2, 1, DIRECT_LINK},
-                //{3, 1, 1, 2, DIRECT_LINK},
                 {1, 2, 3, 1, DIRECT_LINK},
                 {2, 2, 3, 2, DIRECT_LINK},
         };
-        int [] lat = {1,/*50,*/50,1};
+        int [] lat = {1,50,1};
 
         /* 
          * NOTE: Output from the next four log.info should be mirrored!
