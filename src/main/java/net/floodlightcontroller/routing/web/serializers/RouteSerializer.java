@@ -15,7 +15,7 @@
  *    under the License.
  **/
 
-package net.floodlightcontroller.routing.web;
+package net.floodlightcontroller.routing.web.serializers;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonGenerator.Feature;

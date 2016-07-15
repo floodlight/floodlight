@@ -18,8 +18,10 @@
 package net.floodlightcontroller.routing;
 
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import net.floodlightcontroller.routing.web.RouteSerializer;
+
 import net.floodlightcontroller.core.types.NodePortTuple;
+import net.floodlightcontroller.routing.web.serializers.RouteSerializer;
+
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.U64;
 

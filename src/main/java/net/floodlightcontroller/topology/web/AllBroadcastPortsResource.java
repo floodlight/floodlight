@@ -17,18 +17,19 @@
 package net.floodlightcontroller.topology.web;
 
 
+import net.floodlightcontroller.core.types.JsonObjectWrapper;
 import net.floodlightcontroller.topology.ITopologyService;
 
 import org.restlet.resource.Get;
 import org.restlet.resource.ServerResource;
 
 public class AllBroadcastPortsResource extends ServerResource {
-    @Get("json")
-    public Object retrieve() {
+    @Get
+    public JsonObjectWrapper retrieve() {
         ITopologyService topology = 
                 (ITopologyService)getContext().getAttributes().
                     get(ITopologyService.class.getCanonicalName());
         
-        return topology.getAllBroadcastPorts();
+        return JsonObjectWrapper.of(topology.getAllBroadcastPorts());
     }
 }

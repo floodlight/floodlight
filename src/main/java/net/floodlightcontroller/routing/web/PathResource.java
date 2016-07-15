@@ -16,6 +16,7 @@
 
 package net.floodlightcontroller.routing.web;
 
+import net.floodlightcontroller.core.types.JsonObjectWrapper;
 import net.floodlightcontroller.routing.IRoutingService;
 import net.floodlightcontroller.routing.Route;
 
@@ -62,11 +63,11 @@ public class PathResource extends ServerResource {
         Route result = routing.getPath(srcDpid, srcPort, dstDpid, dstPort);
         
         if (result != null) {
-            return routing.getPath(srcDpid, srcPort, dstDpid, dstPort).getPath();
+            return JsonObjectWrapper.of(routing.getPath(srcDpid, srcPort, dstDpid, dstPort).getPath());
         }
         else {
             log.debug("ERROR! no path found");
-            return ImmutableList.of();
+            return JsonObjectWrapper.of(ImmutableList.of());
         }
     }
 }

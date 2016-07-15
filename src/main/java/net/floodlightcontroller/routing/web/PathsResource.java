@@ -16,6 +16,7 @@
 
 package net.floodlightcontroller.routing.web;
 
+import net.floodlightcontroller.core.types.JsonObjectWrapper;
 import net.floodlightcontroller.routing.IRoutingService;
 import net.floodlightcontroller.routing.Route;
 import org.projectfloodlight.openflow.types.DatapathId;
@@ -69,7 +70,7 @@ public class PathsResource extends ServerResource {
                 results = routing.getPathsFast(srcDpid, dstDpid);
             }
         } catch (Exception e) {
-            return ImmutableList.of();
+            return JsonObjectWrapper.of(ImmutableList.of());
         }
 
         if (results == null || results.isEmpty()) {
@@ -82,8 +83,8 @@ public class PathsResource extends ServerResource {
                 log.debug("------------------------------------------------");
             }
 
-            return results;
+            return JsonObjectWrapper.of(results);
         }
-        return ImmutableList.of();
+        return JsonObjectWrapper.of(ImmutableList.of());
     }
 }

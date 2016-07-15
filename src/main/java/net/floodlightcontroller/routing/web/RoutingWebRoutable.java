@@ -20,7 +20,7 @@ import org.restlet.Context;
 import org.restlet.routing.Router;
 
 import net.floodlightcontroller.restserver.RestletRoutable;
-import net.floodlightcontroller.routing.web.PathMetrics;
+import net.floodlightcontroller.routing.web.PathMetricsResource;
 import net.floodlightcontroller.routing.web.PathResource;
 import net.floodlightcontroller.routing.web.PathsResource;
 
@@ -35,7 +35,7 @@ public class RoutingWebRoutable implements RestletRoutable {
         router.attach("/paths/{src-dpid}/{dst-dpid}/{num-paths}/json", PathsResource.class);
         router.attach("/paths/fast/{src-dpid}/{dst-dpid}/{num-paths}/json", PathsResource.class);
         router.attach("/paths/slow/{src-dpid}/{dst-dpid}/{num-paths}/json", PathsResource.class);
-        router.attach("/setpathmetric/{metric}/json", PathMetrics.class);
+        router.attach("/setpathmetric/{metric}/json", PathMetricsResource.class);
 
         return router;
     }

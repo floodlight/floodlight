@@ -27,8 +27,8 @@ import org.slf4j.LoggerFactory;
 import java.util.Collections;
 import java.util.Map;
 
-public class PathMetrics extends ServerResource {
-    private static final Logger log = LoggerFactory.getLogger(PathMetrics.class);
+public class PathMetricsResource extends ServerResource {
+    private static final Logger log = LoggerFactory.getLogger(PathMetricsResource.class);
 
     @Put
     @Post

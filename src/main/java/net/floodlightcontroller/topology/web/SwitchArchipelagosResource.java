@@ -49,6 +49,6 @@ public class SwitchArchipelagosResource extends ServerResource {
             }
         }
 
-        return switchArchMap;
+        return switchArchMap; /* map serialized as object */
     }
 }
