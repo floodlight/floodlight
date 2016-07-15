@@ -28,11 +28,6 @@ import java.util.Set;
 
 public interface ITopologyService extends IFloodlightService  {
 
-	public enum PATH_METRIC { LATENCY, HOPCOUNT, HOPCOUNT_AVOID_TUNNELS, UTILIZATION, LINK_SPEED };
-
-	public PATH_METRIC setPathMetric(PATH_METRIC metric);
-	public PATH_METRIC getPathMetric();
-
 	/*******************************************************
 	 * GENERAL TOPOLOGY FUNCTIONS
 	 *******************************************************/
@@ -42,6 +37,12 @@ public interface ITopologyService extends IFloodlightService  {
 	 * @param listener
 	 */
 	public void addListener(ITopologyListener listener);
+	
+	/**
+     * Remove a listener to stop receiving topology events.
+     * @param listener
+     */
+    public void removeListener(ITopologyListener listener);
 
 	/**
 	 * Retrieve the last time the topology was computed.
@@ -108,22 +109,12 @@ public interface ITopologyService extends IFloodlightService  {
 	public Set<OFPort> getBroadcastPorts(DatapathId targetSw, DatapathId src, OFPort srcPort);
 
 	/**
-	 * Checks if the given switch+port is allowed to receive broadcast packets.
+	 * Checks if the given switch+port is allowed to send or receive broadcast packets.
 	 * @param sw
 	 * @param portId
 	 * @return
 	 */
-	public boolean isIncomingBroadcastAllowed(DatapathId sw, OFPort portId);
-	
-	/**
-	 * If the src broadcast domain port is not allowed for incoming
-	 * broadcast, this method provides the topologically equivalent
-	 * incoming broadcast-allowed src port.
-	 * @param src
-	 * @param srcPort
-	 * @return
-	 */
-	public NodePortTuple getAllowedIncomingBroadcastPort(DatapathId src, OFPort srcPort);
+	public boolean isBroadcastAllowed(DatapathId sw, OFPort portId);
 
 	/**
 	 * Gets the set of ports that participate in the broadcast within each archipelago
@@ -170,7 +161,7 @@ public interface ITopologyService extends IFloodlightService  {
 	public Set<OFPort> getPorts(DatapathId sw);
 	
 	/*******************************************************
-	 * ISLAND/DOMAIN/CLUSTER FUNCTIONS
+	 * CLUSTER AND ARCHIPELAGO FUNCTIONS
 	 *******************************************************/
 	
 	/**
@@ -191,33 +182,33 @@ public interface ITopologyService extends IFloodlightService  {
 	
 	/**
 	 * Determines if two switches are in the same domain/island/cluster.
-	 * @param switch1
-	 * @param switch2
+	 * @param s1
+	 * @param s2
 	 * @return true if the switches are in the same cluster
 	 */
-	public boolean isInSameCluster(DatapathId switch1, DatapathId switch2);
+	public boolean isInSameCluster(DatapathId s1, DatapathId s2);
 	
 	/**
      * Determines if two switches are in the same archipelago.
-     * @param switch1
-     * @param switch2
+     * @param s1
+     * @param s2
      * @return true if the switches are in the same archipelago
      */
-    public boolean isInSameArchipelago(DatapathId switch1, DatapathId switch2);
+    public boolean isInSameArchipelago(DatapathId s1, DatapathId s2);
 
 	/**
 	 * Gets all switches in the same domain/island/cluster as the switch provided.
-	 * @param switchDPID
+	 * @param sw
 	 * @return
 	 */
-	public Set<DatapathId> getSwitchesInCluster(DatapathId switchDPID);
+	public Set<DatapathId> getSwitchesInCluster(DatapathId sw);
 	
 	/**
      * Gets all cluster IDs in the same archipelago as the switch provided.
-     * @param switchDPID
+     * @param sw
      * @return
      */
-    public Set<DatapathId> getClusterIdsInArchipelago(DatapathId switchDPID);
+    public Set<DatapathId> getClusterIdsInArchipelago(DatapathId sw);
     
 	
 	/*******************************************************
@@ -255,39 +246,4 @@ public interface ITopologyService extends IFloodlightService  {
      * @return
      */
     public Set<Link> getInternalInterClusterLinks();
-
-	/*******************************************************
-	 * PATH-FINDING FUNCTIONS
-	 *******************************************************/
-	
-	/**
-	 * If trying to route a packet ingress a source switch+port to a destination
-	 * switch+port, retrieve the egress source switch+port leading to the destination.
-	 * @param src
-	 * @param srcPort
-	 * @param dst
-	 * @param dstPort
-	 * @return
-	 */
-	public NodePortTuple getOutgoingSwitchPort(DatapathId src, OFPort srcPort, DatapathId dst, OFPort dstPort);
-
-	/**
-	 * If trying to route a packet ingress a source switch+port to a destination
-	 * switch+port, retrieve the ingress destination switch+port leading to the destination.
-	 * @param src
-	 * @param srcPort
-	 * @param dst
-	 * @param dstPort
-	 * @return
-	 */
-	public NodePortTuple getIncomingSwitchPort(DatapathId src, OFPort srcPort, DatapathId dst, OFPort dstPort);
-
-	/**
-	 * If the dst is not allowed by the higher-level topology,
-	 * this method provides the topologically equivalent broadcast port.
-	 * @param src
-	 * @param dst
-	 * @return the allowed broadcast port
-	 */
-	public NodePortTuple getAllowedOutgoingBroadcastPort(DatapathId src, OFPort srcPort, DatapathId dst, OFPort dstPort);
 }

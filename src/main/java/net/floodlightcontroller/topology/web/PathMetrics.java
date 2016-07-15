@@ -16,8 +16,8 @@
 
 package net.floodlightcontroller.topology.web;
 
-import net.floodlightcontroller.topology.ITopologyService;
-import net.floodlightcontroller.topology.ITopologyService.PATH_METRIC;
+import net.floodlightcontroller.routing.IRoutingService;
+import net.floodlightcontroller.routing.IRoutingService.PATH_METRIC;
 import org.restlet.resource.Post;
 import org.restlet.resource.Put;
 import org.restlet.resource.ServerResource;
@@ -33,9 +33,9 @@ public class PathMetrics extends ServerResource {
     @Put
     @Post
     public Map<String, String> changeMetric() {
-        ITopologyService topology =
-                (ITopologyService)getContext().getAttributes().
-                        get(ITopologyService.class.getCanonicalName());
+        IRoutingService routing =
+                (IRoutingService)getContext().getAttributes().
+                        get(IRoutingService.class.getCanonicalName());
 
         String metric = (String) getRequestAttributes().get("metric");
         metric = metric.trim().toLowerCase();
@@ -63,12 +63,12 @@ public class PathMetrics extends ServerResource {
                 return Collections.singletonMap("error", "invalid path metric " + metric);
         }
 
-        if (topology.setPathMetric(type) != type) {
-            log.error("Failed to set valid path metric {}. Bug?", metric);
-            return Collections.singletonMap("error", "failed to set valid path metric " + metric);
+        if (routing.setPathMetric(type) != type) {
+            log.error("Failed to set valid path metric {}. Bug?", type.getMetricName());
+            return Collections.singletonMap("error", "failed to set valid path metric " + type.getMetricName());
         }
 
-        log.debug("Set path metric to {}", metric);
-        return Collections.singletonMap("success", "path metric set to " + metric);
+        log.debug("Set path metric to {}", type.getMetricName());
+        return Collections.singletonMap("success", "path metric set to " + type.getMetricName());
     }
 }

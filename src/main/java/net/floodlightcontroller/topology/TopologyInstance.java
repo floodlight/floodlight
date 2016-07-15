@@ -52,142 +52,133 @@ public class TopologyInstance {
     private static final Logger log = LoggerFactory.getLogger(TopologyInstance.class);
 
     /* Global: general switch, port, link */
-    private Set<DatapathId> switches;
-    private Map<DatapathId, Set<OFPort>> allPortsWithLinks; /* only ports with links */
-    private Map<DatapathId, Set<OFPort>> allPortsPerSwitch; /* every port on the switch */
-    private Map<NodePortTuple, Set<Link>> allLinks; /* every link in entire topology */
-    private Map<NodePortTuple, Set<Link>> nonBcastNonTunnelLinks; /* only non-broadcast and non-tunnel links */
-    private Set<NodePortTuple> tunnelPorts; /* all tunnel ports in topology */
-    private Set<NodePortTuple> broadcastPorts; /* all broadcast ports in topology */
-    private Map<DatapathId, Set<OFPort>> broadcastPortMap; /* broadcast ports mapped per DPID */
-    private Map<NodePortTuple, Set<Link>> externalLinks; /* BDDP links b/t clusters */
+    private Set<DatapathId>                 switches;
+    private Map<DatapathId, Set<OFPort>>    portsWithLinks; /* only ports with links */
+    private Map<DatapathId, Set<OFPort>>    portsPerSwitch; /* every port on the switch */
+    private Set<NodePortTuple>              portsTunnel; /* all tunnel ports in topology */
+    private Set<NodePortTuple>              portsBroadcastAll; /* all broadcast ports in topology */
+    private Map<DatapathId, Set<OFPort>>    portsBroadcastPerSwitch; /* broadcast ports mapped per DPID */
+    private Set<NodePortTuple>              portsWithMoreThanTwoLinks; /* a.k.a. "broadcast domain" non-P2P ports */
+    private Map<NodePortTuple, Set<Link>>   links; /* every link in entire topology */
+    private Map<NodePortTuple, Set<Link>>   linksNonBcastNonTunnel; /* only non-broadcast and non-tunnel links */
+    private Map<NodePortTuple, Set<Link>>   linksExternal; /* BDDP links b/t clusters */
+    private Set<Link>                       linksNonExternalInterCluster;
 
     /* Blocked */
-    private Set<NodePortTuple> blockedPorts;
-    private Set<Link> blockedLinks;
+    private Set<NodePortTuple>  portsBlocked;
+    private Set<Link>           linksBlocked;
 
     /* Per-cluster */
-    private Set<Cluster> clusters;
+    private Set<Cluster>                        clusters;
     private Map<DatapathId, Set<NodePortTuple>> clusterPorts;
-    private Map<DatapathId, Cluster> switchClusterMap;
-    private Map<DatapathId, BroadcastTree> clusterBroadcastTrees;
-    private Map<DatapathId, Set<NodePortTuple>> clusterBroadcastNodePorts;
+    private Map<DatapathId, Cluster>            clustersPerSwitch;
+    private Map<DatapathId, BroadcastTree>      clusterBroadcastTrees;
 
     /* Per-archipelago */
-    private Set<Archipelago> archipelagos;
-    private Set<NodePortTuple> portsWithMoreThanTwoLinks;
-    private Map<DatapathId, Set<NodePortTuple>> broadcastPortsPerArchipelago;
-    private Map<Cluster, Archipelago> clusterArchipelagoMap;
-    private Set<Link> nonExternalInterClusterLinks;
-    private Map<RouteId, List<Route>> pathcache; /* contains computed paths ordered best to worst */
+    private Set<Archipelago>                    archipelagos;
+    private Map<Cluster, Archipelago>           archipelagoFromCluster;
+    private Map<DatapathId, Set<NodePortTuple>> portsBroadcastPerArchipelago;
+    private Map<RouteId, List<Route>>           pathcache; /* contains computed paths ordered best to worst */
 
-    protected TopologyInstance(Map<DatapathId, Set<OFPort>> allPortsWithLinks,
-            Set<NodePortTuple> blockedPorts,
-            Map<NodePortTuple, Set<Link>> nonBcastNonTunnelLinks,
+    protected TopologyInstance(Map<DatapathId, Set<OFPort>> portsWithLinks,
+            Set<NodePortTuple> portsBlocked,
+            Map<NodePortTuple, Set<Link>> linksNonBcastNonTunnel,
             Set<NodePortTuple> portsWithMoreThanTwoLinks,
-            Set<NodePortTuple> tunnelPorts, 
-            Map<NodePortTuple, Set<Link>> allLinks,
-            Map<DatapathId, Set<OFPort>> allPortsPerSwitch,
-            Map<NodePortTuple, Set<Link>> externalLinks) {
+            Set<NodePortTuple> portsTunnel, 
+            Map<NodePortTuple, Set<Link>> links,
+            Map<DatapathId, Set<OFPort>> portsPerSwitch,
+            Map<NodePortTuple, Set<Link>> linksExternal) {
 
-        this.switches = new HashSet<DatapathId>(allPortsWithLinks.keySet());
-        this.allPortsWithLinks = new HashMap<DatapathId, Set<OFPort>>();
-        for (DatapathId sw : allPortsWithLinks.keySet()) {
-            this.allPortsWithLinks.put(sw, new HashSet<OFPort>(allPortsWithLinks.get(sw)));
+        this.switches = new HashSet<DatapathId>(portsWithLinks.keySet());
+        this.portsWithLinks = new HashMap<DatapathId, Set<OFPort>>();
+        for (DatapathId sw : portsWithLinks.keySet()) {
+            this.portsWithLinks.put(sw, new HashSet<OFPort>(portsWithLinks.get(sw)));
         }
 
-        this.allPortsPerSwitch = new HashMap<DatapathId, Set<OFPort>>();
-        for (DatapathId sw : allPortsPerSwitch.keySet()) {
-            this.allPortsPerSwitch.put(sw, new HashSet<OFPort>(allPortsPerSwitch.get(sw)));
+        this.portsPerSwitch = new HashMap<DatapathId, Set<OFPort>>();
+        for (DatapathId sw : portsPerSwitch.keySet()) {
+            this.portsPerSwitch.put(sw, new HashSet<OFPort>(portsPerSwitch.get(sw)));
         }
 
-        this.blockedPorts = new HashSet<NodePortTuple>(blockedPorts);
-        this.nonBcastNonTunnelLinks = new HashMap<NodePortTuple, Set<Link>>();
-        for (NodePortTuple npt : nonBcastNonTunnelLinks.keySet()) {
-            this.nonBcastNonTunnelLinks.put(npt, new HashSet<Link>(nonBcastNonTunnelLinks.get(npt)));
+        this.portsBlocked = new HashSet<NodePortTuple>(portsBlocked);
+        this.linksNonBcastNonTunnel = new HashMap<NodePortTuple, Set<Link>>();
+        for (NodePortTuple npt : linksNonBcastNonTunnel.keySet()) {
+            this.linksNonBcastNonTunnel.put(npt, new HashSet<Link>(linksNonBcastNonTunnel.get(npt)));
         }
 
-        this.allLinks = new HashMap<NodePortTuple, Set<Link>>();
-        for (NodePortTuple npt : allLinks.keySet()) {
-            this.allLinks.put(npt, new HashSet<Link>(allLinks.get(npt)));
+        this.links = new HashMap<NodePortTuple, Set<Link>>();
+        for (NodePortTuple npt : links.keySet()) {
+            this.links.put(npt, new HashSet<Link>(links.get(npt)));
         }
 
-        this.externalLinks = new HashMap<NodePortTuple, Set<Link>>();
-        for (NodePortTuple npt : externalLinks.keySet()) {
-            this.externalLinks.put(npt, new HashSet<Link>(externalLinks.get(npt)));
+        this.linksExternal = new HashMap<NodePortTuple, Set<Link>>();
+        for (NodePortTuple npt : linksExternal.keySet()) {
+            this.linksExternal.put(npt, new HashSet<Link>(linksExternal.get(npt)));
         }
 
-        this.nonExternalInterClusterLinks = new HashSet<Link>();
+        this.linksNonExternalInterCluster = new HashSet<Link>();
         this.archipelagos = new HashSet<Archipelago>();
 
         this.portsWithMoreThanTwoLinks = new HashSet<NodePortTuple>(portsWithMoreThanTwoLinks);
-        this.tunnelPorts = new HashSet<NodePortTuple>(tunnelPorts);
+        this.portsTunnel = new HashSet<NodePortTuple>(portsTunnel);
 
-        this.blockedLinks = new HashSet<Link>();
+        this.linksBlocked = new HashSet<Link>();
 
         this.clusters = new HashSet<Cluster>();
-        this.switchClusterMap = new HashMap<DatapathId, Cluster>();
+        this.clustersPerSwitch = new HashMap<DatapathId, Cluster>();
         this.clusterBroadcastTrees = new HashMap<DatapathId, BroadcastTree>();
-        this.broadcastPorts= new HashSet<NodePortTuple>();
-        this.broadcastPortMap = new HashMap<DatapathId,Set<OFPort>>();
+        this.portsBroadcastAll= new HashSet<NodePortTuple>();
+        this.portsBroadcastPerSwitch = new HashMap<DatapathId,Set<OFPort>>();
         this.clusterBroadcastTrees = new HashMap<DatapathId, BroadcastTree>();
-        this.clusterBroadcastNodePorts = new HashMap<DatapathId, Set<NodePortTuple>>();
 
         this.pathcache = new HashMap<RouteId, List<Route>>();
 
-        this.broadcastPortsPerArchipelago = new HashMap<DatapathId, Set<NodePortTuple>>();
+        this.portsBroadcastPerArchipelago = new HashMap<DatapathId, Set<NodePortTuple>>();
 
-        this.clusterArchipelagoMap = new HashMap<Cluster, Archipelago>();
+        this.archipelagoFromCluster = new HashMap<Cluster, Archipelago>();
     }
 
     protected void compute() {
-        // Step 1: Compute clusters ignoring broadcast domain links
-        // Create nodes for clusters in the higher level topology
-        // Must ignore blocked links.
+        /*
+         * Step 1: Compute clusters ignoring ports with > 2 links and 
+         * blocked links.
+         */
         identifyClusters();
 
-        // Step 2: Add links within clusters to the owning cluster
-        // Avoid adding blocked links
-        // Remaining links are inter-cluster links
-        addIntraClusterLinks();
+        /*
+         * Step 2: Associate non-blocked links within clusters to the cluster
+         * in which they reside. The remaining links are inter-cluster links.
+         */
+        identifyIntraClusterLinks();
 
-        // Step 3: Compute the archipelagos (def: group of clusters). Each archipelago
-        // will have its own finiteBroadcastTree, which will be chosen by running dijkstra's
-        // algorithm from the archipelago ID switch (lowest switch DPID). This is
-        // because each archipelago is by definition isolated from all other archipelagos.
-        calculateArchipelagos();
+        /* 
+         * Step 3: Compute the archipelagos. (Def: group of conneccted clusters)
+         * Each archipelago will have its own broadcast tree, chosen by running 
+         * dijkstra's algorithm from the archipelago ID switch (lowest switch 
+         * DPID). We need a broadcast tree per archipelago since each 
+         * archipelago is by definition isolated from all other archipelagos.
+         */
+        identifyArchipelagos();
 
-        // Step 4: Compute a shortest path tree in each cluster for
-        // the purpose of.  The trees are rooted at the destination.
-        // Cost for tunnel links and direct links are the same.
-        calculateShortestPathTreeInClusters();
-
-        // Step 5: Compute broadcast tree in each cluster.
-        // Cost for tunnel links are high to discourage use of
-        // tunnel links. The cost is set to the number of nodes
-        // in the cluster + 1, to use as minimum number of
-        // clusters as possible.
-        calculateBroadcastNodePortsInClusters();
-
-        // Step 6: Use Yens algorithm to compute multiple paths 
+        /*
+         * Step 4: Use Yens algorithm to permute through each node combination
+         * within each archipelago and compute multiple paths. The shortest
+         * path located (i.e. first run of dijkstra's algorithm) will be used 
+         * as the broadcast tree for the archipelago.
+         */
         computeOrderedPaths();
 
-        // Step 7: Get the broadcast ports for each archipelago 
-        // (i.e. for each disjoint network)
+        /*
+         * Step 5: Determine the broadcast ports for each archipelago. These are
+         * the ports that reside on the broadcast tree computed and saved when
+         * performing path-finding. These are saved into multiple data structures
+         * to aid in quick lookup per archipelago, per-switch, and topology-global.
+         */
         computeBroadcastPortsPerArchipelago();
-        
-        // Step 8: Get all broadcast ports in NPT form
-        // Edge port included
-        computeBcastNPTsFromArchipelagos();
 
-        // Step 9. Sort into set of broadcast ports per switch, for quick lookup.
-        // Edge ports included
-        computeBcastPortsPerSwitchFromBcastNTPs();
-
-        // Make immutable
-        //TODO makeDataImmutable();
-
-        // Step 7. print topology.
+        /*
+         * Step 6: Optionally, print topology to log for added verbosity or when debugging.
+         */
         printTopology();
     }
 
@@ -196,7 +187,7 @@ public class TopologyInstance {
      */
     protected boolean isEdge(DatapathId sw, OFPort portId) { 
         NodePortTuple np = new NodePortTuple(sw, portId);
-        if (allLinks.get(np) == null || allLinks.get(np).isEmpty()) {
+        if (links.get(np) == null || links.get(np).isEmpty()) {
             return true;
         }
         else {
@@ -208,48 +199,47 @@ public class TopologyInstance {
      * Returns broadcast ports for the given DatapathId
      */
     protected Set<OFPort> swBroadcastPorts(DatapathId sw) {
-        if (!broadcastPortMap.containsKey(sw) || broadcastPortMap.get(sw) == null) {
+        if (!portsBroadcastPerSwitch.containsKey(sw) || portsBroadcastPerSwitch.get(sw) == null) {
             log.debug("Could not locate broadcast ports for switch {}", sw);
             return Collections.emptySet();
         } else {
             if (log.isDebugEnabled()) {
-                log.debug("Found broadcast ports {} for switch {}", broadcastPortMap.get(sw), sw);
+                log.debug("Found broadcast ports {} for switch {}", portsBroadcastPerSwitch.get(sw), sw);
             }
-            return broadcastPortMap.get(sw);
+            return portsBroadcastPerSwitch.get(sw);
         }
     }
 
     private void printTopology() {
         log.info("-----------------Topology-----------------------");
-        log.info("All Links: {}", allLinks);
+        log.info("All Links: {}", links);
         log.info("Cluser Broadcast Trees: {}", clusterBroadcastTrees);
         log.info("Cluster Ports: {}", clusterPorts);
-        log.info("Tunnel Ports: {}", tunnelPorts);
+        log.info("Tunnel Ports: {}", portsTunnel);
         log.info("Clusters: {}", clusters);
-        log.info("Cluser Broadcast Node Ports: {}", clusterBroadcastNodePorts);
-        log.info("Broadcast Ports Per Node (!!): {}", broadcastPortMap);
+        log.info("Broadcast Ports Per Node (!!): {}", portsBroadcastPerSwitch);
         log.info("Broadcast Domain Ports: {}", portsWithMoreThanTwoLinks);
         log.info("Broadcast Node Ports: {}", portsWithMoreThanTwoLinks);
         log.info("Archipelagos: {}", archipelagos);
         log.info("-----------------------------------------------");  
     }
 
-    private void addIntraClusterLinks() {
+    private void identifyIntraClusterLinks() {
         for (DatapathId s : switches) {
-            if (allPortsWithLinks.get(s) == null) continue;
-            for (OFPort p : allPortsWithLinks.get(s)) {
+            if (portsWithLinks.get(s) == null) continue;
+            for (OFPort p : portsWithLinks.get(s)) {
                 NodePortTuple np = new NodePortTuple(s, p);
-                if (nonBcastNonTunnelLinks.get(np) == null) continue;
+                if (linksNonBcastNonTunnel.get(np) == null) continue;
                 if (isBroadcastPort(np)) continue;
-                for (Link l : nonBcastNonTunnelLinks.get(np)) {
+                for (Link l : linksNonBcastNonTunnel.get(np)) {
                     if (isBlockedLink(l)) continue;
                     if (isBroadcastLink(l)) continue;
-                    Cluster c1 = switchClusterMap.get(l.getSrc());
-                    Cluster c2 = switchClusterMap.get(l.getDst());
+                    Cluster c1 = clustersPerSwitch.get(l.getSrc());
+                    Cluster c2 = clustersPerSwitch.get(l.getDst());
                     if (c1 == c2) {
                         c1.addLink(l); /* link is within cluster */
                     } else {
-                        nonExternalInterClusterLinks.add(l);
+                        linksNonExternalInterCluster.add(l);
                     }
                 }
             }
@@ -336,9 +326,9 @@ public class TopologyInstance {
         currIndex++;
 
         // Traverse the graph through every outgoing link.
-        if (allPortsWithLinks.get(currSw) != null){
-            for (OFPort p : allPortsWithLinks.get(currSw)) {
-                Set<Link> lset = nonBcastNonTunnelLinks.get(new NodePortTuple(currSw, p));
+        if (portsWithLinks.get(currSw) != null){
+            for (OFPort p : portsWithLinks.get(currSw)) {
+                Set<Link> lset = linksNonBcastNonTunnel.get(new NodePortTuple(currSw, p));
                 if (lset == null) continue;
                 for (Link l : lset) {
                     DatapathId dstSw = l.getDst();
@@ -348,7 +338,7 @@ public class TopologyInstance {
 
                     // ignore if the destination is already added to
                     // another cluster
-                    if (switchClusterMap.get(dstSw) != null) continue;
+                    if (clustersPerSwitch.get(dstSw) != null) continue;
 
                     // ignore the link if it is blocked.
                     if (isBlockedLink(l)) continue;
@@ -401,7 +391,7 @@ public class TopologyInstance {
             Cluster sc = new Cluster();
             for (DatapathId sw : currSet) {
                 sc.add(sw);
-                switchClusterMap.put(sw, sc);
+                clustersPerSwitch.put(sw, sc);
             }
             // delete all the nodes in the current set.
             currSet.clear();
@@ -413,11 +403,11 @@ public class TopologyInstance {
     }
 
     protected Set<NodePortTuple> getBlockedPorts() {
-        return this.blockedPorts;
+        return this.portsBlocked;
     }
 
     protected Set<Link> getBlockedLinks() {
-        return this.blockedLinks;
+        return this.linksBlocked;
     }
 
     /** Returns true if a link has either one of its switch ports
@@ -432,11 +422,11 @@ public class TopologyInstance {
     }
 
     protected boolean isBlockedPort(NodePortTuple npt) {
-        return blockedPorts.contains(npt);
+        return portsBlocked.contains(npt);
     }
 
     protected boolean isTunnelPort(NodePortTuple npt) {
-        return tunnelPorts.contains(npt);
+        return portsTunnel.contains(npt);
     }
 
     protected boolean isTunnelLink(Link l) {
@@ -452,7 +442,7 @@ public class TopologyInstance {
     }
 
     protected boolean isBroadcastPort(NodePortTuple npt) {
-        return broadcastPorts.contains(npt);
+        return portsBroadcastAll.contains(npt);
     }
 
     private class NodeDist implements Comparable<NodeDist> {
@@ -509,77 +499,7 @@ public class TopologyInstance {
         }
     }
 
-    //calculates the broadcast tree in cluster. Old version of code.
-    private BroadcastTree clusterDijkstra(Cluster c, DatapathId root,
-            Map<Link, Integer> linkCost,
-            boolean isDstRooted) {
-
-        HashMap<DatapathId, Link> nexthoplinks = new HashMap<DatapathId, Link>();
-        HashMap<DatapathId, Integer> cost = new HashMap<DatapathId, Integer>();
-        int w;
-
-        for (DatapathId node : c.links.keySet()) {
-            nexthoplinks.put(node, null);
-            cost.put(node, MAX_PATH_WEIGHT);
-        }
-
-        HashMap<DatapathId, Boolean> seen = new HashMap<DatapathId, Boolean>();
-        PriorityQueue<NodeDist> nodeq = new PriorityQueue<NodeDist>();
-
-        nodeq.add(new NodeDist(root, 0));
-        cost.put(root, 0);
-
-        while (nodeq.peek() != null) {
-            NodeDist n = nodeq.poll();
-            DatapathId cnode = n.getNode();
-
-            int cdist = n.getDist();
-            if (cdist >= MAX_PATH_WEIGHT) break;
-            if (seen.containsKey(cnode)) continue;
-
-            seen.put(cnode, true);
-
-            for (Link link : c.links.get(cnode)) {
-                DatapathId neighbor;
-
-                if (isDstRooted == true) {
-                    neighbor = link.getSrc();
-                } else {
-                    neighbor = link.getDst();
-                }
-
-                // links directed toward cnode will result in this condition
-                if (neighbor.equals(cnode)) continue;
-
-                if (seen.containsKey(neighbor)) continue;
-
-                if (linkCost == null || linkCost.get(link) == null) {
-                    w = 1;
-                } else {
-                    w = linkCost.get(link);
-                }
-
-                int ndist = cdist + w; // the weight of the link, always 1 in current version of floodlight.
-                if (ndist < cost.get(neighbor)) {
-                    cost.put(neighbor, ndist);
-                    nexthoplinks.put(neighbor, link);
-
-                    NodeDist ndTemp = new NodeDist(neighbor, ndist);
-                    // Remove an object that's already in there.
-                    // Note that the comparison is based on only the node id,
-                    // and not node id and distance.
-                    nodeq.remove(ndTemp);
-                    // add the current object to the queue.
-                    nodeq.add(ndTemp);
-                }
-            }
-        }
-
-        BroadcastTree ret = new BroadcastTree(nexthoplinks, cost);
-        return ret;
-    }
-
-    private void calculateArchipelagos() {
+    private void identifyArchipelagos() {
         // Iterate through each external link and create/merge archipelagos based on the
         // islands that each link is connected to
         Cluster srcCluster = null;
@@ -588,10 +508,10 @@ public class TopologyInstance {
         Archipelago dstArchipelago = null;
         Set<Link> links = new HashSet<Link>();
 
-        for (Set<Link> linkset : externalLinks.values()) {
+        for (Set<Link> linkset : linksExternal.values()) {
             links.addAll(linkset);
         }
-        links.addAll(nonExternalInterClusterLinks);
+        links.addAll(linksNonExternalInterCluster);
 
         /* Base case of 1:1 mapping b/t clusters and archipelagos */
         if (links.isEmpty()) {
@@ -615,26 +535,26 @@ public class TopologyInstance {
                 if (srcArchipelago != null && dstArchipelago != null && !srcArchipelago.equals(dstArchipelago)) {
                     srcArchipelago.merge(dstArchipelago);
                     archipelagos.remove(dstArchipelago);
-                    clusterArchipelagoMap.put(dstCluster, srcArchipelago);
+                    archipelagoFromCluster.put(dstCluster, srcArchipelago);
                 }
 
                 // If neither were found in an existing, then form a new archipelago.
                 else if (srcArchipelago == null && dstArchipelago == null) {
                     Archipelago a = new Archipelago().add(srcCluster).add(dstCluster);
                     archipelagos.add(a);
-                    clusterArchipelagoMap.put(srcCluster, a);
-                    clusterArchipelagoMap.put(dstCluster, a);
+                    archipelagoFromCluster.put(srcCluster, a);
+                    archipelagoFromCluster.put(dstCluster, a);
                 }
 
                 // If only one is found in an existing, then add the one not found to the existing.
                 else if (srcArchipelago != null && dstArchipelago == null) {
                     srcArchipelago.add(dstCluster);
-                    clusterArchipelagoMap.put(dstCluster, srcArchipelago);
+                    archipelagoFromCluster.put(dstCluster, srcArchipelago);
                 }
 
                 else if (srcArchipelago == null && dstArchipelago != null) {
                     dstArchipelago.add(srcCluster);
-                    clusterArchipelagoMap.put(srcCluster, dstArchipelago);
+                    archipelagoFromCluster.put(srcCluster, dstArchipelago);
                 }
 
                 srcCluster = null;
@@ -731,7 +651,7 @@ public class TopologyInstance {
         Map<Link, Integer> linkCost = new HashMap<Link, Integer>();
         long rawLinkSpeed;
         int linkSpeedMBps;
-        int tunnel_weight = allPortsWithLinks.size() + 1;
+        int tunnel_weight = portsWithLinks.size() + 1;
 
         /* pathMetrics:
          *  1: Hop Count (Default Metrics)
@@ -746,9 +666,9 @@ public class TopologyInstance {
                 TopologyManager.collectStatistics = false;
             }
             log.debug("Using Default: Hop Count with Tunnel Bias for Metrics");
-            for (NodePortTuple npt : tunnelPorts) {
-                if (allLinks.get(npt) == null) continue;
-                for (Link link : allLinks.get(npt)) {
+            for (NodePortTuple npt : portsTunnel) {
+                if (links.get(npt) == null) continue;
+                for (Link link : links.get(npt)) {
                     if (link == null) continue;
                     linkCost.put(link, tunnel_weight);
                 }
@@ -761,9 +681,9 @@ public class TopologyInstance {
                 TopologyManager.collectStatistics = false;
             }
             log.debug("Using Hop Count without Tunnel Bias for Metrics");
-            for (NodePortTuple npt : allLinks.keySet()) {
-                if (allLinks.get(npt) == null) continue;
-                for (Link link : allLinks.get(npt)) {
+            for (NodePortTuple npt : links.keySet()) {
+                if (links.get(npt) == null) continue;
+                for (Link link : links.get(npt)) {
                     if (link == null) continue;
                     linkCost.put(link,1);
                 }
@@ -776,9 +696,9 @@ public class TopologyInstance {
                 TopologyManager.collectStatistics = false;
             }
             log.debug("Using Latency for Route Metrics");
-            for (NodePortTuple npt : allLinks.keySet()) {
-                if (allLinks.get(npt) == null) continue;
-                for (Link link : allLinks.get(npt)) {
+            for (NodePortTuple npt : links.keySet()) {
+                if (links.get(npt) == null) continue;
+                for (Link link : links.get(npt)) {
                     if (link == null) continue;
                     if((int)link.getLatency().getValue() < 0 || (int)link.getLatency().getValue() > MAX_LINK_WEIGHT)
                         linkCost.put(link, MAX_LINK_WEIGHT);
@@ -794,10 +714,10 @@ public class TopologyInstance {
                 TopologyManager.collectStatistics = true;
             }
             log.debug("Using Link Speed for Route Metrics");
-            for (NodePortTuple npt : allLinks.keySet()) {
-                if (allLinks.get(npt) == null) continue;
+            for (NodePortTuple npt : links.keySet()) {
+                if (links.get(npt) == null) continue;
                 rawLinkSpeed = TopologyManager.statisticsService.getLinkSpeed(npt);
-                for (Link link : allLinks.get(npt)) {
+                for (Link link : links.get(npt)) {
                     if (link == null) continue;
 
                     if((rawLinkSpeed / 10^6) / 8 > 1){
@@ -816,9 +736,9 @@ public class TopologyInstance {
                 TopologyManager.collectStatistics = false;
             }
             log.debug("Invalid Selection: Using Default Hop Count with Tunnel Bias for Metrics");
-            for (NodePortTuple npt : tunnelPorts) {
-                if (allLinks.get(npt) == null) continue;
-                for (Link link : allLinks.get(npt)) {
+            for (NodePortTuple npt : portsTunnel) {
+                if (links.get(npt) == null) continue;
+                for (Link link : links.get(npt)) {
                     if (link == null) continue;
                     linkCost.put(link, tunnel_weight);
                 }
@@ -853,81 +773,6 @@ public class TopologyInstance {
                     log.info("Adding paths {}", routes);
                 }
             }
-        }
-    }
-
-    private void calculateShortestPathTreeInClusters() {
-        clusterBroadcastTrees.clear();
-
-        Map<Link, Integer> linkCost = new HashMap<Link, Integer>();
-        int tunnel_weight = allPortsWithLinks.size() + 1;
-
-        for (NodePortTuple npt : tunnelPorts) {
-            if (nonBcastNonTunnelLinks.get(npt) == null) continue;
-            for (Link link : nonBcastNonTunnelLinks.get(npt)) {
-                if (link == null) continue;
-                linkCost.put(link, tunnel_weight);
-            }
-        }
-
-        for (Cluster c : clusters) {
-            BroadcastTree tree = clusterDijkstra(c, c.getId(), linkCost, true);
-            clusterBroadcastTrees.put(c.getId(), tree);
-        }
-    }
-
-    private void computeBcastNPTsFromArchipelagos() {
-        for (Archipelago a : archipelagos) {
-            Map<DatapathId, Link> links = a.getBroadcastTree().getLinks();
-            if (links == null) return;
-            for (DatapathId nodeId : links.keySet()) {
-                Link l = links.get(nodeId);
-                if (l == null) continue;
-                NodePortTuple npt1 = new NodePortTuple(l.getSrc(), l.getSrcPort());
-                NodePortTuple npt2 = new NodePortTuple(l.getDst(), l.getDstPort());
-                this.broadcastPorts.add(npt1);
-                this.broadcastPorts.add(npt2);
-            }
-        }
-    }
-
-    private void computeBcastPortsPerSwitchFromBcastNTPs(){
-        this.broadcastPortMap.clear();
-
-        for (DatapathId sw : this.switches) {
-            for (OFPort p : this.allPortsPerSwitch.get(sw)){
-                NodePortTuple npt = new NodePortTuple(sw, p);
-                if (isEdge(sw, p) || broadcastPorts.contains(npt)) { 
-                    if (broadcastPortMap.containsKey(sw)) {
-                        broadcastPortMap.get(sw).add(p);
-                    } else {
-                        broadcastPortMap.put(sw, new HashSet<OFPort>(Arrays.asList(p)));
-                    }
-                }      		
-            }
-        }
-    }
-
-    private void calculateBroadcastNodePortsInClusters() {
-        clusterBroadcastNodePorts.clear();
-
-        for (Cluster c : clusters) {
-            // c.id is the smallest node that's in the cluster
-            BroadcastTree tree = clusterBroadcastTrees.get(c.getId());
-            //log.info("Broadcast Tree {}", tree);
-
-            Set<NodePortTuple> nptSet = new HashSet<NodePortTuple>();
-            Map<DatapathId, Link> links = tree.getLinks();
-            if (links == null) continue;
-            for (DatapathId nodeId : links.keySet()) {
-                Link l = links.get(nodeId);
-                if (l == null) continue;
-                NodePortTuple npt1 = new NodePortTuple(l.getSrc(), l.getSrcPort());
-                NodePortTuple npt2 = new NodePortTuple(l.getDst(), l.getDstPort());
-                nptSet.add(npt1);
-                nptSet.add(npt2);
-            }
-            clusterBroadcastNodePorts.put(c.getId(), nptSet);
         }
     }
 
@@ -977,23 +822,34 @@ public class TopologyInstance {
      */
 
     protected boolean pathExists(DatapathId srcId, DatapathId dstId) {
-        BroadcastTree bt = clusterBroadcastTrees.get(dstId);
-        if (bt == null) return false;
+        Archipelago srcA = getArchipelago(srcId);
+        Archipelago dstA = getArchipelago(dstId);
+        if (!srcA.getId().equals(dstA.getId())) {
+            return false;
+        }
+
+        BroadcastTree bt = srcA.getBroadcastTree();
+        if (bt == null) {
+            return false;
+        }
+
         Link link = bt.getLinks().get(srcId);
-        if (link == null) return false;
+        if (link == null) {
+            return false;
+        }
         return true;
     }
 
     private Map<DatapathId, Set<Link>> buildLinkDpidMap(Set<DatapathId> switches, Map<DatapathId,
-            Set<OFPort>> allPortsWithLinks, Map<NodePortTuple, Set<Link>> allLinks) {
+            Set<OFPort>> portsWithLinks, Map<NodePortTuple, Set<Link>> links) {
 
         Map<DatapathId, Set<Link>> linkDpidMap = new HashMap<DatapathId, Set<Link>>();
         for (DatapathId s : switches) {
-            if (allPortsWithLinks.get(s) == null) continue;
-            for (OFPort p : allPortsWithLinks.get(s)) {
+            if (portsWithLinks.get(s) == null) continue;
+            for (OFPort p : portsWithLinks.get(s)) {
                 NodePortTuple np = new NodePortTuple(s, p);
-                if (allLinks.get(np) == null) continue;
-                for (Link l : allLinks.get(np)) {
+                if (links.get(np) == null) continue;
+                for (Link l : links.get(np)) {
                     if (switches.contains(l.getSrc()) && switches.contains(l.getDst())) {
                         if (linkDpidMap.containsKey(s)) {
                             linkDpidMap.get(s).add(l);
@@ -1081,7 +937,7 @@ public class TopologyInstance {
             DatapathId dst = r.getPath().get(i + 1).getNodeId();
             OFPort srcPort = r.getPath().get(i).getPortId();
             OFPort dstPort = r.getPath().get(i + 1).getPortId();
-            for (Link l : allLinks.get(r.getPath().get(i))) {
+            for (Link l : links.get(r.getPath().get(i))) {
                 if (l.getSrc().equals(src) && l.getDst().equals(dst) &&
                         l.getSrcPort().equals(srcPort) && l.getDstPort().equals(dstPort)) {
                     log.debug("Matching link found: {}", l);
@@ -1105,7 +961,7 @@ public class TopologyInstance {
         // Find link costs
         Map<Link, Integer> linkCost = initLinkCostMap();
 
-        Map<DatapathId, Set<Link>> linkDpidMap = buildLinkDpidMap(switches, allPortsWithLinks, allLinks);
+        Map<DatapathId, Set<Link>> linkDpidMap = buildLinkDpidMap(switches, portsWithLinks, links);
 
         Map<DatapathId, Set<Link>> copyOfLinkDpidMap = new HashMap<DatapathId, Set<Link>>(linkDpidMap);
 
@@ -1166,7 +1022,7 @@ public class TopologyInstance {
                         path.subList(0, i));
 
 
-                Map<NodePortTuple, Set<Link>> allLinksCopy = new HashMap<NodePortTuple, Set<Link>>(allLinks);
+                Map<NodePortTuple, Set<Link>> allLinksCopy = new HashMap<NodePortTuple, Set<Link>>(links);
                 // Remove the links after the spur node that are part of other paths in A so that new paths
                 // found are unique
                 for (Route r : A) {
@@ -1185,7 +1041,7 @@ public class TopologyInstance {
                 }
 
                 // Builds the new topology without the parts we want removed
-                copyOfLinkDpidMap = buildLinkDpidMap(switchesCopy, allPortsWithLinks, allLinksCopy);
+                copyOfLinkDpidMap = buildLinkDpidMap(switchesCopy, portsWithLinks, allLinksCopy);
 
                 //log.debug("About to build route.");
                 //log.debug("Switches: {}", switchesCopy);
@@ -1279,11 +1135,11 @@ public class TopologyInstance {
             // Add up the weights of each link in the path
             // TODO Get the path cost from the route object
             for (NodePortTuple npt : r.getPath()) {
-                if (allLinks.get(npt) == null || linkCost.get(allLinks.get(npt).iterator().next()) == null) {
+                if (links.get(npt) == null || linkCost.get(links.get(npt).iterator().next()) == null) {
                     pathCost++;
                 }
                 else {
-                    pathCost += linkCost.get(allLinks.get(npt).iterator().next());
+                    pathCost += linkCost.get(links.get(npt).iterator().next());
                 }
             }
             log.debug("Path {} with cost {}", r, pathCost);
@@ -1372,12 +1228,6 @@ public class TopologyInstance {
         return result == null ? new Route(id, ImmutableList.of()) : result; /* return empty route instead of null */
     }
 
-    protected BroadcastTree getBroadcastTreeForCluster(DatapathId id){
-        Cluster c = switchClusterMap.get(id);
-        if (c == null) return null;
-        return clusterBroadcastTrees.get(c.getId());
-    }
-
     //
     //  ITopologyService interface method helpers.
     //
@@ -1388,14 +1238,14 @@ public class TopologyInstance {
 
     public boolean isAttachmentPointPort(DatapathId switchid, OFPort port) {
         NodePortTuple npt = new NodePortTuple(switchid, port);
-        if (nonBcastNonTunnelLinks.containsKey(npt)) {
+        if (linksNonBcastNonTunnel.containsKey(npt)) {
             return false;
         }
         return true;
     }
 
     protected DatapathId getClusterId(DatapathId switchId) {
-        Cluster c = switchClusterMap.get(switchId);
+        Cluster c = clustersPerSwitch.get(switchId);
         if (c != null) { 
             return c.getId();
         }
@@ -1403,15 +1253,15 @@ public class TopologyInstance {
     }
 
     protected DatapathId getArchipelagoId(DatapathId switchId) {
-        Cluster c = switchClusterMap.get(switchId);
+        Cluster c = clustersPerSwitch.get(switchId);
         if (c != null) {
-            return clusterArchipelagoMap.get(c).getId();
+            return archipelagoFromCluster.get(c).getId();
         }
         return switchId;
     }
 
     protected Set<DatapathId> getSwitchesInCluster(DatapathId switchId) {
-        Cluster c = switchClusterMap.get(switchId);
+        Cluster c = clustersPerSwitch.get(switchId);
         if (c != null) {
             return c.getNodes();
         }
@@ -1420,8 +1270,8 @@ public class TopologyInstance {
     }
 
     protected boolean isInSameCluster(DatapathId switch1, DatapathId switch2) {
-        Cluster c1 = switchClusterMap.get(switch1);
-        Cluster c2 = switchClusterMap.get(switch2);
+        Cluster c1 = clustersPerSwitch.get(switch1);
+        Cluster c2 = clustersPerSwitch.get(switch2);
         if (c1 != null && c2 != null) {
             return c1.getId().equals(c2.getId());
         }
@@ -1435,10 +1285,10 @@ public class TopologyInstance {
     /*
      * Takes finiteBroadcastTree into account to prevent loops in the network
      */
-    protected boolean isIncomingBroadcastAllowedOnSwitchPort(DatapathId sw, OFPort portId) {
+    protected boolean isBroadcastAllowedOnSwitchPort(DatapathId sw, OFPort portId) {
         if (!isEdge(sw, portId)){       
             NodePortTuple npt = new NodePortTuple(sw, portId);
-            if (broadcastPorts.contains(npt))
+            if (portsBroadcastAll.contains(npt))
                 return true;
             else return false;
         }
@@ -1450,11 +1300,6 @@ public class TopologyInstance {
         return (oldSw.equals(newSw) && oldPort.equals(newPort));
     }
 
-    protected Set<NodePortTuple> getBroadcastNodePortsInCluster(DatapathId sw) {
-        DatapathId clusterId = getClusterId(sw);
-        return clusterBroadcastNodePorts.get(clusterId);
-    }
-
     protected boolean isInSameArchipelago(DatapathId s1, DatapathId s2) {
         for (Archipelago a : archipelagos) {
             if (a.getSwitches().contains(s1) && a.getSwitches().contains(s2)) {
@@ -1464,25 +1309,12 @@ public class TopologyInstance {
         return false;
     }
 
-    protected NodePortTuple getOutgoingSwitchPort(DatapathId src, OFPort srcPort,
-            DatapathId dst, OFPort dstPort) {
-        // Use this function to redirect traffic if needed.
-        return new NodePortTuple(dst, dstPort);
-    }
-
-    protected NodePortTuple getIncomingSwitchPort(DatapathId src, OFPort srcPort,
-            DatapathId dst, OFPort dstPort) {
-        // Use this function to reinject traffic from a
-        // different port if needed.
-        return new NodePortTuple(src, srcPort);
-    }
-
     protected Set<DatapathId> getSwitches() {
         return switches;
     }
 
     protected Set<OFPort> getPortsWithLinks(DatapathId sw) {
-        return allPortsWithLinks.get(sw);
+        return portsWithLinks.get(sw);
     }
 
     protected Set<OFPort> getBroadcastPorts(DatapathId targetSw, DatapathId src, OFPort srcPort) {
@@ -1496,20 +1328,12 @@ public class TopologyInstance {
         return result;
     }
 
-    protected NodePortTuple getAllowedOutgoingBroadcastPort(DatapathId src, OFPort srcPort, DatapathId dst, OFPort dstPort) {
-        return null;
-    }
-
-    protected NodePortTuple getAllowedIncomingBroadcastPort(DatapathId src, OFPort srcPort) {
-        return null;
-    }
-
     protected Set<Link> getInternalInterClusterLinks() {
-        return nonExternalInterClusterLinks;
+        return linksNonExternalInterCluster;
     }
 
     protected Set<NodePortTuple> getAllBroadcastPorts() {
-        return broadcastPorts;
+        return portsBroadcastAll;
     }
 
     protected Set<DatapathId> getClusterIdsInArchipelago(DatapathId sw) {
@@ -1520,24 +1344,72 @@ public class TopologyInstance {
         return ImmutableSet.of();
     }
 
-    private void computeBroadcastPortsPerArchipelago() {
-        ImmutableSet.Builder<NodePortTuple> s = ImmutableSet.builder();
+    private void addBroadcastPortToPerSwitchMap(NodePortTuple npt) {
+        if (portsBroadcastPerSwitch.containsKey(npt.getNodeId())) {
+            portsBroadcastPerSwitch.get(npt.getNodeId()).add(npt.getPortId());
+        } else {
+            portsBroadcastPerSwitch.put(npt.getNodeId(), 
+                    new HashSet<OFPort>(Arrays.asList(npt.getPortId())));
+        }
+    }
+
+    private void computeBroadcastPortsPerArchipelago() {      
+        Set<NodePortTuple> s;
         for (Archipelago a : archipelagos) {
+            s = new HashSet<NodePortTuple>();
             for (Entry<DatapathId, Link> e : a.getBroadcastTree().getLinks().entrySet()) {
                 Link l = e.getValue();
-                if (l != null) { /* null --> root */
-                    s.add(new NodePortTuple(l.getSrc(), l.getSrcPort()));
-                    s.add(new NodePortTuple(l.getDst(), l.getDstPort()));
+                if (l != null) { /* null indicates root node (leads nowhere "up") */
+                    NodePortTuple src = new NodePortTuple(l.getSrc(), l.getSrcPort());
+                    NodePortTuple dst = new NodePortTuple(l.getDst(), l.getDstPort());
+                    
+                    /* Accumulate for per-archipelago NPT map */
+                    s.add(src);
+                    s.add(dst);
+
+                    /* Add to global NPT set */
+                    this.portsBroadcastAll.add(src);
+                    this.portsBroadcastAll.add(dst);
+
+                    /* Add to per-switch NPT map */
+                    addBroadcastPortToPerSwitchMap(src);
+                    addBroadcastPortToPerSwitchMap(dst);
                 }
             }
-            broadcastPortsPerArchipelago.put(a.getId(), s.build());
+
+            /* Set accumulated per-this-archipelago NPTs */
+            portsBroadcastPerArchipelago.put(a.getId(), s); /* guaranteed non-null set per archipelago */
+        }
+
+        /* Add ports that hosts connect to */
+        for (DatapathId sw : this.switches) {
+            for (OFPort p : this.portsPerSwitch.get(sw)) { /* includes edge and link ports */
+                NodePortTuple npt = new NodePortTuple(sw, p);
+                if (isEdge(sw, p)) {
+                    /* Add to per-archipelago NPT map */
+                    DatapathId aId = getArchipelago(sw).getId();
+                    if (portsBroadcastPerArchipelago.containsKey(aId)) {
+                        portsBroadcastPerArchipelago.get(aId).add(npt);
+                    } else {
+                        s = new HashSet<NodePortTuple>();
+                        s.add(npt);
+                        portsBroadcastPerArchipelago.put(aId, s);
+                    }
+
+                    /* Add to global NPT set */
+                    this.portsBroadcastAll.add(npt);
+
+                    /* Add to per-switch NPT map */
+                    addBroadcastPortToPerSwitchMap(npt);
+                }
+            }
         }
     }
 
     protected Set<NodePortTuple> getBroadcastPortsInArchipelago(DatapathId sw) {
         Archipelago a = getArchipelago(sw);
         if (a != null) {
-            return broadcastPortsPerArchipelago.get(a.getId());
+            return portsBroadcastPerArchipelago.get(a.getId());
         }
         return ImmutableSet.of();
     }

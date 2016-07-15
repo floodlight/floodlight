@@ -271,6 +271,11 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 	public void addListener(ITopologyListener listener) {
 		topologyAware.add(listener);
 	}
+	
+	@Override
+    public void removeListener(ITopologyListener listener) {
+        topologyAware.remove(listener);
+    }
 
 	@Override
 	public boolean isAttachmentPointPort(DatapathId switchid, OFPort port) {
@@ -349,9 +354,9 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 	////////////////////////////////////////////////////////////////////////
 
 	@Override
-	public boolean isIncomingBroadcastAllowed(DatapathId sw, OFPort portId) {
+	public boolean isBroadcastAllowed(DatapathId sw, OFPort portId) {
 		TopologyInstance ti = getCurrentInstance();
-		return ti.isIncomingBroadcastAllowedOnSwitchPort(sw, portId);
+		return ti.isBroadcastAllowedOnSwitchPort(sw, portId);
 	}
 
 	////////////////////////////////////////////////////////////////////////
@@ -376,29 +381,6 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 			DatapathId src, OFPort srcPort) {
 		TopologyInstance ti = getCurrentInstance();
 		return ti.getBroadcastPorts(targetSw, src, srcPort);
-	}
-
-	////////////////////////////////////////////////////////////////////////
-	////////////////////////////////////////////////////////////////////////
-	
-	@Override
-	public NodePortTuple getOutgoingSwitchPort(DatapathId src, OFPort srcPort,
-			DatapathId dst, OFPort dstPort) {
-		// Use this function to redirect traffic if needed.
-		TopologyInstance ti = getCurrentInstance();
-		return ti.getOutgoingSwitchPort(src, srcPort,
-				dst, dstPort);
-	}
-
-	////////////////////////////////////////////////////////////////////////
-	////////////////////////////////////////////////////////////////////////
-
-	@Override
-	public NodePortTuple getIncomingSwitchPort(DatapathId src, OFPort srcPort,
-			DatapathId dst, OFPort dstPort) {
-		TopologyInstance ti = getCurrentInstance();
-		return ti.getIncomingSwitchPort(src, srcPort,
-				dst, dstPort);
 	}
 
 	////////////////////////////////////////////////////////////////////////
@@ -428,28 +410,6 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 			DatapathId newSw, OFPort newPort) {
 		TopologyInstance ti = getCurrentInstance();
 		return ti.isConsistent(oldSw, oldPort, newSw, newPort);
-	}
-
-	////////////////////////////////////////////////////////////////////////
-	////////////////////////////////////////////////////////////////////////
-
-	@Override
-	public NodePortTuple getAllowedOutgoingBroadcastPort(DatapathId src,
-			OFPort srcPort,
-			DatapathId dst,
-			OFPort dstPort){
-		TopologyInstance ti = getCurrentInstance();
-		return ti.getAllowedOutgoingBroadcastPort(src, srcPort,
-				dst, dstPort);
-	}
-	////////////////////////////////////////////////////////////////////////
-	////////////////////////////////////////////////////////////////////////
-
-	@Override
-	public NodePortTuple
-	getAllowedIncomingBroadcastPort(DatapathId src, OFPort srcPort) {
-		TopologyInstance ti = getCurrentInstance();
-		return ti.getAllowedIncomingBroadcastPort(src,srcPort);
 	}
 
 	////////////////////////////////////////////////////////////////////////
@@ -528,12 +488,12 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 	}
 
 	@Override
-	public List<Route> getPathsFast(DatapathId srcDpid, DatapathId dstDpid, Integer k) {
+	public List<Route> getPathsFast(DatapathId srcDpid, DatapathId dstDpid, int k) {
 		return getCurrentInstance().getPathsFast(srcDpid, dstDpid, k);
 	}
 
 	@Override
-	public List<Route> getPathsSlow(DatapathId srcDpid, DatapathId dstDpid, Integer k) {
+	public List<Route> getPathsSlow(DatapathId srcDpid, DatapathId dstDpid, int k) {
 		return getCurrentInstance().getPathsSlow(srcDpid, dstDpid, k);
 	}
 
@@ -699,7 +659,7 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 				    pathMetric = PATH_METRIC.LINK_SPEED;
 					break;
 				default:
-					log.error("Invalid routing metric {}. Using default {}", metric, pathMetric);
+					log.error("Invalid routing metric {}. Using default {}", metric, pathMetric.getMetricName());
 					break;
 			}
 		}
