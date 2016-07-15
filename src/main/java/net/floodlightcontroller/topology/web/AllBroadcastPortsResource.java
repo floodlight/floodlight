@@ -16,9 +16,7 @@
 
 package net.floodlightcontroller.topology.web;
 
-import java.util.Set;
 
-import net.floodlightcontroller.core.types.NodePortTuple;
 import net.floodlightcontroller.topology.ITopologyService;
 
 import org.restlet.resource.Get;
@@ -26,7 +24,7 @@ import org.restlet.resource.ServerResource;
 
 public class AllBroadcastPortsResource extends ServerResource {
     @Get("json")
-    public Set<NodePortTuple> retrieve() {
+    public Object retrieve() {
         ITopologyService topology = 
                 (ITopologyService)getContext().getAttributes().
                     get(ITopologyService.class.getCanonicalName());
