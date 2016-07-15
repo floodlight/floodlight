@@ -28,13 +28,14 @@ import net.floodlightcontroller.debugcounter.IDebugCounter;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryListener;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryService;
+import net.floodlightcontroller.linkdiscovery.Link;
 import net.floodlightcontroller.packet.BSN;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.LLDP;
 import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.routing.IRoutingService;
-import net.floodlightcontroller.routing.Link;
 import net.floodlightcontroller.routing.Route;
+import net.floodlightcontroller.routing.web.RoutingWebRoutable;
 import net.floodlightcontroller.statistics.IStatisticsService;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
 import net.floodlightcontroller.topology.web.TopologyWebRoutable;
@@ -708,6 +709,7 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 
 	protected void addRestletRoutable() {
 		restApiService.addRestletRoutable(new TopologyWebRoutable());
+		restApiService.addRestletRoutable(new RoutingWebRoutable());
 	}
 
 	// ****************
@@ -1345,5 +1347,11 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
     public Set<NodePortTuple> getAllBroadcastPorts() {
         TopologyInstance ti = getCurrentInstance();
         return ti.getAllBroadcastPorts();
+    }
+
+    @Override
+    public Set<DatapathId> getArchipelagoIds() {
+        TopologyInstance ti = getCurrentInstance();
+        return ti.getArchipelagoIds();
     }
 }

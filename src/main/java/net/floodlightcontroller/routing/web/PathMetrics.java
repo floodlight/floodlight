@@ -14,7 +14,7 @@
  *    under the License.
  **/
 
-package net.floodlightcontroller.topology.web;
+package net.floodlightcontroller.routing.web;
 
 import net.floodlightcontroller.routing.IRoutingService;
 import net.floodlightcontroller.routing.IRoutingService.PATH_METRIC;

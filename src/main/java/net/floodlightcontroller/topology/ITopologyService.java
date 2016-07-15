@@ -18,7 +18,8 @@ package net.floodlightcontroller.topology;
 
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.core.types.NodePortTuple;
-import net.floodlightcontroller.routing.Link;
+import net.floodlightcontroller.linkdiscovery.Link;
+
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFPort;
 
@@ -179,6 +180,12 @@ public interface ITopologyService extends IFloodlightService  {
      * @return
      */
     public DatapathId getArchipelagoId(DatapathId switchId);
+    
+    /**
+     * Return all archipelagos
+     * @return
+     */
+    public Set<DatapathId> getArchipelagoIds();
 	
 	/**
 	 * Determines if two switches are in the same domain/island/cluster.

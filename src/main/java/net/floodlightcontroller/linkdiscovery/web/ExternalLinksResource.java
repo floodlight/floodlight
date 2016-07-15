@@ -25,7 +25,7 @@ import net.floodlightcontroller.linkdiscovery.ILinkDiscovery.LinkDirection;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscovery.LinkType;
 import net.floodlightcontroller.linkdiscovery.internal.LinkInfo;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryService;
-import net.floodlightcontroller.routing.Link;
+import net.floodlightcontroller.linkdiscovery.Link;
 
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFPort;

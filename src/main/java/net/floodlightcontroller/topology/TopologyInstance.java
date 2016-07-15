@@ -17,8 +17,8 @@
 package net.floodlightcontroller.topology;
 
 import net.floodlightcontroller.core.types.NodePortTuple;
+import net.floodlightcontroller.linkdiscovery.Link;
 import net.floodlightcontroller.routing.BroadcastTree;
-import net.floodlightcontroller.routing.Link;
 import net.floodlightcontroller.routing.Route;
 import net.floodlightcontroller.routing.RouteId;
 import net.floodlightcontroller.util.ClusterDFS;
@@ -1412,5 +1412,9 @@ public class TopologyInstance {
             return portsBroadcastPerArchipelago.get(a.getId());
         }
         return ImmutableSet.of();
+    }
+    
+    protected Set<DatapathId> getArchipelagoIds() {
+        return archipelagos.stream().map(a -> a.getId()).collect(Collectors.toSet());
     }
 } 
