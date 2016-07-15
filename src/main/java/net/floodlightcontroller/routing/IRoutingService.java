@@ -45,7 +45,7 @@ public interface IRoutingService extends IFloodlightService {
         }
     };
 
-    public PATH_METRIC setPathMetric(PATH_METRIC metric);
+    public void setPathMetric(PATH_METRIC metric);
     public PATH_METRIC getPathMetric();
 
     /**
@@ -76,7 +76,7 @@ public interface IRoutingService extends IFloodlightService {
      * @param dstPort destination port on destination switch
      * @return the lowest cost path
      */
-    public Route getPath(DatapathId srcId, OFPort srcPort, DatapathId dstId, OFPort dstPort);
+    public Route getPath(DatapathId src, OFPort srcPort, DatapathId dst, OFPort dstPort);
 
     /**
      * Return all possible paths up to quantity of the globally configured max.
@@ -123,7 +123,7 @@ public interface IRoutingService extends IFloodlightService {
      * @param numReqPaths the requested quantity of paths
      * @return list of paths ordered least to greatest cost
      */
-    public List<Route> getPathsSlow(DatapathId srcDpid, DatapathId dstDpid, int numReqPaths);
+    public List<Route> getPathsSlow(DatapathId src, DatapathId dst, int numReqPaths);
 
     /** 
      * Check if a path exists between src and dst

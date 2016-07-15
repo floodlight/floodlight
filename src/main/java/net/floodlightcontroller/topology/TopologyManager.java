@@ -34,7 +34,7 @@ import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.LLDP;
 import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.routing.IRoutingService;
-import net.floodlightcontroller.routing.Route;
+import net.floodlightcontroller.routing.IRoutingService.PATH_METRIC;
 import net.floodlightcontroller.routing.web.RoutingWebRoutable;
 import net.floodlightcontroller.statistics.IStatisticsService;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
@@ -62,1115 +62,1079 @@ import java.util.concurrent.TimeUnit;
  * of the network graph, as well as implementing tools for finding routes
  * through the topology.
  */
-public class TopologyManager implements IFloodlightModule, ITopologyService, IRoutingService, ILinkDiscoveryListener, IOFMessageListener {
-	protected static Logger log = LoggerFactory.getLogger(TopologyManager.class);
-	public static final String MODULE_NAME = "topology";
+public class TopologyManager implements IFloodlightModule, ITopologyService, 
+    ITopologyManagerBackend, ILinkDiscoveryListener, IOFMessageListener {
 
-	protected static IStatisticsService statisticsService;
+    protected static Logger log = LoggerFactory.getLogger(TopologyManager.class);
+    public static final String MODULE_NAME = "topology";
 
-	protected static volatile PATH_METRIC pathMetric = PATH_METRIC.HOPCOUNT_AVOID_TUNNELS; //default: compute paths on hop count
-	protected static boolean collectStatistics = false;
+    protected static IStatisticsService statisticsService;
 
-	/**
-	 * Maximum number of route entries stored in memory.
-	 */
-	private static volatile int maxPathsToCompute = 3;
+    protected static volatile PATH_METRIC pathMetric = PATH_METRIC.HOPCOUNT_AVOID_TUNNELS; //default: compute paths on hop count
+    protected static boolean collectStatistics = false;
 
-	/**
-	 * Role of the controller.
-	 */
-	private HARole role;
+    /**
+     * Maximum number of route entries stored in memory.
+     */
+    private static volatile int maxPathsToCompute = 3;
 
-	/**
-	 * Set of ports for each switch
-	 */
-	protected Map<DatapathId, Set<OFPort>> switchPorts;
+    /**
+     * Role of the controller.
+     */
+    private HARole role;
 
-	/**
-	 * Set of links organized by node port tuple
-	 */
-	protected Map<NodePortTuple, Set<Link>> switchPortLinks;
+    /**
+     * Set of ports for each switch
+     */
+    protected Map<DatapathId, Set<OFPort>> switchPorts;
 
-	/**
-	 * Set of direct links
-	 */
-	protected Map<NodePortTuple, Set<Link>> directLinks;
+    /**
+     * Set of links organized by node port tuple
+     */
+    protected Map<NodePortTuple, Set<Link>> switchPortLinks;
 
-	/**
-	 * set of links that are broadcast domain links.
-	 */
-	protected Map<NodePortTuple, Set<Link>> interClusterLinks;
+    /**
+     * Set of direct links
+     */
+    protected Map<NodePortTuple, Set<Link>> directLinks;
 
-	/**
-	 * set of tunnel links
-	 */
-	protected Set<NodePortTuple> tunnelPorts;
+    /**
+     * set of links that are broadcast domain links.
+     */
+    protected Map<NodePortTuple, Set<Link>> interClusterLinks;
 
-	protected ILinkDiscoveryService linkDiscoveryService;
-	protected IThreadPoolService threadPoolService;
-	protected IFloodlightProviderService floodlightProviderService;
-	protected IOFSwitchService switchService;
-	protected IRestApiService restApiService;
-	protected IDebugCounterService debugCounterService;
+    /**
+     * set of tunnel links
+     */
+    protected Set<NodePortTuple> tunnelPorts;
 
-	// Modules that listen to our updates
-	protected ArrayList<ITopologyListener> topologyAware;
+    protected ILinkDiscoveryService linkDiscoveryService;
+    protected IThreadPoolService threadPoolService;
+    protected IFloodlightProviderService floodlightProviderService;
+    protected IOFSwitchService switchService;
+    protected IRestApiService restApiService;
+    protected IDebugCounterService debugCounterService;
 
-	protected BlockingQueue<LDUpdate> ldUpdates;
+    // Modules that listen to our updates
+    protected ArrayList<ITopologyListener> topologyAware;
 
-	// These must be accessed using getCurrentInstance(), not directly
-	protected TopologyInstance currentInstance;
+    protected BlockingQueue<LDUpdate> ldUpdates;
 
-	protected SingletonTask newInstanceTask;
-	private Date lastUpdateTime;
+    // These must be accessed using getCurrentInstance(), not directly
+    protected TopologyInstance currentInstance;
 
-	/**
-	 * Flag that indicates if links (direct/tunnel/multihop links) were
-	 * updated as part of LDUpdate.
-	 */
-	protected boolean linksUpdated;
-	/**
-	 * Flag that indicates if direct or tunnel links were updated as
-	 * part of LDUpdate.
-	 */
-	protected boolean dtLinksUpdated;
+    protected SingletonTask newInstanceTask;
+    private Date lastUpdateTime;
 
-	/** Flag that indicates if tunnel ports were updated or not
-	 */
-	protected boolean tunnelPortsUpdated;
+    /**
+     * Flag that indicates if links (direct/tunnel/multihop links) were
+     * updated as part of LDUpdate.
+     */
+    protected boolean linksUpdated;
+    /**
+     * Flag that indicates if direct or tunnel links were updated as
+     * part of LDUpdate.
+     */
+    protected boolean dtLinksUpdated;
 
-	protected int TOPOLOGY_COMPUTE_INTERVAL_MS = 500;
+    /** Flag that indicates if tunnel ports were updated or not
+     */
+    protected boolean tunnelPortsUpdated;
 
-	private IHAListener haListener;
+    protected int TOPOLOGY_COMPUTE_INTERVAL_MS = 500;
 
-	/**
-	 *  Debug Counters
-	 */
-	protected static final String PACKAGE = TopologyManager.class.getPackage().getName();
-	protected IDebugCounter ctrIncoming;
+    private IHAListener haListener;
 
-	//  Getter/Setter methods
-	/**
-	 * Get the time interval for the period topology updates, if any.
-	 * The time returned is in milliseconds.
-	 * @return
-	 */
-	public int getTopologyComputeInterval() {
-		return TOPOLOGY_COMPUTE_INTERVAL_MS;
-	}
+    /**
+     *  Debug Counters
+     */
+    protected static final String PACKAGE = TopologyManager.class.getPackage().getName();
+    protected IDebugCounter ctrIncoming;
 
-	/**
-	 * Set the time interval for the period topology updates, if any.
-	 * The time is in milliseconds.
-	 * @return
-	 */
-	public void setTopologyComputeInterval(int time_ms) {
-		TOPOLOGY_COMPUTE_INTERVAL_MS = time_ms;
-	}
+    //  Getter/Setter methods
+    /**
+     * Get the time interval for the period topology updates, if any.
+     * The time returned is in milliseconds.
+     * @return
+     */
+    public int getTopologyComputeInterval() {
+        return TOPOLOGY_COMPUTE_INTERVAL_MS;
+    }
 
-	/**
-	 * Thread for recomputing topology.  The thread is always running,
-	 * however the function applyUpdates() has a blocking call.
-	 */
-	protected class UpdateTopologyWorker implements Runnable {
-		@Override
-		public void run() {
-			try {
-				if (ldUpdates.peek() != null) {
-					updateTopology();
-				}
-				handleMiscellaneousPeriodicEvents();
-			}
-			catch (Exception e) {
-				log.error("Error in topology instance task thread", e);
-			} finally {
-				if (floodlightProviderService.getRole() != HARole.STANDBY) {
-					newInstanceTask.reschedule(TOPOLOGY_COMPUTE_INTERVAL_MS, TimeUnit.MILLISECONDS);
-				}
-			}
-		}
-	}
+    /**
+     * Set the time interval for the period topology updates, if any.
+     * The time is in milliseconds.
+     * @return
+     */
+    public void setTopologyComputeInterval(int time_ms) {
+        TOPOLOGY_COMPUTE_INTERVAL_MS = time_ms;
+    }
 
-	// To be used for adding any periodic events that's required by topology.
-	protected void handleMiscellaneousPeriodicEvents() {
-		return;
-	}
+    /**
+     * Thread for recomputing topology.  The thread is always running,
+     * however the function applyUpdates() has a blocking call.
+     */
+    protected class UpdateTopologyWorker implements Runnable {
+        @Override
+        public void run() {
+            try {
+                if (ldUpdates.peek() != null) {
+                    updateTopology();
+                }
+                handleMiscellaneousPeriodicEvents();
+            }
+            catch (Exception e) {
+                log.error("Error in topology instance task thread", e);
+            } finally {
+                if (floodlightProviderService.getRole() != HARole.STANDBY) {
+                    newInstanceTask.reschedule(TOPOLOGY_COMPUTE_INTERVAL_MS, TimeUnit.MILLISECONDS);
+                }
+            }
+        }
+    }
 
-	public boolean updateTopology() {
-		boolean newInstanceFlag;
-		linksUpdated = false;
-		dtLinksUpdated = false;
-		tunnelPortsUpdated = false;
-		List<LDUpdate> appliedUpdates = applyUpdates();
-		newInstanceFlag = createNewInstance("link-discovery-updates");
-		lastUpdateTime = new Date();
-		informListeners(appliedUpdates);
-		return newInstanceFlag;
-	}
+    // To be used for adding any periodic events that's required by topology.
+    protected void handleMiscellaneousPeriodicEvents() {
+        return;
+    }
 
-	// **********************
-	// ILinkDiscoveryListener
-	// **********************
+    public boolean updateTopology() {
+        boolean newInstanceFlag;
+        linksUpdated = false;
+        dtLinksUpdated = false;
+        tunnelPortsUpdated = false;
+        List<LDUpdate> appliedUpdates = applyUpdates();
+        newInstanceFlag = createNewInstance("link-discovery-updates");
+        lastUpdateTime = new Date();
+        informListeners(appliedUpdates);
+        return newInstanceFlag;
+    }
 
-	@Override
-	public void linkDiscoveryUpdate(List<LDUpdate> updateList) {
-		if (log.isTraceEnabled()) {
-			log.trace("Queuing update: {}", updateList);
-		}
-		ldUpdates.addAll(updateList);
-	}
+    // **********************
+    // ILinkDiscoveryListener
+    // **********************
 
-	// ****************
-	// ITopologyService
-	// ****************
+    @Override
+    public void linkDiscoveryUpdate(List<LDUpdate> updateList) {
+        if (log.isTraceEnabled()) {
+            log.trace("Queuing update: {}", updateList);
+        }
+        ldUpdates.addAll(updateList);
+    }
 
-	@Override
-	public Map<DatapathId, Set<Link>> getAllLinks() {
+    // ****************
+    // ITopologyService
+    // ****************
 
-		Map<DatapathId, Set<Link>> dpidLinks = new HashMap<DatapathId, Set<Link>>();
-		TopologyInstance ti = getCurrentInstance();
-		Set<DatapathId> switches = ti.getSwitches();
+    @Override
+    public Map<DatapathId, Set<Link>> getAllLinks() {
 
-		for(DatapathId s: switches) {
-			if (this.switchPorts.get(s) == null) continue;
-			for (OFPort p: switchPorts.get(s)) {
-				NodePortTuple np = new NodePortTuple(s, p);
-				if (this.switchPortLinks.get(np) == null) continue;
-				for(Link l: this.switchPortLinks.get(np)) {
-					if(dpidLinks.containsKey(s)) {
-						dpidLinks.get(s).add(l);
-					}
-					else {
-						dpidLinks.put(s,new HashSet<Link>(Arrays.asList(l)));
-					}
+        Map<DatapathId, Set<Link>> dpidLinks = new HashMap<DatapathId, Set<Link>>();
+        TopologyInstance ti = getCurrentInstance();
+        Set<DatapathId> switches = ti.getSwitches();
 
-				}
-			}
-		}
+        for(DatapathId s: switches) {
+            if (this.switchPorts.get(s) == null) continue;
+            for (OFPort p: switchPorts.get(s)) {
+                NodePortTuple np = new NodePortTuple(s, p);
+                if (this.switchPortLinks.get(np) == null) continue;
+                for(Link l: this.switchPortLinks.get(np)) {
+                    if(dpidLinks.containsKey(s)) {
+                        dpidLinks.get(s).add(l);
+                    }
+                    else {
+                        dpidLinks.put(s,new HashSet<Link>(Arrays.asList(l)));
+                    }
 
-		return dpidLinks;
-	}
+                }
+            }
+        }
 
-	@Override
-	public boolean isEdge(DatapathId sw, OFPort p){
-		TopologyInstance ti = getCurrentInstance();
-		return ti.isEdge(sw, p);
-	}
+        return dpidLinks;
+    }
 
-	@Override
-	public Set<OFPort> getSwitchBroadcastPorts(DatapathId sw){
-		TopologyInstance ti = getCurrentInstance();
-		return ti.swBroadcastPorts(sw);
-	}
+    @Override
+    public boolean isEdge(DatapathId sw, OFPort p){
+        TopologyInstance ti = getCurrentInstance();
+        return ti.isEdge(sw, p);
+    }
 
-	@Override
-	public Date getLastUpdateTime() {
-		return lastUpdateTime;
-	}
+    @Override
+    public Set<OFPort> getSwitchBroadcastPorts(DatapathId sw){
+        TopologyInstance ti = getCurrentInstance();
+        return ti.swBroadcastPorts(sw);
+    }
 
-	@Override
-	public void addListener(ITopologyListener listener) {
-		topologyAware.add(listener);
-	}
-	
-	@Override
+    @Override
+    public Date getLastUpdateTime() {
+        return lastUpdateTime;
+    }
+
+    @Override
+    public void addListener(ITopologyListener listener) {
+        topologyAware.add(listener);
+    }
+
+    @Override
     public void removeListener(ITopologyListener listener) {
         topologyAware.remove(listener);
     }
 
-	@Override
-	public boolean isAttachmentPointPort(DatapathId switchid, OFPort port) {
+    @Override
+    public boolean isAttachmentPointPort(DatapathId switchid, OFPort port) {
 
-		// If the switch port is 'tun-bsn' port, it is not
-		// an attachment point port, irrespective of whether
-		// a link is found through it or not.
-		if (linkDiscoveryService.isTunnelPort(switchid, port))
-			return false;
+        // If the switch port is 'tun-bsn' port, it is not
+        // an attachment point port, irrespective of whether
+        // a link is found through it or not.
+        if (linkDiscoveryService.isTunnelPort(switchid, port))
+            return false;
 
-		TopologyInstance ti = getCurrentInstance();
+        TopologyInstance ti = getCurrentInstance();
 
-		// if the port is not attachment point port according to
-		// topology instance, then return false
-		if (ti.isAttachmentPointPort(switchid, port) == false)
-			return false;
+        // if the port is not attachment point port according to
+        // topology instance, then return false
+        if (ti.isAttachmentPointPort(switchid, port) == false)
+            return false;
 
-		// Check whether the port is a physical port. We should not learn
-		// attachment points on "special" ports.
-		if ((port.getShortPortNumber() & 0xff00) == 0xff00 && port.getShortPortNumber() != (short)0xfffe) return false;
+        // Check whether the port is a physical port. We should not learn
+        // attachment points on "special" ports.
+        if ((port.getShortPortNumber() & 0xff00) == 0xff00 && port.getShortPortNumber() != (short)0xfffe) return false;
 
-		// Make sure that the port is enabled.
-		IOFSwitch sw = switchService.getActiveSwitch(switchid);
-		if (sw == null) return false;
-		return (sw.portEnabled(port));
-	}
+        // Make sure that the port is enabled.
+        IOFSwitch sw = switchService.getActiveSwitch(switchid);
+        if (sw == null) return false;
+        return (sw.portEnabled(port));
+    }
 
-	@Override
-	public DatapathId getClusterId(DatapathId switchId) {
-		TopologyInstance ti = getCurrentInstance();
-		return ti.getClusterId(switchId);
-	}
+    @Override
+    public DatapathId getClusterId(DatapathId switchId) {
+        TopologyInstance ti = getCurrentInstance();
+        return ti.getClusterId(switchId);
+    }
 
-	@Override
-	public boolean isInSameCluster(DatapathId switch1, DatapathId switch2) {
-		TopologyInstance ti = getCurrentInstance();
-		return ti.isInSameCluster(switch1, switch2);
-	}
+    @Override
+    public boolean isInSameCluster(DatapathId switch1, DatapathId switch2) {
+        TopologyInstance ti = getCurrentInstance();
+        return ti.isInSameCluster(switch1, switch2);
+    }
 
-	@Override
-	public boolean isNotBlocked(DatapathId sw, OFPort port) {
-	    TopologyInstance ti = getCurrentInstance();
-	    return !ti.isBlockedPort(new NodePortTuple(sw, port));
-	}
+    @Override
+    public boolean isNotBlocked(DatapathId sw, OFPort port) {
+        TopologyInstance ti = getCurrentInstance();
+        return !ti.isBlockedPort(new NodePortTuple(sw, port));
+    }
 
-	@Override
-	public PATH_METRIC setPathMetric(PATH_METRIC metric) {
-		pathMetric = metric;
-		return pathMetric;
-	}
+    @Override
+    public void setPathMetric(PATH_METRIC metric) {
+        pathMetric = metric;
+    }
 
-	@Override
-	public PATH_METRIC getPathMetric() {
-		return pathMetric;
-	}
+    @Override
+    public PATH_METRIC getPathMetric() {
+        return pathMetric;
+    }
 
-	protected static PATH_METRIC getPathMetricInternal() {
-		return pathMetric;
-	}
-	
-	protected static int getMaxPathsToComputeInternal() {
-	    return maxPathsToCompute;
-	}
-	
-	@Override
-	public int getMaxPathsToCompute() {
-	    return maxPathsToCompute;
-	}
-	
-	@Override
-	public void setMaxPathsToCompute(int max) {
-	    maxPathsToCompute = max;
-	}
+    protected static PATH_METRIC getPathMetricInternal() {
+        return pathMetric;
+    }
 
-	////////////////////////////////////////////////////////////////////////
-	////////////////////////////////////////////////////////////////////////
+    protected static int getMaxPathsToComputeInternal() {
+        return maxPathsToCompute;
+    }
 
-	@Override
-	public boolean isBroadcastAllowed(DatapathId sw, OFPort portId) {
-		TopologyInstance ti = getCurrentInstance();
-		return ti.isBroadcastAllowedOnSwitchPort(sw, portId);
-	}
+    @Override
+    public int getMaxPathsToCompute() {
+        return maxPathsToCompute;
+    }
 
-	////////////////////////////////////////////////////////////////////////
-	////////////////////////////////////////////////////////////////////////
+    @Override
+    public void setMaxPathsToCompute(int max) {
+        maxPathsToCompute = max;
+    }
 
-	@Override
-	public Set<OFPort> getPortsWithLinks(DatapathId sw) {
-		TopologyInstance ti = getCurrentInstance();
-		return ti.getPortsWithLinks(sw);
-	}
+    ////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////
 
-	////////////////////////////////////////////////////////////////////////
-	////////////////////////////////////////////////////////////////////////
-	
-	/** 
-	 * Get all the ports on the target switch (targetSw) on which a
-	 * broadcast packet must be sent from a host whose attachment point
-	 * is on switch port (src, srcPort).
-	 */
-	@Override
-	public Set<OFPort> getBroadcastPorts(DatapathId targetSw,
-			DatapathId src, OFPort srcPort) {
-		TopologyInstance ti = getCurrentInstance();
-		return ti.getBroadcastPorts(targetSw, src, srcPort);
-	}
+    @Override
+    public boolean isBroadcastAllowed(DatapathId sw, OFPort portId) {
+        TopologyInstance ti = getCurrentInstance();
+        return ti.isBroadcastAllowedOnSwitchPort(sw, portId);
+    }
 
-	////////////////////////////////////////////////////////////////////////
-	////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////
 
-	@Override
-	public boolean isInSameArchipelago(DatapathId s1, DatapathId s2) {
-		TopologyInstance ti = getCurrentInstance();
-		return ti.isInSameArchipelago(s1, s2);
+    @Override
+    public Set<OFPort> getPortsWithLinks(DatapathId sw) {
+        TopologyInstance ti = getCurrentInstance();
+        return ti.getPortsWithLinks(sw);
+    }
 
-	}
+    ////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////
 
-	////////////////////////////////////////////////////////////////////////
-	////////////////////////////////////////////////////////////////////////
+    /** 
+     * Get all the ports on the target switch (targetSw) on which a
+     * broadcast packet must be sent from a host whose attachment point
+     * is on switch port (src, srcPort).
+     */
+    @Override
+    public Set<OFPort> getBroadcastPorts(DatapathId targetSw,
+            DatapathId src, OFPort srcPort) {
+        TopologyInstance ti = getCurrentInstance();
+        return ti.getBroadcastPorts(targetSw, src, srcPort);
+    }
 
-	@Override
-	public boolean isBroadcastPort(DatapathId sw, OFPort port) {
-		TopologyInstance ti = getCurrentInstance();
-		return ti.isBroadcastPort(new NodePortTuple(sw, port));
-	}
+    ////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////
 
-	////////////////////////////////////////////////////////////////////////
-	////////////////////////////////////////////////////////////////////////
+    @Override
+    public boolean isInSameArchipelago(DatapathId s1, DatapathId s2) {
+        TopologyInstance ti = getCurrentInstance();
+        return ti.isInSameArchipelago(s1, s2);
 
-	@Override
-	public boolean isConsistent(DatapathId oldSw, OFPort oldPort,
-			DatapathId newSw, OFPort newPort) {
-		TopologyInstance ti = getCurrentInstance();
-		return ti.isConsistent(oldSw, oldPort, newSw, newPort);
-	}
+    }
 
-	////////////////////////////////////////////////////////////////////////
-	////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////
 
-	@Override
-	public Set<DatapathId> getSwitchesInCluster(DatapathId switchDPID) {
-		TopologyInstance ti = getCurrentInstance();
-		return ti.getSwitchesInCluster(switchDPID);
-	}
-	////////////////////////////////////////////////////////////////////////
-	////////////////////////////////////////////////////////////////////////
+    @Override
+    public boolean isBroadcastPort(DatapathId sw, OFPort port) {
+        TopologyInstance ti = getCurrentInstance();
+        return ti.isBroadcastPort(new NodePortTuple(sw, port));
+    }
 
-	@Override
-	public Set<Link> getExternalInterClusterLinks() {
-	    ImmutableSet.Builder<Link> b = ImmutableSet.builder();
+    ////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////
+
+    @Override
+    public boolean isConsistent(DatapathId oldSw, OFPort oldPort,
+            DatapathId newSw, OFPort newPort) {
+        TopologyInstance ti = getCurrentInstance();
+        return ti.isConsistent(oldSw, oldPort, newSw, newPort);
+    }
+
+    ////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////
+
+    @Override
+    public Set<DatapathId> getSwitchesInCluster(DatapathId switchDPID) {
+        TopologyInstance ti = getCurrentInstance();
+        return ti.getSwitchesInCluster(switchDPID);
+    }
+    ////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////
+
+    @Override
+    public Set<Link> getExternalInterClusterLinks() {
+        ImmutableSet.Builder<Link> b = ImmutableSet.builder();
         for (Collection<Link> c : interClusterLinks.values()) {
             for (Link l : c) {
                 b.add(l);
             }
         }
         return b.build();
-	}
-	
-	@Override
+    }
+
+    @Override
     public Set<Link> getInternalInterClusterLinks() {
         TopologyInstance ti = getCurrentInstance();
         return ti.getInternalInterClusterLinks();
     }
 
-	@Override
-	public Set<NodePortTuple> getTunnelPorts() {
-		return tunnelPorts;
-	}
-
-	@Override
-	public Set<NodePortTuple> getBlockedPorts() {
-		Set<NodePortTuple> bp;
-		Set<NodePortTuple> blockedPorts =
-				new HashSet<NodePortTuple>();
-
-		bp = getCurrentInstance().getBlockedPorts();
-		if (bp != null)
-			blockedPorts.addAll(bp);
-
-		return blockedPorts;
-	}
-	////////////////////////////////////////////////////////////////////////
-	////////////////////////////////////////////////////////////////////////
-
-	// ***************
-	// IRoutingService
-	// ***************
-
-	@Override
-	public Route getPath(DatapathId src, DatapathId dst) {
-	    TopologyInstance ti = getCurrentInstance();
-        return ti.getPath(src, dst);
-	}
-	
-	@Override
-	public Route getPath(DatapathId src, OFPort srcPort, DatapathId dst, OFPort dstPort) {
-	    TopologyInstance ti = getCurrentInstance();
-        return ti.getPath(src, srcPort, dst, dstPort);
+    @Override
+    public Set<NodePortTuple> getTunnelPorts() {
+        return tunnelPorts;
     }
 
-	@Override
-	public boolean pathExists(DatapathId src, DatapathId dst) {
-	    TopologyInstance ti = getCurrentInstance();
-        return ti.pathExists(src, dst);
-	}
+    @Override
+    public Set<NodePortTuple> getBlockedPorts() {
+        Set<NodePortTuple> bp;
+        Set<NodePortTuple> blockedPorts =
+                new HashSet<NodePortTuple>();
 
-	@Override
-	public List<Route> getPathsFast(DatapathId srcDpid, DatapathId dstDpid) {
-        return getCurrentInstance().getPathsFast(srcDpid, dstDpid, maxPathsToCompute);
-	}
+        bp = getCurrentInstance().getBlockedPorts();
+        if (bp != null)
+            blockedPorts.addAll(bp);
 
-	@Override
-	public List<Route> getPathsFast(DatapathId srcDpid, DatapathId dstDpid, int k) {
-		return getCurrentInstance().getPathsFast(srcDpid, dstDpid, k);
-	}
+        return blockedPorts;
+    }
+    ////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////
 
-	@Override
-	public List<Route> getPathsSlow(DatapathId srcDpid, DatapathId dstDpid, int k) {
-		return getCurrentInstance().getPathsSlow(srcDpid, dstDpid, k);
-	}
+    public Map<Link, Integer> getLinkCostMap() {
+        TopologyInstance ti = getCurrentInstance();
+        return ti.initLinkCostMap();
+    }
 
-	public Map<Link, Integer> getLinkCostMap() {
-		TopologyInstance ti = getCurrentInstance();
-		return ti.initLinkCostMap();
-	}
+    // ******************
+    // IOFMessageListener
+    // ******************
 
-	// ******************
-	// IOFMessageListener
-	// ******************
+    @Override
+    public String getName() {
+        return MODULE_NAME;
+    }
 
-	@Override
-	public String getName() {
-		return MODULE_NAME;
-	}
+    @Override
+    public boolean isCallbackOrderingPrereq(OFType type, String name) {
+        return "linkdiscovery".equals(name);
+    }
 
-	@Override
-	public boolean isCallbackOrderingPrereq(OFType type, String name) {
-		return "linkdiscovery".equals(name);
-	}
+    @Override
+    public boolean isCallbackOrderingPostreq(OFType type, String name) {
+        return false;
+    }
 
-	@Override
-	public boolean isCallbackOrderingPostreq(OFType type, String name) {
-		return false;
-	}
+    @Override
+    public Command receive(IOFSwitch sw, OFMessage msg, FloodlightContext cntx) {
+        switch (msg.getType()) {
+        case PACKET_IN:
+            ctrIncoming.increment();
+            return this.processPacketInMessage(sw, (OFPacketIn) msg, cntx);
+        default:
+            break;
+        }
 
-	@Override
-	public Command receive(IOFSwitch sw, OFMessage msg, FloodlightContext cntx) {
-		switch (msg.getType()) {
-		case PACKET_IN:
-			ctrIncoming.increment();
-			return this.processPacketInMessage(sw, (OFPacketIn) msg, cntx);
-		default:
-			break;
-		}
+        return Command.CONTINUE;
+    }
 
-		return Command.CONTINUE;
-	}
+    // ***************
+    // IHAListener
+    // ***************
 
-	// ***************
-	// IHAListener
-	// ***************
+    private class HAListenerDelegate implements IHAListener {
+        @Override
+        public void transitionToActive() {
+            role = HARole.ACTIVE;
+            log.debug("Re-computing topology due " +
+                    "to HA change from STANDBY->ACTIVE");
+            newInstanceTask.reschedule(TOPOLOGY_COMPUTE_INTERVAL_MS,
+                    TimeUnit.MILLISECONDS);
+        }
 
-	private class HAListenerDelegate implements IHAListener {
-		@Override
-		public void transitionToActive() {
-			role = HARole.ACTIVE;
-			log.debug("Re-computing topology due " +
-					"to HA change from STANDBY->ACTIVE");
-			newInstanceTask.reschedule(TOPOLOGY_COMPUTE_INTERVAL_MS,
-					TimeUnit.MILLISECONDS);
-		}
+        @Override
+        public void controllerNodeIPsChanged(
+                Map<String, String> curControllerNodeIPs,
+                Map<String, String> addedControllerNodeIPs,
+                Map<String, String> removedControllerNodeIPs) {
+        }
 
-		@Override
-		public void controllerNodeIPsChanged(
-				Map<String, String> curControllerNodeIPs,
-				Map<String, String> addedControllerNodeIPs,
-				Map<String, String> removedControllerNodeIPs) {
-		}
+        @Override
+        public String getName() {
+            return TopologyManager.this.getName();
+        }
 
-		@Override
-		public String getName() {
-			return TopologyManager.this.getName();
-		}
+        @Override
+        public boolean isCallbackOrderingPrereq(HAListenerTypeMarker type,
+                String name) {
+            return "linkdiscovery".equals(name);
+        }
 
-		@Override
-		public boolean isCallbackOrderingPrereq(HAListenerTypeMarker type,
-				String name) {
-			return "linkdiscovery".equals(name);
-		}
+        @Override
+        public boolean isCallbackOrderingPostreq(HAListenerTypeMarker type,
+                String name) {
+            return false;
+        }
 
-		@Override
-		public boolean isCallbackOrderingPostreq(HAListenerTypeMarker type,
-				String name) {
-			return false;
-		}
+        @Override
+        public void transitionToStandby() { }
+    }
 
-		@Override
-		public void transitionToStandby() { }
-	}
+    // *****************
+    // IFloodlightModule
+    // *****************
 
-	// *****************
-	// IFloodlightModule
-	// *****************
+    @Override
+    public Collection<Class<? extends IFloodlightService>> getModuleServices() {
+        Collection<Class<? extends IFloodlightService>> l =
+                new ArrayList<Class<? extends IFloodlightService>>();
+        l.add(ITopologyService.class);
+        l.add(IRoutingService.class);
+        return l;
+    }
 
-	@Override
-	public Collection<Class<? extends IFloodlightService>> getModuleServices() {
-		Collection<Class<? extends IFloodlightService>> l =
-				new ArrayList<Class<? extends IFloodlightService>>();
-		l.add(ITopologyService.class);
-		l.add(IRoutingService.class);
-		return l;
-	}
+    @Override
+    public Map<Class<? extends IFloodlightService>, IFloodlightService>
+    getServiceImpls() {
+        Map<Class<? extends IFloodlightService>,
+        IFloodlightService> m =
+        new HashMap<Class<? extends IFloodlightService>,
+        IFloodlightService>();
+        // We are the class that implements the service
+        m.put(ITopologyService.class, this);
+        m.put(IRoutingService.class, this);
+        return m;
+    }
 
-	@Override
-	public Map<Class<? extends IFloodlightService>, IFloodlightService>
-	getServiceImpls() {
-		Map<Class<? extends IFloodlightService>,
-		IFloodlightService> m =
-		new HashMap<Class<? extends IFloodlightService>,
-		IFloodlightService>();
-		// We are the class that implements the service
-		m.put(ITopologyService.class, this);
-		m.put(IRoutingService.class, this);
-		return m;
-	}
+    @Override
+    public Collection<Class<? extends IFloodlightService>>
+    getModuleDependencies() {
+        Collection<Class<? extends IFloodlightService>> l =
+                new ArrayList<Class<? extends IFloodlightService>>();
+        l.add(ILinkDiscoveryService.class);
+        l.add(IThreadPoolService.class);
+        l.add(IFloodlightProviderService.class);
+        l.add(IOFSwitchService.class);
+        l.add(IDebugCounterService.class);
+        l.add(IRestApiService.class);
+        return l;
+    }
 
-	@Override
-	public Collection<Class<? extends IFloodlightService>>
-	getModuleDependencies() {
-		Collection<Class<? extends IFloodlightService>> l =
-				new ArrayList<Class<? extends IFloodlightService>>();
-		l.add(ILinkDiscoveryService.class);
-		l.add(IThreadPoolService.class);
-		l.add(IFloodlightProviderService.class);
-		l.add(IOFSwitchService.class);
-		l.add(IDebugCounterService.class);
-		l.add(IRestApiService.class);
-		return l;
-	}
+    @Override
+    public void init(FloodlightModuleContext context)
+            throws FloodlightModuleException {
+        linkDiscoveryService = context.getServiceImpl(ILinkDiscoveryService.class);
+        threadPoolService = context.getServiceImpl(IThreadPoolService.class);
+        floodlightProviderService = context.getServiceImpl(IFloodlightProviderService.class);
+        switchService = context.getServiceImpl(IOFSwitchService.class);
+        restApiService = context.getServiceImpl(IRestApiService.class);
+        debugCounterService = context.getServiceImpl(IDebugCounterService.class);
+        statisticsService = context.getServiceImpl(IStatisticsService.class);
 
-	@Override
-	public void init(FloodlightModuleContext context)
-			throws FloodlightModuleException {
-		linkDiscoveryService = context.getServiceImpl(ILinkDiscoveryService.class);
-		threadPoolService = context.getServiceImpl(IThreadPoolService.class);
-		floodlightProviderService = context.getServiceImpl(IFloodlightProviderService.class);
-		switchService = context.getServiceImpl(IOFSwitchService.class);
-		restApiService = context.getServiceImpl(IRestApiService.class);
-		debugCounterService = context.getServiceImpl(IDebugCounterService.class);
-		statisticsService = context.getServiceImpl(IStatisticsService.class);
+        switchPorts = new HashMap<DatapathId, Set<OFPort>>();
+        switchPortLinks = new HashMap<NodePortTuple, Set<Link>>();
+        directLinks = new HashMap<NodePortTuple, Set<Link>>();
+        interClusterLinks = new HashMap<NodePortTuple, Set<Link>>();
+        tunnelPorts = new HashSet<NodePortTuple>();
+        topologyAware = new ArrayList<ITopologyListener>();
+        ldUpdates = new LinkedBlockingQueue<LDUpdate>();
+        haListener = new HAListenerDelegate();
+        registerTopologyDebugCounters();
 
-		switchPorts = new HashMap<DatapathId, Set<OFPort>>();
-		switchPortLinks = new HashMap<NodePortTuple, Set<Link>>();
-		directLinks = new HashMap<NodePortTuple, Set<Link>>();
-		interClusterLinks = new HashMap<NodePortTuple, Set<Link>>();
-		tunnelPorts = new HashSet<NodePortTuple>();
-		topologyAware = new ArrayList<ITopologyListener>();
-		ldUpdates = new LinkedBlockingQueue<LDUpdate>();
-		haListener = new HAListenerDelegate();
-		registerTopologyDebugCounters();
+        Map<String, String> configOptions = context.getConfigParams(this);
+        String metric = configOptions.get("pathMetric") != null
+                ? configOptions.get("pathMetric").trim().toLowerCase() : null;
+                if (metric != null) {
+                    metric = metric.toLowerCase().trim();
+                    switch (metric) {
+                    case "latency":
+                        pathMetric = PATH_METRIC.LATENCY;
+                        break;
+                    case "utilization":
+                        pathMetric = PATH_METRIC.UTILIZATION;
+                        break;
+                    case "hopcount":
+                        pathMetric = PATH_METRIC.HOPCOUNT;
+                        break;
+                    case "hopcount_avoid_tunnels":
+                        pathMetric = PATH_METRIC.HOPCOUNT_AVOID_TUNNELS;
+                        break;
+                    case "link_speed":
+                        pathMetric = PATH_METRIC.LINK_SPEED;
+                        break;
+                    default:
+                        log.error("Invalid routing metric {}. Using default {}", metric, pathMetric.getMetricName());
+                        break;
+                    }
+                }
+                log.info("Path metrics set to {}", pathMetric);
 
-		Map<String, String> configOptions = context.getConfigParams(this);
-		String metric = configOptions.get("pathMetric") != null
-				? configOptions.get("pathMetric").trim().toLowerCase() : null;
-		if (metric != null) {
-		    metric = metric.toLowerCase().trim();
-			switch (metric) {
-				case "latency":
-				    pathMetric = PATH_METRIC.LATENCY;
-					break;
-				case "utilization":
-				    pathMetric = PATH_METRIC.UTILIZATION;
-					break;
-				case "hopcount":
-				    pathMetric = PATH_METRIC.HOPCOUNT;
-					break;
-				case "hopcount_avoid_tunnels":
-				    pathMetric = PATH_METRIC.HOPCOUNT_AVOID_TUNNELS;
-					break;
-				case "link_speed":
-				    pathMetric = PATH_METRIC.LINK_SPEED;
-					break;
-				default:
-					log.error("Invalid routing metric {}. Using default {}", metric, pathMetric.getMetricName());
-					break;
-			}
-		}
-		log.info("Path metrics set to {}", pathMetric);
+                String maxroutes = configOptions.get("maxPathsToCompute") != null
+                        ? configOptions.get("maxPathsToCompute").trim() : null;
+                        if (maxroutes != null) {
+                            try {
+                                maxPathsToCompute = Integer.parseInt(maxroutes);
+                            } catch (NumberFormatException e) {
+                                log.error("Invalid 'maxPathsToCompute'. Using default {}", maxPathsToCompute);
+                            }
+                        }
+                        log.info("Will compute a max of {} paths upon topology updates", maxPathsToCompute);
+    }
 
-		String maxroutes = configOptions.get("maxPathsToCompute") != null
-				? configOptions.get("maxPathsToCompute").trim() : null;
-		if (maxroutes != null) {
-		    try {
-		        maxPathsToCompute = Integer.parseInt(maxroutes);
-		    } catch (NumberFormatException e) {
-		        log.error("Invalid 'maxPathsToCompute'. Using default {}", maxPathsToCompute);
-		    }
-		}
-		log.info("Will compute a max of {} paths upon topology updates", maxPathsToCompute);
-	}
+    @Override
+    public void startUp(FloodlightModuleContext context) {
+        clearCurrentTopology();
+        // Initialize role to floodlight provider role.
+        this.role = floodlightProviderService.getRole();
 
-	@Override
-	public void startUp(FloodlightModuleContext context) {
-		clearCurrentTopology();
-		// Initialize role to floodlight provider role.
-		this.role = floodlightProviderService.getRole();
+        ScheduledExecutorService ses = threadPoolService.getScheduledExecutor();
+        newInstanceTask = new SingletonTask(ses, new UpdateTopologyWorker());
 
-		ScheduledExecutorService ses = threadPoolService.getScheduledExecutor();
-		newInstanceTask = new SingletonTask(ses, new UpdateTopologyWorker());
+        if (role != HARole.STANDBY) {
+            newInstanceTask.reschedule(TOPOLOGY_COMPUTE_INTERVAL_MS, TimeUnit.MILLISECONDS);
+        }
 
-		if (role != HARole.STANDBY) {
-			newInstanceTask.reschedule(TOPOLOGY_COMPUTE_INTERVAL_MS, TimeUnit.MILLISECONDS);
-		}
+        linkDiscoveryService.addListener(this);
+        floodlightProviderService.addOFMessageListener(OFType.PACKET_IN, this);
+        floodlightProviderService.addHAListener(this.haListener);
+        addRestletRoutable();
+    }
 
-		linkDiscoveryService.addListener(this);
-		floodlightProviderService.addOFMessageListener(OFType.PACKET_IN, this);
-		floodlightProviderService.addHAListener(this.haListener);
-		addRestletRoutable();
-	}
+    private void registerTopologyDebugCounters() throws FloodlightModuleException {
+        if (debugCounterService == null) {
+            log.error("debugCounterService should not be null. Has IDebugEventService been loaded previously?");
+        }
+        debugCounterService.registerModule(PACKAGE);
+        ctrIncoming = debugCounterService.registerCounter(
+                PACKAGE, "incoming",
+                "All incoming packets seen by this module");
+    }
 
-	private void registerTopologyDebugCounters() throws FloodlightModuleException {
-		if (debugCounterService == null) {
-			log.error("debugCounterService should not be null. Has IDebugEventService been loaded previously?");
-		}
-		debugCounterService.registerModule(PACKAGE);
-		ctrIncoming = debugCounterService.registerCounter(
-				PACKAGE, "incoming",
-				"All incoming packets seen by this module");
-	}
+    protected void addRestletRoutable() {
+        restApiService.addRestletRoutable(new TopologyWebRoutable());
+        restApiService.addRestletRoutable(new RoutingWebRoutable());
+    }
 
-	protected void addRestletRoutable() {
-		restApiService.addRestletRoutable(new TopologyWebRoutable());
-		restApiService.addRestletRoutable(new RoutingWebRoutable());
-	}
+    // ****************
+    // Internal methods
+    // ****************
+    /**
+     * If the packet-in switch port is disabled for all data traffic, then
+     * the packet will be dropped.  Otherwise, the packet will follow the
+     * normal processing chain.
+     * @param sw
+     * @param pi
+     * @param cntx
+     * @return
+     */
+    protected Command dropFilter(DatapathId sw, OFPacketIn pi,
+            FloodlightContext cntx) {
+        Command result = Command.CONTINUE;
+        OFPort inPort = (pi.getVersion().compareTo(OFVersion.OF_12) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT));
 
-	// ****************
-	// Internal methods
-	// ****************
-	/**
-	 * If the packet-in switch port is disabled for all data traffic, then
-	 * the packet will be dropped.  Otherwise, the packet will follow the
-	 * normal processing chain.
-	 * @param sw
-	 * @param pi
-	 * @param cntx
-	 * @return
-	 */
-	protected Command dropFilter(DatapathId sw, OFPacketIn pi,
-			FloodlightContext cntx) {
-		Command result = Command.CONTINUE;
-		OFPort inPort = (pi.getVersion().compareTo(OFVersion.OF_12) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT));
+        // If the input port is not allowed for data traffic, drop everything.
+        // BDDP packets will not reach this stage.
+        if (isNotBlocked(sw, inPort) == false) {
+            if (log.isTraceEnabled()) {
+                log.trace("Ignoring packet because of topology " +
+                        "restriction on switch={}, port={}", sw.getLong(), inPort.getPortNumber());
+                result = Command.STOP;
+            }
+        }
+        return result;
+    }
 
-		// If the input port is not allowed for data traffic, drop everything.
-		// BDDP packets will not reach this stage.
-		if (isNotBlocked(sw, inPort) == false) {
-			if (log.isTraceEnabled()) {
-				log.trace("Ignoring packet because of topology " +
-						"restriction on switch={}, port={}", sw.getLong(), inPort.getPortNumber());
-				result = Command.STOP;
-			}
-		}
-		return result;
-	}
+    /**
+     * Send a packet-out to multiple ports
+     * @param packetData
+     * @param sw
+     * @param ports
+     * @param cntx
+     */
+    public void doMultiActionPacketOut(byte[] packetData, IOFSwitch sw,
+            Set<OFPort> ports,
+            FloodlightContext cntx) {
 
-	/**
-	 * Send a packet-out to multiple ports
-	 * @param packetData
-	 * @param sw
-	 * @param ports
-	 * @param cntx
-	 */
-	public void doMultiActionPacketOut(byte[] packetData, IOFSwitch sw,
-			Set<OFPort> ports,
-			FloodlightContext cntx) {
+        if (ports == null) return;
+        if (packetData == null || packetData.length <= 0) return;
 
-		if (ports == null) return;
-		if (packetData == null || packetData.length <= 0) return;
+        //OFPacketOut po = (OFPacketOut) floodlightProvider.getOFMessageFactory().getMessage(OFType.PACKET_OUT);
+        OFPacketOut.Builder pob = sw.getOFFactory().buildPacketOut();
+        List<OFAction> actions = new ArrayList<OFAction>();
+        for(OFPort p: ports) {
+            //actions.add(new OFActionOutput(p, (short) 0));
+            actions.add(sw.getOFFactory().actions().output(p, 0));
+        }
 
-		//OFPacketOut po = (OFPacketOut) floodlightProvider.getOFMessageFactory().getMessage(OFType.PACKET_OUT);
-		OFPacketOut.Builder pob = sw.getOFFactory().buildPacketOut();
-		List<OFAction> actions = new ArrayList<OFAction>();
-		for(OFPort p: ports) {
-			//actions.add(new OFActionOutput(p, (short) 0));
-			actions.add(sw.getOFFactory().actions().output(p, 0));
-		}
+        // set actions
+        pob.setActions(actions);
+        // set action length
+        //po.setActionsLength((short) (OFActionOutput.MINIMUM_LENGTH * ports.size()));
+        // set buffer-id to BUFFER_ID_NONE
+        pob.setBufferId(OFBufferId.NO_BUFFER);
+        // set in-port to OFPP_NONE
+        pob.setInPort(OFPort.ZERO);
 
-		// set actions
-		pob.setActions(actions);
-		// set action length
-		//po.setActionsLength((short) (OFActionOutput.MINIMUM_LENGTH * ports.size()));
-		// set buffer-id to BUFFER_ID_NONE
-		pob.setBufferId(OFBufferId.NO_BUFFER);
-		// set in-port to OFPP_NONE
-		pob.setInPort(OFPort.ZERO);
+        // set packet data
+        pob.setData(packetData);
 
-		// set packet data
-		pob.setData(packetData);
+        // compute and set packet length.
+        //short poLength = (short)(OFPacketOut.MINIMUM_LENGTH + po.getActionsLength() + packetData.length);
 
-		// compute and set packet length.
-		//short poLength = (short)(OFPacketOut.MINIMUM_LENGTH + po.getActionsLength() + packetData.length);
+        //po.setLength(poLength);
 
-		//po.setLength(poLength);
+        //ctrIncoming.updatePktOutFMCounterStore(sw, po);
+        if (log.isTraceEnabled()) {
+            log.trace("write broadcast packet on switch-id={} " +
+                    "interaces={} packet-data={} packet-out={}",
+                    new Object[] {sw.getId(), ports, packetData, pob.build()});
+        }
+        sw.write(pob.build(), LogicalOFMessageCategory.MAIN);
+    }
 
-		//ctrIncoming.updatePktOutFMCounterStore(sw, po);
-		if (log.isTraceEnabled()) {
-			log.trace("write broadcast packet on switch-id={} " +
-					"interaces={} packet-data={} packet-out={}",
-					new Object[] {sw.getId(), ports, packetData, pob.build()});
-		}
-		sw.write(pob.build(), LogicalOFMessageCategory.MAIN);
-	}
+    /**
+     * Get the set of ports to eliminate for sending out BDDP.  The method
+     * returns all the ports that are suppressed for link discovery on the
+     * switch.
+     * packets.
+     * @param sid
+     * @return
+     */
+    protected Set<OFPort> getPortsToEliminateForBDDP(DatapathId sid) {
+        Set<NodePortTuple> suppressedNptList = linkDiscoveryService.getSuppressLLDPsInfo();
+        if (suppressedNptList == null) return null;
 
-	/**
-	 * Get the set of ports to eliminate for sending out BDDP.  The method
-	 * returns all the ports that are suppressed for link discovery on the
-	 * switch.
-	 * packets.
-	 * @param sid
-	 * @return
-	 */
-	protected Set<OFPort> getPortsToEliminateForBDDP(DatapathId sid) {
-		Set<NodePortTuple> suppressedNptList = linkDiscoveryService.getSuppressLLDPsInfo();
-		if (suppressedNptList == null) return null;
+        Set<OFPort> resultPorts = new HashSet<OFPort>();
+        for(NodePortTuple npt: suppressedNptList) {
+            if (npt.getNodeId() == sid) {
+                resultPorts.add(npt.getPortId());
+            }
+        }
 
-		Set<OFPort> resultPorts = new HashSet<OFPort>();
-		for(NodePortTuple npt: suppressedNptList) {
-			if (npt.getNodeId() == sid) {
-				resultPorts.add(npt.getPortId());
-			}
-		}
+        return resultPorts;
+    }
 
-		return resultPorts;
-	}
+    /**
+     * The BDDP packets are forwarded out of all the ports out of an
+     * openflowdomain.  Get all the switches in the same openflow
+     * domain as the sw (disabling tunnels).  Then get all the
+     * external switch ports and send these packets out.
+     * @param sw
+     * @param pi
+     * @param cntx
+     */
+    protected void doFloodBDDP(DatapathId pinSwitch, OFPacketIn pi,
+            FloodlightContext cntx) {
 
-	/**
-	 * The BDDP packets are forwarded out of all the ports out of an
-	 * openflowdomain.  Get all the switches in the same openflow
-	 * domain as the sw (disabling tunnels).  Then get all the
-	 * external switch ports and send these packets out.
-	 * @param sw
-	 * @param pi
-	 * @param cntx
-	 */
-	protected void doFloodBDDP(DatapathId pinSwitch, OFPacketIn pi,
-			FloodlightContext cntx) {
+        TopologyInstance ti = getCurrentInstance();
 
-		TopologyInstance ti = getCurrentInstance();
+        Set<DatapathId> switches = ti.getSwitchesInCluster(pinSwitch);
 
-		Set<DatapathId> switches = ti.getSwitchesInCluster(pinSwitch);
+        if (switches == null)
+        {
+            // indicates no links are connected to the switches
+            switches = new HashSet<DatapathId>();
+            switches.add(pinSwitch);
+        }
 
-		if (switches == null)
-		{
-			// indicates no links are connected to the switches
-			switches = new HashSet<DatapathId>();
-			switches.add(pinSwitch);
-		}
+        for (DatapathId sid : switches) {
+            IOFSwitch sw = switchService.getSwitch(sid);
+            if (sw == null) continue;
+            Collection<OFPort> enabledPorts = sw.getEnabledPortNumbers();
+            if (enabledPorts == null)
+                continue;
+            Set<OFPort> ports = new HashSet<OFPort>();
+            ports.addAll(enabledPorts);
 
-		for (DatapathId sid : switches) {
-			IOFSwitch sw = switchService.getSwitch(sid);
-			if (sw == null) continue;
-			Collection<OFPort> enabledPorts = sw.getEnabledPortNumbers();
-			if (enabledPorts == null)
-				continue;
-			Set<OFPort> ports = new HashSet<OFPort>();
-			ports.addAll(enabledPorts);
+            // all the ports known to topology // without tunnels.
+            // out of these, we need to choose only those that are
+            // broadcast port, otherwise, we should eliminate.
+            Set<OFPort> portsKnownToTopo = ti.getPortsWithLinks(sid);
 
-			// all the ports known to topology // without tunnels.
-			// out of these, we need to choose only those that are
-			// broadcast port, otherwise, we should eliminate.
-			Set<OFPort> portsKnownToTopo = ti.getPortsWithLinks(sid);
+            if (portsKnownToTopo != null) {
+                for (OFPort p : portsKnownToTopo) {
+                    NodePortTuple npt =
+                            new NodePortTuple(sid, p);
+                    if (ti.isBroadcastPort(npt) == false) {
+                        ports.remove(p);
+                    }
+                }
+            }
 
-			if (portsKnownToTopo != null) {
-				for (OFPort p : portsKnownToTopo) {
-					NodePortTuple npt =
-							new NodePortTuple(sid, p);
-					if (ti.isBroadcastPort(npt) == false) {
-						ports.remove(p);
-					}
-				}
-			}
+            Set<OFPort> portsToEliminate = getPortsToEliminateForBDDP(sid);
+            if (portsToEliminate != null) {
+                ports.removeAll(portsToEliminate);
+            }
 
-			Set<OFPort> portsToEliminate = getPortsToEliminateForBDDP(sid);
-			if (portsToEliminate != null) {
-				ports.removeAll(portsToEliminate);
-			}
+            // remove the incoming switch port
+            if (pinSwitch == sid) {
+                ports.remove((pi.getVersion().compareTo(OFVersion.OF_12) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT)));
+            }
 
-			// remove the incoming switch port
-			if (pinSwitch == sid) {
-				ports.remove((pi.getVersion().compareTo(OFVersion.OF_12) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT)));
-			}
+            // we have all the switch ports to which we need to broadcast.
+            doMultiActionPacketOut(pi.getData(), sw, ports, cntx);
+        }
 
-			// we have all the switch ports to which we need to broadcast.
-			doMultiActionPacketOut(pi.getData(), sw, ports, cntx);
-		}
+    }
 
-	}
+    protected Command processPacketInMessage(IOFSwitch sw, OFPacketIn pi, FloodlightContext cntx) {
+        // get the packet-in switch.
+        Ethernet eth =
+                IFloodlightProviderService.bcStore.
+                get(cntx,IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
 
-	protected Command processPacketInMessage(IOFSwitch sw, OFPacketIn pi, FloodlightContext cntx) {
-		// get the packet-in switch.
-		Ethernet eth =
-				IFloodlightProviderService.bcStore.
-				get(cntx,IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
+        if (eth.getPayload() instanceof BSN) {
+            BSN bsn = (BSN) eth.getPayload();
+            if (bsn == null) return Command.STOP;
+            if (bsn.getPayload() == null) return Command.STOP;
 
-		if (eth.getPayload() instanceof BSN) {
-			BSN bsn = (BSN) eth.getPayload();
-			if (bsn == null) return Command.STOP;
-			if (bsn.getPayload() == null) return Command.STOP;
+            // It could be a packet other than BSN LLDP, therefore
+            // continue with the regular processing.
+            if (bsn.getPayload() instanceof LLDP == false)
+                return Command.CONTINUE;
 
-			// It could be a packet other than BSN LLDP, therefore
-			// continue with the regular processing.
-			if (bsn.getPayload() instanceof LLDP == false)
-				return Command.CONTINUE;
+            doFloodBDDP(sw.getId(), pi, cntx);
+            return Command.STOP;
+        } else {
+            return dropFilter(sw.getId(), pi, cntx);
+        }
+    }
 
-			doFloodBDDP(sw.getId(), pi, cntx);
-			return Command.STOP;
-		} else {
-			return dropFilter(sw.getId(), pi, cntx);
-		}
-	}
+    /**
+     * Updates concerning switch disconnect and port down are not processed.
+     * LinkDiscoveryManager is expected to process those messages and send
+     * multiple link removed messages.  However, all the updates from
+     * LinkDiscoveryManager would be propagated to the listeners of topology.
+     */
+    public List<LDUpdate> applyUpdates() {
+        List<LDUpdate> appliedUpdates = new ArrayList<LDUpdate>();
+        LDUpdate update = null;
+        while (ldUpdates.peek() != null) {
+            try {
+                update = ldUpdates.take();
+            } catch (Exception e) {
+                log.error("Error reading link discovery update.", e);
+            }
+            if (log.isDebugEnabled()) {
+                log.debug("Applying update: {}", update);
+            }
 
-	/**
-	 * Updates concerning switch disconnect and port down are not processed.
-	 * LinkDiscoveryManager is expected to process those messages and send
-	 * multiple link removed messages.  However, all the updates from
-	 * LinkDiscoveryManager would be propagated to the listeners of topology.
-	 */
-	public List<LDUpdate> applyUpdates() {
-		List<LDUpdate> appliedUpdates = new ArrayList<LDUpdate>();
-		LDUpdate update = null;
-		while (ldUpdates.peek() != null) {
-			try {
-				update = ldUpdates.take();
-			} catch (Exception e) {
-				log.error("Error reading link discovery update.", e);
-			}
-			if (log.isDebugEnabled()) {
-				log.debug("Applying update: {}", update);
-			}
+            switch (update.getOperation()) {
+            case LINK_UPDATED:
+                addOrUpdateLink(update.getSrc(), update.getSrcPort(),
+                        update.getDst(), update.getDstPort(),
+                        update.getLatency(), update.getType());
+                break;
+            case LINK_REMOVED:
+                removeLink(update.getSrc(), update.getSrcPort(),
+                        update.getDst(), update.getDstPort());
+                break;
+            case SWITCH_UPDATED:
+                addOrUpdateSwitch(update.getSrc());
+                break;
+            case SWITCH_REMOVED:
+                removeSwitch(update.getSrc());
+                break;
+            case TUNNEL_PORT_ADDED:
+                addTunnelPort(update.getSrc(), update.getSrcPort());
+                break;
+            case TUNNEL_PORT_REMOVED:
+                removeTunnelPort(update.getSrc(), update.getSrcPort());
+                break;
+            case PORT_UP: case PORT_DOWN:
+                break;
+            }
+            // Add to the list of applied updates.
+            appliedUpdates.add(update);
+        }
+        return (Collections.unmodifiableList(appliedUpdates));
+    }
 
-			switch (update.getOperation()) {
-			case LINK_UPDATED:
-				addOrUpdateLink(update.getSrc(), update.getSrcPort(),
-						update.getDst(), update.getDstPort(),
-						update.getLatency(), update.getType());
-				break;
-			case LINK_REMOVED:
-				removeLink(update.getSrc(), update.getSrcPort(),
-						update.getDst(), update.getDstPort());
-				break;
-			case SWITCH_UPDATED:
-				addOrUpdateSwitch(update.getSrc());
-				break;
-			case SWITCH_REMOVED:
-				removeSwitch(update.getSrc());
-				break;
-			case TUNNEL_PORT_ADDED:
-				addTunnelPort(update.getSrc(), update.getSrcPort());
-				break;
-			case TUNNEL_PORT_REMOVED:
-				removeTunnelPort(update.getSrc(), update.getSrcPort());
-				break;
-			case PORT_UP: case PORT_DOWN:
-				break;
-			}
-			// Add to the list of applied updates.
-			appliedUpdates.add(update);
-		}
-		return (Collections.unmodifiableList(appliedUpdates));
-	}
-
-	protected void addOrUpdateSwitch(DatapathId sw) {
-		/*TODO react appropriately
+    protected void addOrUpdateSwitch(DatapathId sw) {
+        /*TODO react appropriately
 
 		addSwitch(sw);
 		for (OFPortDesc p : switchService.getSwitch(sw).getPorts()) {
 			addPortToSwitch(sw, p.getPortNo());
 		}
-		*/
-		return;
-	}
+         */
+        return;
+    }
 
-	public void addTunnelPort(DatapathId sw, OFPort port) {
-		NodePortTuple npt = new NodePortTuple(sw, port);
-		tunnelPorts.add(npt);
-		tunnelPortsUpdated = true;
-	}
+    public void addTunnelPort(DatapathId sw, OFPort port) {
+        NodePortTuple npt = new NodePortTuple(sw, port);
+        tunnelPorts.add(npt);
+        tunnelPortsUpdated = true;
+    }
 
-	public void removeTunnelPort(DatapathId sw, OFPort port) {
-		NodePortTuple npt = new NodePortTuple(sw, port);
-		tunnelPorts.remove(npt);
-		tunnelPortsUpdated = true;
-	}
+    public void removeTunnelPort(DatapathId sw, OFPort port) {
+        NodePortTuple npt = new NodePortTuple(sw, port);
+        tunnelPorts.remove(npt);
+        tunnelPortsUpdated = true;
+    }
 
-	public boolean createNewInstance() {
-		return createNewInstance("internal");
-	}
+    public boolean createNewInstance() {
+        return createNewInstance("internal");
+    }
 
-	/**
-	 * This function computes a new topology instance.
-	 * It ignores links connected to all broadcast domain ports
-	 * and tunnel ports. The method returns if a new instance of
-	 * topology was created or not.
-	 */
-	protected boolean createNewInstance(String reason) {
-		Set<NodePortTuple> blockedPorts = new HashSet<NodePortTuple>();
+    /**
+     * This function computes a new topology instance.
+     * It ignores links connected to all broadcast domain ports
+     * and tunnel ports. The method returns if a new instance of
+     * topology was created or not.
+     */
+    protected boolean createNewInstance(String reason) {
+        Set<NodePortTuple> blockedPorts = new HashSet<NodePortTuple>();
 
-		if (!linksUpdated) return false;
+        if (!linksUpdated) return false;
 
-		Map<NodePortTuple, Set<Link>> openflowLinks;
-		openflowLinks =
-				new HashMap<NodePortTuple, Set<Link>>();
-		Set<NodePortTuple> nptList = switchPortLinks.keySet();
+        Map<NodePortTuple, Set<Link>> openflowLinks;
+        openflowLinks =
+                new HashMap<NodePortTuple, Set<Link>>();
+        Set<NodePortTuple> nptList = switchPortLinks.keySet();
 
-		if (nptList != null) {
-			for(NodePortTuple npt: nptList) {
-				Set<Link> linkSet = switchPortLinks.get(npt);
-				if (linkSet == null) continue;
-				openflowLinks.put(npt, new HashSet<Link>(linkSet));
-			}
-		}
+        if (nptList != null) {
+            for(NodePortTuple npt: nptList) {
+                Set<Link> linkSet = switchPortLinks.get(npt);
+                if (linkSet == null) continue;
+                openflowLinks.put(npt, new HashSet<Link>(linkSet));
+            }
+        }
 
-		// Identify all broadcast domain ports.
-		// Mark any port that has inconsistent set of links
-		// as broadcast domain ports as well.
-		Set<NodePortTuple> broadcastDomainPorts =
-				identifyBroadcastDomainPorts();
+        // Identify all broadcast domain ports.
+        // Mark any port that has inconsistent set of links
+        // as broadcast domain ports as well.
+        Set<NodePortTuple> broadcastDomainPorts =
+                identifyBroadcastDomainPorts();
 
-		// Remove all links incident on broadcast domain ports.
-		for (NodePortTuple npt : broadcastDomainPorts) {
-			if (switchPortLinks.get(npt) == null) continue;
-			for (Link link : switchPortLinks.get(npt)) {
-				removeLinkFromStructure(openflowLinks, link);
-			}
-		}
+        // Remove all links incident on broadcast domain ports.
+        for (NodePortTuple npt : broadcastDomainPorts) {
+            if (switchPortLinks.get(npt) == null) continue;
+            for (Link link : switchPortLinks.get(npt)) {
+                removeLinkFromStructure(openflowLinks, link);
+            }
+        }
 
-		// Remove all tunnel links.
-		for (NodePortTuple npt: tunnelPorts) {
-			if (switchPortLinks.get(npt) == null) continue;
-			for (Link link : switchPortLinks.get(npt)) {
-				removeLinkFromStructure(openflowLinks, link);
-			}
-		}
-		//switchPorts contains only ports that are part of links. Calculation of broadcast ports needs set of all ports. 
-		Map<DatapathId, Set<OFPort>> allPorts = new HashMap<DatapathId, Set<OFPort>>();;
-		for (DatapathId sw : switchPorts.keySet()){
-			allPorts.put(sw, this.getPorts(sw));
-		}
+        // Remove all tunnel links.
+        for (NodePortTuple npt: tunnelPorts) {
+            if (switchPortLinks.get(npt) == null) continue;
+            for (Link link : switchPortLinks.get(npt)) {
+                removeLinkFromStructure(openflowLinks, link);
+            }
+        }
+        //switchPorts contains only ports that are part of links. Calculation of broadcast ports needs set of all ports. 
+        Map<DatapathId, Set<OFPort>> allPorts = new HashMap<DatapathId, Set<OFPort>>();;
+        for (DatapathId sw : switchPorts.keySet()){
+            allPorts.put(sw, this.getPorts(sw));
+        }
 
-		TopologyInstance nt = new TopologyInstance(switchPorts,
-				blockedPorts,
-				openflowLinks,
-				broadcastDomainPorts,
-				tunnelPorts,
-				switchPortLinks,
-				allPorts,
-				interClusterLinks);
+        TopologyInstance nt = new TopologyInstance(switchPorts,
+                blockedPorts,
+                openflowLinks,
+                broadcastDomainPorts,
+                tunnelPorts,
+                switchPortLinks,
+                allPorts,
+                interClusterLinks);
 
-		nt.compute();
-		
-		currentInstance = nt;
+        nt.compute();
 
-		return true;
-	}
+        currentInstance = nt;
 
-	/**
-	 *  We expect every switch port to have at most two links.  Both these
-	 *  links must be unidirectional links connecting to the same switch port.
-	 *  If not, we will mark this as a broadcast domain port.
-	 */
-	protected Set<NodePortTuple> identifyBroadcastDomainPorts() {
+        return true;
+    }
 
-		Set<NodePortTuple> broadcastDomainPorts =
-				new HashSet<NodePortTuple>();
-		broadcastDomainPorts.addAll(this.interClusterLinks.keySet());
+    /**
+     *  We expect every switch port to have at most two links.  Both these
+     *  links must be unidirectional links connecting to the same switch port.
+     *  If not, we will mark this as a broadcast domain port.
+     */
+    protected Set<NodePortTuple> identifyBroadcastDomainPorts() {
 
-		Set<NodePortTuple> additionalNpt =
-				new HashSet<NodePortTuple>();
+        Set<NodePortTuple> broadcastDomainPorts =
+                new HashSet<NodePortTuple>();
+        broadcastDomainPorts.addAll(this.interClusterLinks.keySet());
 
-		// Copy switchPortLinks
-		Map<NodePortTuple, Set<Link>> spLinks =
-				new HashMap<NodePortTuple, Set<Link>>();
-		for (NodePortTuple npt : switchPortLinks.keySet()) {
-			spLinks.put(npt, new HashSet<Link>(switchPortLinks.get(npt)));
-		}
+        Set<NodePortTuple> additionalNpt =
+                new HashSet<NodePortTuple>();
 
-		for (NodePortTuple npt : spLinks.keySet()) {
-			Set<Link> links = spLinks.get(npt);
-			boolean bdPort = false;
-			ArrayList<Link> linkArray = new ArrayList<Link>();
-			if (links.size() > 2) {
-				bdPort = true;
-			} else if (links.size() == 2) {
-				for (Link l : links) {
-					linkArray.add(l);
-				}
-				// now, there should be two links in [0] and [1].
-				Link l1 = linkArray.get(0);
-				Link l2 = linkArray.get(1);
+        // Copy switchPortLinks
+        Map<NodePortTuple, Set<Link>> spLinks =
+                new HashMap<NodePortTuple, Set<Link>>();
+        for (NodePortTuple npt : switchPortLinks.keySet()) {
+            spLinks.put(npt, new HashSet<Link>(switchPortLinks.get(npt)));
+        }
 
-				// check if these two are symmetric.
-				if (!l1.getSrc().equals(l2.getDst()) ||
-						!l1.getSrcPort().equals(l2.getDstPort()) ||
-						!l1.getDst().equals(l2.getSrc()) ||
-						!l1.getDstPort().equals(l2.getSrcPort())) {
-					bdPort = true;
-				}
-			}
+        for (NodePortTuple npt : spLinks.keySet()) {
+            Set<Link> links = spLinks.get(npt);
+            boolean bdPort = false;
+            ArrayList<Link> linkArray = new ArrayList<Link>();
+            if (links.size() > 2) {
+                bdPort = true;
+            } else if (links.size() == 2) {
+                for (Link l : links) {
+                    linkArray.add(l);
+                }
+                // now, there should be two links in [0] and [1].
+                Link l1 = linkArray.get(0);
+                Link l2 = linkArray.get(1);
 
-			if (bdPort && (broadcastDomainPorts.contains(npt) == false)) {
-				additionalNpt.add(npt);
-			}
-		}
+                // check if these two are symmetric.
+                if (!l1.getSrc().equals(l2.getDst()) ||
+                        !l1.getSrcPort().equals(l2.getDstPort()) ||
+                        !l1.getDst().equals(l2.getSrc()) ||
+                        !l1.getDstPort().equals(l2.getSrcPort())) {
+                    bdPort = true;
+                }
+            }
 
-		if (additionalNpt.size() > 0) {
-			log.warn("The following switch ports have multiple " +
-					"links incident on them, so these ports will be treated " +
-					" as braodcast domain ports. {}", additionalNpt);
+            if (bdPort && (broadcastDomainPorts.contains(npt) == false)) {
+                additionalNpt.add(npt);
+            }
+        }
 
-			broadcastDomainPorts.addAll(additionalNpt);
-		}
-		return broadcastDomainPorts;
-	}
+        if (additionalNpt.size() > 0) {
+            log.warn("The following switch ports have multiple " +
+                    "links incident on them, so these ports will be treated " +
+                    " as braodcast domain ports. {}", additionalNpt);
+
+            broadcastDomainPorts.addAll(additionalNpt);
+        }
+        return broadcastDomainPorts;
+    }
 
 
 
-	public void informListeners(List<LDUpdate> linkUpdates) {
+    public void informListeners(List<LDUpdate> linkUpdates) {
 
-		if (role != null && role != HARole.ACTIVE)
-			return;
+        if (role != null && role != HARole.ACTIVE)
+            return;
 
-		for(int i=0; i < topologyAware.size(); ++i) {
-			ITopologyListener listener = topologyAware.get(i);
-			listener.topologyChanged(linkUpdates);
-		}
-	}
+        for(int i=0; i < topologyAware.size(); ++i) {
+            ITopologyListener listener = topologyAware.get(i);
+            listener.topologyChanged(linkUpdates);
+        }
+    }
 
-	public void addSwitch(DatapathId sid) {
-		if (switchPorts.containsKey(sid) == false) {
-			switchPorts.put(sid, new HashSet<OFPort>());
-		}
-	}
+    public void addSwitch(DatapathId sid) {
+        if (switchPorts.containsKey(sid) == false) {
+            switchPorts.put(sid, new HashSet<OFPort>());
+        }
+    }
 
-	private void addPortToSwitch(DatapathId s, OFPort p) {
-		addSwitch(s);
-		switchPorts.get(s).add(p);
-	}
+    private void addPortToSwitch(DatapathId s, OFPort p) {
+        addSwitch(s);
+        switchPorts.get(s).add(p);
+    }
 
-	public void removeSwitch(DatapathId sid) {
-		// Delete all the links in the switch, switch and all
-		// associated data should be deleted.
-		if (switchPorts.containsKey(sid) == false) return;
+    public void removeSwitch(DatapathId sid) {
+        // Delete all the links in the switch, switch and all
+        // associated data should be deleted.
+        if (switchPorts.containsKey(sid) == false) return;
 
-		// Check if any tunnel ports need to be removed.
-		for(NodePortTuple npt: tunnelPorts) {
-			if (npt.getNodeId() == sid) {
-				removeTunnelPort(npt.getNodeId(), npt.getPortId());
-			}
-		}
+        // Check if any tunnel ports need to be removed.
+        for(NodePortTuple npt: tunnelPorts) {
+            if (npt.getNodeId() == sid) {
+                removeTunnelPort(npt.getNodeId(), npt.getPortId());
+            }
+        }
 
-		Set<Link> linksToRemove = new HashSet<Link>();
-		for(OFPort p: switchPorts.get(sid)) {
-			NodePortTuple n1 = new NodePortTuple(sid, p);
-			linksToRemove.addAll(switchPortLinks.get(n1));
-		}
+        Set<Link> linksToRemove = new HashSet<Link>();
+        for(OFPort p: switchPorts.get(sid)) {
+            NodePortTuple n1 = new NodePortTuple(sid, p);
+            linksToRemove.addAll(switchPortLinks.get(n1));
+        }
 
-		if (linksToRemove.isEmpty()) return;
+        if (linksToRemove.isEmpty()) return;
 
-		for(Link link: linksToRemove) {
-			removeLink(link);
-		}
-	}
+        for(Link link: linksToRemove) {
+            removeLink(link);
+        }
+    }
 
-	/**
-	 * Add the given link to the data structure.
-	 * @param s
-	 * @param l
-	 */
-	private void addLinkToStructure(Map<NodePortTuple, Set<Link>> s, Link l) {
-		NodePortTuple n1 = new NodePortTuple(l.getSrc(), l.getSrcPort());
-		NodePortTuple n2 = new NodePortTuple(l.getDst(), l.getDstPort());
+    /**
+     * Add the given link to the data structure.
+     * @param s
+     * @param l
+     */
+    private void addLinkToStructure(Map<NodePortTuple, Set<Link>> s, Link l) {
+        NodePortTuple n1 = new NodePortTuple(l.getSrc(), l.getSrcPort());
+        NodePortTuple n2 = new NodePortTuple(l.getDst(), l.getDstPort());
 
-		if (s.get(n1) == null) {
-			s.put(n1, new HashSet<Link>());
-		} 
-		if (s.get(n2) == null) {
-			s.put(n2, new HashSet<Link>());
-		}
+        if (s.get(n1) == null) {
+            s.put(n1, new HashSet<Link>());
+        } 
+        if (s.get(n2) == null) {
+            s.put(n2, new HashSet<Link>());
+        }
 
-		/* 
-		 * Since we don't include latency in .equals(), we need
-		 * to explicitly remove the existing link (if present).
-		 * Otherwise, new latency values for existing links will
-		 * never be accepted.
-		 */
+        /* 
+         * Since we don't include latency in .equals(), we need
+         * to explicitly remove the existing link (if present).
+         * Otherwise, new latency values for existing links will
+         * never be accepted.
+         */
         s.get(n1).remove(l);
         s.get(n2).remove(l);
         s.get(n1).add(l);
@@ -1202,12 +1166,12 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
     }
 
     protected void addOrUpdateTunnelLink(DatapathId srcId, OFPort srcPort, DatapathId dstId,
-                                         OFPort dstPort, U64 latency) {
+            OFPort dstPort, U64 latency) {
         // If you need to handle tunnel links, this is a placeholder.
     }
 
     public void addOrUpdateLink(DatapathId srcId, OFPort srcPort, DatapathId dstId,
-                                OFPort dstPort, U64 latency, LinkType type) {
+            OFPort dstPort, U64 latency, LinkType type) {
         Link link = new Link(srcId, srcPort, dstId, dstPort, latency);
 
         if (type.equals(LinkType.MULTIHOP_LINK)) {
@@ -1265,7 +1229,7 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
     }
 
     public void removeLink(DatapathId srcId, OFPort srcPort,
-                           DatapathId dstId, OFPort dstPort) {
+            DatapathId dstId, OFPort dstPort) {
         Link link = new Link(srcId, srcPort, dstId, dstPort, U64.ZERO /* does not matter for remove (not included in .equals() of Link) */);
         removeLink(link);
     }
@@ -1353,5 +1317,10 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
     public Set<DatapathId> getArchipelagoIds() {
         TopologyInstance ti = getCurrentInstance();
         return ti.getArchipelagoIds();
+    }
+
+    @Override
+    public TopologyInstance getCurrentTopologyInstance() {
+        return getCurrentInstance();
     }
 }

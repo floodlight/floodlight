@@ -63,12 +63,8 @@ public class PathMetricsResource extends ServerResource {
                 return Collections.singletonMap("error", "invalid path metric " + metric);
         }
 
-        if (routing.setPathMetric(type) != type) {
-            log.error("Failed to set valid path metric {}. Bug?", type.getMetricName());
-            return Collections.singletonMap("error", "failed to set valid path metric " + type.getMetricName());
-        }
-
-        log.debug("Set path metric to {}", type.getMetricName());
+        log.debug("Setting path metric to {}", type.getMetricName());
+        routing.setPathMetric(type);
         return Collections.singletonMap("success", "path metric set to " + type.getMetricName());
     }
 }
