@@ -22,27 +22,27 @@ import com.fasterxml.jackson.core.JsonGenerator.Feature;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonSerializer;
 import com.fasterxml.jackson.databind.SerializerProvider;
-import net.floodlightcontroller.routing.Route;
+import net.floodlightcontroller.routing.Path;
 import net.floodlightcontroller.core.types.NodePortTuple;
 
 import java.io.IOException;
 
-public class RouteSerializer extends JsonSerializer<Route> {
+public class PathSerializer extends JsonSerializer<Path> {
 
     @Override
-    public void serialize(Route route, JsonGenerator jGen, SerializerProvider serializer)
+    public void serialize(Path path, JsonGenerator jGen, SerializerProvider serializer)
             throws IOException, JsonProcessingException {
         jGen.configure(Feature.WRITE_NUMBERS_AS_STRINGS, true);
 
         jGen.writeStartObject();
-        jGen.writeStringField("src_dpid", route.getId().getSrc().toString());
-        jGen.writeStringField("dst_dpid", route.getId().getDst().toString());
-        jGen.writeStringField("hop_count", Integer.toString(route.getRouteHopCount()));
-        jGen.writeNumberField("latency", route.getRouteLatency().getValue()); // Might be an issue if value exceed what unsigned long can hold
-        jGen.writeNumberField("route_count", route.getRouteCount());
+        jGen.writeStringField("src_dpid", path.getId().getSrc().toString());
+        jGen.writeStringField("dst_dpid", path.getId().getDst().toString());
+        jGen.writeStringField("hop_count", Integer.toString(path.getHopCount()));
+        jGen.writeNumberField("latency", path.getLatency().getValue()); // Might be an issue if value exceed what unsigned long can hold
+        jGen.writeNumberField("path_index", path.getPathIndex());
         jGen.writeFieldName("path");
         jGen.writeStartArray();
-        for (NodePortTuple npt : route.getPath()) {
+        for (NodePortTuple npt : path.getPath()) {
             jGen.writeStartObject();
             jGen.writeStringField("dpid", npt.getNodeId().toString());
             jGen.writeNumberField("port", npt.getPortId().getPortNumber());

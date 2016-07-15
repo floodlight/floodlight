@@ -51,7 +51,7 @@ import net.floodlightcontroller.packet.UDP;
 import net.floodlightcontroller.routing.ForwardingBase;
 import net.floodlightcontroller.routing.IRoutingDecision;
 import net.floodlightcontroller.routing.IRoutingService;
-import net.floodlightcontroller.routing.Route;
+import net.floodlightcontroller.routing.Path;
 import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.util.FlowModUtils;
 import net.floodlightcontroller.util.OFDPAUtils;
@@ -237,7 +237,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                 return; 
             }				
 
-            Route route = routingEngineService.getPath(source, 
+            Path route = routingEngineService.getPath(source, 
                     inPort,
                     dstDap.getNodeId(),
                     dstDap.getPortId());
@@ -262,7 +262,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
             } else {
                 /* Route traverses no links --> src/dst devices on same switch */
                 log.debug("Could not compute route. Devices should be on same switch src={} and dst={}", srcDevice, dstDevice);
-                Route r = new Route(srcDevice.getAttachmentPoints()[0].getNodeId(), dstDevice.getAttachmentPoints()[0].getNodeId());
+                Path r = new Path(srcDevice.getAttachmentPoints()[0].getNodeId(), dstDevice.getAttachmentPoints()[0].getNodeId());
                 List<NodePortTuple> path = new ArrayList<NodePortTuple>(2);
                 path.add(new NodePortTuple(srcDevice.getAttachmentPoints()[0].getNodeId(),
                         srcDevice.getAttachmentPoints()[0].getPortId()));

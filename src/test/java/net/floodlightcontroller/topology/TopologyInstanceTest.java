@@ -35,7 +35,7 @@ import net.floodlightcontroller.debugcounter.MockDebugCounterService;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscovery;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryService;
 import net.floodlightcontroller.routing.IRoutingService;
-import net.floodlightcontroller.routing.Route;
+import net.floodlightcontroller.routing.Path;
 import net.floodlightcontroller.routing.RoutingManager;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
 import net.floodlightcontroller.core.types.NodePortTuple;
@@ -501,9 +501,9 @@ public class TopologyInstanceTest {
         }
     }
 
-    private void verifyRoute(List<Route> r, Integer size)
+    private void verifyRoute(List<Path> r, Integer size)
     {
-        ArrayList<Route> paths = new ArrayList<Route>();
+        ArrayList<Path> paths = new ArrayList<Path>();
 
         DatapathId one = DatapathId.of(1);
         DatapathId two = DatapathId.of(2);
@@ -543,7 +543,7 @@ public class TopologyInstanceTest {
         route0.add(three1);
         route0.add(three4);
         route0.add(six2);
-        Route root0 = new Route(one, six);
+        Path root0 = new Path(one, six);
         root0.setPath(route0);
         paths.add(root0);
         //log.info("root0: {}", root0);
@@ -557,7 +557,7 @@ public class TopologyInstanceTest {
         route1.add(three2);
         route1.add(three4);
         route1.add(six2);
-        Route root1 = new Route(one, six);
+        Path root1 = new Path(one, six);
         root1.setPath(route1);
         //log.info("root1: {}", root1);
         //log.info("r.get(1) {}:", r.get(1));
@@ -570,7 +570,7 @@ public class TopologyInstanceTest {
         route2.add(five1);
         route2.add(five3);
         route2.add(six1);
-        Route root2 = new Route(one, six);
+        Path root2 = new Path(one, six);
         root2.setPath(route2);
         //log.info("root2: {}", root2);
         //log.info("r.get(2) {}:", r.get(2));
@@ -585,7 +585,7 @@ public class TopologyInstanceTest {
         route3.add(five2);
         route3.add(five3);
         route3.add(six1);
-        Route root3 = new Route(one, six);
+        Path root3 = new Path(one, six);
         root3.setPath(route3);
         //log.info("root3: {}", root3);
         //log.info("r.get(3) {}:", r.get(3));
@@ -600,7 +600,7 @@ public class TopologyInstanceTest {
         route4.add(five2);
         route4.add(five3);
         route4.add(six1);
-        Route root4 = new Route(one, six);
+        Path root4 = new Path(one, six);
         root4.setPath(route4);
         //log.info("root4: {}", root4);
         //log.info("r.get(4) {}:", r.get(4));
@@ -615,7 +615,7 @@ public class TopologyInstanceTest {
         route5.add(three1);
         route5.add(three4);
         route5.add(six2);
-        Route root5 = new Route(one, six);
+        Path root5 = new Path(one, six);
         root5.setPath(route5);
         //log.info("root5: {}", root5);
         //log.info("r.get(5) {}:", r.get(5));
@@ -632,7 +632,7 @@ public class TopologyInstanceTest {
         route6.add(five2);
         route6.add(five3);
         route6.add(six1);
-        Route root6 = new Route(one, six);
+        Path root6 = new Path(one, six);
         root6.setPath(route6);
         //log.info("root6: {}", root6);
         //log.info("r.get(6) {}:", r.get(6));
@@ -699,7 +699,7 @@ public class TopologyInstanceTest {
          */
         topologyManager.setPathMetric(LATENCY);
         configureTopology(linkArray, lat);
-        List<Route> lat_paths = routingManager.getPathsFast(one, three, k);
+        List<Path> lat_paths = routingManager.getPathsFast(one, three, k);
         log.info("Path 1: {}", lat_paths.get(0));
         log.info("Path 2: {}", lat_paths.get(1));
 
@@ -708,7 +708,7 @@ public class TopologyInstanceTest {
         topologyManager.setPathMetric(HOPCOUNT);
         configureTopology(linkArray, lat);
         topologyManager.createNewInstance();
-        List<Route> hop_paths = routingManager.getPathsFast(one, three, k);
+        List<Path> hop_paths = routingManager.getPathsFast(one, three, k);
         log.info("Path 1: {}", hop_paths.get(0));
         log.info("Path 2: {}", hop_paths.get(1));
 
@@ -720,7 +720,7 @@ public class TopologyInstanceTest {
         int [] lat1 = {1,50,1};
         configureTopology(linkArray, lat1);
         topologyManager.createNewInstance();
-        List<Route> r1 = routingManager.getPathsFast(one, three, k);
+        List<Path> r1 = routingManager.getPathsFast(one, three, k);
         assertTrue((r1.get(0)).equals(lat_paths.get(0)));
         assertTrue((r1.get(1)).equals(lat_paths.get(1)));
 
@@ -784,7 +784,7 @@ public class TopologyInstanceTest {
         int [] lat4 = {3,2,4,2,1,1,2,3,2};
         configureTopology(linkArray2, lat4);
         topologyManager.createNewInstance();
-        List<Route> r = routingManager.getPathsFast(one, six, k);
+        List<Path> r = routingManager.getPathsFast(one, six, k);
         for(int i = 0; i< r.size(); i++) {
             log.info("k = (1000) => Route: {}", r.get(i));
         }
@@ -800,7 +800,7 @@ public class TopologyInstanceTest {
         k = 7;
         configureTopology(linkArray2, lat4);
         topologyManager.createNewInstance();
-        List<Route> r2 = routingManager.getPathsFast(one, six, k);
+        List<Path> r2 = routingManager.getPathsFast(one, six, k);
         for(int i = 0; i< r2.size(); i++) {
             log.info("k = (7) => Route: {}", r2.get(i));
         }
@@ -816,7 +816,7 @@ public class TopologyInstanceTest {
         k = -1;
         configureTopology(linkArray2, lat4);
         topologyManager.createNewInstance();
-        List<Route> r3 = routingManager.getPathsFast(one, six, k);
+        List<Path> r3 = routingManager.getPathsFast(one, six, k);
         for(int i = 0; i< r3.size(); i++) {
             log.info("HOPCOUNT.k = (-1) => Route: {}", r3.get(i));
         }
@@ -832,7 +832,7 @@ public class TopologyInstanceTest {
         k = -1;
         configureTopology(linkArray2, lat4);
         topologyManager.createNewInstance();
-        List<Route> r4 = routingManager.getPathsFast(one, six, k);
+        List<Path> r4 = routingManager.getPathsFast(one, six, k);
         for(int i = 0; i< r4.size(); i++) {
             log.info("LATENCY.k = (-1) => Route: {}", r4.get(i));
         }
@@ -848,7 +848,7 @@ public class TopologyInstanceTest {
         k = 3;
         configureTopology(linkArray2, lat4);
         topologyManager.createNewInstance();
-        List<Route> r5 = routingManager.getPathsFast(one, six, k);
+        List<Path> r5 = routingManager.getPathsFast(one, six, k);
         for(int i = 0; i< r5.size(); i++) {
             log.info("HOPCOUNT.k = (3) => Route: {}", r5.get(i));
         }
@@ -864,7 +864,7 @@ public class TopologyInstanceTest {
         k = 4;
         configureTopology(linkArray2, lat4);
         topologyManager.createNewInstance();
-        List<Route> r6 = routingManager.getPathsFast(one, six, k);
+        List<Path> r6 = routingManager.getPathsFast(one, six, k);
         for(int i = 0; i< r6.size(); i++) {
             log.info("LATENCY.k = (4) => Route: {}", r6.get(i));
         }
@@ -881,7 +881,7 @@ public class TopologyInstanceTest {
         int [] lat5 = {0,0,0,0,0,0,0,0,0};
         configureTopology(linkArray2, lat5);
         topologyManager.createNewInstance();
-        List<Route> r7 = routingManager.getPathsFast(one, six, k);
+        List<Path> r7 = routingManager.getPathsFast(one, six, k);
         for(int i = 0; i< r7.size(); i++) {
             log.info("Route latency all ZERO: {}", r7.get(i));
         }
@@ -896,7 +896,7 @@ public class TopologyInstanceTest {
         k = 4;
         configureTopology(linkArray2, lat4);
         topologyManager.createNewInstance();
-        List<Route> r8 = routingManager.getPathsFast(one, one, k);
+        List<Path> r8 = routingManager.getPathsFast(one, one, k);
         for(int i = 0; i< r8.size(); i++) {
             log.info("(src == dst) => Route: {}", r8.get(i));
         }
@@ -911,7 +911,7 @@ public class TopologyInstanceTest {
         k = 4;
         configureTopology(linkArray2, lat4);
         topologyManager.createNewInstance();
-        List<Route> r9 = routingManager.getPathsFast(six, one, k);
+        List<Path> r9 = routingManager.getPathsFast(six, one, k);
         for(int i = 0; i< r9.size(); i++) {
             log.info("Reversed Route (6 -> 1): {}", r9.get(i));
         }
@@ -927,7 +927,7 @@ public class TopologyInstanceTest {
         k = 4;
         configureTopology(linkArray2, lat4);
         topologyManager.createNewInstance();
-        List<Route> r10 = routingManager.getPathsFast(one, DatapathId.of(7), k);
+        List<Path> r10 = routingManager.getPathsFast(one, DatapathId.of(7), k);
         for(int i = 0; i< r10.size(); i++) {
             log.info("(src == 7) => Route: {}", r10.get(i));
         }

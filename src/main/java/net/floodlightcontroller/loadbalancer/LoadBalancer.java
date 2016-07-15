@@ -72,7 +72,7 @@ import net.floodlightcontroller.packet.TCP;
 import net.floodlightcontroller.packet.UDP;
 import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.routing.IRoutingService;
-import net.floodlightcontroller.routing.Route;
+import net.floodlightcontroller.routing.Path;
 import net.floodlightcontroller.staticentry.IStaticEntryPusherService;
 import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.util.FlowModUtils;
@@ -451,12 +451,12 @@ public class LoadBalancer implements IFloodlightModule,
                 if (!srcDap.equals(dstDap) && 
                         (srcCluster != null) && 
                         (dstCluster != null)) {
-                    Route routeIn = 
+                    Path routeIn = 
                             routingEngineService.getPath(srcDap.getNodeId(),
                                                    srcDap.getPortId(),
                                                    dstDap.getNodeId(),
                                                    dstDap.getPortId());
-                    Route routeOut = 
+                    Path routeOut = 
                             routingEngineService.getPath(dstDap.getNodeId(),
                                                    dstDap.getPortId(),
                                                    srcDap.getNodeId(),
@@ -489,12 +489,12 @@ public class LoadBalancer implements IFloodlightModule,
     /**
      * used to push given route using static flow entry pusher
      * @param boolean inBound
-     * @param Route route
+     * @param Path route
      * @param IPClient client
      * @param LBMember member
      * @param long pinSwitch
      */
-    public void pushStaticVipRoute(boolean inBound, Route route, IPClient client, LBMember member, IOFSwitch pinSwitch) {
+    public void pushStaticVipRoute(boolean inBound, Path route, IPClient client, LBMember member, IOFSwitch pinSwitch) {
         List<NodePortTuple> path = route.getPath();
         if (path.size() > 0) {
            for (int i = 0; i < path.size(); i+=2) {

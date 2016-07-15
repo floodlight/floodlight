@@ -19,8 +19,8 @@ package net.floodlightcontroller.topology;
 import net.floodlightcontroller.core.types.NodePortTuple;
 import net.floodlightcontroller.linkdiscovery.Link;
 import net.floodlightcontroller.routing.BroadcastTree;
-import net.floodlightcontroller.routing.Route;
-import net.floodlightcontroller.routing.RouteId;
+import net.floodlightcontroller.routing.Path;
+import net.floodlightcontroller.routing.PathId;
 import net.floodlightcontroller.util.ClusterDFS;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFPort;
@@ -78,7 +78,7 @@ public class TopologyInstance {
     private Set<Archipelago>                    archipelagos;
     private Map<Cluster, Archipelago>           archipelagoFromCluster;
     private Map<DatapathId, Set<NodePortTuple>> portsBroadcastPerArchipelago;
-    private Map<RouteId, List<Route>>           pathcache; /* contains computed paths ordered best to worst */
+    private Map<PathId, List<Path>>           pathcache; /* contains computed paths ordered best to worst */
 
     public TopologyInstance(Map<DatapathId, Set<OFPort>> portsWithLinks,
             Set<NodePortTuple> portsBlocked,
@@ -131,7 +131,7 @@ public class TopologyInstance {
         this.portsBroadcastPerSwitch = new HashMap<DatapathId,Set<OFPort>>();
         this.clusterBroadcastTrees = new HashMap<DatapathId, BroadcastTree>();
 
-        this.pathcache = new HashMap<RouteId, List<Route>>();
+        this.pathcache = new HashMap<PathId, List<Path>>();
 
         this.portsBroadcastPerArchipelago = new HashMap<DatapathId, Set<NodePortTuple>>();
 
@@ -753,8 +753,8 @@ public class TopologyInstance {
      * These lists of routes are stored in pathcache.
      */
     private void computeOrderedPaths() {
-        List<Route> routes;
-        RouteId routeId;
+        List<Path> routes;
+        PathId routeId;
         pathcache.clear();
 
         for (Archipelago a : archipelagos) { /* for each archipelago */
@@ -768,7 +768,7 @@ public class TopologyInstance {
                     log.warn("Calling Yens {} {}", src, dst);
                     routes = yens(src, dst, TopologyManager.getMaxPathsToComputeInternal(),
                             getArchipelago(src), getArchipelago(dst));
-                    routeId = new RouteId(src, dst);
+                    routeId = new PathId(src, dst);
                     pathcache.put(routeId, routes);
                     log.info("Adding paths {}", routes);
                 }
@@ -776,14 +776,14 @@ public class TopologyInstance {
         }
     }
 
-    private Route buildPath(RouteId id, BroadcastTree tree) {
+    private Path buildPath(PathId id, BroadcastTree tree) {
         NodePortTuple npt;
         DatapathId srcId = id.getSrc();
         DatapathId dstId = id.getDst();
         //set of NodePortTuples on the route
         LinkedList<NodePortTuple> sPorts = new LinkedList<NodePortTuple>();
 
-        if (tree == null) return new Route(id, ImmutableList.of()); /* empty route */
+        if (tree == null) return new Path(id, ImmutableList.of()); /* empty route */
 
         Map<DatapathId, Link> nexthoplinks = tree.getLinks();
 
@@ -808,13 +808,13 @@ public class TopologyInstance {
         }
         // else, no path exists, and path equals null
 
-        Route result = null;
+        Path result = null;
         if (sPorts != null && !sPorts.isEmpty()) {
-            result = new Route(id, sPorts);
+            result = new Path(id, sPorts);
 
         }
         log.trace("buildpath: {}", result);
-        return result == null ? new Route(id, ImmutableList.of()) : result;
+        return result == null ? new Path(id, ImmutableList.of()) : result;
     }
 
     /*
@@ -876,9 +876,9 @@ public class TopologyInstance {
      * @param k: The number of routes that you want. Must be positive integer.
      * @return ArrayList of Routes or null if bad parameters
      */
-    public List<Route> getPathsFast(DatapathId src, DatapathId dst, int k) {
-        RouteId routeId = new RouteId(src, dst);
-        List<Route> routes = pathcache.get(routeId);
+    public List<Path> getPathsFast(DatapathId src, DatapathId dst, int k) {
+        PathId routeId = new PathId(src, dst);
+        List<Path> routes = pathcache.get(routeId);
 
         if (routes == null || k < 1) {
             return ImmutableList.of();
@@ -903,9 +903,9 @@ public class TopologyInstance {
      * @param k: The number of routes that you want. Must be positive integer.
      * @return ArrayList of Routes or null if bad parameters
      */
-    public List<Route> getPathsSlow(DatapathId src, DatapathId dst, int k) {
-        RouteId routeId = new RouteId(src, dst);
-        List<Route> routes = pathcache.get(routeId);
+    public List<Path> getPathsSlow(DatapathId src, DatapathId dst, int k) {
+        PathId routeId = new PathId(src, dst);
+        List<Path> routes = pathcache.get(routeId);
 
         if (routes == null || k < 1) return ImmutableList.of();
 
@@ -913,7 +913,7 @@ public class TopologyInstance {
             return yens(src, dst, k, getArchipelago(src), getArchipelago(dst)); /* heavy computation */
         }
         else {
-            return new ArrayList<Route>(routes.subList(0, k));
+            return new ArrayList<Path>(routes.subList(0, k));
         }
     }
 
@@ -926,18 +926,18 @@ public class TopologyInstance {
         return null;
     }
 
-    public void setPathCosts(Route r) {
+    public void setPathCosts(Path p) {
         U64 cost = U64.ZERO;
 
         // Set number of hops. Assuming the list of NPTs is always even.
-        r.setRouteHopCount(r.getPath().size()/2);
+        p.setHopCount(p.getPath().size()/2);
 
-        for (int i = 0; i <= r.getPath().size() - 2; i = i + 2) {
-            DatapathId src = r.getPath().get(i).getNodeId();
-            DatapathId dst = r.getPath().get(i + 1).getNodeId();
-            OFPort srcPort = r.getPath().get(i).getPortId();
-            OFPort dstPort = r.getPath().get(i + 1).getPortId();
-            for (Link l : links.get(r.getPath().get(i))) {
+        for (int i = 0; i <= p.getPath().size() - 2; i = i + 2) {
+            DatapathId src = p.getPath().get(i).getNodeId();
+            DatapathId dst = p.getPath().get(i + 1).getNodeId();
+            OFPort srcPort = p.getPath().get(i).getPortId();
+            OFPort dstPort = p.getPath().get(i + 1).getPortId();
+            for (Link l : links.get(p.getPath().get(i))) {
                 if (l.getSrc().equals(src) && l.getDst().equals(dst) &&
                         l.getSrcPort().equals(srcPort) && l.getDstPort().equals(dstPort)) {
                     log.debug("Matching link found: {}", l);
@@ -946,13 +946,13 @@ public class TopologyInstance {
             }
         }
 
-        r.setRouteLatency(cost);
+        p.setLatency(cost);
         log.debug("Total cost is {}", cost);
-        log.debug(r.toString());
+        log.debug(p.toString());
 
     }
 
-    private List<Route> yens(DatapathId src, DatapathId dst, Integer K, Archipelago aSrc, Archipelago aDst) {
+    private List<Path> yens(DatapathId src, DatapathId dst, Integer K, Archipelago aSrc, Archipelago aDst) {
 
         log.debug("YENS ALGORITHM -----------------");
         log.debug("Asking for routes from {} to {}", src, dst);
@@ -967,8 +967,8 @@ public class TopologyInstance {
 
         // A is the list of shortest paths. The number in the list at the end should be less than or equal to K
         // B is the list of possible shortest paths found in this function.
-        List<Route> A = new ArrayList<Route>();
-        List<Route> B = new ArrayList<Route>();
+        List<Path> A = new ArrayList<Path>();
+        List<Path> B = new ArrayList<Path>();
 
         // The number of routes requested should never be less than 1.
         if (K < 1) {
@@ -992,7 +992,7 @@ public class TopologyInstance {
         aSrc.setBroadcastTree(bt);
         /* now add the shortest path */
         log.warn("src {} dst {} tree {}", new Object[] {src, dst, bt});
-        Route newroute = buildPath(new RouteId(src, dst), bt); /* guaranteed to be in same tree */
+        Path newroute = buildPath(new PathId(src, dst), bt); /* guaranteed to be in same tree */
 
         if (newroute != null && !newroute.getPath().isEmpty()) { /* should never be null, but might be empty */
             setPathCosts(newroute);
@@ -1018,14 +1018,14 @@ public class TopologyInstance {
                 // The spur node is the point in the topology where Dijkstra's is called again to find another path
                 DatapathId spurNode = path.get(i).getNodeId();
                 // rootPath is the path along the previous shortest path that is before the spur node
-                Route rootPath = new Route(new RouteId(path.get(0).getNodeId(), path.get(i).getNodeId()),
+                Path rootPath = new Path(new PathId(path.get(0).getNodeId(), path.get(i).getNodeId()),
                         path.subList(0, i));
 
 
                 Map<NodePortTuple, Set<Link>> allLinksCopy = new HashMap<NodePortTuple, Set<Link>>(links);
                 // Remove the links after the spur node that are part of other paths in A so that new paths
                 // found are unique
-                for (Route r : A) {
+                for (Path r : A) {
                     if (r.getPath().size() > (i + 1) && r.getPath().subList(0, i).equals(rootPath.getPath())) {
                         allLinksCopy.remove(r.getPath().get(i));
                         allLinksCopy.remove(r.getPath().get(i+1));
@@ -1046,7 +1046,7 @@ public class TopologyInstance {
                 //log.debug("About to build route.");
                 //log.debug("Switches: {}", switchesCopy);
                 // Uses Dijkstra's to try to find a shortest path from the spur node to the destination
-                Route spurPath = buildPath(new RouteId(spurNode, dst), dijkstra(copyOfLinkDpidMap, dst, linkCost, true));
+                Path spurPath = buildPath(new PathId(spurNode, dst), dijkstra(copyOfLinkDpidMap, dst, linkCost, true));
                 if (spurPath == null || spurPath.getPath().isEmpty()) {
                     //log.debug("spurPath is null");
                     continue;
@@ -1056,7 +1056,7 @@ public class TopologyInstance {
                 List<NodePortTuple> totalNpt = new LinkedList<NodePortTuple>();
                 totalNpt.addAll(rootPath.getPath());
                 totalNpt.addAll(spurPath.getPath());
-                Route totalPath = new Route(new RouteId(src, dst), totalNpt);
+                Path totalPath = new Path(new PathId(src, dst), totalNpt);
                 setPathCosts(totalPath);
 
                 log.trace("Spur Node: {}", spurNode);
@@ -1065,8 +1065,8 @@ public class TopologyInstance {
                 log.trace("Total Path: {}", totalPath);
                 // Adds the new path into B
                 int flag = 0;
-                for (Route r_B : B) {
-                    for (Route r_A : A) {
+                for (Path r_B : B) {
+                    for (Path r_A : A) {
                         if (r_B.getPath().equals(totalPath.getPath()) || r_A.getPath().equals(totalPath.getPath())) {
                             flag = 1;
                         }
@@ -1089,13 +1089,13 @@ public class TopologyInstance {
             log.debug("Removing shortest path from {}", B);
             // Find the shortest path in B, remove it, and put it in A
             log.debug("--------------BEFORE------------------------");
-            for (Route r : B) {
+            for (Path r : B) {
                 log.debug(r.toString());
             }
             log.debug("--------------------------------------------");
-            Route shortestPath = removeShortestPath(B, linkCost);
+            Path shortestPath = removeShortestPath(B, linkCost);
             log.debug("--------------AFTER------------------------");
-            for (Route r : B) {
+            for (Path r : B) {
                 log.debug(r.toString());
             }
             log.debug("--------------------------------------------");
@@ -1111,26 +1111,26 @@ public class TopologyInstance {
         }
 
         // Set the route counts
-        for (Route r : A) {
-            r.setRouteCount(A.indexOf(r));
+        for (Path path : A) {
+            path.setPathIndex(A.indexOf(path));
         }
         //log.debug("END OF YEN'S --------------------");
         return A;
     }
 
-    private Route removeShortestPath(List<Route> routes, Map<Link, Integer> linkCost) {
+    private Path removeShortestPath(List<Path> routes, Map<Link, Integer> linkCost) {
         log.debug("REMOVE SHORTEST PATH -------------");
         // If there is nothing in B, return
         if(routes == null){
             log.debug("Routes == null");
             return null;
         }
-        Route shortestPath = null;
+        Path shortestPath = null;
         // Set the default shortest path to the max value
         Integer shortestPathCost = Integer.MAX_VALUE;
 
         // Iterate through B and find the shortest path
-        for (Route r : routes) {
+        for (Path r : routes) {
             Integer pathCost = 0;
             // Add up the weights of each link in the path
             // TODO Get the path cost from the route object
@@ -1169,7 +1169,7 @@ public class TopologyInstance {
      * @param dstPort
      * @return
      */
-    public Route getPath(DatapathId srcId, OFPort srcPort,
+    public Path getPath(DatapathId srcId, OFPort srcPort,
             DatapathId dstId, OFPort dstPort) {
         // Return null if the route source and destination are the
         // same switch ports.
@@ -1179,7 +1179,7 @@ public class TopologyInstance {
 
         List<NodePortTuple> nptList;
         NodePortTuple npt;
-        Route r = getPath(srcId, dstId);
+        Path r = getPath(srcId, dstId);
         if (r == null && !srcId.equals(dstId)) {
             return null;
         }
@@ -1194,8 +1194,8 @@ public class TopologyInstance {
         npt = new NodePortTuple(dstId, dstPort);
         nptList.add(npt); // add dst port to the end
 
-        RouteId id = new RouteId(srcId, dstId);
-        r = new Route(id, nptList);
+        PathId id = new PathId(srcId, dstId);
+        r = new Path(id, nptList);
         return r;
     }
 
@@ -1207,12 +1207,12 @@ public class TopologyInstance {
      * @return
      */
 
-    public Route getPath(DatapathId srcId, DatapathId dstId) {
+    public Path getPath(DatapathId srcId, DatapathId dstId) {
         // Return null route if srcId equals dstId
         if (srcId.equals(dstId)) return null;
 
-        RouteId id = new RouteId(srcId, dstId);
-        Route result = null;
+        PathId id = new PathId(srcId, dstId);
+        Path result = null;
 
         try {
             if (!pathcache.get(id).isEmpty()) {
@@ -1225,7 +1225,7 @@ public class TopologyInstance {
         if (log.isTraceEnabled()) {
             log.trace("getPath: {} -> {}", id, result);
         }
-        return result == null ? new Route(id, ImmutableList.of()) : result; /* return empty route instead of null */
+        return result == null ? new Path(id, ImmutableList.of()) : result; /* return empty route instead of null */
     }
 
     //

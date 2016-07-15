@@ -23,7 +23,7 @@ import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFPort;
 
 import net.floodlightcontroller.core.module.IFloodlightService;
-import net.floodlightcontroller.routing.Route;
+import net.floodlightcontroller.routing.Path;
 
 public interface IRoutingService extends IFloodlightService {
 
@@ -66,7 +66,7 @@ public interface IRoutingService extends IFloodlightService {
      * @param dst destination switch
      * @return the lowest cost path
      */
-    public Route getPath(DatapathId src, DatapathId dst);
+    public Path getPath(DatapathId src, DatapathId dst);
 
     /**
      * Provides a path between srcPort on src and dstPort on dst.
@@ -76,7 +76,7 @@ public interface IRoutingService extends IFloodlightService {
      * @param dstPort destination port on destination switch
      * @return the lowest cost path
      */
-    public Route getPath(DatapathId src, OFPort srcPort, DatapathId dst, OFPort dstPort);
+    public Path getPath(DatapathId src, OFPort srcPort, DatapathId dst, OFPort dstPort);
 
     /**
      * Return all possible paths up to quantity of the globally configured max.
@@ -84,7 +84,7 @@ public interface IRoutingService extends IFloodlightService {
      * @param dst destination switch
      * @return list of paths ordered least to greatest cost
      */
-    public List<Route> getPathsFast(DatapathId src, DatapathId dst);
+    public List<Path> getPathsFast(DatapathId src, DatapathId dst);
 
     /**
      * This function returns K number of paths between a source and destination 
@@ -102,7 +102,7 @@ public interface IRoutingService extends IFloodlightService {
      * @param numReqPaths the requested quantity of paths
      * @return list of paths ordered least to greatest cost
      */
-    public List<Route> getPathsFast(DatapathId src, DatapathId dst, int numReqPaths);
+    public List<Path> getPathsFast(DatapathId src, DatapathId dst, int numReqPaths);
 
     /**
      * This function returns K number of paths between a source and destination.
@@ -123,7 +123,7 @@ public interface IRoutingService extends IFloodlightService {
      * @param numReqPaths the requested quantity of paths
      * @return list of paths ordered least to greatest cost
      */
-    public List<Route> getPathsSlow(DatapathId src, DatapathId dst, int numReqPaths);
+    public List<Path> getPathsSlow(DatapathId src, DatapathId dst, int numReqPaths);
 
     /** 
      * Check if a path exists between src and dst

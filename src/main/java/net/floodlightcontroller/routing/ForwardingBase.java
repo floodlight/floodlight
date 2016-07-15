@@ -39,7 +39,7 @@ import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryService;
 import net.floodlightcontroller.packet.IPacket;
 import net.floodlightcontroller.routing.IRoutingService;
 import net.floodlightcontroller.routing.IRoutingDecision;
-import net.floodlightcontroller.routing.Route;
+import net.floodlightcontroller.routing.Path;
 import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.util.FlowModUtils;
 import net.floodlightcontroller.util.MatchUtils;
@@ -193,7 +193,7 @@ public abstract class ForwardingBase implements IOFMessageListener {
      *        OFFlowMod.OFPFC_MODIFY etc.
      * @return true if a packet out was sent on the first-hop switch of this route
      */
-    public boolean pushRoute(Route route, Match match, OFPacketIn pi,
+    public boolean pushRoute(Path route, Match match, OFPacketIn pi,
             DatapathId pinSwitch, U64 cookie, FloodlightContext cntx,
             boolean requestFlowRemovedNotification, OFFlowModCommand flowModCommand) {
 

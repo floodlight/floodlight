@@ -18,7 +18,7 @@ package net.floodlightcontroller.routing.web;
 
 import net.floodlightcontroller.core.types.JsonObjectWrapper;
 import net.floodlightcontroller.routing.IRoutingService;
-import net.floodlightcontroller.routing.Route;
+import net.floodlightcontroller.routing.Path;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.python.google.common.collect.ImmutableList;
 import org.restlet.resource.Get;
@@ -60,7 +60,7 @@ public class PathsResource extends ServerResource {
         }
         log.debug("Asking for {} paths", numRoutes);
 
-        List<Route> results = null;
+        List<Path> results = null;
         try {
             if (url.contains("fast")) {
                 results = routing.getPathsFast(srcDpid, dstDpid, numRoutes);

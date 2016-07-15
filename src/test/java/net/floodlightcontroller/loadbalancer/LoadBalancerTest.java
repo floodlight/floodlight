@@ -80,7 +80,7 @@ import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.restserver.RestApiServer;
 import net.floodlightcontroller.routing.IRoutingService;
-import net.floodlightcontroller.routing.Route;
+import net.floodlightcontroller.routing.Path;
 import net.floodlightcontroller.staticentry.IStaticEntryPusherService;
 import net.floodlightcontroller.staticentry.StaticEntryPusher;
 import net.floodlightcontroller.storage.IStorageSourceService;
@@ -626,7 +626,7 @@ public class LoadBalancerTest extends FloodlightTestCase {
 				DatapathId.of(1), OFPort.of(4));
 
 		// in bound #1
-		Route route1 = new Route(DatapathId.of(1L), DatapathId.of(1L));
+		Path route1 = new Path(DatapathId.of(1L), DatapathId.of(1L));
 		List<NodePortTuple> nptList1 = new ArrayList<NodePortTuple>();
 		nptList1.add(new NodePortTuple(DatapathId.of(1L), OFPort.of(1)));
 		nptList1.add(new NodePortTuple(DatapathId.of(1L), OFPort.of(3)));
@@ -634,7 +634,7 @@ public class LoadBalancerTest extends FloodlightTestCase {
 		expect(routingEngine.getPath(DatapathId.of(1L), OFPort.of(1), DatapathId.of(1L), OFPort.of(3))).andReturn(route1).atLeastOnce();
 
 		// outbound #1
-		Route route2 = new Route(DatapathId.of(1L), DatapathId.of(1L));
+		Path route2 = new Path(DatapathId.of(1L), DatapathId.of(1L));
 		List<NodePortTuple> nptList2 = new ArrayList<NodePortTuple>();
 		nptList2.add(new NodePortTuple(DatapathId.of(1L), OFPort.of(3)));
 		nptList2.add(new NodePortTuple(DatapathId.of(1L), OFPort.of(1)));
@@ -642,7 +642,7 @@ public class LoadBalancerTest extends FloodlightTestCase {
 		expect(routingEngine.getPath(DatapathId.of(1L), OFPort.of(3), DatapathId.of(1L), OFPort.of(1))).andReturn(route2).atLeastOnce();
 
 		// inbound #2
-		Route route3 = new Route(DatapathId.of(1L), DatapathId.of(1L));
+		Path route3 = new Path(DatapathId.of(1L), DatapathId.of(1L));
 		List<NodePortTuple> nptList3 = new ArrayList<NodePortTuple>();
 		nptList3.add(new NodePortTuple(DatapathId.of(1L), OFPort.of(2)));
 		nptList3.add(new NodePortTuple(DatapathId.of(1L), OFPort.of(4)));
@@ -650,7 +650,7 @@ public class LoadBalancerTest extends FloodlightTestCase {
 		expect(routingEngine.getPath(DatapathId.of(1L), OFPort.of(2), DatapathId.of(1L), OFPort.of(4))).andReturn(route3).atLeastOnce();
 
 		// outbound #2
-		Route route4 = new Route(DatapathId.of(1L), DatapathId.of(1L));
+		Path route4 = new Path(DatapathId.of(1L), DatapathId.of(1L));
 		List<NodePortTuple> nptList4 = new ArrayList<NodePortTuple>();
 		nptList4.add(new NodePortTuple(DatapathId.of(1L), OFPort.of(4)));
 		nptList4.add(new NodePortTuple(DatapathId.of(1L), OFPort.of(2)));

@@ -18,7 +18,7 @@ package net.floodlightcontroller.routing.web;
 
 import net.floodlightcontroller.core.types.JsonObjectWrapper;
 import net.floodlightcontroller.routing.IRoutingService;
-import net.floodlightcontroller.routing.Route;
+import net.floodlightcontroller.routing.Path;
 
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFPort;
@@ -60,7 +60,7 @@ public class PathResource extends ServerResource {
         }     
         log.debug("Asking for paths from {} to {}", srcPort, dstPort);
         
-        Route result = routing.getPath(srcDpid, srcPort, dstDpid, dstPort);
+        Path result = routing.getPath(srcDpid, srcPort, dstDpid, dstPort);
         
         if (result != null) {
             return JsonObjectWrapper.of(routing.getPath(srcDpid, srcPort, dstDpid, dstPort).getPath());

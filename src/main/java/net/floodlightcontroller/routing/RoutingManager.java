@@ -79,27 +79,27 @@ public class RoutingManager implements IFloodlightModule, IRoutingService {
     }
 
     @Override
-    public Route getPath(DatapathId src, DatapathId dst) {
+    public Path getPath(DatapathId src, DatapathId dst) {
         return tm.getCurrentTopologyInstance().getPath(src, dst);
     }
 
     @Override
-    public Route getPath(DatapathId src, OFPort srcPort, DatapathId dst, OFPort dstPort) {
+    public Path getPath(DatapathId src, OFPort srcPort, DatapathId dst, OFPort dstPort) {
         return tm.getCurrentTopologyInstance().getPath(src, srcPort, dst, dstPort);
     }
 
     @Override
-    public List<Route> getPathsFast(DatapathId src, DatapathId dst) {
+    public List<Path> getPathsFast(DatapathId src, DatapathId dst) {
         return tm.getCurrentTopologyInstance().getPathsFast(src, dst, tm.getMaxPathsToCompute());
     }
 
     @Override
-    public List<Route> getPathsFast(DatapathId src, DatapathId dst, int numReqPaths) {
+    public List<Path> getPathsFast(DatapathId src, DatapathId dst, int numReqPaths) {
         return tm.getCurrentTopologyInstance().getPathsFast(src, dst, numReqPaths);
     }
 
     @Override
-    public List<Route> getPathsSlow(DatapathId src, DatapathId dst, int numReqPaths) {
+    public List<Path> getPathsSlow(DatapathId src, DatapathId dst, int numReqPaths) {
         return tm.getCurrentTopologyInstance().getPathsSlow(src, dst, numReqPaths);
     }
 

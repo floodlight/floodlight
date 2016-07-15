@@ -18,30 +18,20 @@
 package net.floodlightcontroller.routing;
 
 import org.projectfloodlight.openflow.types.DatapathId;
-import org.projectfloodlight.openflow.types.U64;
 
 /**
- * Stores the endpoints of a route, in this case datapath ids
+ * Stores the endpoints of a path, in this case datapath ids
  *
  * @author David Erickson (daviderickson@cs.stanford.edu)
  */
-public class RouteId implements Cloneable, Comparable<RouteId> {
+public class PathId implements Cloneable, Comparable<PathId> {
     protected DatapathId src;
     protected DatapathId dst;
-    protected U64 cookie;
 
-    public RouteId(DatapathId src, DatapathId dst) {
+    public PathId(DatapathId src, DatapathId dst) {
         super();
         this.src = src;
         this.dst = dst;
-        this.cookie = U64.of(0);
-    }
-
-    public RouteId(DatapathId src, DatapathId dst, U64 cookie) {
-        super();
-        this.src = src;
-        this.dst = dst;
-        this.cookie = cookie;
     }
 
     public DatapathId getSrc() {
@@ -60,23 +50,12 @@ public class RouteId implements Cloneable, Comparable<RouteId> {
         this.dst = dst;
     }
 
-    public U64 getCookie() {
-        return cookie;
-    }
-
-    public void setCookie(int cookie) {
-        this.cookie = U64.of(cookie);
-    }
-
     @Override
     public int hashCode() {
         final int prime = 2417;
         Long result = new Long(1);
         result = prime * result + ((dst == null) ? 0 : dst.hashCode());
         result = prime * result + ((src == null) ? 0 : src.hashCode());
-        result = prime * result + cookie.getValue(); 
-        // To cope with long cookie, use Long to compute hash then use Long's 
-        // built-in hash to produce int hash code
         return result.hashCode(); 
     }
 
@@ -88,7 +67,7 @@ public class RouteId implements Cloneable, Comparable<RouteId> {
             return false;
         if (getClass() != obj.getClass())
             return false;
-        RouteId other = (RouteId) obj;
+        PathId other = (PathId) obj;
         if (dst == null) {
             if (other.dst != null)
                 return false;
@@ -114,7 +93,7 @@ public class RouteId implements Cloneable, Comparable<RouteId> {
     }
 
     @Override
-    public int compareTo(RouteId o) {
+    public int compareTo(PathId o) {
         int result = src.compareTo(o.getSrc());
         if (result != 0)
             return result;

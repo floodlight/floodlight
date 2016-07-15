@@ -52,7 +52,7 @@ import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.packet.IPv6;
 import net.floodlightcontroller.packet.UDP;
 import net.floodlightcontroller.routing.IRoutingService;
-import net.floodlightcontroller.routing.Route;
+import net.floodlightcontroller.routing.Path;
 import net.floodlightcontroller.test.FloodlightTestCase;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
 import net.floodlightcontroller.topology.ITopologyListener;
@@ -438,7 +438,7 @@ public class ForwardingTest extends FloodlightTestCase {
 		Capture<OFMessage> wc1 = EasyMock.newCapture(CaptureType.ALL);
 		Capture<OFMessage> wc2 = EasyMock.newCapture(CaptureType.ALL);
 
-		Route route = new Route(DatapathId.of(1L), DatapathId.of(2L));
+		Path route = new Path(DatapathId.of(1L), DatapathId.of(2L));
 		List<NodePortTuple> nptList = new ArrayList<NodePortTuple>();
 		nptList.add(new NodePortTuple(DatapathId.of(1L), OFPort.of(1)));
 		nptList.add(new NodePortTuple(DatapathId.of(1L), OFPort.of(3)));
@@ -508,7 +508,7 @@ public class ForwardingTest extends FloodlightTestCase {
 		Capture<OFMessage> wc1 = EasyMock.newCapture(CaptureType.ALL);
 		Capture<OFMessage> wc2 = EasyMock.newCapture(CaptureType.ALL);
 
-		Route route = new Route(DatapathId.of(1L), DatapathId.of(2L));
+		Path route = new Path(DatapathId.of(1L), DatapathId.of(2L));
 		List<NodePortTuple> nptList = new ArrayList<NodePortTuple>();
 		nptList.add(new NodePortTuple(DatapathId.of(1L), OFPort.of(1)));
 		nptList.add(new NodePortTuple(DatapathId.of(1L), OFPort.of(3)));
@@ -578,7 +578,7 @@ public class ForwardingTest extends FloodlightTestCase {
 		Capture<OFMessage> wc1 = EasyMock.newCapture(CaptureType.ALL);
 		Capture<OFMessage> wc2 = EasyMock.newCapture(CaptureType.ALL);
 
-		Route route = new  Route(DatapathId.of(1L), DatapathId.of(1L));
+		Path route = new  Path(DatapathId.of(1L), DatapathId.of(1L));
 		route.getPath().add(new NodePortTuple(DatapathId.of(1L), OFPort.of(1)));
 		route.getPath().add(new NodePortTuple(DatapathId.of(1L), OFPort.of(3)));
 		expect(routingEngine.getPath(DatapathId.of(1L), OFPort.of(1), DatapathId.of(1L), OFPort.of(3))).andReturn(route).atLeastOnce();
@@ -632,7 +632,7 @@ public class ForwardingTest extends FloodlightTestCase {
 		Capture<OFMessage> wc1 = EasyMock.newCapture(CaptureType.ALL);
 		Capture<OFMessage> wc2 = EasyMock.newCapture(CaptureType.ALL);
 
-		Route route = new  Route(DatapathId.of(1L), DatapathId.of(1L));
+		Path route = new  Path(DatapathId.of(1L), DatapathId.of(1L));
 		route.getPath().add(new NodePortTuple(DatapathId.of(1L), OFPort.of(1)));
 		route.getPath().add(new NodePortTuple(DatapathId.of(1L), OFPort.of(3)));
 		expect(routingEngine.getPath(DatapathId.of(1L), OFPort.of(1), DatapathId.of(1L), OFPort.of(3))).andReturn(route).atLeastOnce();
@@ -691,7 +691,7 @@ public class ForwardingTest extends FloodlightTestCase {
 		replay(topology);
 
 
-		Route route = new  Route(DatapathId.of(1L), DatapathId.of(1L));
+		Path route = new  Path(DatapathId.of(1L), DatapathId.of(1L));
 		route.getPath().add(new NodePortTuple(DatapathId.of(1L), OFPort.of(1)));
 		route.getPath().add(new NodePortTuple(DatapathId.of(1L), OFPort.of(3)));
 		expect(routingEngine.getPath(DatapathId.of(1L), OFPort.of(1), DatapathId.of(1L), OFPort.of(3))).andReturn(route).atLeastOnce();
