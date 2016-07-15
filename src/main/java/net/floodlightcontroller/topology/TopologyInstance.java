@@ -32,6 +32,7 @@ import org.slf4j.LoggerFactory;
 import com.google.common.collect.ImmutableSet;
 
 import java.util.*;
+import java.util.Map.Entry;
 import java.util.stream.Collectors;
 
 /**
@@ -135,7 +136,7 @@ public class TopologyInstance {
         this.pathcache = new HashMap<RouteId, List<Route>>();
 
         this.broadcastPortsPerArchipelago = new HashMap<DatapathId, Set<NodePortTuple>>();
-        
+
         this.clusterArchipelagoMap = new HashMap<Cluster, Archipelago>();
     }
 
@@ -145,42 +146,43 @@ public class TopologyInstance {
         // Must ignore blocked links.
         identifyClusters();
 
-        // Step 1.1: Add links within clusters to the owning cluster
+        // Step 2: Add links within clusters to the owning cluster
         // Avoid adding blocked links
         // Remaining links are inter-cluster links
         addIntraClusterLinks();
-        
-        log.warn("Clusters {}", clusters);
 
-        // Step 1.2 Compute the archipelagos (def: group of clusters). Each archipelago
+        // Step 3: Compute the archipelagos (def: group of clusters). Each archipelago
         // will have its own finiteBroadcastTree, which will be chosen by running dijkstra's
         // algorithm from the archipelago ID switch (lowest switch DPID). This is
         // because each archipelago is by definition isolated from all other archipelagos.
         calculateArchipelagos();
 
-        // Step 2. Compute shortest path trees in each cluster for
-        // unicast routing.  The trees are rooted at the destination.
+        // Step 4: Compute a shortest path tree in each cluster for
+        // the purpose of.  The trees are rooted at the destination.
         // Cost for tunnel links and direct links are the same.
         calculateShortestPathTreeInClusters();
 
-        // Step 3. Compute broadcast tree in each cluster.
+        // Step 5: Compute broadcast tree in each cluster.
         // Cost for tunnel links are high to discourage use of
-        // tunnel links.  The cost is set to the number of nodes
+        // tunnel links. The cost is set to the number of nodes
         // in the cluster + 1, to use as minimum number of
         // clusters as possible.
         calculateBroadcastNodePortsInClusters();
 
-        // Step 4.1 Use Yens algorithm to compute multiple paths 
+        // Step 6: Use Yens algorithm to compute multiple paths 
         computeOrderedPaths();
+
+        // Step 7: Get the broadcast ports for each archipelago 
+        // (i.e. for each disjoint network)
+        computeBroadcastPortsPerArchipelago();
         
-        //computeBroadcastPortsPerArchipelago();
+        // Step 8: Get all broadcast ports in NPT form
+        // Edge port included
+        computeBcastNPTsFromArchipelagos();
 
-        // Step 5. Determine broadcast switch ports for each archipelago
-        //computeBcastNPTsFromArchipelagos();
-
-        // Step 6. Sort into set of broadcast ports per switch, for quick lookup.
+        // Step 9. Sort into set of broadcast ports per switch, for quick lookup.
         // Edge ports included
-        //computeBcastPortsPerSwitchFromBcastNTPs();
+        computeBcastPortsPerSwitchFromBcastNTPs();
 
         // Make immutable
         //TODO makeDataImmutable();
@@ -1521,9 +1523,12 @@ public class TopologyInstance {
     private void computeBroadcastPortsPerArchipelago() {
         ImmutableSet.Builder<NodePortTuple> s = ImmutableSet.builder();
         for (Archipelago a : archipelagos) {
-            for (Link l : a.getBroadcastTree().getLinks().values()) {
-                s.add(new NodePortTuple(l.getSrc(), l.getSrcPort()));
-                s.add(new NodePortTuple(l.getDst(), l.getDstPort()));
+            for (Entry<DatapathId, Link> e : a.getBroadcastTree().getLinks().entrySet()) {
+                Link l = e.getValue();
+                if (l != null) { /* null --> root */
+                    s.add(new NodePortTuple(l.getSrc(), l.getSrcPort()));
+                    s.add(new NodePortTuple(l.getDst(), l.getDstPort()));
+                }
             }
             broadcastPortsPerArchipelago.put(a.getId(), s.build());
         }
