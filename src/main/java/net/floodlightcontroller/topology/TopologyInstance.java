@@ -70,15 +70,14 @@ public class TopologyInstance {
 
     /* Per-cluster */
     private Set<Cluster>                        clusters;
-    private Map<DatapathId, Set<NodePortTuple>> clusterPorts;
-    private Map<DatapathId, Cluster>            clustersPerSwitch;
-    private Map<DatapathId, BroadcastTree>      clusterBroadcastTrees;
+    private Map<DatapathId, Set<NodePortTuple>> clusterPorts; /* ports in the cluster ID */
+    private Map<DatapathId, Cluster>            clusterFromSwitch; /* cluster for each switch */
 
     /* Per-archipelago */
-    private Set<Archipelago>                    archipelagos;
+    private Set<Archipelago>                    archipelagos; /* connected clusters */
     private Map<Cluster, Archipelago>           archipelagoFromCluster;
-    private Map<DatapathId, Set<NodePortTuple>> portsBroadcastPerArchipelago;
-    private Map<PathId, List<Path>>           pathcache; /* contains computed paths ordered best to worst */
+    private Map<DatapathId, Set<NodePortTuple>> portsBroadcastPerArchipelago; /* broadcast ports in each archipelago ID */
+    private Map<PathId, List<Path>>             pathcache; /* contains computed paths ordered best to worst */
 
     public TopologyInstance(Map<DatapathId, Set<OFPort>> portsWithLinks,
             Set<NodePortTuple> portsBlocked,
@@ -125,11 +124,9 @@ public class TopologyInstance {
         this.linksBlocked = new HashSet<Link>();
 
         this.clusters = new HashSet<Cluster>();
-        this.clustersPerSwitch = new HashMap<DatapathId, Cluster>();
-        this.clusterBroadcastTrees = new HashMap<DatapathId, BroadcastTree>();
+        this.clusterFromSwitch = new HashMap<DatapathId, Cluster>();
         this.portsBroadcastAll= new HashSet<NodePortTuple>();
         this.portsBroadcastPerSwitch = new HashMap<DatapathId,Set<OFPort>>();
-        this.clusterBroadcastTrees = new HashMap<DatapathId, BroadcastTree>();
 
         this.pathcache = new HashMap<PathId, List<Path>>();
 
@@ -211,17 +208,14 @@ public class TopologyInstance {
     }
 
     private void printTopology() {
-        log.info("-----------------Topology-----------------------");
-        log.info("All Links: {}", links);
-        log.info("Cluser Broadcast Trees: {}", clusterBroadcastTrees);
-        log.info("Cluster Ports: {}", clusterPorts);
-        log.info("Tunnel Ports: {}", portsTunnel);
-        log.info("Clusters: {}", clusters);
-        log.info("Broadcast Ports Per Node (!!): {}", portsBroadcastPerSwitch);
-        log.info("Broadcast Domain Ports: {}", portsWithMoreThanTwoLinks);
-        log.info("Broadcast Node Ports: {}", portsWithMoreThanTwoLinks);
-        log.info("Archipelagos: {}", archipelagos);
-        log.info("-----------------------------------------------");  
+        log.debug("-----------------Topology-----------------------");
+        log.debug("All Links: {}", links);
+        log.debug("Tunnel Ports: {}", portsTunnel);
+        log.debug("Clusters: {}", clusters);
+        log.debug("Broadcast Ports Per Node (!!): {}", portsBroadcastPerSwitch);
+        log.debug("3+ Link Ports: {}", portsWithMoreThanTwoLinks);
+        log.debug("Archipelagos: {}", archipelagos);
+        log.debug("-----------------------------------------------");  
     }
 
     private void identifyIntraClusterLinks() {
@@ -234,8 +228,8 @@ public class TopologyInstance {
                 for (Link l : linksNonBcastNonTunnel.get(np)) {
                     if (isBlockedLink(l)) continue;
                     if (isBroadcastLink(l)) continue;
-                    Cluster c1 = clustersPerSwitch.get(l.getSrc());
-                    Cluster c2 = clustersPerSwitch.get(l.getDst());
+                    Cluster c1 = clusterFromSwitch.get(l.getSrc());
+                    Cluster c2 = clusterFromSwitch.get(l.getDst());
                     if (c1 == c2) {
                         c1.addLink(l); /* link is within cluster */
                     } else {
@@ -338,7 +332,7 @@ public class TopologyInstance {
 
                     // ignore if the destination is already added to
                     // another cluster
-                    if (clustersPerSwitch.get(dstSw) != null) continue;
+                    if (clusterFromSwitch.get(dstSw) != null) continue;
 
                     // ignore the link if it is blocked.
                     if (isBlockedLink(l)) continue;
@@ -391,7 +385,7 @@ public class TopologyInstance {
             Cluster sc = new Cluster();
             for (DatapathId sw : currSet) {
                 sc.add(sw);
-                clustersPerSwitch.put(sw, sc);
+                clusterFromSwitch.put(sw, sc);
             }
             // delete all the nodes in the current set.
             currSet.clear();
@@ -749,28 +743,28 @@ public class TopologyInstance {
 
     /*
      * Calculates and stores n possible paths  using Yen's algorithm,
-     * looping through every switch.
-     * These lists of routes are stored in pathcache.
+     * looping through every switch. These lists of routes are stored 
+     * in the pathcache.
      */
     private void computeOrderedPaths() {
-        List<Path> routes;
-        PathId routeId;
+        List<Path> paths;
+        PathId pathId;
         pathcache.clear();
 
         for (Archipelago a : archipelagos) { /* for each archipelago */
             Set<DatapathId> srcSws = a.getSwitches();
             Set<DatapathId> dstSws = a.getSwitches();
-            log.info("SRC {}", srcSws);
-            log.info("DST {}", dstSws);
+            log.debug("SRC {}", srcSws);
+            log.debug("DST {}", dstSws);
 
             for (DatapathId src : srcSws) { /* permute all member switches */
                 for (DatapathId dst : dstSws) {
-                    log.warn("Calling Yens {} {}", src, dst);
-                    routes = yens(src, dst, TopologyManager.getMaxPathsToComputeInternal(),
+                    log.debug("Calling Yens {} {}", src, dst);
+                    paths = yens(src, dst, TopologyManager.getMaxPathsToComputeInternal(),
                             getArchipelago(src), getArchipelago(dst));
-                    routeId = new PathId(src, dst);
-                    pathcache.put(routeId, routes);
-                    log.info("Adding paths {}", routes);
+                    pathId = new PathId(src, dst);
+                    pathcache.put(pathId, paths);
+                    log.debug("Adding paths {}", paths);
                 }
             }
         }
@@ -791,7 +785,7 @@ public class TopologyInstance {
             // This is a switch that is not connected to any other switch
             // hence there was no update for links (and hence it is not
             // in the network)
-            log.info("buildpath: Standalone switch: {}", srcId);
+            log.debug("buildpath: Standalone switch: {}", srcId);
 
             // The only possible non-null path for this case is
             // if srcId equals dstId --- and that too is an 'empty' path []
@@ -893,27 +887,27 @@ public class TopologyInstance {
 
     /**
      *
-     * This function returns K number of routes between a source and destination. It will attempt to retrieve
-     * these routes from the pathcache. If the user requests more routes than are stored, Yen's algorithm will be
+     * This function returns K number of paths between a source and destination. It will attempt to retrieve
+     * these paths from the pathcache. If the user requests more paths than are stored, Yen's algorithm will be
      * run using the K value passed in.
      *
      *
-     * @param src: DatapathId of the route source.
-     * @param dst: DatapathId of the route destination.
-     * @param k: The number of routes that you want. Must be positive integer.
-     * @return ArrayList of Routes or null if bad parameters
+     * @param src: DatapathId of the path source.
+     * @param dst: DatapathId of the path destination.
+     * @param k: The number of path that you want. Must be positive integer.
+     * @return list of paths or empty
      */
     public List<Path> getPathsSlow(DatapathId src, DatapathId dst, int k) {
-        PathId routeId = new PathId(src, dst);
-        List<Path> routes = pathcache.get(routeId);
+        PathId pathId = new PathId(src, dst);
+        List<Path> paths = pathcache.get(pathId);
 
-        if (routes == null || k < 1) return ImmutableList.of();
+        if (paths == null || k < 1) return ImmutableList.of();
 
-        if (k >= TopologyManager.getMaxPathsToComputeInternal() || k >= routes.size()) {
+        if (k >= TopologyManager.getMaxPathsToComputeInternal() || k >= paths.size()) {
             return yens(src, dst, k, getArchipelago(src), getArchipelago(dst)); /* heavy computation */
         }
         else {
-            return new ArrayList<Path>(routes.subList(0, k));
+            return new ArrayList<Path>(paths.subList(0, k));
         }
     }
 
@@ -955,8 +949,8 @@ public class TopologyInstance {
     private List<Path> yens(DatapathId src, DatapathId dst, Integer K, Archipelago aSrc, Archipelago aDst) {
 
         log.debug("YENS ALGORITHM -----------------");
-        log.debug("Asking for routes from {} to {}", src, dst);
-        log.debug("Asking for {} routes", K);
+        log.debug("Asking for paths from {} to {}", src, dst);
+        log.debug("Asking for {} paths", K);
 
         // Find link costs
         Map<Link, Integer> linkCost = initLinkCostMap();
@@ -970,7 +964,7 @@ public class TopologyInstance {
         List<Path> A = new ArrayList<Path>();
         List<Path> B = new ArrayList<Path>();
 
-        // The number of routes requested should never be less than 1.
+        // The number of paths requested should never be less than 1.
         if (K < 1) {
             return A;
         }
@@ -1000,7 +994,7 @@ public class TopologyInstance {
             log.debug("Found shortest path in Yens {}", newroute);
         }
         else {
-            log.debug("No routes found in Yen's!");
+            log.debug("No paths found in Yen's!");
             return A;
         }
 
@@ -1043,12 +1037,10 @@ public class TopologyInstance {
                 // Builds the new topology without the parts we want removed
                 copyOfLinkDpidMap = buildLinkDpidMap(switchesCopy, portsWithLinks, allLinksCopy);
 
-                //log.debug("About to build route.");
-                //log.debug("Switches: {}", switchesCopy);
                 // Uses Dijkstra's to try to find a shortest path from the spur node to the destination
                 Path spurPath = buildPath(new PathId(spurNode, dst), dijkstra(copyOfLinkDpidMap, dst, linkCost, true));
                 if (spurPath == null || spurPath.getPath().isEmpty()) {
-                    //log.debug("spurPath is null");
+                    log.debug("spurPath is null");
                     continue;
                 }
 
@@ -1245,7 +1237,7 @@ public class TopologyInstance {
     }
 
     public DatapathId getClusterId(DatapathId switchId) {
-        Cluster c = clustersPerSwitch.get(switchId);
+        Cluster c = clusterFromSwitch.get(switchId);
         if (c != null) { 
             return c.getId();
         }
@@ -1253,7 +1245,7 @@ public class TopologyInstance {
     }
 
     public DatapathId getArchipelagoId(DatapathId switchId) {
-        Cluster c = clustersPerSwitch.get(switchId);
+        Cluster c = clusterFromSwitch.get(switchId);
         if (c != null) {
             return archipelagoFromCluster.get(c).getId();
         }
@@ -1261,7 +1253,7 @@ public class TopologyInstance {
     }
 
     public Set<DatapathId> getSwitchesInCluster(DatapathId switchId) {
-        Cluster c = clustersPerSwitch.get(switchId);
+        Cluster c = clusterFromSwitch.get(switchId);
         if (c != null) {
             return c.getNodes();
         }
@@ -1270,8 +1262,8 @@ public class TopologyInstance {
     }
 
     public boolean isInSameCluster(DatapathId switch1, DatapathId switch2) {
-        Cluster c1 = clustersPerSwitch.get(switch1);
-        Cluster c2 = clustersPerSwitch.get(switch2);
+        Cluster c1 = clusterFromSwitch.get(switch1);
+        Cluster c2 = clusterFromSwitch.get(switch2);
         if (c1 != null && c2 != null) {
             return c1.getId().equals(c2.getId());
         }
