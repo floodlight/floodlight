@@ -3,6 +3,24 @@ package net.floodlightcontroller.core.types;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFPort;
 
+/**
+ * Simple classes for defining a hop in a path.
+ * 
+ * Class PathNode good for tracking hops in
+ * an outer container that guarantees ordering
+ * or for standalone use. It can also be useful
+ * when lookup of specific nodes needs to be
+ * faster than O(n)... lookup time dependent on 
+ * containing class.
+ * 
+ * Inner class LinkedPathNode useful for chaining
+ * LinkedPathNodes together. Note traversal will
+ * always be O(n), since it's effectively a linked
+ * list.
+ * 
+ * @author rizard
+ *
+ */
 public class PathNode {
     private DatapathId node;
     private OFPort in;
