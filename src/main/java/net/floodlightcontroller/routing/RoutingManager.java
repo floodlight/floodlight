@@ -1,11 +1,14 @@
 package net.floodlightcontroller.routing;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
 import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.Masked;
 import org.projectfloodlight.openflow.types.OFPort;
+import org.projectfloodlight.openflow.types.U64;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,12 +29,23 @@ import net.floodlightcontroller.topology.ITopologyService;
  * too confusing implementing so many interfaces and doing
  * so many tasks. This is a cleaner approach IMHO.
  * 
+ * All routing and path-finding functionality is visible to
+ * the rest of the controller via the IRoutingService implemented
+ * by the RoutingManger (this). The RoutingManger performs
+ * tasks it can perform locally, such as the handling of
+ * IRoutingDecisionChangedListeners, while it defers to the
+ * current TopologyInstance (exposed via the ITopologyManagerBackend
+ * interface) for tasks best performed by the topology
+ * package, such as path-finding.
+ * 
  * @author rizard
  */
 public class RoutingManager implements IFloodlightModule, IRoutingService {
     private Logger log = LoggerFactory.getLogger(RoutingManager.class);
     
     private static ITopologyManagerBackend tm;
+    
+    private List<IRoutingDecisionChangedListener> decisionChangedListeners;
     
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleServices() {
@@ -52,6 +66,7 @@ public class RoutingManager implements IFloodlightModule, IRoutingService {
     public void init(FloodlightModuleContext context) throws FloodlightModuleException {
         log.debug("RoutingManager starting up");
         tm = (ITopologyManagerBackend) context.getServiceImpl(ITopologyService.class);
+        decisionChangedListeners = new ArrayList<IRoutingDecisionChangedListener>();
     }
 
     @Override
@@ -107,4 +122,40 @@ public class RoutingManager implements IFloodlightModule, IRoutingService {
     public boolean pathExists(DatapathId src, DatapathId dst) {
         return tm.getCurrentTopologyInstance().pathExists(src, dst);
     }
+
+    /** 
+     * Registers an IRoutingDecisionChangedListener.
+     *   
+     * @param listener
+     * @return 
+     */
+    @Override
+    public void addRoutingDecisionChangedListener(IRoutingDecisionChangedListener listener) {
+        decisionChangedListeners.add(listener);
+    }
+    
+    /** 
+     * Deletes an IRoutingDecisionChangedListener.
+     *   
+     * @param listener 
+     * @return
+     */
+    @Override
+    public void removeRoutingDecisionChangedListener(IRoutingDecisionChangedListener listener) {
+        decisionChangedListeners.remove(listener);
+    }
+
+    /** 
+     * Listens for the event to the IRoutingDecisionChanged listener and calls routingDecisionChanged().
+     *   
+     * @param changedDecisions
+     * @return
+     */
+    @Override
+    public void handleRoutingDecisionChange(Iterable<Masked<U64>> changedDecisions) {
+        for (IRoutingDecisionChangedListener listener : decisionChangedListeners) {
+            listener.routingDecisionChanged(changedDecisions);
+        }
+    }
+
 }

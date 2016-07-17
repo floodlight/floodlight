@@ -70,6 +70,20 @@ public class AppCookie {
             new ConcurrentHashMap<Integer, String>();
 
     /**
+     * Returns a mask suitable for matching the App ID within a cookie.
+     */
+    static public U64 getAppFieldMask() {
+        return U64.of(APP_ID_MASK << APP_ID_SHIFT);
+    }
+
+    /**
+     * Returns a mask suitable for matching the User field within a cookie.
+     */
+    static public U64 getUserFieldMask() {
+        return U64.of(USER_MASK);
+    }
+    
+    /**
      * Encapsulate an application ID and a user block of stuff into a cookie
      *
      * @param application An ID to identify the application

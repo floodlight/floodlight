@@ -50,6 +50,7 @@ import net.floodlightcontroller.packet.TCP;
 import net.floodlightcontroller.packet.UDP;
 import net.floodlightcontroller.routing.ForwardingBase;
 import net.floodlightcontroller.routing.IRoutingDecision;
+import net.floodlightcontroller.routing.IRoutingDecisionChangedListener;
 import net.floodlightcontroller.routing.IRoutingService;
 import net.floodlightcontroller.routing.Path;
 import net.floodlightcontroller.topology.ITopologyService;
@@ -77,6 +78,7 @@ import org.projectfloodlight.openflow.types.IPv4Address;
 import org.projectfloodlight.openflow.types.IPv6Address;
 import org.projectfloodlight.openflow.types.IpProtocol;
 import org.projectfloodlight.openflow.types.MacAddress;
+import org.projectfloodlight.openflow.types.Masked;
 import org.projectfloodlight.openflow.types.OFBufferId;
 import org.projectfloodlight.openflow.types.OFGroup;
 import org.projectfloodlight.openflow.types.OFPort;
@@ -84,12 +86,18 @@ import org.projectfloodlight.openflow.types.OFVlanVidMatch;
 import org.projectfloodlight.openflow.types.TableId;
 import org.projectfloodlight.openflow.types.U64;
 import org.projectfloodlight.openflow.types.VlanVid;
+import org.python.google.common.collect.ImmutableList;
+import org.python.google.common.collect.Maps;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class Forwarding extends ForwardingBase implements IFloodlightModule, IOFSwitchListener, ILinkDiscoveryListener {
+public class Forwarding extends ForwardingBase implements IFloodlightModule, IOFSwitchListener, ILinkDiscoveryListener, IRoutingDecisionChangedListener {
     protected static Logger log = LoggerFactory.getLogger(Forwarding.class);
-
+    final static U64 DEFAULT_FORWARDING_COOKIE = AppCookie.makeCookie(FORWARDING_APP_ID, 0);
+    
+    // This mask determines how much of each cookie will contain IRoutingDecision descriptor bits.
+ 	private final long DECISION_MASK = 0x00000000ffffffffL; // TODO: shrink this mask if you need to add more sub-fields.
+    
     @Override
     public Command processPacketInMessage(IOFSwitch sw, OFPacketIn pi, IRoutingDecision decision, FloodlightContext cntx) {
         Ethernet eth = IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
@@ -105,11 +113,11 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                 return Command.CONTINUE;
             case FORWARD_OR_FLOOD:
             case FORWARD:
-                doForwardFlow(sw, pi, cntx, false);
+                doForwardFlow(sw, pi, decision, cntx, false);
                 return Command.CONTINUE;
             case MULTICAST:
                 // treat as broadcast
-                doFlood(sw, pi, cntx);
+                doFlood(sw, pi, decision, cntx);
                 return Command.CONTINUE;
             case DROP:
                 doDropFlow(sw, pi, decision, cntx);
@@ -124,21 +132,124 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
             }
 
             if (eth.isBroadcast() || eth.isMulticast()) {
-                doFlood(sw, pi, cntx);
+                doFlood(sw, pi, decision, cntx);
             } else {
-                doForwardFlow(sw, pi, cntx, false);
+                doForwardFlow(sw, pi, decision, cntx, false);
             }
         }
 
         return Command.CONTINUE;
     }
+    
+    /**
+	 * Builds a cookie that includes routing decision information.
+	 *
+	 * @param decision The routing decision providing a descriptor, or null
+	 * @return A cookie with our app id and the required routing fields masked-in
+	 */
+	protected U64 makeForwardingCookie(IRoutingDecision decision) {
+		int user_fields = 0;
+
+		U64 decision_cookie = (decision == null) ? null : decision.getDescriptor();
+		if (decision_cookie != null) {
+			user_fields |= AppCookie.extractUser(decision_cookie) & DECISION_MASK;
+		}
+
+		// TODO: Mask in any other required fields here (e.g. link failure flowset ID)
+
+		if (user_fields == 0) {
+			return DEFAULT_FORWARDING_COOKIE;
+		}
+		return AppCookie.makeCookie(FORWARDING_APP_ID, user_fields);
+	}
+
+	/** Called when the handleDecisionChange is triggered by an event (routing decision was changed in firewall).
+	 *  
+	 *  @param changedDecisions Masked routing descriptors for flows that should be deleted from the switch.
+	 */
+	@Override
+	public void routingDecisionChanged(Iterable<Masked<U64>> changedDecisions) {
+		deleteFlowsByDescriptor(changedDecisions);
+	}
+	
+	/**
+	 * Converts a sequence of masked IRoutingDecision descriptors into masked Forwarding cookies.
+	 *
+	 * This generates a list of masked cookies that can then be matched in flow-mod messages.
+	 *
+	 * @param maskedDescriptors A sequence of masked cookies describing IRoutingDecision descriptors
+	 * @return A collection of masked cookies suitable for flow-mod operations
+	 */
+	protected Collection<Masked<U64>> convertRoutingDecisionDescriptors(Iterable<Masked<U64>> maskedDescriptors) {
+		if(maskedDescriptors == null) {
+			return null;
+		}
+
+		ImmutableList.Builder<Masked<U64>> resultBuilder = ImmutableList.builder();
+		for (Masked<U64> maskedDescriptor : maskedDescriptors) {
+			long user_mask = AppCookie.extractUser(maskedDescriptor.getMask()) & DECISION_MASK;
+			long user_value = AppCookie.extractUser(maskedDescriptor.getValue()) & user_mask;
+
+			// TODO combine in any other cookie fields you need here.
+
+			resultBuilder.add(
+					Masked.of(
+							AppCookie.makeCookie(FORWARDING_APP_ID, (int)user_value),
+							AppCookie.getAppFieldMask().or(U64.of(user_mask))
+					)
+			);
+		}
+
+		return resultBuilder.build();
+	}
+
+	/**
+	 * On all active switches, deletes all flows matching the IRoutingDecision descriptors provided
+	 * as arguments.
+	 *
+	 * @param descriptors The descriptors and masks describing which flows to delete.
+	 */
+	protected void deleteFlowsByDescriptor(Iterable<Masked<U64>> descriptors) {
+		Collection<Masked<U64>> masked_cookies = convertRoutingDecisionDescriptors(descriptors);
+
+		if (masked_cookies != null && !masked_cookies.isEmpty()) {
+			Map<OFVersion, List<OFMessage>> cache = Maps.newHashMap();
+
+			for (DatapathId dpid : switchService.getAllSwitchDpids()) {
+				IOFSwitch sw = switchService.getActiveSwitch(dpid);
+				if (sw == null) {
+					continue;
+				}
+
+				OFVersion ver = sw.getOFFactory().getVersion();
+				if (cache.containsKey(ver)) {
+					sw.write(cache.get(ver));
+				} else {
+					ImmutableList.Builder<OFMessage> msgsBuilder = ImmutableList.builder();
+					for (Masked<U64> masked_cookie : masked_cookies) {
+						msgsBuilder.add(
+							sw.getOFFactory().buildFlowDelete()
+								.setCookie(masked_cookie.getValue())
+								.setCookieMask(masked_cookie.getMask())
+									.build()
+							);
+					}
+
+					List<OFMessage> msgs = msgsBuilder.build();
+					sw.write(msgs);
+					cache.put(ver, msgs);
+				}
+			}
+		}
+	}
+
 
     protected void doDropFlow(IOFSwitch sw, OFPacketIn pi, IRoutingDecision decision, FloodlightContext cntx) {
         OFPort inPort = (pi.getVersion().compareTo(OFVersion.OF_12) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT));
         Match m = createMatchFromPacket(sw, inPort, cntx);
         OFFlowMod.Builder fmb = sw.getOFFactory().buildFlowAdd(); // this will be a drop-flow; a flow that will not output to any ports
         List<OFAction> actions = new ArrayList<OFAction>(); // set no action to drop
-        U64 cookie = AppCookie.makeCookie(FORWARDING_APP_ID, 0);
+        U64 cookie = makeForwardingCookie(decision); 
         log.info("Dropping");
         fmb.setCookie(cookie)
         .setHardTimeout(FLOWMOD_DEFAULT_HARD_TIMEOUT)
@@ -162,7 +273,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         log.debug("OFMessage dampened: {}", dampened);
     }
 
-    protected void doForwardFlow(IOFSwitch sw, OFPacketIn pi, FloodlightContext cntx, boolean requestFlowRemovedNotifn) {
+    protected void doForwardFlow(IOFSwitch sw, OFPacketIn pi, IRoutingDecision decision, FloodlightContext cntx, boolean requestFlowRemovedNotifn) {
         OFPort inPort = (pi.getVersion().compareTo(OFVersion.OF_12) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT));
         IDevice dstDevice = IDeviceService.fcStore.get(cntx, IDeviceService.CONTEXT_DST_DEVICE);
         DatapathId source = sw.getId();
@@ -179,7 +290,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                     IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD).getEtherType() 
                     == EthType.ARP) {
                 log.debug("ARP flows disabled in Forwarding. Flooding ARP packet");
-                doFlood(sw, pi, cntx);
+                doFlood(sw, pi, decision, cntx);
                 return;
             }
 
@@ -226,56 +337,56 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
              */
             if (dstDap == null) {
                 log.warn("Could not locate edge attachment point for device {}. Flooding packet");
-                doFlood(sw, pi, cntx);
+                doFlood(sw, pi, decision, cntx);
                 return; 
             }
 
             /* It's possible that we learned packed destination while it was in flight */
             if (!topologyService.isEdge(source, inPort)) {	
                 log.debug("Packet destination is known, but packet was not received on an edge port (rx on {}/{}). Flooding packet", source, inPort);
-                doFlood(sw, pi, cntx);
+                doFlood(sw, pi, decision, cntx);
                 return; 
             }				
 
-            Path route = routingEngineService.getPath(source, 
+            U64 cookie = makeForwardingCookie(decision);
+            Path path = routingEngineService.getPath(source, 
                     inPort,
                     dstDap.getNodeId(),
                     dstDap.getPortId());
 
             Match m = createMatchFromPacket(sw, inPort, cntx);
-            U64 cookie = AppCookie.makeCookie(FORWARDING_APP_ID, 0);
 
-            if (route != null) {
+            if (path != null) {
                 if (log.isDebugEnabled()) {
                     log.debug("pushRoute inPort={} route={} " +
                             "destination={}:{}",
-                            new Object[] { inPort, route,
+                            new Object[] { inPort, path,
                                     dstDap.getNodeId(),
                                     dstDap.getPortId()});
                 }
 
 
                 log.debug("Cretaing flow rules on the route, match rule: {}", m);
-                pushRoute(route, m, pi, sw.getId(), cookie, 
+                pushRoute(path, m, pi, sw.getId(), cookie, 
                         cntx, requestFlowRemovedNotifn,
                         OFFlowModCommand.ADD);	
             } else {
                 /* Route traverses no links --> src/dst devices on same switch */
                 log.debug("Could not compute route. Devices should be on same switch src={} and dst={}", srcDevice, dstDevice);
-                Path r = new Path(srcDevice.getAttachmentPoints()[0].getNodeId(), dstDevice.getAttachmentPoints()[0].getNodeId());
-                List<NodePortTuple> path = new ArrayList<NodePortTuple>(2);
-                path.add(new NodePortTuple(srcDevice.getAttachmentPoints()[0].getNodeId(),
+                Path p = new Path(srcDevice.getAttachmentPoints()[0].getNodeId(), dstDevice.getAttachmentPoints()[0].getNodeId());
+                List<NodePortTuple> npts = new ArrayList<NodePortTuple>(2);
+                npts.add(new NodePortTuple(srcDevice.getAttachmentPoints()[0].getNodeId(),
                         srcDevice.getAttachmentPoints()[0].getPortId()));
-                path.add(new NodePortTuple(dstDevice.getAttachmentPoints()[0].getNodeId(),
+                npts.add(new NodePortTuple(dstDevice.getAttachmentPoints()[0].getNodeId(),
                         dstDevice.getAttachmentPoints()[0].getPortId()));
-                r.setPath(path);
-                pushRoute(r, m, pi, sw.getId(), cookie,
+                p.setPath(npts);
+                pushRoute(p, m, pi, sw.getId(), cookie,
                         cntx, requestFlowRemovedNotifn,
                         OFFlowModCommand.ADD);
             }
         } else {
             log.debug("Destination unknown. Flooding packet");
-            doFlood(sw, pi, cntx);
+            doFlood(sw, pi, decision, cntx);
         }
     }
 
@@ -388,9 +499,10 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
      * the port is blocked, in which case the packet will be dropped.
      * @param sw The switch that receives the OFPacketIn
      * @param pi The OFPacketIn that came to the switch
+     * @param decision The decision that caused flooding, or null
      * @param cntx The FloodlightContext associated with this OFPacketIn
      */
-    protected void doFlood(IOFSwitch sw, OFPacketIn pi, FloodlightContext cntx) {
+    protected void doFlood(IOFSwitch sw, OFPacketIn pi, IRoutingDecision decision, FloodlightContext cntx) {
         OFPort inPort = (pi.getVersion().compareTo(OFVersion.OF_12) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT));
         // Set Action to flood
         OFPacketOut.Builder pob = sw.getOFFactory().buildPacketOut();
@@ -543,6 +655,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
     public void startUp(FloodlightModuleContext context) {
         super.startUp();
         switchService.addOFSwitchListener(this);
+        routingEngineService.addRoutingDecisionChangedListener(this);
 
         /* Register only if we want to remove stale flows */
         if (REMOVE_FLOWS_ON_LINK_OR_PORT_DOWN) {
@@ -621,14 +734,16 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                     if (srcSw != null) {
                         /* flows matching on src port */
                         msgs.add(srcSw.getOFFactory().buildFlowDelete()
-                                .setCookie(AppCookie.makeCookie(FORWARDING_APP_ID, 0))
+                        		.setCookie(DEFAULT_FORWARDING_COOKIE)
+                        		.setCookieMask(AppCookie.getAppFieldMask())
                                 .setMatch(srcSw.getOFFactory().buildMatch()
                                         .setExact(MatchField.IN_PORT, u.getSrcPort())
                                         .build())
                                 .build());
                         /* flows outputting to src port */
                         msgs.add(srcSw.getOFFactory().buildFlowDelete()
-                                .setCookie(AppCookie.makeCookie(FORWARDING_APP_ID, 0))
+                        		.setCookie(DEFAULT_FORWARDING_COOKIE)
+                        		.setCookieMask(AppCookie.getAppFieldMask())
                                 .setOutPort(u.getSrcPort())
                                 .build());
                         messageDamper.write(srcSw, msgs);
@@ -644,14 +759,16 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                         /* flows matching on dst port */
                         msgs.clear();
                         msgs.add(dstSw.getOFFactory().buildFlowDelete()
-                                .setCookie(AppCookie.makeCookie(FORWARDING_APP_ID, 0))
+                        		.setCookie(DEFAULT_FORWARDING_COOKIE)
+                        		.setCookieMask(AppCookie.getAppFieldMask())
                                 .setMatch(dstSw.getOFFactory().buildMatch()
                                         .setExact(MatchField.IN_PORT, u.getDstPort())
                                         .build())
                                 .build());
                         /* flows outputting to dst port */
                         msgs.add(dstSw.getOFFactory().buildFlowDelete()
-                                .setCookie(AppCookie.makeCookie(FORWARDING_APP_ID, 0))
+                        		.setCookie(DEFAULT_FORWARDING_COOKIE)
+                        		.setCookieMask(AppCookie.getAppFieldMask())
                                 .setOutPort(u.getDstPort())
                                 .build());
                         messageDamper.write(dstSw, msgs);

@@ -23,6 +23,7 @@ import java.util.List;
 import org.projectfloodlight.openflow.protocol.match.Match;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFPort;
+import org.projectfloodlight.openflow.types.U64;
 
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.devicemanager.IDevice;
@@ -38,6 +39,7 @@ public class RoutingDecision implements IRoutingDecision {
     protected IDevice srcDevice;
     protected List<IDevice> destDevices;
     protected List<SwitchPort> broadcastIntertfaces;
+    protected U64 descriptor;
 
     public RoutingDecision(DatapathId swDipd,
                                   OFPort inPort,
@@ -113,6 +115,16 @@ public class RoutingDecision implements IRoutingDecision {
     public void setHardTimeout(short hardTimeout) {
         this.hardTimeout = hardTimeout;
     }
+
+	@Override
+	public U64 getDescriptor() {
+		return descriptor;
+	}
+
+	@Override
+	public void setDescriptor(U64 descriptor) {
+		this.descriptor = descriptor;
+	}
 
     @Override
     public void addToContext(FloodlightContext cntx) {
