@@ -79,7 +79,7 @@ public class TopologyInstance {
     private Map<DatapathId, Set<NodePortTuple>> portsBroadcastPerArchipelago; /* broadcast ports in each archipelago ID */
     private Map<PathId, List<Path>>             pathcache; /* contains computed paths ordered best to worst */
 
-    public TopologyInstance(Map<DatapathId, Set<OFPort>> portsWithLinks,
+    protected TopologyInstance(Map<DatapathId, Set<OFPort>> portsWithLinks,
             Set<NodePortTuple> portsBlocked,
             Map<NodePortTuple, Set<Link>> linksNonBcastNonTunnel,
             Set<NodePortTuple> portsWithMoreThanTwoLinks,
@@ -135,7 +135,7 @@ public class TopologyInstance {
         this.archipelagoFromCluster = new HashMap<Cluster, Archipelago>();
     }
 
-    public void compute() {
+    protected void compute() {
         /*
          * Step 1: Compute clusters ignoring ports with > 2 links and 
          * blocked links.
