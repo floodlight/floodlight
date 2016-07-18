@@ -336,7 +336,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
              * of a link.
              */
             if (dstDap == null) {
-                log.warn("Could not locate edge attachment point for device {}. Flooding packet");
+                log.debug("Could not locate edge attachment point for device {}. Flooding packet");
                 doFlood(sw, pi, decision, cntx);
                 return; 
             }
@@ -509,8 +509,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         Set<OFPort> broadcastPorts = this.topologyService.getSwitchBroadcastPorts(sw.getId());
 
         if (broadcastPorts.isEmpty()) {
-            log.warn("No broadcast ports found. Using FLOOD output action");
-            /* Must be a single-switch w/no links */
+            log.debug("No broadcast ports found. Using FLOOD output action");
             broadcastPorts = Collections.singleton(OFPort.FLOOD);
         }
 

@@ -33,7 +33,6 @@ import net.floodlightcontroller.packet.BSN;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.LLDP;
 import net.floodlightcontroller.restserver.IRestApiService;
-import net.floodlightcontroller.routing.IRoutingService;
 import net.floodlightcontroller.routing.IRoutingService.PATH_METRIC;
 import net.floodlightcontroller.routing.web.RoutingWebRoutable;
 import net.floodlightcontroller.statistics.IStatisticsService;
@@ -550,7 +549,6 @@ public class TopologyManager implements IFloodlightModule, ITopologyService,
         Collection<Class<? extends IFloodlightService>> l =
                 new ArrayList<Class<? extends IFloodlightService>>();
         l.add(ITopologyService.class);
-        l.add(IRoutingService.class);
         return l;
     }
 
@@ -563,7 +561,6 @@ public class TopologyManager implements IFloodlightModule, ITopologyService,
         IFloodlightService>();
         // We are the class that implements the service
         m.put(ITopologyService.class, this);
-        m.put(IRoutingService.class, this);
         return m;
     }
 

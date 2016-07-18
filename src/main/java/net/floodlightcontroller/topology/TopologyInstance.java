@@ -985,7 +985,7 @@ public class TopologyInstance {
         /* add this initial tree as our archipelago's broadcast tree (aSrc == aDst) */
         aSrc.setBroadcastTree(bt);
         /* now add the shortest path */
-        log.warn("src {} dst {} tree {}", new Object[] {src, dst, bt});
+        log.debug("src {} dst {} tree {}", new Object[] {src, dst, bt});
         Path newroute = buildPath(new PathId(src, dst), bt); /* guaranteed to be in same tree */
 
         if (newroute != null && !newroute.getPath().isEmpty()) { /* should never be null, but might be empty */
