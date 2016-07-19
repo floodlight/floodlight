@@ -737,7 +737,10 @@ public class TopologyInstance {
                 if (links.get(npt) == null) continue;
                 SwitchPortBandwidth spb = TopologyManager.statisticsService
                         .getBandwidthConsumption(npt.getNodeId(), npt.getPortId());
-                long bpsTx = spb.getBitsPerSecondTx().getValue();
+                long bpsTx = 0;
+                if (spb != null) {
+                    bpsTx = spb.getBitsPerSecondTx().getValue();
+                }
                 for (Link link : links.get(npt)) {
                     if (link == null) {
                         continue;
