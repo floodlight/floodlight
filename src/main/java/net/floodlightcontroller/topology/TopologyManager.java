@@ -66,10 +66,7 @@ ITopologyManagerBackend, ILinkDiscoveryListener, IOFMessageListener {
     private static Logger log = LoggerFactory.getLogger(TopologyManager.class);
     public static final String MODULE_NAME = "topology";
 
-    protected static IStatisticsService statisticsService;
-
     protected static volatile PATH_METRIC pathMetric = PATH_METRIC.HOPCOUNT_AVOID_TUNNELS; //default: compute paths on hop count
-    protected static boolean collectStatistics = false;
     
     /**
      * Maximum number of route entries stored in memory.
@@ -106,12 +103,13 @@ ITopologyManagerBackend, ILinkDiscoveryListener, IOFMessageListener {
      */
     protected Set<NodePortTuple> tunnelPorts;
 
-    protected ILinkDiscoveryService linkDiscoveryService;
-    protected IThreadPoolService threadPoolService;
-    protected IFloodlightProviderService floodlightProviderService;
-    protected IOFSwitchService switchService;
-    protected IRestApiService restApiService;
-    protected IDebugCounterService debugCounterService;
+    protected static ILinkDiscoveryService linkDiscoveryService;
+    protected static IThreadPoolService threadPoolService;
+    protected static IFloodlightProviderService floodlightProviderService;
+    protected static IOFSwitchService switchService;
+    protected static IRestApiService restApiService;
+    protected static IDebugCounterService debugCounterService;
+    protected static IStatisticsService statisticsService;
 
     // Modules that listen to our updates
     protected ArrayList<ITopologyListener> topologyAware;
