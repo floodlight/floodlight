@@ -16,12 +16,16 @@
 
 package net.floodlightcontroller.topology;
 
+import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.types.NodePortTuple;
 import net.floodlightcontroller.linkdiscovery.Link;
 import net.floodlightcontroller.routing.BroadcastTree;
 import net.floodlightcontroller.routing.Path;
 import net.floodlightcontroller.routing.PathId;
+import net.floodlightcontroller.statistics.SwitchPortBandwidth;
 import net.floodlightcontroller.util.ClusterDFS;
+
+import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.U64;
@@ -643,92 +647,113 @@ public class TopologyInstance {
      */
     public Map<Link,Integer> initLinkCostMap() {
         Map<Link, Integer> linkCost = new HashMap<Link, Integer>();
-        long rawLinkSpeed;
-        int linkSpeedMBps;
         int tunnel_weight = portsWithLinks.size() + 1;
 
-        /* pathMetrics:
-         *  1: Hop Count (Default Metrics)
-         *  2: Hop Count (Treat Tunnels same as link)
-         *  3: Latency
-         *  4: Link Speed
-         */
         switch (TopologyManager.getPathMetricInternal()){
         case HOPCOUNT_AVOID_TUNNELS:
-            if(TopologyManager.collectStatistics == true){
-                TopologyManager.statisticsService.collectStatistics(false);
-                TopologyManager.collectStatistics = false;
-            }
-            log.debug("Using Default: Hop Count with Tunnel Bias for Metrics");
+            log.debug("Using hop count with tunnel bias for metrics");
             for (NodePortTuple npt : portsTunnel) {
-                if (links.get(npt) == null) continue;
+                if (links.get(npt) == null) {
+                    continue;
+                }
                 for (Link link : links.get(npt)) {
-                    if (link == null) continue;
+                    if (link == null) {
+                        continue;
+                    }
                     linkCost.put(link, tunnel_weight);
                 }
             }
             return linkCost;
 
         case HOPCOUNT:
-            if(TopologyManager.collectStatistics == true){
-                TopologyManager.statisticsService.collectStatistics(false);
-                TopologyManager.collectStatistics = false;
-            }
-            log.debug("Using Hop Count without Tunnel Bias for Metrics");
+            log.debug("Using hop count w/o tunnel bias for metrics");
             for (NodePortTuple npt : links.keySet()) {
-                if (links.get(npt) == null) continue;
+                if (links.get(npt) == null) {
+                    continue;
+                }
                 for (Link link : links.get(npt)) {
-                    if (link == null) continue;
+                    if (link == null) {
+                        continue;
+                    }
                     linkCost.put(link,1);
                 }
             }
             return linkCost;
 
         case LATENCY:
-            if(TopologyManager.collectStatistics == true){
-                TopologyManager.statisticsService.collectStatistics(false);
-                TopologyManager.collectStatistics = false;
-            }
-            log.debug("Using Latency for Route Metrics");
+            log.debug("Using latency for path metrics");
             for (NodePortTuple npt : links.keySet()) {
-                if (links.get(npt) == null) continue;
+                if (links.get(npt) == null) {
+                    continue;
+                }
                 for (Link link : links.get(npt)) {
-                    if (link == null) continue;
-                    if((int)link.getLatency().getValue() < 0 || (int)link.getLatency().getValue() > MAX_LINK_WEIGHT)
+                    if (link == null) {
+                        continue;
+                    }
+                    if ((int)link.getLatency().getValue() < 0 || 
+                            (int)link.getLatency().getValue() > MAX_LINK_WEIGHT) {
                         linkCost.put(link, MAX_LINK_WEIGHT);
-                    else
+                    } else {
                         linkCost.put(link,(int)link.getLatency().getValue());
+                    }
                 }
             }
             return linkCost;
 
         case LINK_SPEED:
-            if(TopologyManager.collectStatistics == false){
-                TopologyManager.statisticsService.collectStatistics(true);
-                TopologyManager.collectStatistics = true;
+            TopologyManager.statisticsService.collectStatistics(true);
+            log.debug("Using link speed for path metrics");
+            for (NodePortTuple npt : links.keySet()) {
+                if (links.get(npt) == null) {
+                    continue;
+                }
+                long rawLinkSpeed = 0;
+                IOFSwitch s = TopologyManager.switchService.getSwitch(npt.getNodeId());
+                if (s != null) {
+                    OFPortDesc p = s.getPort(npt.getPortId());
+                    if (p != null) {
+                        rawLinkSpeed = p.getCurrSpeed();
+                    }
+                }
+                for (Link link : links.get(npt)) {
+                    if (link == null) {
+                        continue;
+                    }
+
+                    if ((rawLinkSpeed / 10^6) / 8 > 1) {
+                        int linkSpeedMBps = (int)(rawLinkSpeed / 10^6) / 8;
+                        linkCost.put(link, (1/linkSpeedMBps)*1000);
+                    } else {
+                        linkCost.put(link, MAX_LINK_WEIGHT);
+                    }
+                }
             }
-            log.debug("Using Link Speed for Route Metrics");
+            return linkCost;
+            
+        case UTILIZATION:
+            TopologyManager.statisticsService.collectStatistics(true);
+            log.debug("Using utilization for path metrics");
             for (NodePortTuple npt : links.keySet()) {
                 if (links.get(npt) == null) continue;
-                rawLinkSpeed = TopologyManager.statisticsService.getLinkSpeed(npt);
+                SwitchPortBandwidth spb = TopologyManager.statisticsService
+                        .getBandwidthConsumption(npt.getNodeId(), npt.getPortId());
+                long bpsTx = spb.getBitsPerSecondTx().getValue();
                 for (Link link : links.get(npt)) {
-                    if (link == null) continue;
-
-                    if((rawLinkSpeed / 10^6) / 8 > 1){
-                        linkSpeedMBps = (int)(rawLinkSpeed / 10^6) / 8;
-                        linkCost.put(link, (1/linkSpeedMBps)*1000);
+                    if (link == null) {
+                        continue;
                     }
-                    else
+
+                    if ((bpsTx / 10^6) / 8 > 1) {
+                        int cost = (int) (bpsTx / 10^6) / 8;
+                        linkCost.put(link, ((1/cost)*1000));
+                    } else {
                         linkCost.put(link, MAX_LINK_WEIGHT);
+                    }
                 }
             }
             return linkCost;
 
         default:
-            if(TopologyManager.collectStatistics == true){
-                TopologyManager.statisticsService.collectStatistics(false);
-                TopologyManager.collectStatistics = false;
-            }
             log.debug("Invalid Selection: Using Default Hop Count with Tunnel Bias for Metrics");
             for (NodePortTuple npt : portsTunnel) {
                 if (links.get(npt) == null) continue;

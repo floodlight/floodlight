@@ -62,16 +62,12 @@ import java.util.concurrent.TimeUnit;
  * through the topology.
  */
 public class TopologyManager implements IFloodlightModule, ITopologyService, 
-    ITopologyManagerBackend, ILinkDiscoveryListener, IOFMessageListener {
-
-    protected static Logger log = LoggerFactory.getLogger(TopologyManager.class);
+ITopologyManagerBackend, ILinkDiscoveryListener, IOFMessageListener {
+    private static Logger log = LoggerFactory.getLogger(TopologyManager.class);
     public static final String MODULE_NAME = "topology";
 
-    protected static IStatisticsService statisticsService;
-
     protected static volatile PATH_METRIC pathMetric = PATH_METRIC.HOPCOUNT_AVOID_TUNNELS; //default: compute paths on hop count
-    protected static boolean collectStatistics = false;
-
+    
     /**
      * Maximum number of route entries stored in memory.
      */
@@ -107,12 +103,13 @@ public class TopologyManager implements IFloodlightModule, ITopologyService,
      */
     protected Set<NodePortTuple> tunnelPorts;
 
-    protected ILinkDiscoveryService linkDiscoveryService;
-    protected IThreadPoolService threadPoolService;
-    protected IFloodlightProviderService floodlightProviderService;
-    protected IOFSwitchService switchService;
-    protected IRestApiService restApiService;
-    protected IDebugCounterService debugCounterService;
+    protected static ILinkDiscoveryService linkDiscoveryService;
+    protected static IThreadPoolService threadPoolService;
+    protected static IFloodlightProviderService floodlightProviderService;
+    protected static IOFSwitchService switchService;
+    protected static IRestApiService restApiService;
+    protected static IDebugCounterService debugCounterService;
+    protected static IStatisticsService statisticsService;
 
     // Modules that listen to our updates
     protected ArrayList<ITopologyListener> topologyAware;
@@ -177,8 +174,8 @@ public class TopologyManager implements IFloodlightModule, ITopologyService,
         @Override
         public void run() {
             try {
-                if (ldUpdates.peek() != null) {
-                    updateTopology();
+                if (ldUpdates.peek() != null) { /* must check here, otherwise will run every interval */
+                    updateTopology("link-discovery-updates", false);
                 }
                 handleMiscellaneousPeriodicEvents();
             }
@@ -197,13 +194,17 @@ public class TopologyManager implements IFloodlightModule, ITopologyService,
         return;
     }
 
-    public boolean updateTopology() {
+    public synchronized boolean updateTopology(String reason, boolean forced) {
         boolean newInstanceFlag;
         linksUpdated = false;
         dtLinksUpdated = false;
         tunnelPortsUpdated = false;
-        List<LDUpdate> appliedUpdates = applyUpdates();
-        newInstanceFlag = createNewInstance("link-discovery-updates");
+        List<LDUpdate> appliedUpdates = null;
+        if (this.ldUpdates.peek() != null) {
+            appliedUpdates = applyUpdates();
+        }
+        log.info("Recomputing topology due to: {}", reason);
+        newInstanceFlag = createNewInstance(reason, forced);
         lastUpdateTime = new Date();
         informListeners(appliedUpdates);
         return newInstanceFlag;
@@ -621,22 +622,23 @@ public class TopologyManager implements IFloodlightModule, ITopologyService,
                         pathMetric = PATH_METRIC.LINK_SPEED;
                         break;
                     default:
-                        log.error("Invalid routing metric {}. Using default {}", metric, pathMetric.getMetricName());
+                        log.error("Invalid routing metric {}. Using default {}", 
+                                metric, pathMetric.getMetricName());
                         break;
                     }
                 }
                 log.info("Path metrics set to {}", pathMetric);
 
-                String maxroutes = configOptions.get("maxPathsToCompute") != null
+                String maxroutes = configOptions.get("maxPathsToCompute") != null 
                         ? configOptions.get("maxPathsToCompute").trim() : null;
-                        if (maxroutes != null) {
-                            try {
-                                maxPathsToCompute = Integer.parseInt(maxroutes);
-                            } catch (NumberFormatException e) {
-                                log.error("Invalid 'maxPathsToCompute'. Using default {}", maxPathsToCompute);
-                            }
-                        }
-                        log.info("Will compute a max of {} paths upon topology updates", maxPathsToCompute);
+                if (maxroutes != null) {
+                    try {
+                        maxPathsToCompute = Integer.parseInt(maxroutes);
+                    } catch (NumberFormatException e) {
+                        log.error("Invalid 'maxPathsToCompute'. Using default {}", maxPathsToCompute);
+                    }
+                }
+                log.info("Will compute a max of {} paths upon topology updates", maxPathsToCompute);
     }
 
     @Override
@@ -932,7 +934,7 @@ public class TopologyManager implements IFloodlightModule, ITopologyService,
     }
 
     public boolean createNewInstance() {
-        return createNewInstance("internal");
+        return createNewInstance("internal", false);
     }
 
     /**
@@ -941,10 +943,12 @@ public class TopologyManager implements IFloodlightModule, ITopologyService,
      * and tunnel ports. The method returns if a new instance of
      * topology was created or not.
      */
-    protected boolean createNewInstance(String reason) {
+    protected boolean createNewInstance(String reason, boolean forced) {
         Set<NodePortTuple> blockedPorts = new HashSet<NodePortTuple>();
 
-        if (!linksUpdated) return false;
+        if (!linksUpdated && !forced) {
+            return false;
+        }
 
         Map<NodePortTuple, Set<Link>> openflowLinks;
         openflowLinks =
@@ -1064,9 +1068,12 @@ public class TopologyManager implements IFloodlightModule, ITopologyService,
 
 
     public void informListeners(List<LDUpdate> linkUpdates) {
-
-        if (role != null && role != HARole.ACTIVE)
+        if (linkUpdates == null || linkUpdates.isEmpty()) {
             return;
+        }
+        if (role != null && role != HARole.ACTIVE) {
+            return;
+        }
 
         for(int i=0; i < topologyAware.size(); ++i) {
             ITopologyListener listener = topologyAware.get(i);
@@ -1248,7 +1255,7 @@ public class TopologyManager implements IFloodlightModule, ITopologyService,
         linksUpdated = true;
         dtLinksUpdated = true;
         tunnelPortsUpdated = true;
-        createNewInstance("startup");
+        createNewInstance("startup", false);
         lastUpdateTime = new Date();
     }
 
@@ -1319,5 +1326,11 @@ public class TopologyManager implements IFloodlightModule, ITopologyService,
     @Override
     public TopologyInstance getCurrentTopologyInstance() {
         return getCurrentInstance();
+    }
+
+    @Override
+    public boolean forceRecompute() {
+        /* cannot invoke scheduled executor, since the update might not occur */
+        return updateTopology("forced-recomputation", true);
     }
 }
