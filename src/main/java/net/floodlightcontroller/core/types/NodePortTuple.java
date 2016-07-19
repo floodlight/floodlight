@@ -17,6 +17,7 @@
 package net.floodlightcontroller.core.types;
 
 import net.floodlightcontroller.core.web.serializers.DPIDSerializer;
+import net.floodlightcontroller.core.web.serializers.NodePortTupleSerializer;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
@@ -31,6 +32,7 @@ import org.projectfloodlight.openflow.types.OFPort;
  * @author srini
  */
 
+@JsonSerialize(using=NodePortTupleSerializer.class)
 public class NodePortTuple implements Comparable<NodePortTuple> {
     private DatapathId nodeId; // switch DPID
     private OFPort portId; // switch port id

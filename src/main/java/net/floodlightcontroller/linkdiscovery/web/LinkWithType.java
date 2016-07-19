@@ -16,20 +16,21 @@
 
 package net.floodlightcontroller.linkdiscovery.web;
 
-import java.io.IOException;
-
-import org.projectfloodlight.openflow.types.DatapathId;
-import org.projectfloodlight.openflow.types.OFPort;
-
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonSerializer;
 import com.fasterxml.jackson.databind.SerializerProvider;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 
+import net.floodlightcontroller.linkdiscovery.Link;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscovery.LinkDirection;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscovery.LinkType;
-import net.floodlightcontroller.routing.Link;
+
+import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.OFPort;
+import org.projectfloodlight.openflow.types.U64;
+
+import java.io.IOException;
 
 /**
  * This class is both the datastructure and the serializer
@@ -44,6 +45,7 @@ public class LinkWithType extends JsonSerializer<LinkWithType> {
     public OFPort dstPort;
     public LinkType type;
     public LinkDirection direction;
+    public U64 latency;
 
     // Do NOT delete this, it's required for the serializer
     public LinkWithType() {}
@@ -57,6 +59,7 @@ public class LinkWithType extends JsonSerializer<LinkWithType> {
         this.dstPort = link.getDstPort();
         this.type = type;
         this.direction = direction;
+        this.latency = link.getLatency();
     }
 
     @Override
@@ -70,6 +73,7 @@ public class LinkWithType extends JsonSerializer<LinkWithType> {
         jgen.writeNumberField("dst-port", lwt.dstPort.getPortNumber());
         jgen.writeStringField("type", lwt.type.toString());
         jgen.writeStringField("direction", lwt.direction.toString());
+        jgen.writeNumberField("latency", lwt.latency.getValue()); // Might be an issue if value exceed what unsigned long can hold
         jgen.writeEndObject();
     }
 

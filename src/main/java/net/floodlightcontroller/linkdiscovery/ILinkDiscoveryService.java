@@ -29,7 +29,6 @@ import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.core.types.NodePortTuple;
 import net.floodlightcontroller.linkdiscovery.internal.LinkInfo;
-import net.floodlightcontroller.routing.Link;
 
 
 public interface ILinkDiscoveryService extends IFloodlightService {

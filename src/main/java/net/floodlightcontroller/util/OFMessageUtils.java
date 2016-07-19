@@ -36,6 +36,61 @@ public class OFMessageUtils {
 	private OFMessageUtils() {};
 
 	/**
+	 * Simple class to streamline the use of OFMessage's
+	 * equalsIgnoreXid() and hashCodeIgnoreXid() functions.
+	 * Use this class to wrap OFMessages prior to inserting
+	 * them in containers where lookup or equality checks
+	 * should not include the XID.
+	 * 
+	 * See {@link net.floodlightcontroller.util.OFMessageDamper}
+	 * as an example where it's used to help cache OFMessages.
+	 * @author rizard
+	 */
+	public static class OFMessageIgnoreXid {
+	    private OFMessage m;
+	    
+	    private OFMessageIgnoreXid() {}
+	    private OFMessageIgnoreXid(OFMessage m) {
+	        this.m = m;
+	    }
+	    
+	    /**
+	     * Wrap an OFMessage to ignore the XID
+	     * when checking for equality or computing
+	     * the OFMessage's hash.
+	     * @param m
+	     * @return
+	     */
+	    public static OFMessageIgnoreXid of(OFMessage m) {
+	        return new OFMessageIgnoreXid(m);
+	    }
+	    
+        @Override
+        public int hashCode() {
+            final int prime = 31;
+            int result = 1;
+            result = prime * result + ((m == null) ? 0 : m.hashCodeIgnoreXid());
+            return result;
+        }
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj)
+                return true;
+            if (obj == null)
+                return false;
+            if (getClass() != obj.getClass())
+                return false;
+            OFMessageIgnoreXid other = (OFMessageIgnoreXid) obj;
+            if (m == null) {
+                if (other.m != null)
+                    return false;
+            } else if (!m.equalsIgnoreXid(other.m))
+                return false;
+            return true;
+        }
+	}
+	
+	/**
 	 * Get the ingress port of a packet-in message. The manner in which
 	 * this is done depends on the OpenFlow version. OF1.0 and 1.1 have
 	 * a specific in_port field, while OF1.2+ store this information in
@@ -79,24 +134,6 @@ public class OFMessageUtils {
 	 */
 	public static OFVlanVidMatch getVlan(OFPacketIn pi) {
 		return pi.getMatch().get(MatchField.VLAN_VID) == null ? OFVlanVidMatch.UNTAGGED : pi.getMatch().get(MatchField.VLAN_VID);
-	}
-
-	/**
-	 * Returns true if each object is deeply-equal in the same manner that
-	 * Object's equals() does with the exception of the XID field, which is
-	 * ignored; otherwise, returns false.
-	 * 
-	 * NOTE: This function is VERY INEFFICIENT and creates a new OFMessage
-	 * object in order to the the comparison minus the XID. It is advised
-	 * that you use it sparingly and ideally only within unit tests.
-	 * 
-	 * @param a; object A to compare
-	 * @param b; object B to compare
-	 * @return true if A and B are deeply-equal; false otherwise
-	 */
-	public static boolean equalsIgnoreXid(OFMessage a, OFMessage b) {
-		OFMessage.Builder mb = b.createBuilder().setXid(a.getXid());
-		return a.equals(mb.build());
 	}
 
 	/**

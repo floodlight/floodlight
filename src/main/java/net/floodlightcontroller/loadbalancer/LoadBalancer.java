@@ -72,7 +72,7 @@ import net.floodlightcontroller.packet.TCP;
 import net.floodlightcontroller.packet.UDP;
 import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.routing.IRoutingService;
-import net.floodlightcontroller.routing.Route;
+import net.floodlightcontroller.routing.Path;
 import net.floodlightcontroller.staticentry.IStaticEntryPusherService;
 import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.util.FlowModUtils;
@@ -128,8 +128,8 @@ public class LoadBalancer implements IFloodlightModule,
             new Comparator<SwitchPort>() {
                 @Override
                 public int compare(SwitchPort d1, SwitchPort d2) {
-                    DatapathId d1ClusterId = topologyService.getOpenflowDomainId(d1.getNodeId());
-                    DatapathId d2ClusterId = topologyService.getOpenflowDomainId(d2.getNodeId());
+                    DatapathId d1ClusterId = topologyService.getClusterId(d1.getNodeId());
+                    DatapathId d2ClusterId = topologyService.getClusterId(d2.getNodeId());
                     return d1ClusterId.compareTo(d2ClusterId);
                 }
             };
@@ -384,7 +384,7 @@ public class LoadBalancer implements IFloodlightModule,
         // srcDevice and/or dstDevice is null, no route can be pushed
         if (srcDevice == null || dstDevice == null) return;
         
-        DatapathId srcIsland = topologyService.getOpenflowDomainId(sw.getId());
+        DatapathId srcIsland = topologyService.getClusterId(sw.getId());
 
         if (srcIsland == null) {
             log.debug("No openflow island found for source {}/{}", 
@@ -398,7 +398,7 @@ public class LoadBalancer implements IFloodlightModule,
         boolean on_same_if = false;
         for (SwitchPort dstDap : dstDevice.getAttachmentPoints()) {
             DatapathId dstSwDpid = dstDap.getNodeId();
-            DatapathId dstIsland = topologyService.getOpenflowDomainId(dstSwDpid);
+            DatapathId dstIsland = topologyService.getClusterId(dstSwDpid);
             if ((dstIsland != null) && dstIsland.equals(srcIsland)) {
                 on_same_island = true;
                 if ((sw.getId().equals(dstSwDpid)) && OFMessageUtils.getInPort(pi).equals(dstDap.getPortId())) {
@@ -442,25 +442,25 @@ public class LoadBalancer implements IFloodlightModule,
             SwitchPort srcDap = srcDaps[iSrcDaps];
             SwitchPort dstDap = dstDaps[iDstDaps];
             DatapathId srcCluster = 
-                    topologyService.getOpenflowDomainId(srcDap.getNodeId());
+                    topologyService.getClusterId(srcDap.getNodeId());
             DatapathId dstCluster = 
-                    topologyService.getOpenflowDomainId(dstDap.getNodeId());
+                    topologyService.getClusterId(dstDap.getNodeId());
 
             int srcVsDest = srcCluster.compareTo(dstCluster);
             if (srcVsDest == 0) {
                 if (!srcDap.equals(dstDap) && 
                         (srcCluster != null) && 
                         (dstCluster != null)) {
-                    Route routeIn = 
-                            routingEngineService.getRoute(srcDap.getNodeId(),
+                    Path routeIn = 
+                            routingEngineService.getPath(srcDap.getNodeId(),
                                                    srcDap.getPortId(),
                                                    dstDap.getNodeId(),
-                                                   dstDap.getPortId(), U64.of(0));
-                    Route routeOut = 
-                            routingEngineService.getRoute(dstDap.getNodeId(),
+                                                   dstDap.getPortId());
+                    Path routeOut = 
+                            routingEngineService.getPath(dstDap.getNodeId(),
                                                    dstDap.getPortId(),
                                                    srcDap.getNodeId(),
-                                                   srcDap.getPortId(), U64.of(0));
+                                                   srcDap.getPortId());
 
                     // use static flow entry pusher to push flow mod along in and out path
                     // in: match src client (ip, port), rewrite dest from vip ip/port to member ip/port, forward
@@ -489,12 +489,12 @@ public class LoadBalancer implements IFloodlightModule,
     /**
      * used to push given route using static flow entry pusher
      * @param boolean inBound
-     * @param Route route
+     * @param Path route
      * @param IPClient client
      * @param LBMember member
      * @param long pinSwitch
      */
-    public void pushStaticVipRoute(boolean inBound, Route route, IPClient client, LBMember member, IOFSwitch pinSwitch) {
+    public void pushStaticVipRoute(boolean inBound, Path route, IPClient client, LBMember member, IOFSwitch pinSwitch) {
         List<NodePortTuple> path = route.getPath();
         if (path.size() > 0) {
            for (int i = 0; i < path.size(); i+=2) {

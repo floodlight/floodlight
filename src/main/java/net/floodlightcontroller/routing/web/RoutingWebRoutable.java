@@ -14,40 +14,37 @@
  *    under the License.
  **/
 
-package net.floodlightcontroller.topology.web;
+package net.floodlightcontroller.routing.web;
 
 import org.restlet.Context;
 import org.restlet.routing.Router;
 
-import net.floodlightcontroller.linkdiscovery.web.DirectedLinksResource;
-import net.floodlightcontroller.linkdiscovery.web.ExternalLinksResource;
-import net.floodlightcontroller.linkdiscovery.web.LinksResource;
 import net.floodlightcontroller.restserver.RestletRoutable;
+import net.floodlightcontroller.routing.web.PathMetricsResource;
+import net.floodlightcontroller.routing.web.PathResource;
+import net.floodlightcontroller.routing.web.PathsResource;
 
-public class TopologyWebRoutable implements RestletRoutable {
+public class RoutingWebRoutable implements RestletRoutable {
     /**
      * Create the Restlet router and bind to the proper resources.
      */
     @Override
     public Router getRestlet(Context context) {
         Router router = new Router(context);
-        router.attach("/links/json", LinksResource.class);
-        router.attach("/directed-links/json", DirectedLinksResource.class);
-        router.attach("/external-links/json", ExternalLinksResource.class);
-        router.attach("/tunnellinks/json", TunnelLinksResource.class);
-        router.attach("/archipelagos/json", SwitchArchipelagosResource.class);
-        router.attach("/broadcastports/json", AllBroadcastPortsResource.class);
-        router.attach("/enabledports/json", EnabledPortsResource.class);
-        router.attach("/blockedports/json", BlockedPortsResource.class);
+        router.attach("/path/{src-dpid}/{src-port}/{dst-dpid}/{dst-port}/json", PathResource.class);
+        router.attach("/paths/{src-dpid}/{dst-dpid}/{num-paths}/json", PathsResource.class);
+        router.attach("/paths/fast/{src-dpid}/{dst-dpid}/{num-paths}/json", PathsResource.class);
+        router.attach("/paths/slow/{src-dpid}/{dst-dpid}/{num-paths}/json", PathsResource.class);
+        router.attach("/setpathmetric/{metric}/json", PathMetricsResource.class);
 
         return router;
     }
 
     /**
-     * Set the base path for the Topology
+     * Set the base path for routing service
      */
     @Override
     public String basePath() {
-        return "/wm/topology";
+        return "/wm/routing";
     }
 }

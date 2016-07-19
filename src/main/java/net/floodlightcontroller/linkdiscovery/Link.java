@@ -15,7 +15,7 @@
 *    under the License.
 **/
 
-package net.floodlightcontroller.routing;
+package net.floodlightcontroller.linkdiscovery;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 

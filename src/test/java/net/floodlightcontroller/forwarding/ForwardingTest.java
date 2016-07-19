@@ -55,7 +55,7 @@ import net.floodlightcontroller.packet.IPv6;
 import net.floodlightcontroller.packet.UDP;
 import net.floodlightcontroller.routing.IRoutingDecision.RoutingAction;
 import net.floodlightcontroller.routing.IRoutingService;
-import net.floodlightcontroller.routing.Route;
+import net.floodlightcontroller.routing.Path;
 import net.floodlightcontroller.routing.RoutingDecision;
 import net.floodlightcontroller.test.FloodlightTestCase;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
@@ -159,7 +159,7 @@ public class ForwardingTest extends FloodlightTestCase {
 
 		topology.addListener(anyObject(ITopologyListener.class));
 		expectLastCall().anyTimes();
-		expect(topology.isIncomingBroadcastAllowed(anyObject(DatapathId.class), anyObject(OFPort.class))).andReturn(true).anyTimes();
+		expect(topology.isBroadcastAllowed(anyObject(DatapathId.class), anyObject(OFPort.class))).andReturn(true).anyTimes();
 		replay(topology);
 
 		threadPool.init(fmc);
@@ -476,15 +476,15 @@ public class ForwardingTest extends FloodlightTestCase {
 		Capture<OFMessage> wc1 = EasyMock.newCapture(CaptureType.ALL);
 		Capture<OFMessage> wc2 = EasyMock.newCapture(CaptureType.ALL);
 
-		Route route = new Route(DatapathId.of(1L), DatapathId.of(2L));
+		Path path = new Path(DatapathId.of(1L), DatapathId.of(2L));
 		List<NodePortTuple> nptList = new ArrayList<NodePortTuple>();
 		nptList.add(new NodePortTuple(DatapathId.of(1L), OFPort.of(1)));
 		nptList.add(new NodePortTuple(DatapathId.of(1L), OFPort.of(3)));
 		nptList.add(new NodePortTuple(DatapathId.of(2L), OFPort.of(1)));
 		nptList.add(new NodePortTuple(DatapathId.of(2L), OFPort.of(3)));
-		route.setPath(nptList);
+		path.setPath(nptList);
 		reset(routingEngine);
-		expect(routingEngine.getRoute(DatapathId.of(1L), OFPort.of(1), DatapathId.of(2L), OFPort.of(3), Forwarding.DEFAULT_FORWARDING_COOKIE)).andReturn(route).atLeastOnce();
+		expect(routingEngine.getPath(DatapathId.of(1L), OFPort.of(1), DatapathId.of(2L), OFPort.of(3))).andReturn(path).atLeastOnce();
 		
 		// Expected Flow-mods
 		Match match = packetIn.getMatch();
@@ -507,11 +507,11 @@ public class ForwardingTest extends FloodlightTestCase {
 		expect(sw2.write(capture(wc2))).andReturn(true).anyTimes();
 
 		reset(topology);
-		expect(topology.getOpenflowDomainId(DatapathId.of(1L))).andReturn(DatapathId.of(1L)).anyTimes();
-		expect(topology.getOpenflowDomainId(DatapathId.of(2L))).andReturn(DatapathId.of(1L)).anyTimes();
+		expect(topology.getClusterId(DatapathId.of(1L))).andReturn(DatapathId.of(1L)).anyTimes();
+		expect(topology.getClusterId(DatapathId.of(2L))).andReturn(DatapathId.of(1L)).anyTimes();
 		expect(topology.isAttachmentPointPort(DatapathId.of(1L),  OFPort.of(1))).andReturn(true).anyTimes();
 		expect(topology.isAttachmentPointPort(DatapathId.of(2L),  OFPort.of(3))).andReturn(true).anyTimes();
-		expect(topology.isIncomingBroadcastAllowed(DatapathId.of(anyLong()), OFPort.of(anyShort()))).andReturn(true).anyTimes();
+		expect(topology.isBroadcastAllowed(DatapathId.of(anyLong()), OFPort.of(anyShort()))).andReturn(true).anyTimes();
 		expect(topology.isEdge(DatapathId.of(1L), OFPort.of(1))).andReturn(true).anyTimes();
 		expect(topology.isEdge(DatapathId.of(2L), OFPort.of(3))).andReturn(true).anyTimes();
 
@@ -527,15 +527,15 @@ public class ForwardingTest extends FloodlightTestCase {
 
 		for (OFMessage m: msglist) {
 			if (m instanceof OFFlowMod)
-				assertTrue(OFMessageUtils.equalsIgnoreXid(fm1, m));
+				assertEquals(OFMessageUtils.OFMessageIgnoreXid.of(fm1), OFMessageUtils.OFMessageIgnoreXid.of(m));
 			else if (m instanceof OFPacketOut) {
-				assertTrue(OFMessageUtils.equalsIgnoreXid(packetOut, m));
+                assertEquals(OFMessageUtils.OFMessageIgnoreXid.of(packetOut), OFMessageUtils.OFMessageIgnoreXid.of(m));
 			}
 		}
 
 		OFMessage m = wc2.getValue();
 		assert (m instanceof OFFlowMod);
-		assertTrue(OFMessageUtils.equalsIgnoreXid(m, fm2));
+        assertEquals(OFMessageUtils.OFMessageIgnoreXid.of(m), OFMessageUtils.OFMessageIgnoreXid.of(fm2));
 		
 		removeDeviceFromContext();
 	}
@@ -547,7 +547,7 @@ public class ForwardingTest extends FloodlightTestCase {
 		Capture<OFMessage> wc1 = EasyMock.newCapture(CaptureType.ALL);
 		Capture<OFMessage> wc2 = EasyMock.newCapture(CaptureType.ALL);
 
-		Route route = new Route(DatapathId.of(1L), DatapathId.of(2L));
+		Path route = new Path(DatapathId.of(1L), DatapathId.of(2L));
 		List<NodePortTuple> nptList = new ArrayList<NodePortTuple>();
 		nptList.add(new NodePortTuple(DatapathId.of(1L), OFPort.of(1)));
 		nptList.add(new NodePortTuple(DatapathId.of(1L), OFPort.of(3)));
@@ -555,8 +555,8 @@ public class ForwardingTest extends FloodlightTestCase {
 		nptList.add(new NodePortTuple(DatapathId.of(2L), OFPort.of(3)));
 		route.setPath(nptList);
 		reset(routingEngine);
-		expect(routingEngine.getRoute(DatapathId.of(1L), OFPort.of(1), DatapathId.of(2L), OFPort.of(3), Forwarding.DEFAULT_FORWARDING_COOKIE)).andReturn(route).atLeastOnce();
-		
+		expect(routingEngine.getPath(DatapathId.of(1L), OFPort.of(1), DatapathId.of(2L), OFPort.of(3))).andReturn(route).atLeastOnce();
+
 		// Expected Flow-mods
 		Match match = packetInIPv6.getMatch();
 		OFActionOutput action = factory.actions().output(OFPort.of(3), Integer.MAX_VALUE);
@@ -578,11 +578,11 @@ public class ForwardingTest extends FloodlightTestCase {
 		expect(sw2.write(capture(wc2))).andReturn(true).anyTimes();
 
 		reset(topology);
-		expect(topology.getOpenflowDomainId(DatapathId.of(1L))).andReturn(DatapathId.of(1L)).anyTimes();
-		expect(topology.getOpenflowDomainId(DatapathId.of(2L))).andReturn(DatapathId.of(1L)).anyTimes();
+		expect(topology.getClusterId(DatapathId.of(1L))).andReturn(DatapathId.of(1L)).anyTimes();
+		expect(topology.getClusterId(DatapathId.of(2L))).andReturn(DatapathId.of(1L)).anyTimes();
 		expect(topology.isAttachmentPointPort(DatapathId.of(1L),  OFPort.of(1))).andReturn(true).anyTimes();
 		expect(topology.isAttachmentPointPort(DatapathId.of(2L),  OFPort.of(3))).andReturn(true).anyTimes();
-		expect(topology.isIncomingBroadcastAllowed(DatapathId.of(anyLong()), OFPort.of(anyShort()))).andReturn(true).anyTimes();
+		expect(topology.isBroadcastAllowed(DatapathId.of(anyLong()), OFPort.of(anyShort()))).andReturn(true).anyTimes();
 		expect(topology.isEdge(DatapathId.of(1L), OFPort.of(1))).andReturn(true).anyTimes();
 		expect(topology.isEdge(DatapathId.of(2L), OFPort.of(3))).andReturn(true).anyTimes();
 		
@@ -598,15 +598,15 @@ public class ForwardingTest extends FloodlightTestCase {
 
 		for (OFMessage m: msglist) {
 			if (m instanceof OFFlowMod)
-				assertTrue(OFMessageUtils.equalsIgnoreXid(fm1, m));
+                assertEquals(OFMessageUtils.OFMessageIgnoreXid.of(fm1), OFMessageUtils.OFMessageIgnoreXid.of(m));
 			else if (m instanceof OFPacketOut) {
-				assertTrue(OFMessageUtils.equalsIgnoreXid(packetOutIPv6, m));
+                assertEquals(OFMessageUtils.OFMessageIgnoreXid.of(packetOutIPv6), OFMessageUtils.OFMessageIgnoreXid.of(m));
 			}
 		}
 
 		OFMessage m = wc2.getValue();
 		assert (m instanceof OFFlowMod);
-		assertTrue(OFMessageUtils.equalsIgnoreXid(m, fm2));
+        assertEquals(OFMessageUtils.OFMessageIgnoreXid.of(m), OFMessageUtils.OFMessageIgnoreXid.of(fm2));
 		
 		removeDeviceFromContext();
 	}
@@ -618,10 +618,11 @@ public class ForwardingTest extends FloodlightTestCase {
 		Capture<OFMessage> wc1 = EasyMock.newCapture(CaptureType.ALL);
 		Capture<OFMessage> wc2 = EasyMock.newCapture(CaptureType.ALL);
 
-		Route route = new  Route(DatapathId.of(1L), DatapathId.of(1L));
+		Path route = new  Path(DatapathId.of(1L), DatapathId.of(1L));
 		route.getPath().add(new NodePortTuple(DatapathId.of(1L), OFPort.of(1)));
 		route.getPath().add(new NodePortTuple(DatapathId.of(1L), OFPort.of(3)));
-		
+		expect(routingEngine.getPath(DatapathId.of(1L), OFPort.of(1), DatapathId.of(1L), OFPort.of(3))).andReturn(route).atLeastOnce();
+
 		// Expected Flow-mods
 		Match match = packetIn.getMatch();
 		OFActionOutput action = factory.actions().output(OFPort.of(3), Integer.MAX_VALUE);
@@ -645,8 +646,8 @@ public class ForwardingTest extends FloodlightTestCase {
 		expect(sw1.write(capture(wc2))).andReturn(true).once();
 
 		reset(topology);
-		expect(topology.isIncomingBroadcastAllowed(DatapathId.of(anyLong()), OFPort.of(anyShort()))).andReturn(true).anyTimes();
-		expect(topology.getOpenflowDomainId(DatapathId.of(1L))).andReturn(DatapathId.of(1L)).anyTimes();
+		expect(topology.isBroadcastAllowed(DatapathId.of(anyLong()), OFPort.of(anyShort()))).andReturn(true).anyTimes();
+		expect(topology.getClusterId(DatapathId.of(1L))).andReturn(DatapathId.of(1L)).anyTimes();
 		expect(topology.isAttachmentPointPort(DatapathId.of(1L), OFPort.of(1))).andReturn(true).anyTimes();
 		expect(topology.isAttachmentPointPort(DatapathId.of(1L), OFPort.of(3))).andReturn(true).anyTimes();
 		expect(topology.isEdge(DatapathId.of(1L), OFPort.of(1))).andReturn(true).anyTimes();
@@ -654,7 +655,7 @@ public class ForwardingTest extends FloodlightTestCase {
 
 		// Reset mocks, trigger the packet in, and validate results
 		reset(routingEngine);
-		expect(routingEngine.getRoute(DatapathId.of(1L), OFPort.of(1), DatapathId.of(1L), OFPort.of(3), Forwarding.DEFAULT_FORWARDING_COOKIE)).andReturn(route).atLeastOnce();
+		expect(routingEngine.getPath(DatapathId.of(1L), OFPort.of(1), DatapathId.of(1L), OFPort.of(3))).andReturn(route).atLeastOnce();
 		replay(sw1, sw2, routingEngine, topology);
 		forwarding.receive(sw1, this.packetIn, cntx);
 		verify(sw1, sw2, routingEngine);
@@ -662,8 +663,8 @@ public class ForwardingTest extends FloodlightTestCase {
 		assertTrue(wc1.hasCaptured());
 		assertTrue(wc2.hasCaptured());
 
-		assertTrue(OFMessageUtils.equalsIgnoreXid(wc1.getValue(), fm1));
-		assertTrue(OFMessageUtils.equalsIgnoreXid(wc2.getValue(), packetOut));
+        assertEquals(OFMessageUtils.OFMessageIgnoreXid.of(wc1.getValue()), OFMessageUtils.OFMessageIgnoreXid.of(fm1));
+        assertEquals(OFMessageUtils.OFMessageIgnoreXid.of(wc2.getValue()), OFMessageUtils.OFMessageIgnoreXid.of(packetOut));
 		
 		removeDeviceFromContext();
 	}
@@ -675,11 +676,11 @@ public class ForwardingTest extends FloodlightTestCase {
 		Capture<OFMessage> wc1 = EasyMock.newCapture(CaptureType.ALL);
 		Capture<OFMessage> wc2 = EasyMock.newCapture(CaptureType.ALL);
 
-		Route route = new  Route(DatapathId.of(1L), DatapathId.of(1L));
+		Path route = new  Path(DatapathId.of(1L), DatapathId.of(1L));
 		route.getPath().add(new NodePortTuple(DatapathId.of(1L), OFPort.of(1)));
 		route.getPath().add(new NodePortTuple(DatapathId.of(1L), OFPort.of(3)));
 		reset(routingEngine);
-		expect(routingEngine.getRoute(DatapathId.of(1L), OFPort.of(1), DatapathId.of(1L), OFPort.of(3), Forwarding.DEFAULT_FORWARDING_COOKIE)).andReturn(route).atLeastOnce();
+		expect(routingEngine.getPath(DatapathId.of(1L), OFPort.of(1), DatapathId.of(1L), OFPort.of(3))).andReturn(route).atLeastOnce();
 		
 		// Expected Flow-mods
 		Match match = packetInIPv6.getMatch();
@@ -702,8 +703,8 @@ public class ForwardingTest extends FloodlightTestCase {
 		expect(sw1.write(capture(wc2))).andReturn(true).once();
 
 		reset(topology);
-		expect(topology.isIncomingBroadcastAllowed(DatapathId.of(anyLong()), OFPort.of(anyShort()))).andReturn(true).anyTimes();
-		expect(topology.getOpenflowDomainId(DatapathId.of(1L))).andReturn(DatapathId.of(1L)).anyTimes();
+		expect(topology.isBroadcastAllowed(DatapathId.of(anyLong()), OFPort.of(anyShort()))).andReturn(true).anyTimes();
+		expect(topology.getClusterId(DatapathId.of(1L))).andReturn(DatapathId.of(1L)).anyTimes();
 		expect(topology.isAttachmentPointPort(DatapathId.of(1L),  OFPort.of(1))).andReturn(true).anyTimes();
 		expect(topology.isAttachmentPointPort(DatapathId.of(1L),  OFPort.of(3))).andReturn(true).anyTimes();
 		expect(topology.isEdge(DatapathId.of(1L), OFPort.of(1))).andReturn(true).anyTimes();
@@ -717,8 +718,8 @@ public class ForwardingTest extends FloodlightTestCase {
 		assertTrue(wc1.hasCaptured());
 		assertTrue(wc2.hasCaptured());
 
-		assertTrue(OFMessageUtils.equalsIgnoreXid(wc1.getValue(), fm1));
-		assertTrue(OFMessageUtils.equalsIgnoreXid(wc2.getValue(), packetOutIPv6));
+        assertEquals(OFMessageUtils.OFMessageIgnoreXid.of(wc1.getValue()), OFMessageUtils.OFMessageIgnoreXid.of(fm1));
+        assertEquals(OFMessageUtils.OFMessageIgnoreXid.of(wc2.getValue()), OFMessageUtils.OFMessageIgnoreXid.of(packetOutIPv6));
 		
 		removeDeviceFromContext();
 	}
@@ -731,14 +732,14 @@ public class ForwardingTest extends FloodlightTestCase {
 		reset(topology);
 		expect(topology.isAttachmentPointPort(DatapathId.of(anyLong()), OFPort.of(anyShort())))
 		.andReturn(true).anyTimes();
-		expect(topology.getOpenflowDomainId(DatapathId.of(1L))).andReturn(DatapathId.of(1L)).anyTimes();
+		expect(topology.getClusterId(DatapathId.of(1L))).andReturn(DatapathId.of(1L)).anyTimes();
 		replay(topology);
 
 
-		Route route = new  Route(DatapathId.of(1L), DatapathId.of(1L));
+		Path route = new  Path(DatapathId.of(1L), DatapathId.of(1L));
 		route.getPath().add(new NodePortTuple(DatapathId.of(1L), OFPort.of(1)));
 		route.getPath().add(new NodePortTuple(DatapathId.of(1L), OFPort.of(3)));
-		expect(routingEngine.getRoute(DatapathId.of(1L), OFPort.of(1), DatapathId.of(1L), OFPort.of(3), U64.ZERO)).andReturn(route).atLeastOnce();
+		expect(routingEngine.getPath(DatapathId.of(1L), OFPort.of(1), DatapathId.of(1L), OFPort.of(3))).andReturn(route).atLeastOnce();
 
 		// Expected Flow-mods
 		Match match = packetIn.getMatch();
@@ -766,8 +767,8 @@ public class ForwardingTest extends FloodlightTestCase {
 		expectLastCall().times(3);
 
 		reset(topology);
-		expect(topology.isIncomingBroadcastAllowed(DatapathId.of(anyLong()), OFPort.of(anyShort()))).andReturn(true).anyTimes();
-		expect(topology.getOpenflowDomainId(DatapathId.of(1L))).andReturn(DatapathId.of(1L)).anyTimes();
+		expect(topology.isBroadcastAllowed(DatapathId.of(anyLong()), OFPort.of(anyShort()))).andReturn(true).anyTimes();
+		expect(topology.getClusterId(DatapathId.of(1L))).andReturn(DatapathId.of(1L)).anyTimes();
 		expect(topology.isAttachmentPointPort(DatapathId.of(1L),  OFPort.of(1))).andReturn(true).anyTimes();
 		expect(topology.isAttachmentPointPort(DatapathId.of(1L),  OFPort.of(3))).andReturn(true).anyTimes();
 
@@ -808,7 +809,7 @@ public class ForwardingTest extends FloodlightTestCase {
 		verify(sw1, sw2, routingEngine);
 
 		assertTrue(wc1.hasCaptured());
-		assertTrue(OFMessageUtils.equalsIgnoreXid(wc1.getValue(), packetOutFlooded));
+        assertEquals(OFMessageUtils.OFMessageIgnoreXid.of(wc1.getValue()), OFMessageUtils.OFMessageIgnoreXid.of(packetOutFlooded));
 		
 		removeDeviceFromContext();
 	}
@@ -843,7 +844,7 @@ public class ForwardingTest extends FloodlightTestCase {
 		verify(sw1, sw2, routingEngine);
 
 		assertTrue(wc1.hasCaptured());
-		assertTrue(OFMessageUtils.equalsIgnoreXid(wc1.getValue(), packetOutFloodedIPv6));
+        assertEquals(OFMessageUtils.OFMessageIgnoreXid.of(wc1.getValue()), OFMessageUtils.OFMessageIgnoreXid.of(packetOutFloodedIPv6));
 		
 		removeDeviceFromContext();
 	}
@@ -858,11 +859,11 @@ public class ForwardingTest extends FloodlightTestCase {
 		Capture<OFMessage> wc1 = EasyMock.newCapture(CaptureType.ALL);
 		Capture<OFMessage> wc2 = EasyMock.newCapture(CaptureType.ALL);
 
-		Route route = new  Route(DatapathId.of(1L), DatapathId.of(1L));
-		route.getPath().add(new NodePortTuple(DatapathId.of(1L), OFPort.of(1)));
-		route.getPath().add(new NodePortTuple(DatapathId.of(1L), OFPort.of(3)));
+		Path path = new Path(DatapathId.of(1L), DatapathId.of(1L));
+		path.getPath().add(new NodePortTuple(DatapathId.of(1L), OFPort.of(1)));
+		path.getPath().add(new NodePortTuple(DatapathId.of(1L), OFPort.of(3)));
 		reset(routingEngine);
-		expect(routingEngine.getRoute(DatapathId.of(1L), OFPort.of(1), DatapathId.of(1L), OFPort.of(3), Forwarding.DEFAULT_FORWARDING_COOKIE)).andReturn(route).atLeastOnce();
+		expect(routingEngine.getPath(DatapathId.of(1L), OFPort.of(1), DatapathId.of(1L), OFPort.of(3))).andReturn(path).atLeastOnce();
 		
 		// Expected Flow-mods
 		Match match = packetIn.getMatch();
@@ -889,8 +890,8 @@ public class ForwardingTest extends FloodlightTestCase {
 		expect(sw1.write(capture(wc2))).andReturn(true).once();
 
 		reset(topology);
-		expect(topology.isIncomingBroadcastAllowed(DatapathId.of(anyLong()), OFPort.of(anyShort()))).andReturn(true).anyTimes();
-		expect(topology.getOpenflowDomainId(DatapathId.of(1L))).andReturn(DatapathId.of(1L)).anyTimes();
+		expect(topology.isBroadcastAllowed(DatapathId.of(anyLong()), OFPort.of(anyShort()))).andReturn(true).anyTimes();
+		expect(topology.getClusterId(DatapathId.of(1L))).andReturn(DatapathId.of(1L)).anyTimes();
 		expect(topology.isAttachmentPointPort(DatapathId.of(1L), OFPort.of(1))).andReturn(true).anyTimes();
 		expect(topology.isAttachmentPointPort(DatapathId.of(1L), OFPort.of(3))).andReturn(true).anyTimes();
 		expect(topology.isEdge(DatapathId.of(1L), OFPort.of(1))).andReturn(true).anyTimes();
@@ -904,68 +905,68 @@ public class ForwardingTest extends FloodlightTestCase {
 		assertTrue(wc1.hasCaptured());
 		assertTrue(wc2.hasCaptured());
 
-		assertTrue(OFMessageUtils.equalsIgnoreXid(wc1.getValue(), fm1));
-		assertTrue(OFMessageUtils.equalsIgnoreXid(wc2.getValue(), packetOut));
+		assertTrue(wc1.getValue().equalsIgnoreXid(fm1));
+		assertTrue(wc2.getValue().equalsIgnoreXid(packetOut));
 	}
 	
 	@Test
-	public void testForwardDecisionForwardingCookieNotZero() throws Exception {
-		learnDevices(DestDeviceToLearn.DEVICE2);
-		
-		Capture<OFMessage> wc1 = EasyMock.newCapture(CaptureType.ALL);
-		Capture<OFMessage> wc2 = EasyMock.newCapture(CaptureType.ALL);
+    public void testForwardDecisionForwardingCookieNotZero() throws Exception {
+        learnDevices(DestDeviceToLearn.DEVICE2);
+        
+        Capture<OFMessage> wc1 = EasyMock.newCapture(CaptureType.ALL);
+        Capture<OFMessage> wc2 = EasyMock.newCapture(CaptureType.ALL);
 
-		Route route = new  Route(DatapathId.of(1L), DatapathId.of(1L));
-		route.getPath().add(new NodePortTuple(DatapathId.of(1L), OFPort.of(1)));
-		route.getPath().add(new NodePortTuple(DatapathId.of(1L), OFPort.of(3)));
-		reset(routingEngine);
-		expect(routingEngine.getRoute(DatapathId.of(1L), OFPort.of(1), DatapathId.of(1L), OFPort.of(3), U64.of(0x200000FFffFFffL))).andReturn(route).atLeastOnce();
-		
-		// Expected Flow-mods
-		Match match = packetIn.getMatch();
-		OFActionOutput action = factory.actions().output(OFPort.of(3), Integer.MAX_VALUE);
-		List<OFAction> actions = new ArrayList<OFAction>();
-		actions.add(action);
-		
-		RoutingDecision decision = new RoutingDecision(DatapathId.of(1L), OFPort.of(1), dstDevice1, RoutingAction.FORWARD);
-		decision.setDescriptor(U64.of(0x00000000ffffffffL));
-		decision.addToContext(cntx);
-		//RoutingDecision de2 = (RoutingDecision) RoutingDecision.rtStore.get(cntx, IRoutingDecision.CONTEXT_DECISION); // Same as decision
-		//(DatapathId swDipd, OFPort inPort, IDevice srcDevice, RoutingAction action);
-		
-		OFFlowMod fm1 = factory.buildFlowAdd()
-				.setIdleTimeout((short)5)
-				.setMatch(match)
-				.setActions(actions)
-				.setOutPort(OFPort.of(3))
-				.setBufferId(OFBufferId.NO_BUFFER)
-				.setCookie(U64.of(2L<< 52 | 0xFFffFFffL))
-				.setPriority(1)
-				.build();
+        Path path = new Path(DatapathId.of(1L), DatapathId.of(1L));
+        path.getPath().add(new NodePortTuple(DatapathId.of(1L), OFPort.of(1)));
+        path.getPath().add(new NodePortTuple(DatapathId.of(1L), OFPort.of(3)));
+        reset(routingEngine);
+        expect(routingEngine.getPath(DatapathId.of(1L), OFPort.of(1), DatapathId.of(1L), OFPort.of(3))).andReturn(path).atLeastOnce();
+        
+        // Expected Flow-mods
+        Match match = packetIn.getMatch();
+        OFActionOutput action = factory.actions().output(OFPort.of(3), Integer.MAX_VALUE);
+        List<OFAction> actions = new ArrayList<OFAction>();
+        actions.add(action);
+        
+        RoutingDecision decision = new RoutingDecision(DatapathId.of(1L), OFPort.of(1), dstDevice1, RoutingAction.FORWARD);
+        decision.setDescriptor(U64.of(0x00000000ffffffffL));
+        decision.addToContext(cntx);
+        //RoutingDecision de2 = (RoutingDecision) RoutingDecision.rtStore.get(cntx, IRoutingDecision.CONTEXT_DECISION); // Same as decision
+        //(DatapathId swDipd, OFPort inPort, IDevice srcDevice, RoutingAction action);
+        
+        OFFlowMod fm1 = factory.buildFlowAdd()
+                .setIdleTimeout((short)5)
+                .setMatch(match)
+                .setActions(actions)
+                .setOutPort(OFPort.of(3))
+                .setBufferId(OFBufferId.NO_BUFFER)
+                .setCookie(U64.of(2L<< 52 | 0xFFffFFffL))
+                .setPriority(1)
+                .build();
 
-		// Record expected packet-outs/flow-mods
-		expect(sw1.write(capture(wc1))).andReturn(true).once();
-		expect(sw1.write(capture(wc2))).andReturn(true).once();
+        // Record expected packet-outs/flow-mods
+        expect(sw1.write(capture(wc1))).andReturn(true).once();
+        expect(sw1.write(capture(wc2))).andReturn(true).once();
 
-		reset(topology);
-		expect(topology.isIncomingBroadcastAllowed(DatapathId.of(anyLong()), OFPort.of(anyShort()))).andReturn(true).anyTimes();
-		expect(topology.getOpenflowDomainId(DatapathId.of(1L))).andReturn(DatapathId.of(1L)).anyTimes();
-		expect(topology.isAttachmentPointPort(DatapathId.of(1L), OFPort.of(1))).andReturn(true).anyTimes();
-		expect(topology.isAttachmentPointPort(DatapathId.of(1L), OFPort.of(3))).andReturn(true).anyTimes();
-		expect(topology.isEdge(DatapathId.of(1L), OFPort.of(1))).andReturn(true).anyTimes();
-		expect(topology.isEdge(DatapathId.of(1L), OFPort.of(3))).andReturn(true).anyTimes();
+        reset(topology);
+        expect(topology.isBroadcastAllowed(DatapathId.of(anyLong()), OFPort.of(anyShort()))).andReturn(true).anyTimes();
+        expect(topology.getClusterId(DatapathId.of(1L))).andReturn(DatapathId.of(1L)).anyTimes();
+        expect(topology.isAttachmentPointPort(DatapathId.of(1L), OFPort.of(1))).andReturn(true).anyTimes();
+        expect(topology.isAttachmentPointPort(DatapathId.of(1L), OFPort.of(3))).andReturn(true).anyTimes();
+        expect(topology.isEdge(DatapathId.of(1L), OFPort.of(1))).andReturn(true).anyTimes();
+        expect(topology.isEdge(DatapathId.of(1L), OFPort.of(3))).andReturn(true).anyTimes();
 
-		// Reset mocks, trigger the packet in, and validate results
-		replay(sw1, sw2, routingEngine, topology);
-		forwarding.receive(sw1, this.packetIn, cntx);
-		verify(sw1, sw2, routingEngine);
+        // Reset mocks, trigger the packet in, and validate results
+        replay(sw1, sw2, routingEngine, topology);
+        forwarding.receive(sw1, this.packetIn, cntx);
+        verify(sw1, sw2, routingEngine);
 
-		assertTrue(wc1.hasCaptured());
-		assertTrue(wc2.hasCaptured());
-		
-		assertTrue(OFMessageUtils.equalsIgnoreXid(wc1.getValue(), fm1));
-		assertTrue(OFMessageUtils.equalsIgnoreXid(wc2.getValue(), packetOut));
-	}
+        assertTrue(wc1.hasCaptured());
+        assertTrue(wc2.hasCaptured());
+        
+        assertTrue(wc1.getValue().equalsIgnoreXid(fm1));
+        assertTrue(wc2.getValue().equalsIgnoreXid(packetOut));
+    }
 
 	@Test
 	public void testForwardDeleteFlowsByDescriptorSingle() throws Exception {

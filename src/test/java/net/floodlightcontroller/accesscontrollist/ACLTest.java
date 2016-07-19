@@ -408,7 +408,7 @@ public class ACLTest extends FloodlightTestCase {
 	public void testDeviceIPV4AddrChanged() {
 		
 		reset(topology);
-		expect(topology.getOpenflowDomainId(DatapathId.of(1L))).andReturn(DatapathId.of(1L)).anyTimes();
+		expect(topology.getClusterId(DatapathId.of(1L))).andReturn(DatapathId.of(1L)).anyTimes();
 		expect(topology.isAttachmentPointPort(DatapathId.of(1L), OFPort.of(1))).andReturn(true).anyTimes();
 		expect(topology.isAttachmentPointPort(DatapathId.of(2L), OFPort.of(1))).andReturn(true).anyTimes();
 		replay(topology);

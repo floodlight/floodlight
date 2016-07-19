@@ -52,7 +52,7 @@ import net.floodlightcontroller.routing.ForwardingBase;
 import net.floodlightcontroller.routing.IRoutingDecision;
 import net.floodlightcontroller.routing.IRoutingDecisionChangedListener;
 import net.floodlightcontroller.routing.IRoutingService;
-import net.floodlightcontroller.routing.Route;
+import net.floodlightcontroller.routing.Path;
 import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.util.FlowModUtils;
 import net.floodlightcontroller.util.OFDPAUtils;
@@ -245,7 +245,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 
 
     protected void doDropFlow(IOFSwitch sw, OFPacketIn pi, IRoutingDecision decision, FloodlightContext cntx) {
-        OFPort inPort = (pi.getVersion().compareTo(OFVersion.OF_12) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT));
+        OFPort inPort = OFMessageUtils.getInPort(pi);
         Match m = createMatchFromPacket(sw, inPort, cntx);
         OFFlowMod.Builder fmb = sw.getOFFactory().buildFlowAdd(); // this will be a drop-flow; a flow that will not output to any ports
         List<OFAction> actions = new ArrayList<OFAction>(); // set no action to drop
@@ -274,7 +274,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
     }
 
     protected void doForwardFlow(IOFSwitch sw, OFPacketIn pi, IRoutingDecision decision, FloodlightContext cntx, boolean requestFlowRemovedNotifn) {
-        OFPort inPort = (pi.getVersion().compareTo(OFVersion.OF_12) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT));
+        OFPort inPort = OFMessageUtils.getInPort(pi);
         IDevice dstDevice = IDeviceService.fcStore.get(cntx, IDeviceService.CONTEXT_DST_DEVICE);
         DatapathId source = sw.getId();
 
@@ -336,7 +336,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
              * of a link.
              */
             if (dstDap == null) {
-                log.warn("Could not locate edge attachment point for device {}. Flooding packet");
+                log.debug("Could not locate edge attachment point for device {}. Flooding packet");
                 doFlood(sw, pi, decision, cntx);
                 return; 
             }
@@ -349,38 +349,38 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
             }				
 
             U64 cookie = makeForwardingCookie(decision);
-            Route route = routingEngineService.getRoute(source, 
+            Path path = routingEngineService.getPath(source, 
                     inPort,
                     dstDap.getNodeId(),
-                    dstDap.getPortId(), cookie); // Cookie currently ignored. May carry useful info in the future.
+                    dstDap.getPortId());
 
             Match m = createMatchFromPacket(sw, inPort, cntx);
 
-            if (route != null) {
+            if (path != null) {
                 if (log.isDebugEnabled()) {
                     log.debug("pushRoute inPort={} route={} " +
                             "destination={}:{}",
-                            new Object[] { inPort, route,
+                            new Object[] { inPort, path,
                                     dstDap.getNodeId(),
                                     dstDap.getPortId()});
                 }
 
 
                 log.debug("Cretaing flow rules on the route, match rule: {}", m);
-                pushRoute(route, m, pi, sw.getId(), cookie, 
+                pushRoute(path, m, pi, sw.getId(), cookie, 
                         cntx, requestFlowRemovedNotifn,
                         OFFlowModCommand.ADD);	
             } else {
                 /* Route traverses no links --> src/dst devices on same switch */
                 log.debug("Could not compute route. Devices should be on same switch src={} and dst={}", srcDevice, dstDevice);
-                Route r = new Route(srcDevice.getAttachmentPoints()[0].getNodeId(), dstDevice.getAttachmentPoints()[0].getNodeId());
-                List<NodePortTuple> path = new ArrayList<NodePortTuple>(2);
-                path.add(new NodePortTuple(srcDevice.getAttachmentPoints()[0].getNodeId(),
+                Path p = new Path(srcDevice.getAttachmentPoints()[0].getNodeId(), dstDevice.getAttachmentPoints()[0].getNodeId());
+                List<NodePortTuple> npts = new ArrayList<NodePortTuple>(2);
+                npts.add(new NodePortTuple(srcDevice.getAttachmentPoints()[0].getNodeId(),
                         srcDevice.getAttachmentPoints()[0].getPortId()));
-                path.add(new NodePortTuple(dstDevice.getAttachmentPoints()[0].getNodeId(),
+                npts.add(new NodePortTuple(dstDevice.getAttachmentPoints()[0].getNodeId(),
                         dstDevice.getAttachmentPoints()[0].getPortId()));
-                r.setPath(path);
-                pushRoute(r, m, pi, sw.getId(), cookie,
+                p.setPath(npts);
+                pushRoute(p, m, pi, sw.getId(), cookie,
                         cntx, requestFlowRemovedNotifn,
                         OFFlowModCommand.ADD);
             }
@@ -503,15 +503,13 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
      * @param cntx The FloodlightContext associated with this OFPacketIn
      */
     protected void doFlood(IOFSwitch sw, OFPacketIn pi, IRoutingDecision decision, FloodlightContext cntx) {
-        OFPort inPort = (pi.getVersion().compareTo(OFVersion.OF_12) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT));
-        // Set Action to flood
+        OFPort inPort = OFMessageUtils.getInPort(pi);
         OFPacketOut.Builder pob = sw.getOFFactory().buildPacketOut();
         List<OFAction> actions = new ArrayList<OFAction>();
         Set<OFPort> broadcastPorts = this.topologyService.getSwitchBroadcastPorts(sw.getId());
 
         if (broadcastPorts.isEmpty()) {
-            log.warn("No broadcast ports found. Using FLOOD output action");
-            /* Must be a single-switch w/no links */
+            log.debug("No broadcast ports found. Using FLOOD output action");
             broadcastPorts = Collections.singleton(OFPort.FLOOD);
         }
 

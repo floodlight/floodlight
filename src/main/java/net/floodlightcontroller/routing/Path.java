@@ -17,48 +17,55 @@
 
 package net.floodlightcontroller.routing;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import org.projectfloodlight.openflow.types.DatapathId;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 
 import net.floodlightcontroller.core.types.NodePortTuple;
+import net.floodlightcontroller.routing.web.serializers.PathSerializer;
+
+import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.U64;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Represents a route between two switches
  *
  * @author David Erickson (daviderickson@cs.stanford.edu)
  */
-public class Route implements Comparable<Route> {
-    protected RouteId id;
+@JsonSerialize(using=PathSerializer.class)
+public class Path implements Comparable<Path> {
+    protected PathId id;
     protected List<NodePortTuple> switchPorts;
-    protected int routeCount;
+    protected int pathIndex;
+    protected int hopCount;
+    protected U64 latency;
 
-    public Route(RouteId id, List<NodePortTuple> switchPorts) {
+    public Path(PathId id, List<NodePortTuple> switchPorts) {
         super();
         this.id = id;
         this.switchPorts = switchPorts;
-        this.routeCount = 0; // useful if multipath routing available
+        this.pathIndex = 0; // useful if multipath routing available
     }
 
-    public Route(DatapathId src, DatapathId dst) {
+    public Path(DatapathId src, DatapathId dst) {
         super();
-        this.id = new RouteId(src, dst);
+        this.id = new PathId(src, dst);
         this.switchPorts = new ArrayList<NodePortTuple>();
-        this.routeCount = 0;
+        this.pathIndex = 0;
     }
 
     /**
      * @return the id
      */
-    public RouteId getId() {
+    public PathId getId() {
         return id;
     }
 
     /**
      * @param id the id to set
      */
-    public void setId(RouteId id) {
+    public void setId(PathId id) {
         this.id = id;
     }
 
@@ -77,17 +84,33 @@ public class Route implements Comparable<Route> {
     }
 
     /**
-     * @param routeCount routeCount set by (ECMP) buildRoute method 
+     * @param pathIndex pathIndex
      */
-    public void setRouteCount(int routeCount) {
-        this.routeCount = routeCount;
+    public void setPathIndex(int pathIndex) {
+        this.pathIndex = pathIndex;
     }
     
     /**
-     * @return routeCount return routeCount set by (ECMP) buildRoute method 
+     * @return pathIndex
      */
-    public int getRouteCount() {
-        return routeCount;
+    public int getPathIndex() {
+        return pathIndex;
+    }
+
+    public void setHopCount(int hopCount) { 
+        this.hopCount = hopCount; 
+    }
+
+    public int getHopCount() { 
+        return this.hopCount;
+    }
+
+    public void setLatency(U64 latency) { 
+        this.latency = latency; 
+    }
+
+    public U64 getLatency() { 
+        return this.latency; 
     }
     
     @Override
@@ -107,7 +130,7 @@ public class Route implements Comparable<Route> {
             return false;
         if (getClass() != obj.getClass())
             return false;
-        Route other = (Route) obj;
+        Path other = (Path) obj;
         if (id == null) {
             if (other.id != null)
                 return false;
@@ -127,10 +150,10 @@ public class Route implements Comparable<Route> {
     }
 
     /**
-     * Compares the path lengths between Routes.
+     * Compares the path lengths.
      */
     @Override
-    public int compareTo(Route o) {
+    public int compareTo(Path o) {
         return ((Integer)switchPorts.size()).compareTo(o.switchPorts.size());
     }
 }

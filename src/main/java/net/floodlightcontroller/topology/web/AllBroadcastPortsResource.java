@@ -16,21 +16,20 @@
 
 package net.floodlightcontroller.topology.web;
 
-import java.util.Set;
 
-import net.floodlightcontroller.core.types.NodePortTuple;
+import net.floodlightcontroller.core.types.JsonObjectWrapper;
 import net.floodlightcontroller.topology.ITopologyService;
 
 import org.restlet.resource.Get;
 import org.restlet.resource.ServerResource;
 
-public class BroadcastDomainPortsResource extends ServerResource {
-    @Get("json")
-    public Set<NodePortTuple> retrieve() {
+public class AllBroadcastPortsResource extends ServerResource {
+    @Get
+    public JsonObjectWrapper retrieve() {
         ITopologyService topology = 
                 (ITopologyService)getContext().getAttributes().
                     get(ITopologyService.class.getCanonicalName());
         
-        return topology.getBroadcastDomainPorts();
+        return JsonObjectWrapper.of(topology.getAllBroadcastPorts());
     }
 }

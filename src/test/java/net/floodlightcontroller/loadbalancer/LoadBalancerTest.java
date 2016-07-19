@@ -51,7 +51,6 @@ import org.projectfloodlight.openflow.types.IpProtocol;
 import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFBufferId;
 import org.projectfloodlight.openflow.types.OFPort;
-import org.projectfloodlight.openflow.types.U64;
 import org.projectfloodlight.openflow.types.VlanVid;
 import org.projectfloodlight.openflow.protocol.OFPacketInReason;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
@@ -81,7 +80,7 @@ import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.restserver.RestApiServer;
 import net.floodlightcontroller.routing.IRoutingService;
-import net.floodlightcontroller.routing.Route;
+import net.floodlightcontroller.routing.Path;
 import net.floodlightcontroller.staticentry.IStaticEntryPusherService;
 import net.floodlightcontroller.staticentry.StaticEntryPusher;
 import net.floodlightcontroller.storage.IStorageSourceService;
@@ -460,8 +459,8 @@ public class LoadBalancerTest extends FloodlightTestCase {
 
 		// Build topology
 		reset(topology);
-		expect(topology.isIncomingBroadcastAllowed(DatapathId.of(anyLong()), OFPort.of(anyShort()))).andReturn(true).anyTimes();
-		expect(topology.getOpenflowDomainId(DatapathId.of(1L))).andReturn(DatapathId.of(1L)).anyTimes();
+		expect(topology.isBroadcastAllowed(DatapathId.of(anyLong()), OFPort.of(anyShort()))).andReturn(true).anyTimes();
+		expect(topology.getClusterId(DatapathId.of(1L))).andReturn(DatapathId.of(1L)).anyTimes();
 		expect(topology.isAttachmentPointPort(DatapathId.of(1L), OFPort.of(1))).andReturn(true).anyTimes();
 		expect(topology.isAttachmentPointPort(DatapathId.of(1L), OFPort.of(2))).andReturn(true).anyTimes();
 		expect(topology.isAttachmentPointPort(DatapathId.of(1L), OFPort.of(3))).andReturn(true).anyTimes();
@@ -541,7 +540,7 @@ public class LoadBalancerTest extends FloodlightTestCase {
 
 		for (OFMessage m: msglist1) {
 			if (m instanceof OFPacketOut)
-				assertTrue(OFMessageUtils.equalsIgnoreXid(arpReplyPacketOut1, m));
+                assertEquals(OFMessageUtils.OFMessageIgnoreXid.of(arpReplyPacketOut1), OFMessageUtils.OFMessageIgnoreXid.of(m));
 			else
 				assertTrue(false); // unexpected message
 		}
@@ -627,36 +626,36 @@ public class LoadBalancerTest extends FloodlightTestCase {
 				DatapathId.of(1), OFPort.of(4));
 
 		// in bound #1
-		Route route1 = new Route(DatapathId.of(1L), DatapathId.of(1L));
+		Path route1 = new Path(DatapathId.of(1L), DatapathId.of(1L));
 		List<NodePortTuple> nptList1 = new ArrayList<NodePortTuple>();
 		nptList1.add(new NodePortTuple(DatapathId.of(1L), OFPort.of(1)));
 		nptList1.add(new NodePortTuple(DatapathId.of(1L), OFPort.of(3)));
 		route1.setPath(nptList1);
-		expect(routingEngine.getRoute(DatapathId.of(1L), OFPort.of(1), DatapathId.of(1L), OFPort.of(3), U64.of(0))).andReturn(route1).atLeastOnce();
+		expect(routingEngine.getPath(DatapathId.of(1L), OFPort.of(1), DatapathId.of(1L), OFPort.of(3))).andReturn(route1).atLeastOnce();
 
 		// outbound #1
-		Route route2 = new Route(DatapathId.of(1L), DatapathId.of(1L));
+		Path route2 = new Path(DatapathId.of(1L), DatapathId.of(1L));
 		List<NodePortTuple> nptList2 = new ArrayList<NodePortTuple>();
 		nptList2.add(new NodePortTuple(DatapathId.of(1L), OFPort.of(3)));
 		nptList2.add(new NodePortTuple(DatapathId.of(1L), OFPort.of(1)));
 		route2.setPath(nptList2);
-		expect(routingEngine.getRoute(DatapathId.of(1L), OFPort.of(3), DatapathId.of(1L), OFPort.of(1), U64.of(0))).andReturn(route2).atLeastOnce();
+		expect(routingEngine.getPath(DatapathId.of(1L), OFPort.of(3), DatapathId.of(1L), OFPort.of(1))).andReturn(route2).atLeastOnce();
 
 		// inbound #2
-		Route route3 = new Route(DatapathId.of(1L), DatapathId.of(1L));
+		Path route3 = new Path(DatapathId.of(1L), DatapathId.of(1L));
 		List<NodePortTuple> nptList3 = new ArrayList<NodePortTuple>();
 		nptList3.add(new NodePortTuple(DatapathId.of(1L), OFPort.of(2)));
 		nptList3.add(new NodePortTuple(DatapathId.of(1L), OFPort.of(4)));
 		route3.setPath(nptList3);
-		expect(routingEngine.getRoute(DatapathId.of(1L), OFPort.of(2), DatapathId.of(1L), OFPort.of(4), U64.of(0))).andReturn(route3).atLeastOnce();
+		expect(routingEngine.getPath(DatapathId.of(1L), OFPort.of(2), DatapathId.of(1L), OFPort.of(4))).andReturn(route3).atLeastOnce();
 
 		// outbound #2
-		Route route4 = new Route(DatapathId.of(1L), DatapathId.of(1L));
+		Path route4 = new Path(DatapathId.of(1L), DatapathId.of(1L));
 		List<NodePortTuple> nptList4 = new ArrayList<NodePortTuple>();
 		nptList4.add(new NodePortTuple(DatapathId.of(1L), OFPort.of(4)));
 		nptList4.add(new NodePortTuple(DatapathId.of(1L), OFPort.of(2)));
 		route4.setPath(nptList3);
-		expect(routingEngine.getRoute(DatapathId.of(1L), OFPort.of(4), DatapathId.of(1L), OFPort.of(2), U64.of(0))).andReturn(route4).atLeastOnce();
+		expect(routingEngine.getPath(DatapathId.of(1L), OFPort.of(4), DatapathId.of(1L), OFPort.of(2))).andReturn(route4).atLeastOnce();
 
 		replay(routingEngine);
 
