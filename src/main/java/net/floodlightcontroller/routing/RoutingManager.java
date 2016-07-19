@@ -122,6 +122,11 @@ public class RoutingManager implements IFloodlightModule, IRoutingService {
     public boolean pathExists(DatapathId src, DatapathId dst) {
         return tm.getCurrentTopologyInstance().pathExists(src, dst);
     }
+    
+    @Override
+    public boolean forceRecompute() {
+        return tm.forceRecompute();
+    }
 
     /** 
      * Registers an IRoutingDecisionChangedListener.
@@ -157,5 +162,4 @@ public class RoutingManager implements IFloodlightModule, IRoutingService {
             listener.routingDecisionChanged(changedDecisions);
         }
     }
-
 }

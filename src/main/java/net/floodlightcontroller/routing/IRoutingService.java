@@ -173,4 +173,20 @@ public interface IRoutingService extends IFloodlightService {
      * @return list of paths ordered least to greatest cost
      */
     public List<Path> getPathsSlow(DatapathId src, DatapathId dst, int numReqPaths);
+    
+    /**
+     * Recompute paths now, regardless of whether or not there was a change in the
+     * topology. This should be called if {@link #setPathMetric(PATH_METRIC)} was
+     * invoked to change the PATH_METRIC **and we want the new metric to take effect
+     * now** for future getPathsFast() or getPath() function calls. This will allow other 
+     * modules using IRoutingService path-finding to use paths based on the new metric
+     * if the other modules only use the "fast" path-finding API. 
+     * 
+     * One can use {@link IRoutingService#getPathsSlow(DatapathId, DatapathId, int)} if there is no
+     * urgency for the new metric to take effect and yet one would still like to see 
+     * the paths using the new metric once or so. In this case, one need not invoke {@link #forceRecompute()}.
+     * 
+     * @return true upon success; false otherwise
+     */
+    public boolean forceRecompute();
 }

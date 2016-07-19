@@ -17,7 +17,6 @@
 package net.floodlightcontroller.routing.web;
 
 import net.floodlightcontroller.routing.IRoutingService;
-import net.floodlightcontroller.routing.IRoutingService.PATH_METRIC;
 
 import org.restlet.resource.Get;
 import org.restlet.resource.Post;
@@ -36,13 +35,13 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.Map;
 
-public class PathMetricsResource extends ServerResource {
-    private static final Logger log = LoggerFactory.getLogger(PathMetricsResource.class);
+public class MaxFastPathsResource extends ServerResource {
+    private static final Logger log = LoggerFactory.getLogger(MaxFastPathsResource.class);
 
-    private static String metricFromJson(String json) {
+    private static String maxPathsFromJson(String json) {
         MappingJsonFactory f = new MappingJsonFactory();
         JsonParser jp;
-        String metric = "";
+        String max = "";
         try {
             try {
                 jp = f.createParser(json);
@@ -66,53 +65,45 @@ public class PathMetricsResource extends ServerResource {
                     continue;
                 }
 
-                if (n.equalsIgnoreCase("metric")) {
-                    metric = jp.getText();
+                if (n.equalsIgnoreCase("max_fast_paths")) {
+                    max = jp.getText();
                 }
             }
         } catch (IOException e) {
             log.error("Unable to parse JSON string: {}", e);
         }
-        return metric.trim().toLowerCase();
+        return max.trim().toLowerCase();
     }
 
     @Put
     @Post
-    public Map<String, String> changeMetric(String json) {
+    public Map<String, String> changeMaxPathsToCompute(String json) {
         IRoutingService routing =
                 (IRoutingService)getContext().getAttributes().
                 get(IRoutingService.class.getCanonicalName());
 
-        String metric = metricFromJson(json);
-
-        PATH_METRIC type;
-
-        if (metric.equals(PATH_METRIC.LATENCY.getMetricName())) {
-            type = PATH_METRIC.LATENCY;
-        } else if (metric.equals(PATH_METRIC.UTILIZATION.getMetricName())) {
-            type = PATH_METRIC.UTILIZATION;
-        } else if (metric.equals(PATH_METRIC.HOPCOUNT.getMetricName())) {
-            type = PATH_METRIC.HOPCOUNT;
-        } else if (metric.equals(PATH_METRIC.HOPCOUNT_AVOID_TUNNELS.getMetricName())) {
-            type = PATH_METRIC.HOPCOUNT_AVOID_TUNNELS;
-        } else if (metric.equals(PATH_METRIC.LINK_SPEED.getMetricName())) {
-            type = PATH_METRIC.LINK_SPEED;
-        } else {
-            log.error("Invalid input {}", metric);
-            return Collections.singletonMap("error", "invalid path metric: " + metric);
+        int max = 0;
+        
+        try {
+            max = Integer.parseInt(maxPathsFromJson(json));
+            if (max < 0) {
+                throw new NumberFormatException();
+            }
+        } catch (NumberFormatException e) {
+            log.error("Could not parse max_fast_paths {}", max);
+            return Collections.singletonMap("error", "invalid max_fast_paths: " + max);
         }
 
-        log.debug("Setting path metric to {}", type.getMetricName());
-        routing.setPathMetric(type);
-        return Collections.singletonMap("metric", type.getMetricName());
+        log.debug("Setting max_fast_paths to {}", max);
+        routing.setMaxPathsToCompute(max);
+        return ImmutableMap.of("max_fast_paths", Integer.toString(routing.getMaxPathsToCompute()));
     }
 
     @Get
-    public Map<String, String> getMetric() {
+    public Map<String, String> getMaxPaths() {
         IRoutingService routing =
                 (IRoutingService)getContext().getAttributes().
                 get(IRoutingService.class.getCanonicalName());
-        PATH_METRIC metric = routing.getPathMetric();
-        return ImmutableMap.of("metric", metric.getMetricName());
+        return ImmutableMap.of("max_fast_paths", Integer.toString(routing.getMaxPathsToCompute()));
     }
 }

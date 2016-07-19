@@ -35,8 +35,9 @@ public class RoutingWebRoutable implements RestletRoutable {
         router.attach("/paths/{src-dpid}/{dst-dpid}/{num-paths}/json", PathsResource.class);
         router.attach("/paths/fast/{src-dpid}/{dst-dpid}/{num-paths}/json", PathsResource.class);
         router.attach("/paths/slow/{src-dpid}/{dst-dpid}/{num-paths}/json", PathsResource.class);
-        router.attach("/setpathmetric/{metric}/json", PathMetricsResource.class);
-
+        router.attach("/metric/json", PathMetricsResource.class);
+        router.attach("/paths/force-recompute/json", ForceRecomputeResource.class);
+        router.attach("/paths/max-fast-paths/json", MaxFastPathsResource.class);
         return router;
     }
 
