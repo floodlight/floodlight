@@ -410,11 +410,17 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         MacAddress dstMac = eth.getDestinationMACAddress();
 
         Match.Builder mb = sw.getOFFactory().buildMatch();
-        mb.setExact(MatchField.IN_PORT, inPort);
+        if (FLOWMOD_DEFAULT_MATCH_IN_PORT) {
+            mb.setExact(MatchField.IN_PORT, inPort);
+        }
 
         if (FLOWMOD_DEFAULT_MATCH_MAC) {
-            mb.setExact(MatchField.ETH_SRC, srcMac)
-            .setExact(MatchField.ETH_DST, dstMac);
+            if (FLOWMOD_DEFAULT_MATCH_MAC_SRC) {
+                mb.setExact(MatchField.ETH_SRC, srcMac);
+            }
+            if (FLOWMOD_DEFAULT_MATCH_MAC_DST) {
+                mb.setExact(MatchField.ETH_DST, dstMac);
+            }
         }
 
         if (FLOWMOD_DEFAULT_MATCH_VLAN) {
@@ -429,10 +435,14 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
             IPv4Address srcIp = ip.getSourceAddress();
             IPv4Address dstIp = ip.getDestinationAddress();
 
-            if (FLOWMOD_DEFAULT_MATCH_IP_ADDR) {
-                mb.setExact(MatchField.ETH_TYPE, EthType.IPv4)
-                .setExact(MatchField.IPV4_SRC, srcIp)
-                .setExact(MatchField.IPV4_DST, dstIp);
+            if (FLOWMOD_DEFAULT_MATCH_IP) {
+                mb.setExact(MatchField.ETH_TYPE, EthType.IPv4);
+                if (FLOWMOD_DEFAULT_MATCH_IP_SRC) {
+                    mb.setExact(MatchField.IPV4_SRC, srcIp);
+                }
+                if (FLOWMOD_DEFAULT_MATCH_IP_DST) {
+                    mb.setExact(MatchField.IPV4_DST, dstIp);
+                }
             }
 
             if (FLOWMOD_DEFAULT_MATCH_TRANSPORT) {
@@ -440,20 +450,28 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                  * Take care of the ethertype if not included earlier,
                  * since it's a prerequisite for transport ports.
                  */
-                if (!FLOWMOD_DEFAULT_MATCH_IP_ADDR) {
+                if (!FLOWMOD_DEFAULT_MATCH_IP) {
                     mb.setExact(MatchField.ETH_TYPE, EthType.IPv4);
                 }
 
                 if (ip.getProtocol().equals(IpProtocol.TCP)) {
                     TCP tcp = (TCP) ip.getPayload();
-                    mb.setExact(MatchField.IP_PROTO, IpProtocol.TCP)
-                    .setExact(MatchField.TCP_SRC, tcp.getSourcePort())
-                    .setExact(MatchField.TCP_DST, tcp.getDestinationPort());
+                    mb.setExact(MatchField.IP_PROTO, IpProtocol.TCP);
+                    if (FLOWMOD_DEFAULT_MATCH_TRANSPORT_SRC) {
+                        mb.setExact(MatchField.TCP_SRC, tcp.getSourcePort());
+                    }
+                    if (FLOWMOD_DEFAULT_MATCH_TRANSPORT_DST) {
+                        mb.setExact(MatchField.TCP_DST, tcp.getDestinationPort());
+                    }
                 } else if (ip.getProtocol().equals(IpProtocol.UDP)) {
                     UDP udp = (UDP) ip.getPayload();
-                    mb.setExact(MatchField.IP_PROTO, IpProtocol.UDP)
-                    .setExact(MatchField.UDP_SRC, udp.getSourcePort())
-                    .setExact(MatchField.UDP_DST, udp.getDestinationPort());
+                    mb.setExact(MatchField.IP_PROTO, IpProtocol.UDP);
+                    if (FLOWMOD_DEFAULT_MATCH_TRANSPORT_SRC) {
+                        mb.setExact(MatchField.UDP_SRC, udp.getSourcePort());
+                    }
+                    if (FLOWMOD_DEFAULT_MATCH_TRANSPORT_DST) {
+                        mb.setExact(MatchField.UDP_DST, udp.getDestinationPort());
+                    }
                 }
             }
         } else if (eth.getEtherType() == EthType.ARP) { /* shallow check for equality is okay for EthType */
@@ -463,10 +481,14 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
             IPv6Address srcIp = ip.getSourceAddress();
             IPv6Address dstIp = ip.getDestinationAddress();
 
-            if (FLOWMOD_DEFAULT_MATCH_IP_ADDR) {
-                mb.setExact(MatchField.ETH_TYPE, EthType.IPv6)
-                .setExact(MatchField.IPV6_SRC, srcIp)
-                .setExact(MatchField.IPV6_DST, dstIp);
+            if (FLOWMOD_DEFAULT_MATCH_IP) {
+                mb.setExact(MatchField.ETH_TYPE, EthType.IPv6);
+                if (FLOWMOD_DEFAULT_MATCH_IP_SRC) {
+                    mb.setExact(MatchField.IPV6_SRC, srcIp);
+                }
+                if (FLOWMOD_DEFAULT_MATCH_IP_DST) {
+                    mb.setExact(MatchField.IPV6_DST, dstIp);
+                }
             }
 
             if (FLOWMOD_DEFAULT_MATCH_TRANSPORT) {
@@ -474,20 +496,28 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                  * Take care of the ethertype if not included earlier,
                  * since it's a prerequisite for transport ports.
                  */
-                if (!FLOWMOD_DEFAULT_MATCH_IP_ADDR) {
+                if (!FLOWMOD_DEFAULT_MATCH_IP) {
                     mb.setExact(MatchField.ETH_TYPE, EthType.IPv6);
                 }
 
                 if (ip.getNextHeader().equals(IpProtocol.TCP)) {
                     TCP tcp = (TCP) ip.getPayload();
-                    mb.setExact(MatchField.IP_PROTO, IpProtocol.TCP)
-                    .setExact(MatchField.TCP_SRC, tcp.getSourcePort())
-                    .setExact(MatchField.TCP_DST, tcp.getDestinationPort());
+                    mb.setExact(MatchField.IP_PROTO, IpProtocol.TCP);
+                    if (FLOWMOD_DEFAULT_MATCH_TRANSPORT_SRC) {
+                        mb.setExact(MatchField.TCP_SRC, tcp.getSourcePort());
+                    }
+                    if (FLOWMOD_DEFAULT_MATCH_TRANSPORT_DST) {
+                        mb.setExact(MatchField.TCP_DST, tcp.getDestinationPort());
+                    }
                 } else if (ip.getNextHeader().equals(IpProtocol.UDP)) {
                     UDP udp = (UDP) ip.getPayload();
-                    mb.setExact(MatchField.IP_PROTO, IpProtocol.UDP)
-                    .setExact(MatchField.UDP_SRC, udp.getSourcePort())
-                    .setExact(MatchField.UDP_DST, udp.getDestinationPort());
+                    mb.setExact(MatchField.IP_PROTO, IpProtocol.UDP);
+                    if (FLOWMOD_DEFAULT_MATCH_TRANSPORT_SRC) {
+                        mb.setExact(MatchField.UDP_SRC, udp.getSourcePort());
+                    }
+                    if (FLOWMOD_DEFAULT_MATCH_TRANSPORT_DST) {
+                        mb.setExact(MatchField.UDP_DST, udp.getDestinationPort());
+                    }
                 }
             }
         }
@@ -611,21 +641,47 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         tmp = configParameters.get("match");
         if (tmp != null) {
             tmp = tmp.toLowerCase();
-            if (!tmp.contains("vlan") && !tmp.contains("mac") && !tmp.contains("ip") && !tmp.contains("port")) {
+            if (!tmp.contains("in-port") && !tmp.contains("vlan") 
+                    && !tmp.contains("mac") && !tmp.contains("ip") 
+                    && !tmp.contains("transport")) {
                 /* leave the default configuration -- blank or invalid 'match' value */
             } else {
+                FLOWMOD_DEFAULT_MATCH_IN_PORT = tmp.contains("in-port") ? true : false;
                 FLOWMOD_DEFAULT_MATCH_VLAN = tmp.contains("vlan") ? true : false;
                 FLOWMOD_DEFAULT_MATCH_MAC = tmp.contains("mac") ? true : false;
-                FLOWMOD_DEFAULT_MATCH_IP_ADDR = tmp.contains("ip") ? true : false;
-                FLOWMOD_DEFAULT_MATCH_TRANSPORT = tmp.contains("port") ? true : false;
-
+                FLOWMOD_DEFAULT_MATCH_IP = tmp.contains("ip") ? true : false;
+                FLOWMOD_DEFAULT_MATCH_TRANSPORT = tmp.contains("transport") ? true : false;
             }
         }
-        log.info("Default flow matches set to: VLAN=" + FLOWMOD_DEFAULT_MATCH_VLAN
+        log.info("Default flow matches set to: IN_PORT=" + FLOWMOD_DEFAULT_MATCH_IN_PORT
+                + ", VLAN=" + FLOWMOD_DEFAULT_MATCH_VLAN
                 + ", MAC=" + FLOWMOD_DEFAULT_MATCH_MAC
-                + ", IP=" + FLOWMOD_DEFAULT_MATCH_IP_ADDR
+                + ", IP=" + FLOWMOD_DEFAULT_MATCH_IP
                 + ", TPPT=" + FLOWMOD_DEFAULT_MATCH_TRANSPORT);
-
+        
+        tmp = configParameters.get("detailed-match");
+        if (tmp != null) {
+            tmp = tmp.toLowerCase();
+            if (!tmp.contains("src-mac") && !tmp.contains("dst-mac") 
+                    && !tmp.contains("src-ip") && !tmp.contains("dst-ip")
+                    && !tmp.contains("src-transport") && !tmp.contains("dst-transport")) {
+                /* leave the default configuration -- both src and dst for layers defined above */
+            } else {
+                FLOWMOD_DEFAULT_MATCH_MAC_SRC = tmp.contains("src-mac") ? true : false;
+                FLOWMOD_DEFAULT_MATCH_MAC_DST = tmp.contains("dst-mac") ? true : false;
+                FLOWMOD_DEFAULT_MATCH_IP_SRC = tmp.contains("src-ip") ? true : false;
+                FLOWMOD_DEFAULT_MATCH_IP_DST = tmp.contains("dst-ip") ? true : false;
+                FLOWMOD_DEFAULT_MATCH_TRANSPORT_SRC = tmp.contains("src-transport") ? true : false;
+                FLOWMOD_DEFAULT_MATCH_TRANSPORT_DST = tmp.contains("dst-transport") ? true : false;
+            }
+        }
+        log.info("Default detailed flow matches set to: SRC_MAC=" + FLOWMOD_DEFAULT_MATCH_MAC_SRC
+                + ", DST_MAC=" + FLOWMOD_DEFAULT_MATCH_MAC_DST
+                + ", SRC_IP=" + FLOWMOD_DEFAULT_MATCH_IP_SRC
+                + ", DST_IP=" + FLOWMOD_DEFAULT_MATCH_IP_DST
+                + ", SRC_TPPT=" + FLOWMOD_DEFAULT_MATCH_TRANSPORT_SRC
+                + ", DST_TPPT=" + FLOWMOD_DEFAULT_MATCH_TRANSPORT_DST);
+        
         tmp = configParameters.get("flood-arp");
         if (tmp != null) {
             tmp = tmp.toLowerCase();
