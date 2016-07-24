@@ -87,10 +87,18 @@ public abstract class ForwardingBase implements IOFMessageListener {
 
     protected static boolean FLOWMOD_DEFAULT_SET_SEND_FLOW_REM_FLAG = false;
 
+    protected static boolean FLOWMOD_DEFAULT_MATCH_IN_PORT = true;
     protected static boolean FLOWMOD_DEFAULT_MATCH_VLAN = true;
     protected static boolean FLOWMOD_DEFAULT_MATCH_MAC = true;
-    protected static boolean FLOWMOD_DEFAULT_MATCH_IP_ADDR = true;
+    protected static boolean FLOWMOD_DEFAULT_MATCH_IP = true;
     protected static boolean FLOWMOD_DEFAULT_MATCH_TRANSPORT = true;
+    
+    protected static boolean FLOWMOD_DEFAULT_MATCH_MAC_SRC = true;
+    protected static boolean FLOWMOD_DEFAULT_MATCH_MAC_DST = true;
+    protected static boolean FLOWMOD_DEFAULT_MATCH_IP_SRC = true;
+    protected static boolean FLOWMOD_DEFAULT_MATCH_IP_DST = true;
+    protected static boolean FLOWMOD_DEFAULT_MATCH_TRANSPORT_SRC = true;
+    protected static boolean FLOWMOD_DEFAULT_MATCH_TRANSPORT_DST = true;
 
     protected static final short FLOWMOD_DEFAULT_IDLE_TIMEOUT_CONSTANT = 5;
     protected static final short FLOWMOD_DEFAULT_HARD_TIMEOUT_CONSTANT = 0;
