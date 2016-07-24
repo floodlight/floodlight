@@ -299,8 +299,8 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
             for (SwitchPort dstDap : dstDevice.getAttachmentPoints()) {
                 if (sw.getId().equals(dstDap.getNodeId()) && inPort.equals(dstDap.getPortId())) {
                     on_same_if = true;
+                    break;
                 }
-                break;
             }
 
             if (on_same_if) {
