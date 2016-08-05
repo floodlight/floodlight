@@ -19,7 +19,6 @@ package net.floodlightcontroller.routing;
 
 import java.util.EnumSet;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -45,7 +44,6 @@ import net.floodlightcontroller.util.FlowModUtils;
 import net.floodlightcontroller.util.MatchUtils;
 import net.floodlightcontroller.util.OFDPAUtils;
 import net.floodlightcontroller.util.OFMessageDamper;
-import net.floodlightcontroller.util.TimedCache;
 
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
 import org.projectfloodlight.openflow.protocol.match.Match;
@@ -76,14 +74,11 @@ import org.slf4j.LoggerFactory;
 public abstract class ForwardingBase implements IOFMessageListener {
     protected static Logger log = LoggerFactory.getLogger(ForwardingBase.class);
 
-    protected static int OFMESSAGE_DAMPER_CAPACITY = 10000; // TODO: find sweet spot
-    protected static int OFMESSAGE_DAMPER_TIMEOUT = 250; // ms
-
     public static int FLOWMOD_DEFAULT_IDLE_TIMEOUT = 5; // in seconds
     public static int FLOWMOD_DEFAULT_HARD_TIMEOUT = 0; // infinite
     public static int FLOWMOD_DEFAULT_PRIORITY = 1; // 0 is the default table-miss flow in OF1.3+, so we need to use 1
 
-    public static TableId FLOWMOD_DEFAULT_TABLE_ID = TableId.ZERO;
+    protected static TableId FLOWMOD_DEFAULT_TABLE_ID = TableId.ZERO;
 
     protected static boolean FLOWMOD_DEFAULT_SET_SEND_FLOW_REM_FLAG = false;
 
@@ -100,9 +95,6 @@ public abstract class ForwardingBase implements IOFMessageListener {
     protected static boolean FLOWMOD_DEFAULT_MATCH_TRANSPORT_SRC = true;
     protected static boolean FLOWMOD_DEFAULT_MATCH_TRANSPORT_DST = true;
 
-    protected static final short FLOWMOD_DEFAULT_IDLE_TIMEOUT_CONSTANT = 5;
-    protected static final short FLOWMOD_DEFAULT_HARD_TIMEOUT_CONSTANT = 0;
-
     protected static boolean FLOOD_ALL_ARP_PACKETS = false;
 
     protected static boolean REMOVE_FLOWS_ON_LINK_OR_PORT_DOWN = true;
@@ -115,33 +107,17 @@ public abstract class ForwardingBase implements IOFMessageListener {
     protected IDebugCounterService debugCounterService;
     protected ILinkDiscoveryService linkService;
 
-    protected OFMessageDamper messageDamper;
-
-    // for broadcast loop suppression
-    protected boolean broadcastCacheFeature = true;
-    public final int prime1 = 2633;  // for hash calculation
-    public final static int prime2 = 4357;  // for hash calculation
-    public TimedCache<Long> broadcastCache = new TimedCache<Long>(100, 5*1000);  // 5 seconds interval;
-
     // flow-mod - for use in the cookie
-    public static final int FORWARDING_APP_ID = 2; // TODO: This must be managed
-    // by a global APP_ID class
+    public static final int FORWARDING_APP_ID = 2;
     static {
-        AppCookie.registerApp(FORWARDING_APP_ID, "Forwarding");
+        AppCookie.registerApp(FORWARDING_APP_ID, "forwarding");
     }
-    public static final U64 appCookie = AppCookie.makeCookie(FORWARDING_APP_ID, 0);
+    protected static final U64 DEFAULT_FORWARDING_COOKIE = AppCookie.makeCookie(FORWARDING_APP_ID, 0);
 
-    // Comparator for sorting by SwitchCluster
-    public Comparator<SwitchPort> clusterIdComparator =
-            new Comparator<SwitchPort>() {
-        @Override
-        public int compare(SwitchPort d1, SwitchPort d2) {
-            DatapathId d1ClusterId = topologyService.getClusterId(d1.getNodeId());
-            DatapathId d2ClusterId = topologyService.getClusterId(d2.getNodeId());
-            return d1ClusterId.compareTo(d2ClusterId);
-        }
-    };
-
+    protected OFMessageDamper messageDamper;
+    private static int OFMESSAGE_DAMPER_CAPACITY = 10000;
+    private static int OFMESSAGE_DAMPER_TIMEOUT = 250; // ms
+    
     protected void init() {
         messageDamper = new OFMessageDamper(OFMESSAGE_DAMPER_CAPACITY,
                 EnumSet.of(OFType.FLOW_MOD),
@@ -277,7 +253,7 @@ public abstract class ForwardingBase implements IOFMessageListener {
             if (sw.getOFFactory().getVersion().compareTo(OFVersion.OF_10) != 0) {
                 fmb.setTableId(FLOWMOD_DEFAULT_TABLE_ID);
             }
-            
+                        
             if (log.isTraceEnabled()) {
                 log.trace("Pushing Route flowmod routeIndx={} " +
                         "sw={} inPort={} outPort={}",

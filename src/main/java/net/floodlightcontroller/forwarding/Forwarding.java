@@ -21,9 +21,11 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
@@ -92,11 +94,133 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class Forwarding extends ForwardingBase implements IFloodlightModule, IOFSwitchListener, ILinkDiscoveryListener, IRoutingDecisionChangedListener {
-    protected static Logger log = LoggerFactory.getLogger(Forwarding.class);
-    final static U64 DEFAULT_FORWARDING_COOKIE = AppCookie.makeCookie(FORWARDING_APP_ID, 0);
+    protected static final Logger log = LoggerFactory.getLogger(Forwarding.class);
 
-    // This mask determines how much of each cookie will contain IRoutingDecision descriptor bits.
-    private final long DECISION_MASK = 0x00000000ffffffffL; // TODO: shrink this mask if you need to add more sub-fields.
+    /*
+     * Cookies are 64 bits:
+     * Example: 0x0123456789ABCDEF
+     * App ID:  0xFFF0000000000000
+     * User:    0x000FFFFFFFFFFFFF
+     * 
+     * Of the user portion, we further subdivide into routing decision 
+     * bits and flowset bits. The former relates the flow to routing
+     * decisions, such as firewall allow or deny/drop. It allows for 
+     * modification of the flows upon a future change in the routing 
+     * decision. The latter indicates a "family" of flows or "flowset" 
+     * used to complete an end-to-end connection between two devices
+     * or hosts in the network. It is used to assist in the entire
+     * flowset removal upon a link or port down event anywhere along
+     * the path. This is required in order to allow a new path to be
+     * used and a new flowset installed.
+     * 
+     * TODO: shrink these masks if you need to add more subfields
+     * or need to allow for a larger number of routing decisions
+     * or flowsets
+     */
+
+    private static final short DECISION_BITS = 24;
+    private static final short DECISION_SHIFT = 0;
+    private static final long DECISION_MASK = ((1L << DECISION_BITS) - 1) << DECISION_SHIFT;
+
+    private static final short FLOWSET_BITS = 28;
+    protected static final short FLOWSET_SHIFT = DECISION_BITS;
+    private static final long FLOWSET_MASK = ((1L << FLOWSET_BITS) - 1) << FLOWSET_SHIFT;
+    private static final long FLOWSET_MAX = (long) (Math.pow(2, FLOWSET_BITS) - 1);
+    protected static FlowSetIdRegistry flowSetIdRegistry;
+
+    protected static class FlowSetIdRegistry {
+        private volatile Map<NodePortTuple, Set<U64>> nptToFlowSetIds;
+        private volatile Map<U64, Set<NodePortTuple>> flowSetIdToNpts;
+        
+        private volatile long flowSetGenerator = -1;
+
+        private static volatile FlowSetIdRegistry instance;
+
+        private FlowSetIdRegistry() {
+            nptToFlowSetIds = new ConcurrentHashMap<NodePortTuple, Set<U64>>();
+            flowSetIdToNpts = new ConcurrentHashMap<U64, Set<NodePortTuple>>();
+        }
+
+        protected static FlowSetIdRegistry getInstance() {
+            if (instance == null) {
+                instance = new FlowSetIdRegistry();
+            }
+            return instance;
+        }
+        
+        /**
+         * Only for use by unit test to help w/ordering
+         * @param seed
+         */
+        protected void seedFlowSetIdForUnitTest(int seed) {
+            flowSetGenerator = seed;
+        }
+        
+        protected synchronized U64 generateFlowSetId() {
+            flowSetGenerator += 1;
+            if (flowSetGenerator == FLOWSET_MAX) {
+                flowSetGenerator = 0;
+                log.warn("Flowset IDs have exceeded capacity of {}. Flowset ID generator resetting back to 0", FLOWSET_MAX);
+            }
+            U64 id = U64.of(flowSetGenerator << FLOWSET_SHIFT);
+            log.warn("Generating flowset ID {}, shifted {}", flowSetGenerator, id.toString());
+            return id;
+        }
+
+        private void registerFlowSetId(NodePortTuple npt, U64 flowSetId) {
+            if (nptToFlowSetIds.containsKey(npt)) {
+                Set<U64> ids = nptToFlowSetIds.get(npt);
+                if (ids == null) {
+                    ids = new HashSet<U64>();
+                }
+                ids.add(flowSetId);
+            } else {
+                Set<U64> ids = new HashSet<U64>();
+                ids.add(flowSetId);
+                nptToFlowSetIds.put(npt, ids);
+            }  
+
+            if (flowSetIdToNpts.containsKey(flowSetId)) {
+                Set<NodePortTuple> npts = flowSetIdToNpts.get(flowSetId);
+                if (npts == null) {
+                    npts = new HashSet<NodePortTuple>();
+                }
+                npts.add(npt);
+            } else {
+                Set<NodePortTuple> npts = new HashSet<NodePortTuple>();
+                npts.add(npt);
+                flowSetIdToNpts.put(flowSetId, npts);
+            }
+        }
+
+        private Set<U64> getFlowSetIds(NodePortTuple npt) {
+            return nptToFlowSetIds.get(npt);
+        }
+
+        private Set<NodePortTuple> getNodePortTuples(U64 flowSetId) {
+            return flowSetIdToNpts.get(flowSetId);
+        }
+
+        private void removeNodePortTuple(NodePortTuple npt) {
+            nptToFlowSetIds.remove(npt);
+
+            Iterator<Set<NodePortTuple>> itr = flowSetIdToNpts.values().iterator();
+            while (itr.hasNext()) {
+                Set<NodePortTuple> npts = itr.next();
+                npts.remove(npt);
+            }
+        }
+
+        private void removeExpiredFlowSetId(U64 flowSetId) {
+            flowSetIdToNpts.remove(flowSetId);
+
+            Iterator<Set<U64>> itr = nptToFlowSetIds.values().iterator();
+            while (itr.hasNext()) {
+                Set<U64> ids = itr.next();
+                ids.remove(flowSetId);
+            }
+        }
+    }
 
     @Override
     public Command processPacketInMessage(IOFSwitch sw, OFPacketIn pi, IRoutingDecision decision, FloodlightContext cntx) {
@@ -145,17 +269,21 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
      * Builds a cookie that includes routing decision information.
      *
      * @param decision The routing decision providing a descriptor, or null
-     * @return A cookie with our app id and the required routing fields masked-in
+     * @return A cookie with our app id and the required fields masked-in
      */
-    protected U64 makeForwardingCookie(IRoutingDecision decision) {
-        int user_fields = 0;
+    protected U64 makeForwardingCookie(IRoutingDecision decision, U64 flowSetId) {
+        long user_fields = 0;
 
         U64 decision_cookie = (decision == null) ? null : decision.getDescriptor();
         if (decision_cookie != null) {
             user_fields |= AppCookie.extractUser(decision_cookie) & DECISION_MASK;
         }
 
-        // TODO: Mask in any other required fields here (e.g. link failure flowset ID)
+        if (flowSetId != null) {
+            user_fields |= AppCookie.extractUser(flowSetId) & FLOWSET_MASK;
+        }
+
+        // TODO: Mask in any other required fields here
 
         if (user_fields == 0) {
             return DEFAULT_FORWARDING_COOKIE;
@@ -181,7 +309,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
      * @return A collection of masked cookies suitable for flow-mod operations
      */
     protected Collection<Masked<U64>> convertRoutingDecisionDescriptors(Iterable<Masked<U64>> maskedDescriptors) {
-        if(maskedDescriptors == null) {
+        if (maskedDescriptors == null) {
             return null;
         }
 
@@ -194,7 +322,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 
             resultBuilder.add(
                     Masked.of(
-                            AppCookie.makeCookie(FORWARDING_APP_ID, (int)user_value),
+                            AppCookie.makeCookie(FORWARDING_APP_ID, user_value),
                             AppCookie.getAppFieldMask().or(U64.of(user_mask))
                             )
                     );
@@ -247,9 +375,16 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
     protected void doDropFlow(IOFSwitch sw, OFPacketIn pi, IRoutingDecision decision, FloodlightContext cntx) {
         OFPort inPort = OFMessageUtils.getInPort(pi);
         Match m = createMatchFromPacket(sw, inPort, cntx);
-        OFFlowMod.Builder fmb = sw.getOFFactory().buildFlowAdd(); // this will be a drop-flow; a flow that will not output to any ports
+        OFFlowMod.Builder fmb = sw.getOFFactory().buildFlowAdd();
         List<OFAction> actions = new ArrayList<OFAction>(); // set no action to drop
-        U64 cookie = makeForwardingCookie(decision); 
+        U64 flowSetId = flowSetIdRegistry.generateFlowSetId();
+        U64 cookie = makeForwardingCookie(decision, flowSetId); 
+
+        /* If link goes down, we'll remember to remove this flow */
+        if (! m.isFullyWildcarded(MatchField.IN_PORT)) {
+            flowSetIdRegistry.registerFlowSetId(new NodePortTuple(sw.getId(), m.get(MatchField.IN_PORT)), flowSetId);
+        }
+
         log.info("Dropping");
         fmb.setCookie(cookie)
         .setHardTimeout(FLOWMOD_DEFAULT_HARD_TIMEOUT)
@@ -284,7 +419,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
             doFlood(sw, pi, decision, cntx);
             return;
         }
-        
+
         if (srcDevice == null) {
             log.error("No device entry found for source device. Is the device manager running? If so, report bug.");
             return;
@@ -298,7 +433,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
             doFlood(sw, pi, decision, cntx);
             return;
         }
-        
+
         /* This packet-in is from a switch in the path before its flow was installed along the path */
         if (!topologyService.isEdge(srcSw, srcPort)) {  
             log.debug("Packet destination is known, but packet was not received on an edge port (rx on {}/{}). Flooding packet", srcSw, srcPort);
@@ -343,7 +478,8 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
             return;
         }			
 
-        U64 cookie = makeForwardingCookie(decision);
+        U64 flowSetId = flowSetIdRegistry.generateFlowSetId();
+        U64 cookie = makeForwardingCookie(decision, flowSetId);
         Path path = routingEngineService.getPath(srcSw, 
                 srcPort,
                 dstAp.getNodeId(),
@@ -367,16 +503,24 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         } else {
             /* Route traverses no links --> src/dst devices on same switch */
             log.debug("Could not compute route. Devices should be on same switch src={} and dst={}", srcDevice, dstDevice);
-            Path p = new Path(srcDevice.getAttachmentPoints()[0].getNodeId(), dstDevice.getAttachmentPoints()[0].getNodeId());
+            path = new Path(srcDevice.getAttachmentPoints()[0].getNodeId(), dstDevice.getAttachmentPoints()[0].getNodeId());
             List<NodePortTuple> npts = new ArrayList<NodePortTuple>(2);
             npts.add(new NodePortTuple(srcDevice.getAttachmentPoints()[0].getNodeId(),
                     srcDevice.getAttachmentPoints()[0].getPortId()));
             npts.add(new NodePortTuple(dstDevice.getAttachmentPoints()[0].getNodeId(),
                     dstDevice.getAttachmentPoints()[0].getPortId()));
-            p.setPath(npts);
-            pushRoute(p, m, pi, sw.getId(), cookie,
+            path.setPath(npts);
+            pushRoute(path, m, pi, sw.getId(), cookie,
                     cntx, requestFlowRemovedNotifn,
                     OFFlowModCommand.ADD);
+        }
+
+        /* 
+         * Register this flowset with ingress and egress ports for link down
+         * flow removal. This is done after we push the path as it is blocking.
+         */
+        for (NodePortTuple npt : path.getPath()) {
+            flowSetIdRegistry.registerFlowSetId(npt, flowSetId);
         }
 
     }
@@ -593,6 +737,8 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         this.switchService = context.getServiceImpl(IOFSwitchService.class);
         this.linkService = context.getServiceImpl(ILinkDiscoveryService.class);
 
+        flowSetIdRegistry = FlowSetIdRegistry.getInstance();
+
         Map<String, String> configParameters = context.getConfigParams(this);
         String tmp = configParameters.get("hard-timeout");
         if (tmp != null) {
@@ -777,23 +923,64 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                     IOFSwitch srcSw = switchService.getSwitch(u.getSrc());
                     /* src side of link */
                     if (srcSw != null) {
-                        /* flows matching on src port */
-                        msgs.add(srcSw.getOFFactory().buildFlowDelete()
-                                .setCookie(DEFAULT_FORWARDING_COOKIE)
-                                .setCookieMask(AppCookie.getAppFieldMask())
-                                .setMatch(srcSw.getOFFactory().buildMatch()
-                                        .setExact(MatchField.IN_PORT, u.getSrcPort())
-                                        .build())
-                                .build());
-                        /* flows outputting to src port */
-                        msgs.add(srcSw.getOFFactory().buildFlowDelete()
-                                .setCookie(DEFAULT_FORWARDING_COOKIE)
-                                .setCookieMask(AppCookie.getAppFieldMask())
-                                .setOutPort(u.getSrcPort())
-                                .build());
-                        messageDamper.write(srcSw, msgs);
-                        log.warn("{}. Removing flows to/from DPID={}, port={}", new Object[] { u.getType(), u.getSrc(), u.getSrcPort() });
+                        Set<U64> ids = flowSetIdRegistry.getFlowSetIds(
+                                new NodePortTuple(u.getSrc(), u.getSrcPort()));
+                        if (ids != null) {
+                            for (U64 id : ids) {
+                                U64 cookie = id.or(DEFAULT_FORWARDING_COOKIE);
+                                U64 cookieMask = U64.of(FLOWSET_MASK).or(AppCookie.getAppFieldMask());
+                                /* flows matching on src port */
+                                msgs.add(srcSw.getOFFactory().buildFlowDelete()
+                                        .setCookie(cookie)
+                                        .setCookieMask(cookieMask)
+                                        .setMatch(srcSw.getOFFactory().buildMatch()
+                                                .setExact(MatchField.IN_PORT, u.getSrcPort())
+                                                .build())
+                                        .build());
+                                /* flows outputting to src port */
+                                msgs.add(srcSw.getOFFactory().buildFlowDelete()
+                                        .setCookie(cookie)
+                                        .setCookieMask(cookieMask)
+                                        .setOutPort(u.getSrcPort())
+                                        .build());
+                                messageDamper.write(srcSw, msgs);
+                                log.warn("Removing flows to/from DPID={}, port={}", u.getSrc(), u.getSrcPort());
+                                log.warn("Cookie/mask {}/{}", cookie, cookieMask);
+                                
+                                /* 
+                                 * Now, for each ID on this particular failed link, remove
+                                 * all other flows in the network using this ID.
+                                 */
+                                Set<NodePortTuple> npts = flowSetIdRegistry.getNodePortTuples(id);
+                                if (npts != null) {
+                                    for (NodePortTuple npt : npts) {
+                                        msgs.clear();
+                                        IOFSwitch sw = switchService.getSwitch(npt.getNodeId());
+                                        if (sw != null) {
+                                            msgs.add(sw.getOFFactory().buildFlowDelete()
+                                                    .setCookie(cookie)
+                                                    .setCookieMask(cookieMask)
+                                                    .setMatch(sw.getOFFactory().buildMatch()
+                                                            .setExact(MatchField.IN_PORT, npt.getPortId())
+                                                            .build())
+                                                    .build());
+                                            /* flows outputting to port */
+                                            msgs.add(sw.getOFFactory().buildFlowDelete()
+                                                    .setCookie(cookie)
+                                                    .setCookieMask(cookieMask)
+                                                    .setOutPort(npt.getPortId())
+                                                    .build());
+                                            messageDamper.write(sw, msgs);
+                                            log.warn("Removing flows to/from DPID={}, port={}", npt.getNodeId(), npt.getPortId());
+                                            log.warn("Cookie/mask {}/{}", cookie, cookieMask);
+                                        }
+                                    }
+                                }
+                                flowSetIdRegistry.removeExpiredFlowSetId(id);
+                            }
+                        }
                     }
+                    flowSetIdRegistry.removeNodePortTuple(new NodePortTuple(u.getSrc(), u.getSrcPort()));
                 }
 
                 /* must be a link, not just a port down, if we have a dst switch */
@@ -801,24 +988,65 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                     /* dst side of link */
                     IOFSwitch dstSw = switchService.getSwitch(u.getDst());
                     if (dstSw != null) {
-                        /* flows matching on dst port */
-                        msgs.clear();
-                        msgs.add(dstSw.getOFFactory().buildFlowDelete()
-                                .setCookie(DEFAULT_FORWARDING_COOKIE)
-                                .setCookieMask(AppCookie.getAppFieldMask())
-                                .setMatch(dstSw.getOFFactory().buildMatch()
-                                        .setExact(MatchField.IN_PORT, u.getDstPort())
-                                        .build())
-                                .build());
-                        /* flows outputting to dst port */
-                        msgs.add(dstSw.getOFFactory().buildFlowDelete()
-                                .setCookie(DEFAULT_FORWARDING_COOKIE)
-                                .setCookieMask(AppCookie.getAppFieldMask())
-                                .setOutPort(u.getDstPort())
-                                .build());
-                        messageDamper.write(dstSw, msgs);
-                        log.warn("{}. Removing flows to/from DPID={}, port={}", new Object[] { u.getType(), u.getDst(), u.getDstPort() });
+                        Set<U64> ids = flowSetIdRegistry.getFlowSetIds(
+                                new NodePortTuple(u.getSrc(), u.getSrcPort()));
+                        if (ids != null) {
+                            for (U64 id : ids) {
+                                U64 cookie = id.or(DEFAULT_FORWARDING_COOKIE);
+                                U64 cookieMask = U64.of(FLOWSET_MASK).or(AppCookie.getAppFieldMask());
+                                /* flows matching on dst port */
+                                msgs.clear();
+                                msgs.add(dstSw.getOFFactory().buildFlowDelete()
+                                        .setCookie(cookie)
+                                        .setCookieMask(cookieMask)
+                                        .setMatch(dstSw.getOFFactory().buildMatch()
+                                                .setExact(MatchField.IN_PORT, u.getDstPort())
+                                                .build())
+                                        .build());
+                                /* flows outputting to dst port */
+                                msgs.add(dstSw.getOFFactory().buildFlowDelete()
+                                        .setCookie(cookie)
+                                        .setCookieMask(cookieMask)
+                                        .setOutPort(u.getDstPort())
+                                        .build());
+                                messageDamper.write(dstSw, msgs);
+                                log.warn("Removing flows to/from DPID={}, port={}", u.getDst(), u.getDstPort());
+                                log.warn("Cookie/mask {}/{}", cookie, cookieMask);
+
+                                /* 
+                                 * Now, for each ID on this particular failed link, remove
+                                 * all other flows in the network using this ID.
+                                 */
+                                Set<NodePortTuple> npts = flowSetIdRegistry.getNodePortTuples(id);
+                                if (npts != null) {
+                                    for (NodePortTuple npt : npts) {
+                                        msgs.clear();
+                                        IOFSwitch sw = switchService.getSwitch(npt.getNodeId());
+                                        if (sw != null) {
+                                            msgs.add(sw.getOFFactory().buildFlowDelete()
+                                                    .setCookie(cookie)
+                                                    .setCookieMask(cookieMask)
+                                                    .setMatch(sw.getOFFactory().buildMatch()
+                                                            .setExact(MatchField.IN_PORT, npt.getPortId())
+                                                            .build())
+                                                    .build());
+                                            /* flows outputting to port */
+                                            msgs.add(sw.getOFFactory().buildFlowDelete()
+                                                    .setCookie(cookie)
+                                                    .setCookieMask(cookieMask)
+                                                    .setOutPort(npt.getPortId())
+                                                    .build());
+                                            messageDamper.write(sw, msgs);
+                                            log.warn("Removing flows to/from DPID={}, port={}", npt.getNodeId(), npt.getPortId());
+                                            log.warn("Cookie/mask {}/{}", cookie, cookieMask);
+                                        }
+                                    }
+                                }
+                                flowSetIdRegistry.removeExpiredFlowSetId(id);
+                            }
+                        }
                     }
+                    flowSetIdRegistry.removeNodePortTuple(new NodePortTuple(u.getDst(), u.getDstPort()));
                 }
             }
         }
