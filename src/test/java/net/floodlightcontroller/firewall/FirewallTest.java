@@ -98,9 +98,9 @@ public class FirewallTest extends FloodlightTestCase {
     static {
                 AppCookie.registerApp(APP_ID, "Firewall");
         }
-    private static final U64 DENY_BCAST_COOKIE = AppCookie.makeCookie(APP_ID, 0xaaaaaaaa);
-    private static final U64 ALLOW_BCAST_COOKIE = AppCookie.makeCookie(APP_ID, 0x55555555);
-    private static final U64 RULE_MISS_COOKIE = AppCookie.makeCookie(APP_ID, -1);
+    private static final U64 DENY_BCAST_COOKIE = AppCookie.makeCookie(APP_ID, 0xaaaaaaL);
+    private static final U64 ALLOW_BCAST_COOKIE = AppCookie.makeCookie(APP_ID, 0x555555L);
+    private static final U64 RULE_MISS_COOKIE = AppCookie.makeCookie(APP_ID, 0xffffffL);
 
 
     @Override
@@ -684,10 +684,11 @@ public class FirewallTest extends FloodlightTestCase {
     @Test
     public void cookieAddedSuccessfully() {
     	assertEquals("DENY_BCAST_COOKIE app_id is not correct", APP_ID, AppCookie.extractApp(DENY_BCAST_COOKIE));
-    	assertEquals("DENY_BCAST_COOKIE user_id is not correct", 0xaaaaaaaa, AppCookie.extractUser(DENY_BCAST_COOKIE));
+    	
+    	assertEquals("DENY_BCAST_COOKIE user_id is not correct", 0xaaaaaaL, AppCookie.extractUser(DENY_BCAST_COOKIE));
     	assertEquals("ALLOW_BCAST_COOKIE app_id is not correct", APP_ID, AppCookie.extractApp(DENY_BCAST_COOKIE));
-    	assertEquals("ALLOW_BCAST_COOKIE user_id is not correct", 0x55555555, AppCookie.extractUser(ALLOW_BCAST_COOKIE));
+    	assertEquals("ALLOW_BCAST_COOKIE user_id is not correct", 0x555555L, AppCookie.extractUser(ALLOW_BCAST_COOKIE));
       	assertEquals("RULE_MISS_COOKIE app_id is not correct", APP_ID, AppCookie.extractApp(DENY_BCAST_COOKIE));
-      	assertEquals("RULE_MISS_COOKIE user_id is not correct", -1, AppCookie.extractUser(RULE_MISS_COOKIE));
+      	assertEquals("RULE_MISS_COOKIE user_id is not correct", 0xffffffL, AppCookie.extractUser(RULE_MISS_COOKIE));
     }
 }

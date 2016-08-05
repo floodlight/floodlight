@@ -173,6 +173,7 @@ public class ForwardingTest extends FloodlightTestCase {
 		linkService.startUp(fmc);
 		deviceManager.startUp(fmc);
 		forwarding.startUp(fmc);
+		Forwarding.flowSetIdRegistry.seedFlowSetIdForUnitTest(3);
 		entityClassifier.startUp(fmc);
 		verify(topology);
 
@@ -498,7 +499,7 @@ public class ForwardingTest extends FloodlightTestCase {
 				.setActions(actions)
 				.setOutPort(action.getPort())
 				.setBufferId(OFBufferId.NO_BUFFER)
-				.setCookie(U64.of(2L << 52))
+				.setCookie(U64.of(2L << 52).or(U64.of(4 << Forwarding.FLOWSET_SHIFT)))
 				.setPriority(1)
 				.build();
 		OFFlowMod fm2 = fm1.createBuilder().build();
@@ -569,7 +570,7 @@ public class ForwardingTest extends FloodlightTestCase {
 				.setActions(actions)
 				.setOutPort(action.getPort())
 				.setBufferId(OFBufferId.NO_BUFFER)
-				.setCookie(U64.of(2L << 52))
+				.setCookie(U64.of(2L << 52).or(U64.of(4 << Forwarding.FLOWSET_SHIFT)))
 				.setPriority(1)
 				.build();
 		OFFlowMod fm2 = fm1.createBuilder().build();
@@ -637,7 +638,7 @@ public class ForwardingTest extends FloodlightTestCase {
 				.setActions(actions)
 				.setOutPort(OFPort.of(3))
 				.setBufferId(OFBufferId.NO_BUFFER)
-				.setCookie(U64.of(2L<< 52))
+				.setCookie(U64.of(2L << 52).or(U64.of(4 << Forwarding.FLOWSET_SHIFT)))
 				.setPriority(1)
 				.build();
 
@@ -694,7 +695,7 @@ public class ForwardingTest extends FloodlightTestCase {
 				.setActions(actions)
 				.setOutPort(OFPort.of(3))
 				.setBufferId(OFBufferId.NO_BUFFER)
-				.setCookie(U64.of(2L<< 52))
+                .setCookie(U64.of(2L << 52).or(U64.of(4 << Forwarding.FLOWSET_SHIFT)))
 				.setPriority(1)
 				.build();
 
@@ -753,21 +754,20 @@ public class ForwardingTest extends FloodlightTestCase {
 				.setActions(actions)
 				.setOutPort(OFPort.of(3))
 				.setBufferId(OFBufferId.NO_BUFFER)
-				.setCookie(U64.of(2L << 52))
+                .setCookie(U64.of(2L << 52).or(U64.of(6 << Forwarding.FLOWSET_SHIFT)))
 				.setXid(anyLong())
 				.build();
 
 		// Record expected packet-outs/flow-mods
 		// We will inject the packet_in 3 times and expect 1 flow mod and
 		// 3 packet outs due to flow mod dampening
-		sw1.write(fm1);
-		expectLastCall().times(1);
+		expect(sw1.write(fm1)).andReturn(true).once();
 		// Update new expected XID
-		sw1.write(packetOut.createBuilder().setXid(anyLong()).build());
-		expectLastCall().times(3);
+		expect(sw1.write(packetOut.createBuilder().setXid(anyLong()).build())).andReturn(true).times(3);
 
 		reset(topology);
-		expect(topology.isBroadcastAllowed(DatapathId.of(anyLong()), OFPort.of(anyShort()))).andReturn(true).anyTimes();
+		expect(topology.isBroadcastAllowed(DatapathId.of(anyLong()), OFPort.of(anyInt()))).andReturn(true).anyTimes();
+		expect(topology.isEdge(DatapathId.of(anyLong()), OFPort.of(anyInt()))).andReturn(true).anyTimes();
 		expect(topology.getClusterId(DatapathId.of(1L))).andReturn(DatapathId.of(1L)).anyTimes();
 		expect(topology.isAttachmentPointPort(DatapathId.of(1L),  OFPort.of(1))).andReturn(true).anyTimes();
 		expect(topology.isAttachmentPointPort(DatapathId.of(1L),  OFPort.of(3))).andReturn(true).anyTimes();
@@ -881,7 +881,7 @@ public class ForwardingTest extends FloodlightTestCase {
 				.setActions(actions)
 				.setOutPort(OFPort.of(3))
 				.setBufferId(OFBufferId.NO_BUFFER)
-				.setCookie(U64.of(2L<< 52))
+                .setCookie(U64.of(2L << 52).or(U64.of(4 << Forwarding.FLOWSET_SHIFT)))
 				.setPriority(1)
 				.build();
 
@@ -940,7 +940,7 @@ public class ForwardingTest extends FloodlightTestCase {
                 .setActions(actions)
                 .setOutPort(OFPort.of(3))
                 .setBufferId(OFBufferId.NO_BUFFER)
-                .setCookie(U64.of(2L<< 52 | 0xFFffFFffL))
+                .setCookie(U64.of(2L << 52).or(U64.of(4 << Forwarding.FLOWSET_SHIFT).or(U64.of(0xFFffFFL))))
                 .setPriority(1)
                 .build();
 
@@ -995,7 +995,7 @@ public class ForwardingTest extends FloodlightTestCase {
 		
 		Masked<U64> masked_cookie = Masked.of(
 				AppCookie.makeCookie(Forwarding.FORWARDING_APP_ID, (int)4294967295L),
-				AppCookie.getAppFieldMask().or(U64.of(0xffffffffL)));
+				AppCookie.getAppFieldMask().or(U64.of(0xffffffL)));
 		List<OFMessage> msgs_test = new ArrayList<>();
 		msgs_test.add( 	factory.buildFlowDelete()
 						.setCookie(masked_cookie.getValue())
@@ -1015,10 +1015,10 @@ public class ForwardingTest extends FloodlightTestCase {
 		
 		List<Masked<U64>> descriptors = new ArrayList<Masked<U64>>();
 		descriptors.add(Masked.of(
-				U64.of(0x00000000FFffFFffL),
-				U64.of(0x00200000FFffFFffL))); // User mask = 0xffFFffFFL which is forwarding.DECISION_MASK/AppCookie.USER_MASK
+				U64.of(0x0000000000ffFFffL),
+				U64.of(0x0020000000ffFFffL))); // User mask = 0xffFFffFFL which is forwarding.DECISION_MASK/AppCookie.USER_MASK
 		descriptors.add(Masked.of(
-				U64.of(0x00000000FFffFFffL),
+				U64.of(0x0000000000ffFFffL),
 				U64.of(0x0020000000000000L)));
 		
 		expect(sw1.getStatus()).andReturn(IOFSwitch.SwitchStatus.MASTER).anyTimes();
@@ -1036,7 +1036,7 @@ public class ForwardingTest extends FloodlightTestCase {
 		
 		// Cookies
 		Masked<U64> masked_cookie = Masked.of(	AppCookie.makeCookie(Forwarding.FORWARDING_APP_ID, (int)4294967295L),
-												AppCookie.getAppFieldMask().or(U64.of(0xffffffffL)));
+												AppCookie.getAppFieldMask().or(U64.of(0xffffffL)));
 		Masked<U64> masked_cookie2 = Masked.of(	AppCookie.makeCookie(Forwarding.FORWARDING_APP_ID, 0),
 												AppCookie.getAppFieldMask().or(U64.of(0x0L)));
 		// Add cookies to a msg set
