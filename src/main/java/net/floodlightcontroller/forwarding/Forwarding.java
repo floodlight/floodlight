@@ -163,16 +163,13 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                 log.warn("Flowset IDs have exceeded capacity of {}. Flowset ID generator resetting back to 0", FLOWSET_MAX);
             }
             U64 id = U64.of(flowSetGenerator << FLOWSET_SHIFT);
-            log.warn("Generating flowset ID {}, shifted {}", flowSetGenerator, id.toString());
+            log.debug("Generating flowset ID {}, shifted {}", flowSetGenerator, id);
             return id;
         }
 
         private void registerFlowSetId(NodePortTuple npt, U64 flowSetId) {
             if (nptToFlowSetIds.containsKey(npt)) {
                 Set<U64> ids = nptToFlowSetIds.get(npt);
-                if (ids == null) {
-                    ids = new HashSet<U64>();
-                }
                 ids.add(flowSetId);
             } else {
                 Set<U64> ids = new HashSet<U64>();
@@ -182,9 +179,6 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 
             if (flowSetIdToNpts.containsKey(flowSetId)) {
                 Set<NodePortTuple> npts = flowSetIdToNpts.get(flowSetId);
-                if (npts == null) {
-                    npts = new HashSet<NodePortTuple>();
-                }
                 npts.add(npt);
             } else {
                 Set<NodePortTuple> npts = new HashSet<NodePortTuple>();
@@ -944,8 +938,8 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                                         .setOutPort(u.getSrcPort())
                                         .build());
                                 messageDamper.write(srcSw, msgs);
-                                log.warn("Removing flows to/from DPID={}, port={}", u.getSrc(), u.getSrcPort());
-                                log.warn("Cookie/mask {}/{}", cookie, cookieMask);
+                                log.debug("src: Removing flows to/from DPID={}, port={}", u.getSrc(), u.getSrcPort());
+                                log.debug("src: Cookie/mask {}/{}", cookie, cookieMask);
                                 
                                 /* 
                                  * Now, for each ID on this particular failed link, remove
@@ -971,8 +965,8 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                                                     .setOutPort(npt.getPortId())
                                                     .build());
                                             messageDamper.write(sw, msgs);
-                                            log.warn("Removing flows to/from DPID={}, port={}", npt.getNodeId(), npt.getPortId());
-                                            log.warn("Cookie/mask {}/{}", cookie, cookieMask);
+                                            log.debug("src: Removing same-cookie flows to/from DPID={}, port={}", npt.getNodeId(), npt.getPortId());
+                                            log.debug("src: Cookie/mask {}/{}", cookie, cookieMask);
                                         }
                                     }
                                 }
@@ -989,7 +983,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                     IOFSwitch dstSw = switchService.getSwitch(u.getDst());
                     if (dstSw != null) {
                         Set<U64> ids = flowSetIdRegistry.getFlowSetIds(
-                                new NodePortTuple(u.getSrc(), u.getSrcPort()));
+                                new NodePortTuple(u.getDst(), u.getDstPort()));
                         if (ids != null) {
                             for (U64 id : ids) {
                                 U64 cookie = id.or(DEFAULT_FORWARDING_COOKIE);
@@ -1010,8 +1004,8 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                                         .setOutPort(u.getDstPort())
                                         .build());
                                 messageDamper.write(dstSw, msgs);
-                                log.warn("Removing flows to/from DPID={}, port={}", u.getDst(), u.getDstPort());
-                                log.warn("Cookie/mask {}/{}", cookie, cookieMask);
+                                log.debug("dst: Removing flows to/from DPID={}, port={}", u.getDst(), u.getDstPort());
+                                log.debug("dst: Cookie/mask {}/{}", cookie, cookieMask);
 
                                 /* 
                                  * Now, for each ID on this particular failed link, remove
@@ -1037,8 +1031,8 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                                                     .setOutPort(npt.getPortId())
                                                     .build());
                                             messageDamper.write(sw, msgs);
-                                            log.warn("Removing flows to/from DPID={}, port={}", npt.getNodeId(), npt.getPortId());
-                                            log.warn("Cookie/mask {}/{}", cookie, cookieMask);
+                                            log.debug("dst: Removing same-cookie flows to/from DPID={}, port={}", npt.getNodeId(), npt.getPortId());
+                                            log.debug("dst: Cookie/mask {}/{}", cookie, cookieMask);
                                         }
                                     }
                                 }
