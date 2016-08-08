@@ -66,6 +66,7 @@ import net.floodlightcontroller.routing.RoutingDecision;
 import net.floodlightcontroller.storage.IResultSet;
 import net.floodlightcontroller.storage.IStorageSourceService;
 import net.floodlightcontroller.storage.StorageException;
+import net.floodlightcontroller.util.OFMessageUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -86,10 +87,10 @@ IFloodlightModule {
 	static {
 		AppCookie.registerApp(APP_ID, "Firewall");
 	}
-	private static final U64 DENY_BCAST_COOKIE = AppCookie.makeCookie(APP_ID, 0xaaaaaaaa);
-	private static final U64 ALLOW_BCAST_COOKIE = AppCookie.makeCookie(APP_ID, 0x55555555);
-	private static final U64 RULE_MISS_COOKIE = AppCookie.makeCookie(APP_ID, -1);
-	static final U64 DEFAULT_COOKIE = AppCookie.makeCookie(APP_ID, 0);
+	private static final U64 DENY_BCAST_COOKIE = AppCookie.makeCookie(APP_ID, 0xaaaaaaL);
+	private static final U64 ALLOW_BCAST_COOKIE = AppCookie.makeCookie(APP_ID, 0x555555L);
+	private static final U64 RULE_MISS_COOKIE = AppCookie.makeCookie(APP_ID, 0xffffffL);
+	static final U64 DEFAULT_COOKIE = AppCookie.makeCookie(APP_ID, 0xffffffL);
 
 	// service modules needed
 	protected IFloodlightProviderService floodlightProvider;
@@ -592,7 +593,7 @@ IFloodlightModule {
 
 	public Command processPacketInMessage(IOFSwitch sw, OFPacketIn pi, IRoutingDecision decision, FloodlightContext cntx) {
 		Ethernet eth = IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
-		OFPort inPort = (pi.getVersion().compareTo(OFVersion.OF_12) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT));
+		OFPort inPort = OFMessageUtils.getInPort(pi);
 
 		// Allowing L2 broadcast + ARP broadcast request (also deny malformed
 		// broadcasts -> L2 broadcast + L3 unicast)
