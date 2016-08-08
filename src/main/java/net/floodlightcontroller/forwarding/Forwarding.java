@@ -24,6 +24,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -205,13 +206,18 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
             }
         }
 
-        private void removeExpiredFlowSetId(U64 flowSetId) {
+        private void removeExpiredFlowSetId(U64 flowSetId, NodePortTuple avoid, Iterator<U64> avoidItr) {
             flowSetIdToNpts.remove(flowSetId);
 
-            Iterator<Set<U64>> itr = nptToFlowSetIds.values().iterator();
+            Iterator<Entry<NodePortTuple, Set<U64>>> itr = nptToFlowSetIds.entrySet().iterator();
             while (itr.hasNext()) {
-                Set<U64> ids = itr.next();
-                ids.remove(flowSetId);
+                Entry<NodePortTuple, Set<U64>> e = itr.next();
+                if (e.getKey().equals(avoid)) {
+                    avoidItr.remove();
+                } else {
+                    Set<U64> ids = e.getValue();
+                    ids.remove(flowSetId);
+                }
             }
         }
     }
@@ -920,7 +926,9 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                         Set<U64> ids = flowSetIdRegistry.getFlowSetIds(
                                 new NodePortTuple(u.getSrc(), u.getSrcPort()));
                         if (ids != null) {
-                            for (U64 id : ids) {
+                            Iterator<U64> i = ids.iterator();
+                            while (i.hasNext()) {
+                                U64 id = i.next();
                                 U64 cookie = id.or(DEFAULT_FORWARDING_COOKIE);
                                 U64 cookieMask = U64.of(FLOWSET_MASK).or(AppCookie.getAppFieldMask());
                                 /* flows matching on src port */
@@ -970,7 +978,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                                         }
                                     }
                                 }
-                                flowSetIdRegistry.removeExpiredFlowSetId(id);
+                                flowSetIdRegistry.removeExpiredFlowSetId(id, new NodePortTuple(u.getSrc(), u.getSrcPort()), i);
                             }
                         }
                     }
@@ -985,7 +993,9 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                         Set<U64> ids = flowSetIdRegistry.getFlowSetIds(
                                 new NodePortTuple(u.getDst(), u.getDstPort()));
                         if (ids != null) {
-                            for (U64 id : ids) {
+                            Iterator<U64> i = ids.iterator();
+                            while (i.hasNext()) {
+                                U64 id = i.next();
                                 U64 cookie = id.or(DEFAULT_FORWARDING_COOKIE);
                                 U64 cookieMask = U64.of(FLOWSET_MASK).or(AppCookie.getAppFieldMask());
                                 /* flows matching on dst port */
@@ -1036,7 +1046,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                                         }
                                     }
                                 }
-                                flowSetIdRegistry.removeExpiredFlowSetId(id);
+                                flowSetIdRegistry.removeExpiredFlowSetId(id, new NodePortTuple(u.getDst(), u.getDstPort()), i);
                             }
                         }
                     }
