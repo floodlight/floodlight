@@ -6,8 +6,6 @@ import java.util.ArrayList;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
 import net.floodlightcontroller.debugcounter.MockDebugCounterService;
-import net.floodlightcontroller.debugevent.IDebugEventService;
-import net.floodlightcontroller.debugevent.MockDebugEventService;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
 import net.floodlightcontroller.threadpool.ThreadPool;
 
@@ -51,8 +49,7 @@ public class BootstrapTest {
 
         int curPort = 6699;
         
-        String keyStorePath = new File(dbFolder.getRoot(), 
-                                       "keystore.jceks").getAbsolutePath();
+        String keyStorePath = new File(dbFolder.getRoot(), "keystore.jceks").getAbsolutePath();
         String keyStorePassword = "bootstrapping is fun!";
         CryptoUtil.writeSharedSecret(keyStorePath, 
                                      keyStorePassword, 
@@ -65,7 +62,6 @@ public class BootstrapTest {
 
             fmc.addService(IThreadPoolService.class, tp);
             fmc.addService(IDebugCounterService.class, new MockDebugCounterService());
-            fmc.addService(IDebugEventService.class, new MockDebugEventService());
             String dbPath = 
                     new File(dbFolder.getRoot(), 
                              "server" + i).getAbsolutePath();

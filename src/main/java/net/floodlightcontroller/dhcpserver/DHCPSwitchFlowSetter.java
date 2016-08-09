@@ -28,12 +28,12 @@ import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.packet.UDP;
-import net.floodlightcontroller.staticflowentry.IStaticFlowEntryPusherService;
+import net.floodlightcontroller.staticentry.IStaticEntryPusherService;
 // Adding a comment to test a new commit
 public class DHCPSwitchFlowSetter implements IFloodlightModule, IOFSwitchListener {
 	protected static Logger log;
 	protected IFloodlightProviderService floodlightProvider;
-	protected IStaticFlowEntryPusherService sfp;
+	protected IStaticEntryPusherService sfp;
 	protected IOFSwitchService switchService;
 	
 	@Override
@@ -51,7 +51,7 @@ public class DHCPSwitchFlowSetter implements IFloodlightModule, IOFSwitchListene
 		Collection<Class<? extends IFloodlightService>> l = 
 				new ArrayList<Class<? extends IFloodlightService>>();
 		l.add(IFloodlightProviderService.class);
-		l.add(IStaticFlowEntryPusherService.class);
+		l.add(IStaticEntryPusherService.class);
 		l.add(IOFSwitchService.class);
 		return l;
 	}
@@ -61,7 +61,7 @@ public class DHCPSwitchFlowSetter implements IFloodlightModule, IOFSwitchListene
 			throws FloodlightModuleException {
 		floodlightProvider = context.getServiceImpl(IFloodlightProviderService.class);
 		log = LoggerFactory.getLogger(DHCPServer.class);
-		sfp = context.getServiceImpl(IStaticFlowEntryPusherService.class);
+		sfp = context.getServiceImpl(IStaticEntryPusherService.class);
 		switchService = context.getServiceImpl(IOFSwitchService.class);
 	}
 
@@ -120,5 +120,11 @@ public class DHCPSwitchFlowSetter implements IFloodlightModule, IOFSwitchListene
 
 	@Override
 	public void switchChanged(DatapathId switchId) {
+	}
+
+	@Override
+	public void switchDeactivated(DatapathId switchId) {
+		// TODO Auto-generated method stub
+		
 	}
 }

@@ -53,11 +53,11 @@ public class OFMessageDamperTest {
         sw1 = new OFMessageDamperMockSwitch();
         sw2 = new OFMessageDamperMockSwitch();
         
-        echoRequst1 = factory.buildEchoRequest().setData(new byte[] { 1 }).build();
-        echoRequst1Clone = echoRequst1.createBuilder().build();
-        echoRequst2 = factory.buildEchoRequest().setData(new byte[] { 2 }).build();
+        echoRequst1 = factory.buildEchoRequest().setXid(1L).setData(new byte[] { 1 }).build();
+        echoRequst1Clone = echoRequst1.createBuilder().setXid(2L).build(); /* same as above except ++xid */
+        echoRequst2 = factory.buildEchoRequest().setXid(2L).setData(new byte[] { 2 }).build(); /* now change the data */
         
-        hello1 = factory.buildHello().setXid(1L).build();
+        hello1 = factory.buildHello().setXid(1L).build(); /* different XIDs */
         hello2 = factory.buildHello().setXid(2L).build();
     }
     
@@ -136,9 +136,9 @@ public class OFMessageDamperTest {
         doWrite(false, sw1, hello1);
         doWrite(false, sw1, hello1);
         
-        doWrite(true, sw1, hello2);
-        doWrite(false, sw1, hello2);
-        doWrite(false, sw1, hello2);
+        doWrite(true, sw2, hello2);
+        doWrite(false, sw2, hello2);
+        doWrite(false, sw2, hello2);
         
         // echo request should also be dampened on sw2
         doWrite(true, sw2, echoRequst1);
@@ -149,7 +149,7 @@ public class OFMessageDamperTest {
         doWrite(true, sw1, echoRequst1);
         doWrite(true, sw2, echoRequst1);
         doWrite(true, sw1, hello1);
-        doWrite(true, sw1, hello2);
+        doWrite(true, sw2, hello2);
     }
     
 }

@@ -1,12 +1,11 @@
 package net.floodlightcontroller.statistics;
 
-import java.util.Map;
-
+import net.floodlightcontroller.core.module.IFloodlightService;
+import net.floodlightcontroller.core.types.NodePortTuple;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFPort;
 
-import net.floodlightcontroller.core.module.IFloodlightService;
-import net.floodlightcontroller.topology.NodePortTuple;
+import java.util.Map;
 
 public interface IStatisticsService extends IFloodlightService {
 

@@ -14,8 +14,8 @@ import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.VlanVid;
 
-import net.floodlightcontroller.devicemanager.IDeviceService.DeviceField;
 import net.floodlightcontroller.devicemanager.SwitchPort;
+import net.floodlightcontroller.devicemanager.IDeviceService.DeviceField;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
@@ -111,8 +111,8 @@ public class DeviceSyncRepresentation {
 		if (!e.hasSwitchPort())
 			return false;
 		for (SwitchPort p : aps) {
-			if (e.getSwitchDPID().equals(p.getSwitchDPID()) &&
-					e.getSwitchPort().equals(p.getPort())
+			if (e.getSwitchDPID().equals(p.getNodeId()) &&
+					e.getSwitchPort().equals(p.getPortId())
 					&& (!e.getSwitchDPID().equals(DatapathId.NONE) ||
 					!e.getSwitchPort().equals(OFPort.ZERO))) {
 				return true;

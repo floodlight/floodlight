@@ -16,7 +16,7 @@
 
 package net.floodlightcontroller.util;
 
-import java.io.IOException;
+import java.util.Collection;
 import java.util.EnumSet;
 import java.util.Set;
 
@@ -24,6 +24,8 @@ import net.floodlightcontroller.core.IOFSwitch;
 
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Dampens OFMessages sent to an OF switch. A message is only written to 
@@ -33,6 +35,7 @@ import org.projectfloodlight.openflow.protocol.OFType;
  *
  */
 public class OFMessageDamper {
+    private static final Logger log = LoggerFactory.getLogger(OFMessageDamper.class);
     /**
      * An entry in the TimedCache. A cache entry consists of the sent message
      * as well as the switch to which the message was sent. 
@@ -42,7 +45,7 @@ public class OFMessageDamper {
      * obviously be more time-consuming.... 
      * 
      * We also store a reference to the actual IOFSwitch object and /not/
-     * the switch DPID. This way we are guarnteed to not dampen messages if
+     * the switch DPID. This way we are guaranteed to not dampen messages if
      * a switch disconnects and then reconnects.
      * 
      * @author gregor
@@ -62,7 +65,7 @@ public class OFMessageDamper {
         public int hashCode() {
             final int prime = 31;
             int result = 1;
-            result = prime * result + ((msg == null) ? 0 : msg.hashCode());
+            result = prime * result + ((msg == null) ? 0 : msg.hashCodeIgnoreXid());
             result = prime * result + ((sw == null) ? 0 : sw.hashCode());
             return result;
         }
@@ -77,7 +80,7 @@ public class OFMessageDamper {
             DamperEntry other = (DamperEntry) obj;
             if (msg == null) {
                 if (other.msg != null) return false;
-            } else if (!msg.equals(other.msg)) return false;
+            } else if (!msg.equalsIgnoreXid(other.msg)) return false;
             if (sw == null) {
                 if (other.sw != null) return false;
             } else if (!sw.equals(other.sw)) return false;
@@ -86,8 +89,10 @@ public class OFMessageDamper {
         
       
     }
+    
     TimedCache<DamperEntry> cache;
     EnumSet<OFType> msgTypesToCache;
+    
     /**
      * 
      * @param capacity the maximum number of messages that should be 
@@ -111,10 +116,10 @@ public class OFMessageDamper {
      * @param msg
      * @return true if the message was written to the switch, false if
      * the message was dampened. 
-     * @throws IOException
      */
-    public boolean write(IOFSwitch sw, OFMessage msg) throws IOException {
+    public boolean write(IOFSwitch sw, OFMessage msg) {
         if (!msgTypesToCache.contains(msg.getType())) {
+            log.debug("Not dampening this type of msg {}", msg);
             sw.write(msg);
             return true;
         }
@@ -122,10 +127,28 @@ public class OFMessageDamper {
         DamperEntry entry = new DamperEntry(msg, sw);
         if (cache.update(entry)) {
             // entry exists in cache. Dampening.
+            log.debug("Dampening cached msg {}", msg);
             return false; 
         } else {
+            log.debug("Not dampening new msg {}", msg);
             sw.write(msg);
             return true;
         }
+    }
+    
+    /**
+     * Wrapper around {@link OFMessageDamper#write(IOFSwitch, OFMessage)}. 
+     * @param sw
+     * @param msgs
+     * @return false if *any* message was dampened; true if no messages were dampened
+     */
+    public boolean write(IOFSwitch sw, Collection<OFMessage> msgs) {
+        boolean allWritten = true;
+        for (OFMessage msg : msgs) {
+            if (!write(sw, msg)) {
+                allWritten = false;
+            }
+        }
+        return allWritten;
     }
 }

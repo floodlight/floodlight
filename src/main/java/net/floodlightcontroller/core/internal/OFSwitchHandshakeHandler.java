@@ -3,6 +3,7 @@ package net.floodlightcontroller.core.internal;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -12,7 +13,6 @@ import java.util.concurrent.TimeUnit;
 import javax.annotation.Nonnull;
 
 import io.netty.util.Timer;
-
 import net.floodlightcontroller.core.HARole;
 import net.floodlightcontroller.core.IOFConnection;
 import net.floodlightcontroller.core.IOFConnectionBackend;
@@ -43,6 +43,7 @@ import org.projectfloodlight.openflow.protocol.OFFlowModFailedCode;
 import org.projectfloodlight.openflow.protocol.OFFlowRemoved;
 import org.projectfloodlight.openflow.protocol.OFGetConfigReply;
 import org.projectfloodlight.openflow.protocol.OFGetConfigRequest;
+import org.projectfloodlight.openflow.protocol.OFGroupBucket;
 import org.projectfloodlight.openflow.protocol.OFGroupDelete;
 import org.projectfloodlight.openflow.protocol.OFGroupType;
 import org.projectfloodlight.openflow.protocol.OFMessage;
@@ -55,6 +56,7 @@ import org.projectfloodlight.openflow.protocol.OFPortStatus;
 import org.projectfloodlight.openflow.protocol.OFQueueGetConfigReply;
 import org.projectfloodlight.openflow.protocol.OFRoleReply;
 import org.projectfloodlight.openflow.protocol.OFRoleRequest;
+import org.projectfloodlight.openflow.protocol.OFRoleStatus;
 import org.projectfloodlight.openflow.protocol.OFSetConfig;
 import org.projectfloodlight.openflow.protocol.OFStatsReply;
 import org.projectfloodlight.openflow.protocol.OFStatsReplyFlags;
@@ -68,6 +70,7 @@ import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.actionid.OFActionId;
 import org.projectfloodlight.openflow.protocol.errormsg.OFBadRequestErrorMsg;
 import org.projectfloodlight.openflow.protocol.errormsg.OFFlowModFailedErrorMsg;
+import org.projectfloodlight.openflow.protocol.instruction.OFInstruction;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFAuxId;
 import org.projectfloodlight.openflow.types.OFGroup;
@@ -335,24 +338,6 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 					switchManagerCounters.roleReplyErrorUnsupported.increment();
 					setSwitchRole(pendingRole, RoleRecvStatus.UNSUPPORTED);
 				} else {
-					// TODO: Is this the right thing to do if we receive
-					// some other error besides a bad request error?
-					// Presumably that means the switch did actually
-					// understand the role request message, but there
-					// was some other error from processing the message.
-					// OF 1.2 specifies a ROLE_REQUEST_FAILED
-					// error code, but it doesn't look like the Nicira
-					// role request has that. Should check OVS source
-					// code to see if it's possible for any other errors
-					// to be returned.
-					// If we received an error the switch is not
-					// in the correct role, so we need to disconnect it.
-					// We could also resend the request but then we need to
-					// check if there are other pending request in which
-					// case we shouldn't resend. If we do resend we need
-					// to make sure that the switch eventually accepts one
-					// of our requests or disconnect the switch. This feels
-					// cumbersome.
 					String msg = String.format("Switch: [%s], State: [%s], "
 							+ "Unexpected error %s in respone to our "
 							+ "role request for %s.",
@@ -447,23 +432,19 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 			 * Clear all groups.
 			 * We have to do this for all types manually as of Loxi 0.9.0.
 			 */
-			OFGroupDelete delgroup = this.sw.getOFFactory().buildGroupDelete()
+			OFGroupDelete.Builder delgroup = this.sw.getOFFactory().buildGroupDelete()
 					.setGroup(OFGroup.ALL)
-					.setGroupType(OFGroupType.ALL)
-					.build();
-			this.sw.write(delgroup);
-			delgroup.createBuilder()
-			.setGroupType(OFGroupType.FF)
-			.build();
-			this.sw.write(delgroup);
-			delgroup.createBuilder()
-			.setGroupType(OFGroupType.INDIRECT)
-			.build();
-			this.sw.write(delgroup);
-			delgroup.createBuilder()
-			.setGroupType(OFGroupType.SELECT)
-			.build();
-			this.sw.write(delgroup);
+					.setGroupType(OFGroupType.ALL);
+			if (this.sw.getOFFactory().getVersion().compareTo(OFVersion.OF_15) >= 0) {
+				delgroup.setCommandBucketId(OFGroupBucket.BUCKET_ALL);
+			}
+			this.sw.write(delgroup.build());
+			delgroup.setGroupType(OFGroupType.FF);
+			this.sw.write(delgroup.build());
+			delgroup.setGroupType(OFGroupType.INDIRECT);
+			this.sw.write(delgroup.build());
+			delgroup.setGroupType(OFGroupType.SELECT);
+			this.sw.write(delgroup.build());
 
 			/*
 			 * Make sure we allow these operations to complete before proceeding.
@@ -518,7 +499,7 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 								OFFlowAdd defaultFlow = this.factory.buildFlowAdd()
 										.setTableId(tid)
 										.setPriority(0)
-										.setActions(actions)
+										.setInstructions(Collections.singletonList((OFInstruction) this.factory.instructions().buildApplyActions().setActions(actions).build()))
 										.build();
 								flows.add(defaultFlow);
 								break; /* Stop searching for actions and go to the next table in the list */
@@ -572,9 +553,6 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 		}
 
 		void processOFGetConfigReply(OFGetConfigReply m) {
-			// we only expect config replies in the WAIT_CONFIG_REPLY state
-			// TODO: might use two different strategies depending on whether
-			// we got a miss length of 64k or not.
 			illegalMessageReceived(m);
 		}
 
@@ -615,6 +593,13 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 
 		void processOFRoleRequest(OFRoleRequest m) {
 			unhandledMessageWritten(m);
+		}
+		
+		/**
+		 *  Tulio Ribeiro
+		 */
+		void processOFRoleStatus(OFRoleStatus m){
+			unhandledMessageReceived(m);
 		}
 
 		void processOFNiciraControllerRoleRequest(OFNiciraControllerRoleRequest m) {
@@ -806,7 +791,6 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 				throw new SwitchStateException(msg);
 			}
 			sw.processOFTableFeatures(replies);
-			//TODO like port status, might want to create an event and dispatch it. Not sure how useful this would be though...
 		}
 
 
@@ -861,6 +845,9 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 				break;
 			case EXPERIMENTER:
 				processOFExperimenter((OFExperimenter) m);
+				break;
+			case ROLE_STATUS:
+				processOFRoleStatus((OFRoleStatus) m);
 				break;
 			default:
 				illegalMessageReceived(m);
@@ -945,9 +932,6 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 						+ "miss length set to 0xffff",
 						getSwitchInfoString());
 			} else {
-				// FIXME: we can't really deal with switches that don't send
-				// full packets. Shouldn't we drop the connection here?
-				// FIXME: count??
 				log.warn("Config Reply from switch {} has"
 						+ "miss length set to {}",
 						getSwitchInfoString(),
@@ -971,9 +955,13 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 			 * log a warning, but proceed.
 			 */
 			if (m.getErrType() == OFErrorType.BAD_REQUEST &&
-					((OFBadRequestErrorMsg) m).getCode() == OFBadRequestCode.BAD_TYPE &&
+					((OFBadRequestErrorMsg) m).getCode() == OFBadRequestCode.BAD_TYPE) {
+				if (((OFBadRequestErrorMsg) m).getData().getParsedMessage().isPresent() &&
 					((OFBadRequestErrorMsg) m).getData().getParsedMessage().get() instanceof OFBarrierRequest) {
-				log.warn("Switch does not support Barrier Request messages. Could be an HP ProCurve.");
+					log.warn("Switch does not support Barrier Request messages. Could be an HP ProCurve.");
+				} else if (!((OFBadRequestErrorMsg) m).getData().getParsedMessage().isPresent()) {
+					log.warn("Switch may not support Barrier Request messages (we can't know for sure if it's a barrier or not). Could be a Brocade...");
+				}
 			} else {
 				logErrorDisconnect(m);
 			}
@@ -1116,7 +1104,8 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 
 		@Override
 		void enterState() {
-			if (sw.getOFFactory().getVersion().compareTo(OFVersion.OF_13) < 0) {
+			if (sw.getOFFactory().getVersion().compareTo(OFVersion.OF_13) < 0
+					|| sw.getOFFactory().getVersion().compareTo(OFVersion.OF_15) == 0) { //FIXME must skip for OVS
 				nextState();
 			} else {
 				sendHandshakeTableFeaturesRequest();
@@ -1133,7 +1122,6 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 
 		@Override
 		void processOFMessage(OFMessage m) {
-			// FIXME: other message to handle here?
 			sw.processDriverHandshakeMessage(m);
 			if (sw.isDriverHandshakeComplete()) {
 				setState(new WaitAppHandshakeState());
@@ -1312,7 +1300,20 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 
 		@Override
 		void enterState(){
-			sendRoleRequest(roleManager.getOFControllerRole());
+			//sendRoleRequest(roleManager.getOFControllerRole());//original
+			/**
+			 * Tulio Ribeiro
+			 * Retrieve role from floodlightdefault.properties configuration file
+			 * swId;Role 00:00:00:00:00:00:00:01;ROLE_SLAVE
+			 * If not defined there, the role will be set as MASTER
+			 */
+			OFControllerRole role = OFControllerRole.ROLE_MASTER;
+			if(OFSwitchManager.switchInitialRole != null)
+				if(OFSwitchManager.switchInitialRole.containsKey(mainConnection.getDatapathId())){
+					role = OFSwitchManager.switchInitialRole.get(mainConnection.getDatapathId());
+					log.info("Defining switch role from config file: {}", role);				
+				}	
+			sendRoleRequest(role);			
 		}
 	}
 
@@ -1375,10 +1376,6 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 				// a permission error. This is a likely indicator that
 				// the switch thinks we are slave. Reassert our
 				// role
-				// FIXME: this could be really bad during role transitions
-				// if two controllers are master (even if its only for
-				// a brief period). We might need to see if these errors
-				// persist before we reassert
 				switchManagerCounters.epermErrorWhileSwitchIsMaster.increment();
 				log.warn("Received permission error from switch {} while" +
 						"being master. Reasserting master role.",
@@ -1411,6 +1408,31 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 		@Override
 		void processOFRoleRequest(OFRoleRequest m) {
 			sendRoleRequest(m);
+		}
+		
+		@Override
+		void processOFRoleStatus(OFRoleStatus m) {
+			/**
+			 *  Tulio Ribeiro
+			 *  
+			 *  Controller roles. 
+			 *  enum ofp_controller_role { 
+			 *  OFPCR_ROLE_NOCHANGE = 	0, Don't change current role. 
+			 *  OFPCR_ROLE_EQUAL = 		1, Default role, full access. 
+			 *  OFPCR_ROLE_MASTER = 	2, Full access, at most one master. 
+			 *  OFPCR_ROLE_SLAVE = 		3, Read-only access. 
+			 *  };
+			 */
+			//log.info("Processing roleStatus from MasterState...");
+			OFControllerRole role = m.getRole();
+			if (role == OFControllerRole.ROLE_SLAVE)
+				sendRoleRequest(OFControllerRole.ROLE_SLAVE);
+			else if (role == OFControllerRole.ROLE_MASTER)
+				sendRoleRequest(OFControllerRole.ROLE_MASTER);
+			else if (role == OFControllerRole.ROLE_EQUAL)
+				sendRoleRequest(OFControllerRole.ROLE_EQUAL);
+			else
+				sendRoleRequest(OFControllerRole.ROLE_NOCHANGE);
 		}
 
 		@Override
@@ -1463,7 +1485,6 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 
 		@Override
 		void processOFStatsReply(OFStatsReply m) {
-			// TODO Auto-generated method stub
 			super.processOFStatsReply(m);
 		}
 	}
@@ -1528,6 +1549,30 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 		@Override
 		void processOFRoleRequest(OFRoleRequest m) {
 			sendRoleRequest(m);
+		}
+		
+		@Override
+		void processOFRoleStatus(OFRoleStatus m) {
+			/**
+			 *  Tulio Ribeiro
+			 *  
+			 *  Controller roles. 
+			 *  enum ofp_controller_role { 
+			 *  OFPCR_ROLE_NOCHANGE = 	0, Don't change current role. 
+			 *  OFPCR_ROLE_EQUAL = 		1, Default role, full access. 
+			 *  OFPCR_ROLE_MASTER = 	2, Full access, at most one master. 
+			 *  OFPCR_ROLE_SLAVE = 		3, Read-only access. 
+			 *  };
+			 */
+			OFControllerRole role = m.getRole();
+			if(role == OFControllerRole.ROLE_SLAVE)
+				sendRoleRequest(OFControllerRole.ROLE_SLAVE);
+			else if (role == OFControllerRole.ROLE_MASTER)
+				sendRoleRequest(OFControllerRole.ROLE_MASTER);
+			else if (role == OFControllerRole.ROLE_EQUAL)
+				sendRoleRequest(OFControllerRole.ROLE_EQUAL);
+			else
+				sendRoleRequest(OFControllerRole.ROLE_NOCHANGE);
 		}
 
 		@Override
@@ -1741,7 +1786,6 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 	 */
 	private void sendHandshakeSetConfig() {
 		// Ensure we receive the full packet via PacketIn
-		// FIXME: We don't set the reassembly flags.
 		OFSetConfig configSet = factory.buildSetConfig()
 				.setXid(handshakeTransactionIds--)
 				.setMissSendLen(0xffff)
@@ -1761,7 +1805,7 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 	}
 
 	protected void sendPortDescRequest() {
-		mainConnection.write(factory.portDescStatsRequest(ImmutableSet.<OFStatsRequestFlags>of()));
+		mainConnection.write(factory.buildPortDescStatsRequest().setFlags(ImmutableSet.<OFStatsRequestFlags>of()).build());
 	}
 
 	/**

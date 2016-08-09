@@ -171,7 +171,7 @@ public class LearningSwitchTest extends FloodlightTestCase {
         this.learningSwitch.startUp(fmc);
                 
         this.mockFloodlightProvider.addOFMessageListener(OFType.PACKET_IN, learningSwitch);
-
+        this.mockFloodlightProvider.addCompletionListener(learningSwitch);
     }
 
     @Test
@@ -184,7 +184,7 @@ public class LearningSwitchTest extends FloodlightTestCase {
             .setData(this.testPacketSerialized)
 	        .build();
         
-        Capture<OFMessage> wc1 = new Capture<OFMessage>(CaptureType.ALL);
+        Capture<OFMessage> wc1 = EasyMock.newCapture(CaptureType.ALL);
         
         // Mock up our expected behavior
         IOFSwitch mockSwitch = createMock(IOFSwitch.class);
@@ -204,7 +204,7 @@ public class LearningSwitchTest extends FloodlightTestCase {
         verify(mockSwitch);
         
         assertTrue(wc1.hasCaptured());
-        assertTrue(OFMessageUtils.equalsIgnoreXid(wc1.getValue(), po));
+        assertEquals(OFMessageUtils.OFMessageIgnoreXid.of(wc1.getValue()), OFMessageUtils.OFMessageIgnoreXid.of(po));
 
         // Verify the MAC table inside the switch
         assertEquals(OFPort.of(1), result);
@@ -215,9 +215,9 @@ public class LearningSwitchTest extends FloodlightTestCase {
         // tweak the test packet in since we need a bufferId
         this.packetIn = packetIn.createBuilder().setBufferId(OFBufferId.of(50)).build();
 
-        Capture<OFMessage> wc1 = new Capture<OFMessage>(CaptureType.ALL);
-        Capture<OFMessage> wc2 = new Capture<OFMessage>(CaptureType.ALL);
-        Capture<OFMessage> wc3 = new Capture<OFMessage>(CaptureType.ALL);
+        Capture<OFMessage> wc1 = EasyMock.newCapture(CaptureType.ALL);
+        Capture<OFMessage> wc2 = EasyMock.newCapture(CaptureType.ALL);
+        Capture<OFMessage> wc3 = EasyMock.newCapture(CaptureType.ALL);
         
         Set<OFFlowModFlags> flags = new HashSet<OFFlowModFlags>();
         flags.add(OFFlowModFlags.SEND_FLOW_REM);
@@ -291,9 +291,9 @@ public class LearningSwitchTest extends FloodlightTestCase {
         assertTrue(wc1.hasCaptured());
         assertTrue(wc2.hasCaptured());
         assertTrue(wc3.hasCaptured());
-        assertTrue(OFMessageUtils.equalsIgnoreXid(wc1.getValue(), packetOut));
-        assertTrue(OFMessageUtils.equalsIgnoreXid(wc2.getValue(), fm1));
-        assertTrue(OFMessageUtils.equalsIgnoreXid(wc3.getValue(), fm2));
+        assertEquals(OFMessageUtils.OFMessageIgnoreXid.of(wc1.getValue()), OFMessageUtils.OFMessageIgnoreXid.of(packetOut));
+        assertEquals(OFMessageUtils.OFMessageIgnoreXid.of(wc2.getValue()), OFMessageUtils.OFMessageIgnoreXid.of(fm1));
+        assertEquals(OFMessageUtils.OFMessageIgnoreXid.of(wc3.getValue()), OFMessageUtils.OFMessageIgnoreXid.of(fm2));
 
         // Verify the MAC table inside the switch
         assertEquals(OFPort.of(1), result);

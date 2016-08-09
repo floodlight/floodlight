@@ -1,13 +1,13 @@
 package org.sdnplatform.sync;
 
+import net.floodlightcontroller.core.module.IFloodlightService;
+
 import org.sdnplatform.sync.error.SyncException;
 import org.sdnplatform.sync.error.UnknownStoreException;
+import org.sdnplatform.sync.internal.rpc.IRPCListener;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.core.type.TypeReference;
-
-
-import net.floodlightcontroller.core.module.IFloodlightService;
+import com.fasterxml.jackson.databind.JsonNode;
 
 /**
  * The sync service provides a high-performance in-memory database for
@@ -133,4 +133,18 @@ public interface ISyncService extends IFloodlightService {
                        IInconsistencyResolver<Versioned<V>> resolver)
                                throws UnknownStoreException;
 
+
+    
+    
+   
+    /**
+     * Listener to RPC connections, used in simple Fault tolerance module,
+     * or other modules that need cluster monitor nodes (connect and disconnect).
+     * The listener is dispatched at connected or disconnected events.
+     * The listener inform the node id of connected or disconnected nodes on cluster.
+     * @param listener
+     */
+	public void addRPCListener(IRPCListener listener);
+	public void removeRPCListener(IRPCListener listener);
+    
 }

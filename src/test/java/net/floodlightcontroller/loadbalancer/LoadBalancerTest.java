@@ -39,7 +39,6 @@ import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
 import org.projectfloodlight.openflow.protocol.OFFactory;
-import org.projectfloodlight.openflow.protocol.OFFlowMod;
 import org.projectfloodlight.openflow.protocol.OFFactories;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
@@ -52,12 +51,10 @@ import org.projectfloodlight.openflow.types.IpProtocol;
 import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFBufferId;
 import org.projectfloodlight.openflow.types.OFPort;
-import org.projectfloodlight.openflow.types.U64;
 import org.projectfloodlight.openflow.types.VlanVid;
 import org.projectfloodlight.openflow.protocol.OFPacketInReason;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
-import org.projectfloodlight.openflow.util.HexString;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.sdnplatform.sync.ISyncService;
 import org.sdnplatform.sync.test.MockSyncService;
@@ -68,10 +65,9 @@ import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.test.MockThreadPoolService;
+import net.floodlightcontroller.core.types.NodePortTuple;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
 import net.floodlightcontroller.debugcounter.MockDebugCounterService;
-import net.floodlightcontroller.debugevent.IDebugEventService;
-import net.floodlightcontroller.debugevent.MockDebugEventService;
 import net.floodlightcontroller.devicemanager.IDeviceService;
 import net.floodlightcontroller.devicemanager.IEntityClassifierService;
 import net.floodlightcontroller.devicemanager.internal.DefaultEntityClassifier;
@@ -84,15 +80,14 @@ import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.restserver.RestApiServer;
 import net.floodlightcontroller.routing.IRoutingService;
-import net.floodlightcontroller.routing.Route;
-import net.floodlightcontroller.staticflowentry.IStaticFlowEntryPusherService;
-import net.floodlightcontroller.staticflowentry.StaticFlowEntryPusher;
+import net.floodlightcontroller.routing.Path;
+import net.floodlightcontroller.staticentry.IStaticEntryPusherService;
+import net.floodlightcontroller.staticentry.StaticEntryPusher;
 import net.floodlightcontroller.storage.IStorageSourceService;
 import net.floodlightcontroller.storage.memory.MemoryStorageSource;
 import net.floodlightcontroller.test.FloodlightTestCase;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
 import net.floodlightcontroller.topology.ITopologyService;
-import net.floodlightcontroller.topology.NodePortTuple;
 import net.floodlightcontroller.util.OFMessageUtils;
 
 public class LoadBalancerTest extends FloodlightTestCase {
@@ -105,7 +100,7 @@ public class LoadBalancerTest extends FloodlightTestCase {
 	protected DefaultEntityClassifier entityClassifier;
 	protected IRoutingService routingEngine;
 	protected ITopologyService topology;
-	protected StaticFlowEntryPusher sfp;
+	protected StaticEntryPusher sfp;
 	protected MemoryStorageSource storage;
 	protected RestApiServer restApi;
 	protected VipsResource vipsResource;
@@ -113,7 +108,6 @@ public class LoadBalancerTest extends FloodlightTestCase {
 	protected MembersResource membersResource;
 	private MockSyncService mockSyncService;
 	protected IDebugCounterService debugCounterService;
-	protected IDebugEventService debugEventService;
 	protected LBVip vip1, vip2;
 	protected LBPool pool1, pool2, pool3;
 	protected LBMember member1, member2, member3, member4;
@@ -136,11 +130,10 @@ public class LoadBalancerTest extends FloodlightTestCase {
 		topology = createMock(ITopologyService.class);
 		routingEngine = createMock(IRoutingService.class);
 		restApi = new RestApiServer();
-		sfp = new StaticFlowEntryPusher();
+		sfp = new StaticEntryPusher();
 		storage = new MemoryStorageSource(); //dependency for sfp
 		mockSyncService = new MockSyncService();
 		debugCounterService = new MockDebugCounterService();
-		debugEventService = new MockDebugEventService();
 
 		fmc.addService(IRestApiService.class, restApi);
 		fmc.addService(IFloodlightProviderService.class, getMockFloodlightProvider());
@@ -149,12 +142,11 @@ public class LoadBalancerTest extends FloodlightTestCase {
 		fmc.addService(IDeviceService.class, deviceManager);
 		fmc.addService(ITopologyService.class, topology);
 		fmc.addService(IRoutingService.class, routingEngine);
-		fmc.addService(IStaticFlowEntryPusherService.class, sfp);
+		fmc.addService(IStaticEntryPusherService.class, sfp);
 		fmc.addService(ILoadBalancerService.class, lb);
 		fmc.addService(IStorageSourceService.class, storage);
 		fmc.addService(ISyncService.class, mockSyncService);
 		fmc.addService(IDebugCounterService.class, debugCounterService);
-		fmc.addService(IDebugEventService.class, debugEventService);
 		fmc.addService(IOFSwitchService.class, getMockSwitchService());
 
 		lb.init(fmc);
@@ -440,7 +432,7 @@ public class LoadBalancerTest extends FloodlightTestCase {
 
 		OFPacketOut arpReplyPacketOut1;
 
-		Capture<OFMessage> wc1 = new Capture<OFMessage>(CaptureType.ALL);
+		Capture<OFMessage> wc1 = EasyMock.newCapture(CaptureType.ALL);
 
 		sw1 = EasyMock.createNiceMock(IOFSwitch.class);
 		expect(sw1.getId()).andReturn(DatapathId.of(1L)).anyTimes();
@@ -467,8 +459,8 @@ public class LoadBalancerTest extends FloodlightTestCase {
 
 		// Build topology
 		reset(topology);
-		expect(topology.isIncomingBroadcastAllowed(DatapathId.of(anyLong()), OFPort.of(anyShort()))).andReturn(true).anyTimes();
-		expect(topology.getOpenflowDomainId(DatapathId.of(1L))).andReturn(DatapathId.of(1L)).anyTimes();
+		expect(topology.isBroadcastAllowed(DatapathId.of(anyLong()), OFPort.of(anyShort()))).andReturn(true).anyTimes();
+		expect(topology.getClusterId(DatapathId.of(1L))).andReturn(DatapathId.of(1L)).anyTimes();
 		expect(topology.isAttachmentPointPort(DatapathId.of(1L), OFPort.of(1))).andReturn(true).anyTimes();
 		expect(topology.isAttachmentPointPort(DatapathId.of(1L), OFPort.of(2))).andReturn(true).anyTimes();
 		expect(topology.isAttachmentPointPort(DatapathId.of(1L), OFPort.of(3))).andReturn(true).anyTimes();
@@ -510,7 +502,7 @@ public class LoadBalancerTest extends FloodlightTestCase {
 		// Mock proxy arp packet-out
 		arpReply1 = new Ethernet()
 		.setSourceMACAddress(LBVip.LB_PROXY_MAC)
-		.setDestinationMACAddress(HexString.fromHexString("00:00:00:00:00:01"))
+		.setDestinationMACAddress(MacAddress.of("00:00:00:00:00:01"))
 		.setEtherType(EthType.ARP)
 		.setVlanID((short) 0)
 		.setPriorityCode((byte) 0)
@@ -548,7 +540,7 @@ public class LoadBalancerTest extends FloodlightTestCase {
 
 		for (OFMessage m: msglist1) {
 			if (m instanceof OFPacketOut)
-				assertTrue(OFMessageUtils.equalsIgnoreXid(arpReplyPacketOut1, m));
+                assertEquals(OFMessageUtils.OFMessageIgnoreXid.of(arpReplyPacketOut1), OFMessageUtils.OFMessageIgnoreXid.of(m));
 			else
 				assertTrue(false); // unexpected message
 		}
@@ -634,36 +626,36 @@ public class LoadBalancerTest extends FloodlightTestCase {
 				DatapathId.of(1), OFPort.of(4));
 
 		// in bound #1
-		Route route1 = new Route(DatapathId.of(1L), DatapathId.of(1L));
+		Path route1 = new Path(DatapathId.of(1L), DatapathId.of(1L));
 		List<NodePortTuple> nptList1 = new ArrayList<NodePortTuple>();
 		nptList1.add(new NodePortTuple(DatapathId.of(1L), OFPort.of(1)));
 		nptList1.add(new NodePortTuple(DatapathId.of(1L), OFPort.of(3)));
 		route1.setPath(nptList1);
-		expect(routingEngine.getRoute(DatapathId.of(1L), OFPort.of(1), DatapathId.of(1L), OFPort.of(3), U64.of(0))).andReturn(route1).atLeastOnce();
+		expect(routingEngine.getPath(DatapathId.of(1L), OFPort.of(1), DatapathId.of(1L), OFPort.of(3))).andReturn(route1).atLeastOnce();
 
 		// outbound #1
-		Route route2 = new Route(DatapathId.of(1L), DatapathId.of(1L));
+		Path route2 = new Path(DatapathId.of(1L), DatapathId.of(1L));
 		List<NodePortTuple> nptList2 = new ArrayList<NodePortTuple>();
 		nptList2.add(new NodePortTuple(DatapathId.of(1L), OFPort.of(3)));
 		nptList2.add(new NodePortTuple(DatapathId.of(1L), OFPort.of(1)));
 		route2.setPath(nptList2);
-		expect(routingEngine.getRoute(DatapathId.of(1L), OFPort.of(3), DatapathId.of(1L), OFPort.of(1), U64.of(0))).andReturn(route2).atLeastOnce();
+		expect(routingEngine.getPath(DatapathId.of(1L), OFPort.of(3), DatapathId.of(1L), OFPort.of(1))).andReturn(route2).atLeastOnce();
 
 		// inbound #2
-		Route route3 = new Route(DatapathId.of(1L), DatapathId.of(1L));
+		Path route3 = new Path(DatapathId.of(1L), DatapathId.of(1L));
 		List<NodePortTuple> nptList3 = new ArrayList<NodePortTuple>();
 		nptList3.add(new NodePortTuple(DatapathId.of(1L), OFPort.of(2)));
 		nptList3.add(new NodePortTuple(DatapathId.of(1L), OFPort.of(4)));
 		route3.setPath(nptList3);
-		expect(routingEngine.getRoute(DatapathId.of(1L), OFPort.of(2), DatapathId.of(1L), OFPort.of(4), U64.of(0))).andReturn(route3).atLeastOnce();
+		expect(routingEngine.getPath(DatapathId.of(1L), OFPort.of(2), DatapathId.of(1L), OFPort.of(4))).andReturn(route3).atLeastOnce();
 
 		// outbound #2
-		Route route4 = new Route(DatapathId.of(1L), DatapathId.of(1L));
+		Path route4 = new Path(DatapathId.of(1L), DatapathId.of(1L));
 		List<NodePortTuple> nptList4 = new ArrayList<NodePortTuple>();
 		nptList4.add(new NodePortTuple(DatapathId.of(1L), OFPort.of(4)));
 		nptList4.add(new NodePortTuple(DatapathId.of(1L), OFPort.of(2)));
 		route4.setPath(nptList3);
-		expect(routingEngine.getRoute(DatapathId.of(1L), OFPort.of(4), DatapathId.of(1L), OFPort.of(2), U64.of(0))).andReturn(route4).atLeastOnce();
+		expect(routingEngine.getPath(DatapathId.of(1L), OFPort.of(4), DatapathId.of(1L), OFPort.of(2))).andReturn(route4).atLeastOnce();
 
 		replay(routingEngine);
 
@@ -686,7 +678,7 @@ public class LoadBalancerTest extends FloodlightTestCase {
 		assertTrue(msglist2.size()==2); // has inbound and outbound packetouts
 		// TODO: not seeing flowmods yet ...
 
-		Map<String, OFFlowMod> map = sfp.getFlows(DatapathId.of(1L));
+		Map<String, OFMessage> map = sfp.getEntries(DatapathId.of(1L));
 
 		assertTrue(map.size()==4);
 	}

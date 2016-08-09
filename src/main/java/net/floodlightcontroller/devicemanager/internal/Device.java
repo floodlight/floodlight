@@ -43,11 +43,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import net.floodlightcontroller.devicemanager.IDeviceService.DeviceField;
+import net.floodlightcontroller.devicemanager.SwitchPort.ErrorStatus;
 import net.floodlightcontroller.devicemanager.web.DeviceSerializer;
 import net.floodlightcontroller.devicemanager.IDevice;
 import net.floodlightcontroller.devicemanager.IEntityClass;
 import net.floodlightcontroller.devicemanager.SwitchPort;
-import net.floodlightcontroller.devicemanager.SwitchPort.ErrorStatus;
 import net.floodlightcontroller.topology.ITopologyService;
 
 /**
@@ -282,7 +282,7 @@ public class Device implements IDevice {
 			if (!deviceManager.isValidAttachmentPoint(ap.getSw(), ap.getPort()))
 				continue;
 
-			DatapathId id = deviceManager.topology.getOpenflowDomainId(ap.getSw());
+			DatapathId id = deviceManager.topology.getClusterId(ap.getSw());
 			apMap.put(id, ap);
 		}
 
@@ -345,7 +345,7 @@ public class Device implements IDevice {
 		Set<DatapathId> visitedIslands = new HashSet<DatapathId>();
 			
 		for (AttachmentPoint ap : oldAPList) {
-			DatapathId id = topology.getOpenflowDomainId(ap.getSw());
+			DatapathId id = topology.getClusterId(ap.getSw());
 			AttachmentPoint trueAP = apMap.get(id);
 
 			if (trueAP == null) {
@@ -367,7 +367,7 @@ public class Device implements IDevice {
 		 * has not expired, add them as duplicates to the list.
 		 */
 		for (AttachmentPoint ap : oldAPList) {				
-			DatapathId id = topology.getOpenflowDomainId(ap.getSw());
+			DatapathId id = topology.getClusterId(ap.getSw());
 			if (visitedIslands.contains(id)) {
 				if (ap.getLastSeen().getTime() > timeThreshold) {
 					dupAPs.add(ap);
@@ -472,7 +472,7 @@ public class Device implements IDevice {
 			return true;
 		}
 
-		DatapathId id = topology.getOpenflowDomainId(sw);
+		DatapathId id = topology.getClusterId(sw);
 		AttachmentPoint oldAP = apMap.get(id);
 
 		if (oldAP == null) { // No attachment on this L2 domain.
@@ -507,8 +507,7 @@ public class Device implements IDevice {
 				oldAPList.addAll(oldAPs);
 			oldAPList.add(oldAP);
 			this.oldAPs = oldAPList;
-			if (!topology.isInSameBroadcastDomain(oldAP.getSw(),
-					oldAP.getPort(), newAP.getSw(), newAP.getPort()))
+			if (!topology.isInSameArchipelago(oldAP.getSw(), newAP.getSw())) /* different network */
 				return true; // attachment point changed.
 		} else if (oldAPFlag) {
 			// retain oldAP as is. Put the newAP in oldAPs for flagging
@@ -710,9 +709,6 @@ public class Device implements IDevice {
 
 	@Override
 	public IPv4Address[] getIPv4Addresses() {
-		// XXX - TODO we can cache this result. Let's find out if this
-		// is really a performance bottleneck first though.
-
 		TreeSet<IPv4Address> vals = new TreeSet<IPv4Address>();
 		for (Entity e : entities) {
 			if (e.getIpv4Address().equals(IPv4Address.NONE))
@@ -791,8 +787,8 @@ public class Device implements IDevice {
 	public VlanVid[] getSwitchPortVlanIds(SwitchPort swp) {
 		TreeSet<VlanVid> vals = new TreeSet<VlanVid>();
 		for (Entity e : entities) {
-			if (e.switchDPID.equals(swp.getSwitchDPID())
-					&& e.switchPort.equals(swp.getPort())) {
+			if (e.switchDPID.equals(swp.getNodeId())
+					&& e.switchPort.equals(swp.getPortId())) {
 				if (e.getVlan() == null)
 					vals.add(VlanVid.ZERO);
 				else

@@ -1,7 +1,7 @@
 /**
  *    Copyright 2015, Big Switch Networks, Inc.
  *    Originally created by Pengfei Lu, Network and Cloud Computing Laboratory, Dalian University of Technology, China 
- *    Advisers: Keqiu Li and Heng Qi 
+ *    Advisers: Keqiu Li, Heng Qi and Haisheng Yu 
  *    This work is supported by the State Key Program of National Natural Science of China(Grant No. 61432002) 
  *    and Prospective Research Project on Future Networks in Jiangsu Future Networks Innovation Institute.
  *    
@@ -185,7 +185,7 @@ public class ACLRuleResource extends ServerResource {
 				if ("TCP".equalsIgnoreCase(value)) {
 					rule.setNw_proto(6);
 				} else if ("UDP".equalsIgnoreCase(value)) {
-					rule.setNw_proto(11);
+					rule.setNw_proto(17);
 				} else if ("ICMP".equalsIgnoreCase(value)) {
 					rule.setNw_proto(1);
 				} else {
@@ -195,7 +195,7 @@ public class ACLRuleResource extends ServerResource {
 
 			else if ("tp-dst".equals(key)) {
 				// only when tp-dst == (TCP || UDP), tp-dst can have non-0 value
-				if(rule.getNw_proto() == 6 || rule.getNw_proto() == 11){
+				if(rule.getNw_proto() == 6 || rule.getNw_proto() == 17){
 					try{
 						rule.setTp_dst(Integer.parseInt(value));
 					}catch(NumberFormatException e){

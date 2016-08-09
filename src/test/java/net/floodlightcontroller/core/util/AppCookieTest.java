@@ -41,10 +41,10 @@ public class AppCookieTest {
 
     @Test
     public void testAppCookie(){
-        int user = 0xF123F123; // MSB set
-        int user2 = 0x42;      // MSB cleared
-        U64 expectedCookie11 =  U64.of(0xF4200000F123F123L); // app1, user1
-        U64 expectedCookie21 =  U64.of(0x74300000F123F123L); // app2, user1
+        long user = 0xF123F123F1234L; // MSB set
+        long user2 = 0x42L;      // MSB cleared
+        U64 expectedCookie11 =  U64.of(0xF42F123F123F1234L); // app1, user1
+        U64 expectedCookie21 =  U64.of(0x743F123F123F1234L); // app2, user1
         U64 expectedCookie12 =  U64.of(0xF420000000000042L); // app1, user2
         U64 expectedCookie22 =  U64.of(0x7430000000000042L); // app2, user2
         String name = "FooBar";
@@ -108,5 +108,18 @@ public class AppCookieTest {
         } catch (InvalidAppIDValueException e) { /* expected */ }
 
 
+    }
+    
+    @Test
+    public void testAppFieldMask(){
+    	final int myAppId = 71;
+    	AppCookie.registerApp(myAppId, "TestFieldMask");
+    	U64 result = AppCookie.getAppFieldMask();
+    	U64 expectedMask = U64.of(0xfff0000000000000L);
+    	assertEquals(expectedMask, result);
+    	
+    	U64 cookie = AppCookie.makeCookie(myAppId, -1);
+    	U64 maskAppField = cookie.and(result);
+    	assertEquals(U64.of(0x470000000000000L),maskAppField);
     }
 }

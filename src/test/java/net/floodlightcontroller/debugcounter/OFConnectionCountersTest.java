@@ -30,6 +30,7 @@ import org.projectfloodlight.openflow.protocol.OFFeaturesReply;
 import org.projectfloodlight.openflow.protocol.OFFeaturesRequest;
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
 import org.projectfloodlight.openflow.protocol.OFFlowRemoved;
+import org.projectfloodlight.openflow.protocol.OFFlowRemovedReason;
 import org.projectfloodlight.openflow.protocol.OFGetConfigReply;
 import org.projectfloodlight.openflow.protocol.OFGetConfigRequest;
 import org.projectfloodlight.openflow.protocol.OFGroupMod;
@@ -38,6 +39,7 @@ import org.projectfloodlight.openflow.protocol.OFHello;
 import org.projectfloodlight.openflow.protocol.OFHelloElem;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFMeterMod;
+import org.projectfloodlight.openflow.protocol.OFMeterModCommand;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.OFPacketInReason;
 import org.projectfloodlight.openflow.protocol.OFPacketOut;
@@ -92,10 +94,10 @@ public class OFConnectionCountersTest extends FloodlightTestCase {
 
     @Test
     public void TestConnectionCounterRegistered(){
-        for(OFType oft : OFType.values()){
+        for (OFType oft : OFType.values()){
             boolean found = false;
-            for(DebugCounterResource dcInfo : dc.getAllCounterValues()){
-                if(dcInfo.getCounterHierarchy().contains(oft.toString())){
+            for (DebugCounterResource dcInfo : dc.getAllCounterValues()){
+                if (dcInfo.getCounterHierarchy().contains(oft.toString())){
                     found = true;
                 }
             }
@@ -108,9 +110,9 @@ public class OFConnectionCountersTest extends FloodlightTestCase {
      * @param typeStr Type of message as a string
      * @param value Expected value of the counter
      */
-    public void validateCounter(String typeStr,long value){
-        for(DebugCounterResource dcInfo : dc.getAllCounterValues()){
-            if(dcInfo.getCounterHierarchy().contains("/"+typeStr)){
+    public void validateCounter(String typeStr, long value){
+        for (DebugCounterResource dcInfo : dc.getAllCounterValues()){
+            if (dcInfo.getCounterHierarchy().contains("/"+typeStr)){
                 assertEquals( Long.valueOf(value), dcInfo.getCounterValue());
             }
         }
@@ -189,7 +191,7 @@ public class OFConnectionCountersTest extends FloodlightTestCase {
 
         //Flow Removed
         //
-        OFFlowRemoved flowRemMsg = factory.buildFlowRemoved().build();
+        OFFlowRemoved flowRemMsg = factory.buildFlowRemoved().setReason(OFFlowRemovedReason.DELETE).build();
         updateAndTestCounter(flowRemMsg,OFType.FLOW_REMOVED.toString());
 
 
@@ -231,7 +233,7 @@ public class OFConnectionCountersTest extends FloodlightTestCase {
 
         // meter mod
         //
-        OFMeterMod meterModMsg = factory.buildMeterMod().build();
+        OFMeterMod meterModMsg = factory.buildMeterMod().setCommand(OFMeterModCommand.ADD).build();
         updateAndTestCounter(meterModMsg,OFType.METER_MOD.toString());
 
         // Packet in
@@ -330,6 +332,7 @@ public class OFConnectionCountersTest extends FloodlightTestCase {
         //
         OFRoleStatus roleStatus = factory.buildRoleStatus()
         		.setReason(OFControllerRoleReason.CONFIG)
+        		.setRole(OFControllerRole.ROLE_MASTER)
         		.build();
         updateAndTestCounter(roleStatus,OFType.ROLE_STATUS.toString());
         

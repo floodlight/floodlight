@@ -28,7 +28,6 @@ import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
-import net.floodlightcontroller.core.rest.SwitchRepresentation;
 import net.floodlightcontroller.debugcounter.DebugCounterServiceImpl;
 
 import org.projectfloodlight.openflow.protocol.OFFactory;
@@ -231,29 +230,5 @@ public class MockSwitchManager implements IFloodlightModule, IOFSwitchManager, I
     @Override
     public void startUp(FloodlightModuleContext context) throws FloodlightModuleException {
         // do nothing
-    }
-
-    @Override
-    public List<SwitchRepresentation> getSwitchRepresentations() {
-        List<SwitchRepresentation> representations = new ArrayList<SwitchRepresentation>();
-
-        for(DatapathId dpid : this.switches.keySet()) {
-            SwitchRepresentation representation = getSwitchRepresentation(dpid);
-            if(representation != null) {
-                representations.add(representation);
-            }
-        }
-        return representations;
-    }
-
-    @Override
-    public SwitchRepresentation getSwitchRepresentation(DatapathId dpid) {
-        IOFSwitch sw = this.switches.get(dpid);
-        OFSwitchHandshakeHandler handler = this.switchHandlers.get(dpid);
-
-        if(sw != null && handler != null) {
-            return new SwitchRepresentation(sw, handler);
-        }
-        return null;
     }
 }

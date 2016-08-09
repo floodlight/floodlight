@@ -249,7 +249,7 @@ public class FirewallRule implements Comparable<FirewallRule> {
                 || this.any_nw_dst != r.any_nw_dst
                 || (this.any_nw_dst == false && !this.nw_dst_prefix_and_mask.equals(r.nw_dst_prefix_and_mask))
                 || this.any_dl_dst != r.any_dl_dst                
-                || (this.any_dl_dst == false && this.dl_dst != r.dl_dst)) {
+                || (this.any_dl_dst == false && !this.dl_dst.equals(r.dl_dst))) {
             return false;
         }
         return true;

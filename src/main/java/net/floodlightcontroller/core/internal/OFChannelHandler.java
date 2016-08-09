@@ -41,8 +41,6 @@ import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFPortStatus;
 import org.projectfloodlight.openflow.protocol.OFType;
 import org.projectfloodlight.openflow.protocol.OFVersion;
-import org.projectfloodlight.openflow.protocol.ver13.OFHelloElemTypeSerializerVer13;
-import org.projectfloodlight.openflow.protocol.ver14.OFHelloElemTypeSerializerVer14;
 import org.projectfloodlight.openflow.types.OFAuxId;
 import org.projectfloodlight.openflow.types.U32;
 import org.projectfloodlight.openflow.types.U64;
@@ -321,12 +319,10 @@ class OFChannelHandler extends SimpleChannelInboundHandler<Iterable<OFMessage>> 
 				List<OFHelloElem> elements = m.getElements();
 				/* Grab all bitmaps supplied */
 				for (OFHelloElem e : elements) {
-					if (m.getVersion().equals(OFVersion.OF_13) 
-							&& e.getType() == OFHelloElemTypeSerializerVer13.VERSIONBITMAP_VAL) {
+					if (e instanceof OFHelloElemVersionbitmap) {
 						bitmaps.addAll(((OFHelloElemVersionbitmap) e).getBitmaps());
-					} else if (m.getVersion().equals(OFVersion.OF_14) 
-							&& e.getType() == OFHelloElemTypeSerializerVer14.VERSIONBITMAP_VAL) {
-						bitmaps.addAll(((OFHelloElemVersionbitmap) e).getBitmaps());
+					} else {
+						log.warn("Unhandled OFHelloElem {}", e);
 					}
 				}
 				/* Lookup highest, common supported OpenFlow version */
@@ -831,7 +827,7 @@ class OFChannelHandler extends SimpleChannelInboundHandler<Iterable<OFMessage>> 
 				.build();
 		write(reply);
 	}
-	
+
 	private void write(OFMessage m) {
 		channel.writeAndFlush(Collections.singletonList(m));
 	}

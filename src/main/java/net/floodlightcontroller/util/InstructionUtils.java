@@ -1,10 +1,18 @@
 package net.floodlightcontroller.util;
 
+import java.io.IOException;
+import java.io.StringWriter;
+import java.io.Writer;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.projectfloodlight.openflow.protocol.OFFactories;
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
+import org.projectfloodlight.openflow.protocol.OFInstructionType;
+import org.projectfloodlight.openflow.protocol.OFOxsList;
+import org.projectfloodlight.openflow.protocol.OFStatTriggerFlags;
 import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstruction;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstructionApplyActions;
@@ -12,11 +20,27 @@ import org.projectfloodlight.openflow.protocol.instruction.OFInstructionClearAct
 import org.projectfloodlight.openflow.protocol.instruction.OFInstructionExperimenter;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstructionGotoTable;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstructionMeter;
+import org.projectfloodlight.openflow.protocol.instruction.OFInstructionStatTrigger;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstructionWriteActions;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstructionWriteMetadata;
+import org.projectfloodlight.openflow.protocol.oxs.OFOxs;
+import org.projectfloodlight.openflow.protocol.oxs.OFOxsByteCount;
+import org.projectfloodlight.openflow.protocol.oxs.OFOxsDuration;
+import org.projectfloodlight.openflow.protocol.oxs.OFOxsFlowCount;
+import org.projectfloodlight.openflow.protocol.oxs.OFOxsIdleTime;
+import org.projectfloodlight.openflow.protocol.oxs.OFOxsPacketCount;
+import org.projectfloodlight.openflow.protocol.stat.StatField;
 import org.projectfloodlight.openflow.types.TableId;
+import org.projectfloodlight.openflow.types.U32;
 import org.projectfloodlight.openflow.types.U64;
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.fasterxml.jackson.core.JsonFactory;
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonToken;
+import com.fasterxml.jackson.core.JsonGenerator.Feature;
 
 /**
  * Convert OFInstructions to and from dpctl/ofctl-style strings.
@@ -27,6 +51,8 @@ import org.slf4j.Logger;
  *
  */
 public class InstructionUtils {
+	private static final Logger log = LoggerFactory.getLogger(InstructionUtils.class);
+
 	public static final String STR_GOTO_TABLE = "instruction_goto_table";
 	public static final String STR_WRITE_METADATA = "instruction_write_metadata";
 	public static final String STR_WRITE_ACTIONS = "instruction_write_actions";
@@ -34,6 +60,11 @@ public class InstructionUtils {
 	public static final String STR_CLEAR_ACTIONS = "instruction_clear_actions";
 	public static final String STR_GOTO_METER = "instruction_goto_meter";
 	public static final String STR_EXPERIMENTER = "instruction_experimenter";
+	public static final String STR_DEPRECATED = "instruction_deprecated";
+	public static final String STR_STAT_TRIGGER = "instruction_stat_trigger";
+	
+	private static final JsonFactory jsonFactory = new JsonFactory();
+	private static final String JSON_EMPTY_OBJECT = "{}";
 
 	/** 
 	 * Adds the instructions to the list of OFInstructions in the OFFlowMod. Any pre-existing
@@ -57,16 +88,44 @@ public class InstructionUtils {
 		fmb.setInstructions(newIl);
 	}
 
+	/**
+	 * Get string name of OFInstructionType
+	 * @param t
+	 * @return
+	 */
+	public static String getInstructionName(OFInstructionType t) {
+		switch (t) {
+		case APPLY_ACTIONS:
+			return STR_APPLY_ACTIONS;
+		case CLEAR_ACTIONS:
+			return STR_CLEAR_ACTIONS;
+		case DEPRECATED:
+			return STR_DEPRECATED;
+		case EXPERIMENTER:
+			return STR_EXPERIMENTER;
+		case GOTO_TABLE:
+			return STR_GOTO_TABLE;
+		case METER:
+			return STR_GOTO_METER;
+		case STAT_TRIGGER:
+			return STR_STAT_TRIGGER;
+		case WRITE_ACTIONS:
+			return STR_WRITE_ACTIONS;
+		case WRITE_METADATA:
+			return STR_WRITE_METADATA;	
+		}
+		return "";
+	}
+
 	///////////////////////////////////////////////////////////////////////////////////////////////////
 
 	/**
 	 * Convert an OFInstructionGotoTable to string form. The string will be formatted
 	 * in a dpctl/ofctl-style syntax.
 	 * @param inst; The instruction to convert to a string
-	 * @param log
 	 * @return
 	 */
-	public static String gotoTableToString(OFInstructionGotoTable inst, Logger log) {
+	public static String gotoTableToString(OFInstructionGotoTable inst) {
 		return Short.toString(inst.getTableId().getValue());
 	}
 
@@ -77,9 +136,8 @@ public class InstructionUtils {
 	 * side effect is the addition of an instruction in the OFFlowMod.Builder.
 	 * @param fmb; The FMB in which to append the new instruction
 	 * @param instStr; The string to parse the instruction from
-	 * @param log
 	 */
-	public static void gotoTableFromString(OFFlowMod.Builder fmb, String inst, Logger log) {
+	public static void gotoTableFromString(OFFlowMod.Builder fmb, String inst) {
 		if (inst == null || inst.equals("")) {
 			return;
 		}
@@ -92,11 +150,7 @@ public class InstructionUtils {
 		OFInstructionGotoTable.Builder ib = OFFactories.getFactory(fmb.getVersion()).instructions().buildGotoTable();
 
 		// Get the table ID
-		if (inst.startsWith("0x")) {
-			ib.setTableId(TableId.of(Integer.parseInt(inst.replaceFirst("0x", ""), 16)));
-		} else {
-			ib.setTableId(TableId.of(Integer.parseInt(inst))).build();
-		}
+		ib.setTableId(TableId.of(ParseUtils.parseHexOrDecInt(inst)));
 
 		log.debug("Appending GotoTable instruction: {}", ib.build());
 		appendInstruction(fmb, ib.build());
@@ -107,10 +161,9 @@ public class InstructionUtils {
 	 * Convert an OFInstructionMetadata to string form. The string will be formatted
 	 * in a dpctl/ofctl-style syntax.
 	 * @param inst; The instruction to convert to a string
-	 * @param log
 	 * @return
 	 */
-	public static String writeMetadataToString(OFInstructionWriteMetadata inst, Logger log) {
+	public static String writeMetadataToString(OFInstructionWriteMetadata inst) {
 		/* 
 		 * U64.toString() formats with a leading 0x
 		 */
@@ -128,9 +181,8 @@ public class InstructionUtils {
 	 * side effect is the addition of an instruction in the OFFlowMod.Builder.
 	 * @param fmb; The FMB in which to append the new instruction
 	 * @param instStr; The string to parse the instruction from
-	 * @param log
 	 */
-	public static void writeMetadataFromString(OFFlowMod.Builder fmb, String inst, Logger log) {
+	public static void writeMetadataFromString(OFFlowMod.Builder fmb, String inst) {
 		if (inst == null || inst.equals("")) {
 			return;
 		}
@@ -153,19 +205,11 @@ public class InstructionUtils {
 		}
 
 		// Get the metadata
-		if (keyValue[0].startsWith("0x")) {
-			ib.setMetadata(U64.of(Long.valueOf(keyValue[0].replaceFirst("0x", ""), 16)));
-		} else {
-			ib.setMetadata(U64.of(Long.valueOf(keyValue[0])));
-		}
+		ib.setMetadata(U64.of(ParseUtils.parseHexOrDecLong(keyValue[0])));
 
 		// Get the optional mask
 		if (keyValue.length == 2) {
-			if (keyValue[1].startsWith("0x")) {
-				ib.setMetadataMask(U64.of(Long.valueOf(keyValue[1].replaceFirst("0x", ""), 16)));
-			} else {
-				ib.setMetadataMask(U64.of(Long.valueOf(keyValue[1])));
-			}
+			ib.setMetadataMask(U64.of(ParseUtils.parseHexOrDecLong(keyValue[1])));
 		} else {
 			ib.setMetadataMask(U64.NO_MASK);
 		}
@@ -181,11 +225,10 @@ public class InstructionUtils {
 	 * Convert an OFInstructionWriteActions to string form. The string will be formatted
 	 * in a dpctl/ofctl-style syntax.
 	 * @param inst; The instruction to convert to a string
-	 * @param log
 	 * @return
 	 */
-	public static String writeActionsToString(OFInstructionWriteActions inst, Logger log) throws Exception {
-		return ActionUtils.actionsToString(inst.getActions(), log);
+	public static String writeActionsToString(OFInstructionWriteActions inst) throws Exception {
+		return ActionUtils.actionsToString(inst.getActions());
 	}
 
 	/**
@@ -195,9 +238,8 @@ public class InstructionUtils {
 	 * side effect is the addition of an instruction in the OFFlowMod.Builder.
 	 * @param fmb; The FMB in which to append the new instruction
 	 * @param instStr; The string to parse the instruction from
-	 * @param log
 	 */
-	public static void writeActionsFromString(OFFlowMod.Builder fmb, String inst, Logger log) {
+	public static void writeActionsFromString(OFFlowMod.Builder fmb, String inst) {
 
 		if (fmb.getVersion().compareTo(OFVersion.OF_11) < 0) {
 			log.error("Write Actions Instruction not supported in OpenFlow 1.0");
@@ -206,7 +248,7 @@ public class InstructionUtils {
 
 		OFFlowMod.Builder tmpFmb = OFFactories.getFactory(fmb.getVersion()).buildFlowModify(); // ActionUtils.fromString() will use setActions(), which should not be used for OF1.3; use temp to avoid overwriting any applyActions data
 		OFInstructionWriteActions.Builder ib = OFFactories.getFactory(fmb.getVersion()).instructions().buildWriteActions();
-		ActionUtils.fromString(tmpFmb, inst, log);
+		ActionUtils.fromString(tmpFmb, inst);
 		ib.setActions(tmpFmb.getActions());
 		log.debug("Appending WriteActions instruction: {}", ib.build());
 		appendInstruction(fmb, ib.build());
@@ -218,11 +260,10 @@ public class InstructionUtils {
 	 * Convert an OFInstructionApplyActions to string form. The string will be formatted
 	 * in a dpctl/ofctl-style syntax.
 	 * @param inst; The instruction to convert to a string
-	 * @param log
 	 * @return
 	 */
-	public static String applyActionsToString(OFInstructionApplyActions inst, Logger log) throws Exception {
-		return ActionUtils.actionsToString(inst.getActions(), log);
+	public static String applyActionsToString(OFInstructionApplyActions inst) throws Exception {
+		return ActionUtils.actionsToString(inst.getActions());
 	}
 
 	/**
@@ -232,9 +273,8 @@ public class InstructionUtils {
 	 * side effect is the addition of an instruction in the OFFlowMod.Builder.
 	 * @param fmb; The FMB in which to append the new instruction
 	 * @param instStr; The string to parse the instruction from
-	 * @param log
 	 */
-	public static void applyActionsFromString(OFFlowMod.Builder fmb, String inst, Logger log) {
+	public static void applyActionsFromString(OFFlowMod.Builder fmb, String inst) {
 
 		if (fmb.getVersion().compareTo(OFVersion.OF_11) < 0) {
 			log.error("Apply Actions Instruction not supported in OpenFlow 1.0");
@@ -243,7 +283,7 @@ public class InstructionUtils {
 
 		OFFlowMod.Builder tmpFmb = OFFactories.getFactory(fmb.getVersion()).buildFlowModify();
 		OFInstructionApplyActions.Builder ib = OFFactories.getFactory(fmb.getVersion()).instructions().buildApplyActions();
-		ActionUtils.fromString(tmpFmb, inst, log);
+		ActionUtils.fromString(tmpFmb, inst);
 		ib.setActions(tmpFmb.getActions());
 		log.debug("Appending ApplyActions instruction: {}", ib.build());
 		appendInstruction(fmb, ib.build());
@@ -255,10 +295,9 @@ public class InstructionUtils {
 	 * Convert an OFInstructionClearActions to string form. The string will be formatted
 	 * in a dpctl/ofctl-style syntax.
 	 * @param inst; The instruction to convert to a string
-	 * @param log
 	 * @return
 	 */
-	public static String clearActionsToString(OFInstructionClearActions inst, Logger log) {
+	public static String clearActionsToString(OFInstructionClearActions inst) {
 		return ""; // No data for this instruction. The presence of it's key indicates it is to be applied.
 	}
 
@@ -269,9 +308,8 @@ public class InstructionUtils {
 	 * side effect is the addition of an instruction in the OFFlowMod.Builder.
 	 * @param fmb; The FMB in which to append the new instruction
 	 * @param instStr; The string to parse the instruction from
-	 * @param log
 	 */
-	public static void clearActionsFromString(OFFlowMod.Builder fmb, String inst, Logger log) {
+	public static void clearActionsFromString(OFFlowMod.Builder fmb, String inst) {
 
 		if (fmb.getVersion().compareTo(OFVersion.OF_11) < 0) {
 			log.error("Clear Actions Instruction not supported in OpenFlow 1.0");
@@ -294,10 +332,9 @@ public class InstructionUtils {
 	 * Convert an OFInstructionMeter to string form. The string will be formatted
 	 * in a dpctl/ofctl-style syntax.
 	 * @param inst; The instruction to convert to a string
-	 * @param log
 	 * @return
 	 */
-	public static String meterToString(OFInstructionMeter inst, Logger log) {
+	public static String meterToString(OFInstructionMeter inst) {
 		return Long.toString(inst.getMeterId());
 	}
 
@@ -308,9 +345,8 @@ public class InstructionUtils {
 	 * side effect is the addition of an instruction in the OFFlowMod.Builder.
 	 * @param fmb; The FMB in which to append the new instruction
 	 * @param instStr; The string to parse the instruction from
-	 * @param log
 	 */
-	public static void meterFromString(OFFlowMod.Builder fmb, String inst, Logger log) {
+	public static void meterFromString(OFFlowMod.Builder fmb, String inst) {
 		if (inst == null || inst.isEmpty()) {
 			return;
 		}
@@ -322,11 +358,7 @@ public class InstructionUtils {
 
 		OFInstructionMeter.Builder ib = OFFactories.getFactory(fmb.getVersion()).instructions().buildMeter();
 
-		if (inst.startsWith("0x")) {
-			ib.setMeterId(Long.valueOf(inst.replaceFirst("0x", ""), 16));
-		} else {
-			ib.setMeterId(Long.valueOf(inst));
-		}		
+		ib.setMeterId(ParseUtils.parseHexOrDecLong(inst));		
 
 		log.debug("Appending (Goto)Meter instruction: {}", ib.build());
 		appendInstruction(fmb, ib.build());
@@ -339,10 +371,9 @@ public class InstructionUtils {
 	 * Convert an OFInstructionExperimenter to string form. The string will be formatted
 	 * in a dpctl/ofctl-style syntax.
 	 * @param inst; The instruction to convert to a string
-	 * @param log
 	 * @return
 	 */
-	public static String experimenterToString(OFInstructionExperimenter inst, Logger log) {
+	public static String experimenterToString(OFInstructionExperimenter inst) {
 		return Long.toString(inst.getExperimenter());
 	}
 
@@ -353,33 +384,265 @@ public class InstructionUtils {
 	 * side effect is the addition of an instruction in the OFFlowMod.Builder.
 	 * @param fmb; The FMB in which to append the new instruction
 	 * @param instStr; The string to parse the instruction from
-	 * @param log
 	 */
-	public static void experimenterFromString(OFFlowMod.Builder fmb, String inst, Logger log) {
-		/* TODO This is a no-op right now. */
-
-		/*
-		if (inst == null || inst.equals("")) {
-			return; // TODO @Ryan quietly fail?
-		}
-
-		OFInstructionExperimenter.Builder ib = OFFactories.getFactory(fmb.getVersion()).instructions().buildExperimenter();
-
-		String[] keyValue = inst.split("=");	
-		if (keyValue.length != 2) {
-			throw new IllegalArgumentException("[Key, Value] " + keyValue + " does not have form 'key=value' parsing " + inst);
-		}
-		switch (keyValue[0]) {
-		case STR_SUB_GOTO_METER_METER_ID:
-			ib.setExperimenter(Long.parseLong(keyValue[1]));
-			break;
-		default:
-			log.error("Invalid String key for OFInstructionExperimenter: {}", keyValue[0]);
-		}
-
-		appendInstruction(fmb, ib.build());
-		 */
+	public static void experimenterFromString(OFFlowMod.Builder fmb, String inst) {
+		log.warn("OFInstructionExperimenter from-string not implemented");
 	}
 
+	///////////////////////////////////////////////////////////////////////////////////////////////////
 
+	/**
+	 * Convert an deprecated (OF1.5+) OFInstructionMeter to string form.
+	 * @param inst; The instruction to convert to a string
+	 * @return
+	 */
+	public static String deprecatedToString(OFInstruction inst) {
+		log.warn("OFInstructionDeprecated is being used. Did you mean to use OF1.5+ OFActionMeter?");
+		return "";
+	}
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////
+
+	/**
+	 * Convert JSON string OFInstructionStatTrigger object.
+	 * @param fmb; Where the instruction will be placed
+	 * @param json; The string to convert to an OFInstructionStatTrigger
+	 * @return
+	 */
+	public static boolean statTriggerFromJsonString(OFFlowMod.Builder fmb, String json) {
+
+		OFInstructionStatTrigger i = statTriggerFromJsonString(fmb.getVersion(), json);
+		if (i != null) {
+			appendInstruction(fmb, i);
+			return true;
+		} else {
+			return false;
+		}
+	}
+
+	/**
+	 * Convert JSON string OFInstructionStatTrigger object.
+	 * @param json; The string to convert to an OFInstructionStatTrigger
+	 * @return
+	 */
+	public static OFInstructionStatTrigger statTriggerFromJsonString(OFVersion v, String json) {
+		if (json == null) {
+			throw new IllegalArgumentException("JSON string cannot be null");
+		}
+
+		final Set<OFStatTriggerFlags> flags = new HashSet<OFStatTriggerFlags>();
+		final Set<OFOxs<?>> thresholds = new HashSet<OFOxs<?>>();
+		final JsonParser jp;
+		try {
+			jp = jsonFactory.createParser(json);
+		} catch (IOException e) {
+			log.error("Could not create JSON parser for OFFlowMod.Builder {}", json);
+			return null;
+		}
+		try {
+			if (jp.nextToken() != JsonToken.START_OBJECT) {
+				throw new IOException("Expected START_OBJECT");
+			}
+
+			while (jp.nextToken() != JsonToken.END_OBJECT) {
+				String key = jp.getCurrentName().toLowerCase().trim();
+				if (jp.nextToken() != JsonToken.START_ARRAY) {
+					throw new IOException("Expected START_ARRAY");
+				}
+				switch (key) {
+				case "flags":
+					while (jp.nextToken() != JsonToken.END_ARRAY) {
+						boolean flagSet = false;
+						for (OFStatTriggerFlags f : OFStatTriggerFlags.values()) {
+							if (f.toString().equalsIgnoreCase(jp.getText().trim())) { /* case-insensitive, unlike enum.valueOf() */
+								flags.add(f);
+								flagSet = true;
+								break;
+							}
+						}
+						if (!flagSet) {
+							log.warn("Unknown flag {}", jp.getText());
+						}
+					}
+					break;
+				case "thresholds":
+					while (jp.nextToken() != JsonToken.END_ARRAY) {
+						if (jp.getCurrentToken() != JsonToken.START_OBJECT) {
+							throw new IOException("Expected START_OBJECT");
+						}
+						OFOxs.Builder<?> threshold = null;
+						U64 value = null;
+						while (jp.nextToken() != JsonToken.END_OBJECT) {
+							switch (jp.getCurrentName().toLowerCase().trim()) {
+							case "oxs_type":
+								String type = jp.getText().toLowerCase().trim();
+								if (type.equals(StatField.BYTE_COUNT.getName())) {
+									threshold = OFFactories.getFactory(v).oxss().buildByteCount();
+								} else if (type.equals(StatField.DURATION.getName())) {
+									threshold = OFFactories.getFactory(v).oxss().buildDuration();
+								} else if (type.equals(StatField.FLOW_COUNT.getName())) {
+									threshold = OFFactories.getFactory(v).oxss().buildFlowCount();
+								} else if (type.equals(StatField.IDLE_TIME.getName())) {
+									threshold = OFFactories.getFactory(v).oxss().buildIdleTime();
+								} else if (type.equals(StatField.PACKET_COUNT.getName())) {
+									threshold = OFFactories.getFactory(v).oxss().buildPacketCount();
+								} else {
+									log.warn("Unexpected OXS threshold type {}", type);
+								}
+								break;
+							case "value":
+								value = U64.of(ParseUtils.parseHexOrDecLong(jp.getText()));
+								break;
+							default:
+								log.warn("Unexpected OXS threshold key {}", jp.getCurrentName());
+								break;
+							}
+						}
+						if (threshold == null || value == null) {
+							log.error("Must specify both OXS type and threshold value. Got {} and {}, respectively", threshold, value);
+							return null;
+						} else {
+							if (threshold.getStatField().getName().equals(StatField.BYTE_COUNT.getName())) {
+								thresholds.add(((OFOxsByteCount.Builder) threshold).setValue(value).build());
+							} else if (threshold.getStatField().getName().equals(StatField.DURATION.getName())) {
+								thresholds.add(((OFOxsDuration.Builder) threshold).setValue(value).build());
+							} else if (threshold.getStatField().getName().equals(StatField.FLOW_COUNT.getName())) {
+								thresholds.add(((OFOxsFlowCount.Builder) threshold).setValue(U32.of(value.getValue())).build());
+							} else if (threshold.getStatField().getName().equals(StatField.IDLE_TIME.getName())) {
+								thresholds.add(((OFOxsIdleTime.Builder) threshold).setValue(value).build());
+							} else if (threshold.getStatField().getName().equals(StatField.PACKET_COUNT.getName())) {
+								thresholds.add(((OFOxsPacketCount.Builder) threshold).setValue(value).build());
+							} else {
+								log.warn("Unexpected OXS threshold type {}", threshold.getStatField().getName());
+							}
+						}
+					}
+					break;
+				default:
+					log.warn("Unexpected OFInstructionStatTrigger key {}", key);
+					break;
+				}
+			}
+		} catch (IOException e) {
+			log.error("Could not parse: {}", json);
+			log.error("JSON parse error message: {}", e.getMessage());
+			return null;
+		}
+		return OFFactories.getFactory(v).instructions().statTrigger(flags, OFOxsList.ofList(thresholds));
+	}
+
+	/**
+	 * Append OFInstructionStatsTrigger object to an existing JsonGenerator.
+	 * This method assumes the field name of the instruction has been
+	 * written already, if required. The appended data will
+	 * be formatted as follows:
+	 *   {
+	 *     "flags":[
+	 *       f1, f2, f3, ..., fn
+	 *     ],
+	 *     "thresholds":[
+	 *       {
+	 *       	"oxs_type":"l",
+	 *       	"value":"v"
+	 *       },
+	 *       {
+	 *       	"oxs_type":"m",
+	 *       	"value":"v"
+	 *       },
+	 *       ...,
+	 *       {
+	 *       	"oxs_type":"n",
+	 *       	"value":"v"
+	 *       }
+	 *     ]
+	 *   }
+	 * @param jsonGen
+	 * @param s
+	 */
+	public static void statTriggerToJsonString(JsonGenerator jsonGen, OFInstructionStatTrigger s) {
+		jsonGen.configure(Feature.WRITE_NUMBERS_AS_STRINGS, true);
+
+		try {
+			jsonGen.writeStartObject();
+			jsonGen.writeArrayFieldStart("flags");
+			for (OFStatTriggerFlags f : s.getFlags()) {
+				jsonGen.writeString(f.toString());
+			}
+			jsonGen.writeEndArray();
+			jsonGen.writeArrayFieldStart("thresholds");
+			for (OFOxs<?> o : s.getThresholds()) {
+				jsonGen.writeStartObject();
+				if (o instanceof OFOxsDuration) {
+					OFOxsDuration t = (OFOxsDuration) o; 
+					jsonGen.writeStringField("oxs_type", t.getStatField().getName());
+					jsonGen.writeStringField("value", t.getValue().toString());
+				} else if (o instanceof OFOxsByteCount) {
+					OFOxsByteCount t = (OFOxsByteCount) o;
+					jsonGen.writeStringField("oxs_type", t.getStatField().getName());
+					jsonGen.writeStringField("value", t.getValue().toString());
+				} else if (o instanceof OFOxsFlowCount) {
+					OFOxsFlowCount t = (OFOxsFlowCount) o;
+					jsonGen.writeStringField("oxs_type", t.getStatField().getName());
+					jsonGen.writeStringField("value", t.getValue().toString());
+				} else if (o instanceof OFOxsIdleTime) {
+					OFOxsIdleTime t = (OFOxsIdleTime) o;
+					jsonGen.writeStringField("oxs_type", t.getStatField().getName());
+					jsonGen.writeStringField("value", t.getValue().toString());
+				} else if (o instanceof OFOxsPacketCount) {
+					OFOxsPacketCount t = (OFOxsPacketCount) o;
+					jsonGen.writeStringField("oxs_type", t.getStatField().getName());
+					jsonGen.writeStringField("value", t.getValue().toString());
+				} else {
+					log.warn("Skipping unknown OXS type {}", o.getStatField().getName());
+				}
+				jsonGen.writeEndObject();
+			}
+			jsonGen.writeEndArray();
+			jsonGen.close();
+		} catch (IOException e) {
+			log.error("Error composing OFInstructionStatTrigger JSON object. {}", e.getMessage());
+		}
+	}
+
+	/**
+	 * Create OFInstructionStatsTrigger JSON object string.
+	 * This method assumes the field name of the instruction will be
+	 * written externally, if required. The appended JSON string will
+	 * be formatted as follows:
+	 *   {
+	 *     "flags":[
+	 *       f1, f2, f3, ..., fn
+	 *     ],
+	 *     "thresholds":[
+	 *       {
+	 *       	"oxs_type":"l",
+	 *       	"value":"v"
+	 *       },
+	 *       {
+	 *       	"oxs_type":"m",
+	 *       	"value":"v"
+	 *       },
+	 *       ...,
+	 *       {
+	 *       	"oxs_type":"n",
+	 *       	"value":"v"
+	 *       }
+	 *     ]
+	 *   }
+	 * @param s
+	 */
+	public static String statTriggerToJsonString(OFInstructionStatTrigger s) {
+		Writer w = new StringWriter();
+		JsonGenerator jsonGen;
+		try {
+			jsonGen = jsonFactory.createGenerator(w);
+		} catch (IOException e) {
+			log.error("Could not instantiate JSON Generator. {}", e.getMessage());
+			return JSON_EMPTY_OBJECT;
+		}
+
+		statTriggerToJsonString(jsonGen, s);
+
+		return w.toString(); /* overridden impl returns contents of Writer's StringBuffer */
+	}
 }

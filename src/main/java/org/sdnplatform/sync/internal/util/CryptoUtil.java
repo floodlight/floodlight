@@ -1,20 +1,17 @@
 package org.sdnplatform.sync.internal.util;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.security.Key;
 import java.security.KeyStore;
 import java.security.SecureRandom;
-import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
-
-import org.sdnplatform.sync.ISyncService;
 
 public class CryptoUtil {
     private static SecureRandom secureRandom = new SecureRandom();
 
-    public static final String CHALLENGE_RESPONSE_SECRET = 
-            ISyncService.class.getPackage().getName() + 
-            ".ChallengeResponseSecret";
+    public static final String CHALLENGE_RESPONSE_SECRET = "AliasChallengeResponse";
     
     public static byte[] secureRandom(int bytes) {
         byte[] r = new byte[bytes];
@@ -43,16 +40,12 @@ public class CryptoUtil {
                                          String keyStorePassword) 
                                                     throws Exception {
         if (keyStorePath == null) return null;
-        char[] password = keyStorePassword.toCharArray();
-        KeyStore.ProtectionParameter protParam =
-                new KeyStore.PasswordProtection(password);
-
-        KeyStore ks = readKeyStore(keyStorePath, password);
-
-        KeyStore.SecretKeyEntry entry = (KeyStore.SecretKeyEntry)
-                ks.getEntry(CHALLENGE_RESPONSE_SECRET, protParam);
-        SecretKey secretKey = entry.getSecretKey();
-        return secretKey.getEncoded();
+       
+        KeyStore keyStore = KeyStore.getInstance("JCEKS");
+        keyStore.load(new FileInputStream(keyStorePath), keyStorePassword.toCharArray());
+        Key key = keyStore.getKey(CHALLENGE_RESPONSE_SECRET, keyStorePassword.toCharArray());
+        
+        return key.getEncoded();
     }
     
     public static void writeSharedSecret(String keyStorePath,

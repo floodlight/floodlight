@@ -36,39 +36,42 @@ import org.projectfloodlight.openflow.types.U64;
  *
  * The 64 bit OpenFlow cookie field used in the following way
  * <li> Bit 63 -- 52 (12 bit): the AppId
- * <li> Bit 51 -- 32 (20 bit): currently unused. Set to 0.
- * <li> Bit 31 -- 0  (32 bit): user data
+ * <li> Bit 51 -- 0  (52 bit): user data
  *
  * FIXME: The class should be a singleton. The registration method should
  * return an instance of class. This instance should then be used to generate
  * flow cookies. Ideally, we would also represent a flow cookie as a class
  * instance.
  *
- *
  * @author capveg
- *
  */
 
 public class AppCookie {
-    static final int APP_ID_BITS = 12;
-    static final long APP_ID_MASK = (1L << APP_ID_BITS) - 1;
-    static final int APP_ID_SHIFT = (64 - APP_ID_BITS);
+    private static final int APP_ID_BITS = 12;
+    private static final long APP_ID_MASK = (1L << APP_ID_BITS) - 1;
+    private static final int APP_ID_SHIFT = 64 - APP_ID_BITS;
 
-    static final long USER_MASK = 0x00000000FFFFFFFFL;
+    private static final long USER_MASK = 0x000FFFFFFFFFFFFFL;
 
-    /**the following bit will be set accordingly if the field is rewritten by application. e.g. VRS or floating IP
-     * FIXME: these should not be in AppCookie and they shoul not use
-     * the reserved bit range*/
-    static final int SRC_MAC_REWRITE_BIT=33;
-    static final int DEST_MAC_REWRITE_BIT=34;
-    static final int SRC_IP_REWRITE_BIT=35;
-    static final int DEST_IP_REWRITE_BIT=36;
+    private static ConcurrentMap<Long, String> appIdMap =
+            new ConcurrentHashMap<Long, String>();
 
+    /**
+     * Returns a mask suitable for matching the app ID within a cookie.
+     * @return a mask representing the bits used for the app ID in the cookie
+     */
+    static public U64 getAppFieldMask() {
+        return U64.of(APP_ID_MASK << APP_ID_SHIFT);
+    }
 
-    static final long REWRITE_MASK= 0x000f00000000L;
-    private static ConcurrentMap<Integer, String> appIdMap =
-            new ConcurrentHashMap<Integer, String>();
-
+    /**
+     * Returns a mask suitable for matching the user field within a cookie.
+     * @return a mask representing the bits used for user data in the cookie
+     */
+    static public U64 getUserFieldMask() {
+        return U64.of(USER_MASK);
+    }
+    
     /**
      * Encapsulate an application ID and a user block of stuff into a cookie
      *
@@ -78,76 +81,43 @@ public class AppCookie {
      * @throws IllegalStateException if the application has not been registered
      */
 
-    static public U64 makeCookie(int application, int user) {
+    static public U64 makeCookie(long application, long user) {
         if (!appIdMap.containsKey(application)) {
             throw new AppIDNotRegisteredException(application);
         }
-        long longApp = application;
-        long longUser = user & USER_MASK; // mask to prevent sign extend
-        return U64.of((longApp << APP_ID_SHIFT) | longUser);
+        user = user & USER_MASK; // mask to prevent sign extend
+        return U64.of((application << APP_ID_SHIFT) | user);
     }
 
     /**
-     * Extract the application id from a flow cookie. Does <em>not</em> check
-     * whether the application id is registered
+     * Extract the application id from a flow cookie. Does <em>not</em>
+     * check whether the application id is registered. The app ID is 
+     * defined by the {@link #getAppFieldMask()} bits
      * @param cookie
      * @return
      */
-    static public int extractApp(U64 cookie) {
-        return (int)((cookie.getValue() >>> APP_ID_SHIFT) & APP_ID_MASK);
+    static public long extractApp(U64 cookie) {
+        return (cookie.getValue() >>> APP_ID_SHIFT) & APP_ID_MASK;
     }
 
-    static public int extractUser(U64 cookie) {
-        return (int)(cookie.getValue() & USER_MASK);
+    /**
+     * Extract the user portion from a flow cookie, defined
+     * by the {@link #getUserFieldMask()} bits
+     * @param cookie
+     * @return
+     */
+    static public long extractUser(U64 cookie) {
+        return cookie.getValue() & USER_MASK;
     }
 
-    static public boolean isRewriteFlagSet(U64 cookie) {
-        if ((cookie.getValue() & REWRITE_MASK) !=0L)
-            return true;
-        return false;
-    }
-    static public boolean isSrcMacRewriteFlagSet(U64 cookie) {
-        if ((cookie.getValue() & (1L << (SRC_MAC_REWRITE_BIT-1))) !=0L)
-            return true;
-        return false;
-    }
-    static public boolean isDestMacRewriteFlagSet(U64 cookie) {
-        if ((cookie.getValue() & (1L << (DEST_MAC_REWRITE_BIT-1))) !=0L)
-            return true;
-        return false;
-    }
-    static public boolean isSrcIpRewriteFlagSet(U64 cookie) {
-        if ((cookie.getValue() & (1L << (SRC_IP_REWRITE_BIT-1))) !=0L)
-            return true;
-        return false;
-    }
-    static public boolean isDestIpRewriteFlagSet(U64 cookie) {
-        if ((cookie.getValue() & (1L << (DEST_IP_REWRITE_BIT-1))) !=0L)
-            return true;
-        return false;
-    }
-    static public U64 setSrcMacRewriteFlag(U64 cookie) {
-        return U64.of(cookie.getValue() | (1L << (SRC_MAC_REWRITE_BIT-1)));
-    }
-    static public U64 setDestMacRewriteFlag(U64 cookie) {
-        return U64.of(cookie.getValue() | (1L << (DEST_MAC_REWRITE_BIT-1)));
-    }
-    static public U64 setSrcIpRewriteFlag(U64 cookie) {
-        return U64.of(cookie.getValue() | (1L << (SRC_IP_REWRITE_BIT-1)));
-    }
-    static public U64 setDestIpRewriteFlag(U64 cookie) {
-        return U64.of(cookie.getValue() | (1L << (DEST_IP_REWRITE_BIT-1)));
-    }
     /**
      * A lame attempt to prevent duplicate application ID.
-     * TODO: We should expose appID->appName map
-     *       via REST API so CLI doesn't need a separate copy of the map.
      *
      * @param application
      * @param appName
      * @throws AppIDInUseException
      */
-    public static void registerApp(int application, String appName)
+    public static void registerApp(long application, String appName)
         throws AppIDException
     {
         if ((application & APP_ID_MASK) != application) {
@@ -165,7 +135,7 @@ public class AppCookie {
      * @param application
      * @return
      */
-    public static String getAppName(int application) {
+    public static String getAppName(long application) {
         return appIdMap.get(application);
     }
 }

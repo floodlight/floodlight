@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import org.projectfloodlight.openflow.types.IPv4Address;
 import org.projectfloodlight.openflow.types.MacAddress;
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import net.floodlightcontroller.dhcpserver.DHCPBinding;
 
@@ -15,7 +16,7 @@ import net.floodlightcontroller.dhcpserver.DHCPBinding;
  * @author Ryan Izard (rizard@g.clemson.edu)
  */
 public class DHCPPool {
-	protected Logger log;
+	protected static final Logger log = LoggerFactory.getLogger(DHCPPool.class);;
 	private volatile static ArrayList<DHCPBinding> DHCP_POOL = new ArrayList<DHCPBinding>();
 	private volatile int POOL_SIZE;
 	private volatile int POOL_AVAILABILITY;
@@ -32,8 +33,7 @@ public class DHCPPool {
 	 * @param {@code integer} size: (startingIPv4Address + size) is the highest IP address to lease.
 	 * @return none
 	 */
-	public DHCPPool(IPv4Address startingIPv4Address, int size, Logger log) {
-		this.log = log;
+	public DHCPPool(IPv4Address startingIPv4Address, int size) {
 		int IPv4AsInt = startingIPv4Address.getInt();
 		this.setPoolSize(size);
 		this.setPoolAvailability(size);
@@ -42,6 +42,10 @@ public class DHCPPool {
 			DHCP_POOL.add(new DHCPBinding(IPv4Address.of(IPv4AsInt + i), UNASSIGNED_MAC));
 		}
 
+	}
+	
+	public IPv4Address getStartIp() {
+		return STARTING_ADDRESS;
 	}
 
 	private void setPoolFull(boolean full) {
@@ -332,4 +336,46 @@ public class DHCPPool {
 		}
 	}
 
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + POOL_AVAILABILITY;
+		result = prime * result + (POOL_FULL ? 1231 : 1237);
+		result = prime * result + POOL_SIZE;
+		result = prime
+				* result
+				+ ((STARTING_ADDRESS == null) ? 0 : STARTING_ADDRESS.hashCode());
+		result = prime * result
+				+ ((UNASSIGNED_MAC == null) ? 0 : UNASSIGNED_MAC.hashCode());
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		DHCPPool other = (DHCPPool) obj;
+		if (POOL_AVAILABILITY != other.POOL_AVAILABILITY)
+			return false;
+		if (POOL_FULL != other.POOL_FULL)
+			return false;
+		if (POOL_SIZE != other.POOL_SIZE)
+			return false;
+		if (STARTING_ADDRESS == null) {
+			if (other.STARTING_ADDRESS != null)
+				return false;
+		} else if (!STARTING_ADDRESS.equals(other.STARTING_ADDRESS))
+			return false;
+		if (UNASSIGNED_MAC == null) {
+			if (other.UNASSIGNED_MAC != null)
+				return false;
+		} else if (!UNASSIGNED_MAC.equals(other.UNASSIGNED_MAC))
+			return false;
+		return true;
+	}
 }

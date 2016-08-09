@@ -50,8 +50,6 @@ import net.floodlightcontroller.core.test.MockThreadPoolService;
 import net.floodlightcontroller.core.test.PacketFactory;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
 import net.floodlightcontroller.debugcounter.MockDebugCounterService;
-import net.floodlightcontroller.debugevent.IDebugEventService;
-import net.floodlightcontroller.debugevent.MockDebugEventService;
 import net.floodlightcontroller.devicemanager.IDeviceService;
 import net.floodlightcontroller.devicemanager.IEntityClassifierService;
 import net.floodlightcontroller.devicemanager.internal.DefaultEntityClassifier;
@@ -128,7 +126,6 @@ public class VirtualNetworkFilterTest extends FloodlightTestCase {
         fmc.addService(ITopologyService.class, topology);
         fmc.addService(ISyncService.class, mockSyncService);
         fmc.addService(IDebugCounterService.class, new MockDebugCounterService());
-        fmc.addService(IDebugEventService.class, new MockDebugEventService());
         tps.init(fmc);
         deviceService.init(fmc);
         restApi.init(fmc);
