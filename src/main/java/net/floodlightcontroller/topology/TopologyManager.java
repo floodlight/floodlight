@@ -297,8 +297,20 @@ ITopologyManagerBackend, ILinkDiscoveryListener, IOFMessageListener {
             return false;
 
         // Check whether the port is a physical port. We should not learn
-        // attachment points on "special" ports.
-        if ((port.getShortPortNumber() & 0xff00) == 0xff00 && port.getShortPortNumber() != (short)0xfffe) return false;
+        // attachment points on "special" ports. Exclude LOCAL, where devices
+        // might live if they are on the switch OS itself
+        if (port.equals(OFPort.ALL) || 
+                port.equals(OFPort.CONTROLLER) || 
+                port.equals(OFPort.ANY) ||
+                port.equals(OFPort.FLOOD) ||
+                port.equals(OFPort.ZERO) ||
+                port.equals(OFPort.NO_MASK) ||
+                port.equals(OFPort.IN_PORT) ||
+                port.equals(OFPort.NORMAL) ||
+                port.equals(OFPort.TABLE)
+                ) {
+            return false;
+        }
 
         // Make sure that the port is enabled.
         IOFSwitch sw = switchService.getActiveSwitch(switchid);
