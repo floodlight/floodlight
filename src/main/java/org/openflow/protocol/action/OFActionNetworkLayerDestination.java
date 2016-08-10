@@ -27,4 +27,9 @@ public class OFActionNetworkLayerDestination extends OFActionNetworkLayerAddress
         super.setType(OFActionType.SET_NW_DST);
         super.setLength((short) OFActionNetworkLayerAddress.MINIMUM_LENGTH);
     }
+    
+    public OFActionNetworkLayerDestination(int ip) {
+        this();
+        this.networkAddress = ip;
+    }
 }

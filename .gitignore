@@ -1,6 +1,10 @@
 *~
+*.class
 .classpath
 .project
+.pydevproject
 .settings
+.DS_Store
 target
 thrift
+logback.xml

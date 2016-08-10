@@ -17,20 +17,16 @@
 
 package net.floodlightcontroller.core;
 
-
 public interface IListener<T> {
+    public enum Command {
+        CONTINUE, STOP
+    }
+    
     /**
      * The name assigned to this listener
      * @return
      */
     public String getName();
-    
-    /**
-     * Id associated for this listener. Used, instead of name,
-     * when a fast way of identifying a listener is required, 
-     * e.g. im performance monitoring
-     */    
-    public int getId();   
 
     /**
      * Check if the module called name is a callback ordering prerequisite

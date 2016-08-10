@@ -211,7 +211,7 @@ public class UDP extends BasePacket {
             }
         } else if (UDP.decodeMap.containsKey(this.sourcePort)) {
             try {
-                this.payload = UDP.decodeMap.get(this.destinationPort).getConstructor().newInstance();
+                this.payload = UDP.decodeMap.get(this.sourcePort).getConstructor().newInstance();
             } catch (Exception e) {
                 throw new RuntimeException("Failure instantiating class", e);
             }

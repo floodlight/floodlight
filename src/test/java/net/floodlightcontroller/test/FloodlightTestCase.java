@@ -19,10 +19,13 @@ package net.floodlightcontroller.test;
 
 import junit.framework.TestCase;
 import net.floodlightcontroller.core.FloodlightContext;
-import net.floodlightcontroller.core.IFloodlightProvider;
+import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.test.MockFloodlightProvider;
+import net.floodlightcontroller.devicemanager.IDevice;
+import net.floodlightcontroller.devicemanager.IDeviceService;
 import net.floodlightcontroller.packet.Ethernet;
 
+import org.junit.Test;
 import org.openflow.protocol.OFMessage;
 import org.openflow.protocol.OFPacketIn;
 import org.openflow.protocol.OFType;
@@ -34,8 +37,6 @@ import org.openflow.protocol.OFType;
  * @author David Erickson (daviderickson@cs.stanford.edu)
  */
 public class FloodlightTestCase extends TestCase {
-
-
     protected MockFloodlightProvider mockFloodlightProvider;
 
     public MockFloodlightProvider getMockFloodlightProvider() {
@@ -46,32 +47,48 @@ public class FloodlightTestCase extends TestCase {
         this.mockFloodlightProvider = mockFloodlightProvider;
     }
 
-    public FloodlightContext parseAndAnnotate(OFMessage m) {
+    public FloodlightContext parseAndAnnotate(OFMessage m,
+                                              IDevice srcDevice,
+                                              IDevice dstDevice) {
         FloodlightContext bc = new FloodlightContext();
-        return parseAndAnnotate(bc, m);
+        return parseAndAnnotate(bc, m, srcDevice, dstDevice);
     }
 
-    public FloodlightContext parseAndAnnotate(FloodlightContext bc, OFMessage m) {
+    public FloodlightContext parseAndAnnotate(OFMessage m) {
+        return parseAndAnnotate(m, null, null);
+    }
+
+    public FloodlightContext parseAndAnnotate(FloodlightContext bc,
+                                              OFMessage m,
+                                              IDevice srcDevice,
+                                              IDevice dstDevice) {
         if (OFType.PACKET_IN.equals(m.getType())) {
             OFPacketIn pi = (OFPacketIn)m;
             Ethernet eth = new Ethernet();
             eth.deserialize(pi.getPacketData(), 0, pi.getPacketData().length);
-            IFloodlightProvider.bcStore.put(bc, 
-                    IFloodlightProvider.CONTEXT_PI_PAYLOAD, 
+            IFloodlightProviderService.bcStore.put(bc, 
+                    IFloodlightProviderService.CONTEXT_PI_PAYLOAD, 
                     eth);
+        }
+        if (srcDevice != null) {
+            IDeviceService.fcStore.put(bc, 
+                    IDeviceService.CONTEXT_SRC_DEVICE, 
+                    srcDevice);
+        }
+        if (dstDevice != null) {
+            IDeviceService.fcStore.put(bc, 
+                    IDeviceService.CONTEXT_DST_DEVICE, 
+                    dstDevice);
         }
         return bc;
     }
     
     @Override
-    public void setUp() {
+    public void setUp() throws Exception {
         mockFloodlightProvider = new MockFloodlightProvider();
     }
- 
-    /**
-     * @return the applicationContext
-     */
 
+    @Test
     public void testSanity() {
         assertTrue(true);
     }

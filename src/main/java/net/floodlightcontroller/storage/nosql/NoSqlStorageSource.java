@@ -33,7 +33,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TimeZone;
-import java.util.concurrent.ExecutorService;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,7 +42,6 @@ import net.floodlightcontroller.storage.CompoundPredicate;
 import net.floodlightcontroller.storage.IPredicate;
 import net.floodlightcontroller.storage.IQuery;
 import net.floodlightcontroller.storage.IResultSet;
-import net.floodlightcontroller.storage.IStorageExceptionHandler;
 import net.floodlightcontroller.storage.OperatorPredicate;
 import net.floodlightcontroller.storage.RowOrdering;
 import net.floodlightcontroller.storage.StorageException;
@@ -525,13 +523,9 @@ public abstract class NoSqlStorageSource extends AbstractStorageSource {
         super();
     }
     
-    public NoSqlStorageSource(ExecutorService executorService,
-            IStorageExceptionHandler exceptionHandler) {
-        super(executorService, exceptionHandler);
-    }
-    
     @Override
     public void createTable(String tableName, Set<String> indexedColumns) {
+        super.createTable(tableName, indexedColumns);
         if (indexedColumns == null) return;
         for (String columnName : indexedColumns) {
             setColumnIndexMode(tableName, columnName,
@@ -544,6 +538,7 @@ public abstract class NoSqlStorageSource extends AbstractStorageSource {
             throw new NullPointerException();
         tablePrimaryKeyMap.put(tableName, primaryKeyName);
     }
+    
     protected String getTablePrimaryKeyName(String tableName) {
         String primaryKeyName = tablePrimaryKeyMap.get(tableName);
         if (primaryKeyName == null)
@@ -708,17 +703,11 @@ public abstract class NoSqlStorageSource extends AbstractStorageSource {
     }
 
     @Override
-    public IResultSet executeQuery(IQuery query) {
+    public IResultSet executeQueryImpl(IQuery query) {
         NoSqlQuery noSqlQuery = (NoSqlQuery) query;
         return executeParameterizedQuery(noSqlQuery.getTableName(),
                 noSqlQuery.getColumnNameList(), noSqlQuery.getPredicate(),
                 noSqlQuery.getRowOrdering(), noSqlQuery.getParameterMap());
-    }
-
-    @Override
-    public IResultSet executeQuery(String tableName, String[] columnNameList,
-            IPredicate predicate, RowOrdering rowOrdering) {
-        return executeParameterizedQuery(tableName, columnNameList, predicate, rowOrdering, null);
     }
 
     protected void sendNotification(String tableName, StorageSourceNotification.Action action,
@@ -747,7 +736,7 @@ public abstract class NoSqlStorageSource extends AbstractStorageSource {
     }
 
     @Override
-    public void insertRow(String tableName, Map<String, Object> values) {
+    public void insertRowImpl(String tableName, Map<String, Object> values) {
         ArrayList<Map<String,Object>> rowList = new ArrayList<Map<String,Object>>();
         rowList.add(values);
         insertRowsAndNotify(tableName, rowList);
@@ -764,7 +753,7 @@ public abstract class NoSqlStorageSource extends AbstractStorageSource {
     }
 
     @Override
-    public void updateRows(String tableName, IPredicate predicate, Map<String,Object> values) {
+    public void updateMatchingRowsImpl(String tableName, IPredicate predicate, Map<String,Object> values) {
         String primaryKeyName = getTablePrimaryKeyName(tableName);
         String[] columnNameList = {primaryKeyName};
         IResultSet resultSet = executeQuery(tableName, columnNameList, predicate, null);
@@ -777,7 +766,7 @@ public abstract class NoSqlStorageSource extends AbstractStorageSource {
     }
     
     @Override
-    public void updateRow(String tableName, Object rowKey, Map<String,Object> values) {
+    public void updateRowImpl(String tableName, Object rowKey, Map<String,Object> values) {
         Map<String,Object> valuesWithKey = new HashMap<String,Object>(values);
         String primaryKeyName = getTablePrimaryKeyName(tableName);
         valuesWithKey.put(primaryKeyName, rowKey);
@@ -787,7 +776,7 @@ public abstract class NoSqlStorageSource extends AbstractStorageSource {
     }
 
    @Override
-    public void updateRow(String tableName, Map<String,Object> values) {
+    public void updateRowImpl(String tableName, Map<String,Object> values) {
         List<Map<String,Object>> rowKeys = new ArrayList<Map<String,Object>>();
         rowKeys.add(values);
         updateRowsAndNotify(tableName, rowKeys);
@@ -799,30 +788,14 @@ public abstract class NoSqlStorageSource extends AbstractStorageSource {
    }
 
     @Override
-    public void deleteRow(String tableName, Object key) {
+    public void deleteRowImpl(String tableName, Object key) {
         HashSet<Object> keys = new HashSet<Object>();
         keys.add(key);
         deleteRowsAndNotify(tableName, keys);
     }
 
     @Override
-    public void deleteRows(String tableName, IPredicate predicate) {
-        IResultSet resultSet = null;
-        try {
-            resultSet = executeQuery(tableName, null, predicate, null);
-            while (resultSet.next()) {
-                resultSet.deleteRow();
-            }
-            resultSet.save();
-        }
-        finally {
-            if (resultSet != null)
-                resultSet.close();
-        }
-    }
-    
-    @Override
-    public IResultSet getRow(String tableName, Object rowKey) {
+    public IResultSet getRowImpl(String tableName, Object rowKey) {
         List<Map<String,Object>> rowList = new ArrayList<Map<String,Object>>();
         Map<String,Object> row = getRow(tableName, null, rowKey);
         if (row != null)
@@ -847,9 +820,4 @@ public abstract class NoSqlStorageSource extends AbstractStorageSource {
     protected abstract void insertRows(String tableName, List<Map<String,Object>> insertRowList);
     
     protected abstract void updateRows(String tableName, Set<Object> rowKeys, Map<String,Object> updateColumnMap);
-    
-    protected abstract void updateRows(String tableName, List<Map<String,Object>> updateRowList);
-    
-    protected abstract void deleteRows(String tableName, Set<Object> rowKeyList);
-
 }

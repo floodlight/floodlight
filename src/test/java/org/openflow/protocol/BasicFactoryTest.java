@@ -17,6 +17,8 @@
 
 package org.openflow.protocol;
 
+import java.util.List;
+
 import org.jboss.netty.buffer.ChannelBuffer;
 import org.jboss.netty.buffer.ChannelBuffers;
 import org.openflow.protocol.factory.BasicFactory;
@@ -39,8 +41,9 @@ public class BasicFactoryTest extends TestCase {
         bb2.writeBytes(bb, bb.readableBytes()-1);
         TestCase.assertNull(factory.parseMessage(bb2));
         bb2.writeByte(bb.readByte());
-        OFMessage message = factory.parseMessage(bb2);
+        List<OFMessage> message = factory.parseMessage(bb2);
         TestCase.assertNotNull(message);
-        TestCase.assertTrue(message.getType() == OFType.ECHO_REQUEST);
+        TestCase.assertEquals(message.size(), 1);
+        TestCase.assertTrue(message.get(0).getType() == OFType.ECHO_REQUEST);
     }
 }

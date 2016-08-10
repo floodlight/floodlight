@@ -39,6 +39,7 @@ class OFChannelState {
 
         /**
          * We've received the features reply
+         * Waiting for Config and Description reply
          */
         FEATURES_REPLY,
 
@@ -49,7 +50,15 @@ class OFChannelState {
 
     }
 
-    protected HandshakeState hsState = HandshakeState.START;
+    protected volatile HandshakeState hsState = HandshakeState.START;
     protected boolean hasGetConfigReply = false;
     protected boolean hasDescription = false;
+    
+    // The firstRoleReplyRecevied flag indicates if we have received the
+    // first role reply message on this connection (in response to the 
+    // role request sent after the handshake). If role support is disabled
+    // on the controller we also set this flag to true. 
+    // The flag is used to decide if the flow table should be wiped
+    // @see Controller.handleRoleReplyMessage()
+    protected boolean firstRoleReplyReceived = false;
 }

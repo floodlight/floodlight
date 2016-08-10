@@ -21,7 +21,10 @@ import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 
+
+import org.codehaus.jackson.map.annotate.JsonSerialize;
 import org.jboss.netty.buffer.ChannelBuffer;
+import org.openflow.protocol.serializers.OFMatchJSONSerializer;
 import org.openflow.util.HexString;
 import org.openflow.util.U16;
 import org.openflow.util.U8;
@@ -33,6 +36,7 @@ import org.openflow.util.U8;
  * @author Rob Sherwood (rob.sherwood@stanford.edu)
  * 
  */
+@JsonSerialize(using=OFMatchJSONSerializer.class)
 public class OFMatch implements Cloneable, Serializable {
     /**
      * 
@@ -82,7 +86,7 @@ public class OFMatch implements Cloneable, Serializable {
     final public static String STR_DL_SRC = "dl_src";
     final public static String STR_DL_TYPE = "dl_type";
     final public static String STR_DL_VLAN = "dl_vlan";
-    final public static String STR_DL_VLAN_PCP = "dl_vpcp";
+    final public static String STR_DL_VLAN_PCP = "dl_vlan_pcp";
     final public static String STR_NW_DST = "nw_dst";
     final public static String STR_NW_SRC = "nw_src";
     final public static String STR_NW_PROTO = "nw_proto";
@@ -111,8 +115,18 @@ public class OFMatch implements Cloneable, Serializable {
      */
     public OFMatch() {
         this.wildcards = OFPFW_ALL;
-        this.dataLayerDestination = new byte[6];
-        this.dataLayerSource = new byte[6];
+        this.dataLayerDestination = new byte[] {0x0, 0x0, 0x0, 0x0, 0x0, 0x0};
+        this.dataLayerSource = new byte[] {0x0, 0x0, 0x0, 0x0, 0x0, 0x0};
+        this.dataLayerVirtualLan = -1;
+        this.dataLayerVirtualLanPriorityCodePoint = 0;
+        this.dataLayerType = 0;
+        this.inputPort = 0;
+        this.networkProtocol = 0;
+        this.networkTypeOfService = 0;
+        this.networkSource = 0;
+        this.networkDestination = 0;
+        this.transportDestination = 0;
+        this.transportSource = 0;
     }
 
     /**
@@ -835,16 +849,13 @@ public class OFMatch implements Cloneable, Serializable {
             if (values[0].equals(STR_IN_PORT) || values[0].equals("input_port")) {
                 this.inputPort = U16.t(Integer.valueOf(values[1]));
                 this.wildcards &= ~OFPFW_IN_PORT;
-            } else if (values[0].equals(STR_DL_DST)
-                    || values[0].equals("eth_dst")) {
+            } else if (values[0].equals(STR_DL_DST) || values[0].equals("eth_dst")) {
                 this.dataLayerDestination = HexString.fromHexString(values[1]);
                 this.wildcards &= ~OFPFW_DL_DST;
-            } else if (values[0].equals(STR_DL_SRC)
-                    || values[0].equals("eth_src")) {
+            } else if (values[0].equals(STR_DL_SRC) || values[0].equals("eth_src")) {
                 this.dataLayerSource = HexString.fromHexString(values[1]);
                 this.wildcards &= ~OFPFW_DL_SRC;
-            } else if (values[0].equals(STR_DL_TYPE)
-                    || values[0].equals("eth_type")) {
+            } else if (values[0].equals(STR_DL_TYPE) || values[0].equals("eth_type")) {
                 if (values[1].startsWith("0x"))
                     this.dataLayerType = U16.t(Integer.valueOf(
                             values[1].replaceFirst("0x", ""), 16));
@@ -852,18 +863,21 @@ public class OFMatch implements Cloneable, Serializable {
                     this.dataLayerType = U16.t(Integer.valueOf(values[1]));
                 this.wildcards &= ~OFPFW_DL_TYPE;
             } else if (values[0].equals(STR_DL_VLAN)) {
-                this.dataLayerVirtualLan = U16.t(Integer.valueOf(values[1]));
+            	if (values[1].startsWith("0x"))
+            		this.dataLayerVirtualLan = U16.t(Integer.valueOf(
+            				values[1].replaceFirst("0x", ""),16));
+            	else
+            		this.dataLayerVirtualLan = U16.t(Integer.valueOf(values[1]));
                 this.wildcards &= ~OFPFW_DL_VLAN;
             } else if (values[0].equals(STR_DL_VLAN_PCP)) {
                 this.dataLayerVirtualLanPriorityCodePoint = U8.t(Short
                         .valueOf(values[1]));
                 this.wildcards &= ~OFPFW_DL_VLAN_PCP;
-            } else if (values[0].equals(STR_NW_DST)
-                    || values[0].equals("ip_dst"))
+            } else if (values[0].equals(STR_NW_DST) || values[0].equals("ip_dst")) {
                 setFromCIDR(values[1], STR_NW_DST);
-            else if (values[0].equals(STR_NW_SRC) || values[0].equals("ip_src"))
+            } else if (values[0].equals(STR_NW_SRC) || values[0].equals("ip_src")) {
                 setFromCIDR(values[1], STR_NW_SRC);
-            else if (values[0].equals(STR_NW_PROTO)) {
+            } else if (values[0].equals(STR_NW_PROTO)) {
                 this.networkProtocol = U8.t(Short.valueOf(values[1]));
                 this.wildcards &= ~OFPFW_NW_PROTO;
             } else if (values[0].equals(STR_NW_TOS)) {
@@ -875,9 +889,10 @@ public class OFMatch implements Cloneable, Serializable {
             } else if (values[0].equals(STR_TP_SRC)) {
                 this.transportSource = U16.t(Integer.valueOf(values[1]));
                 this.wildcards &= ~OFPFW_TP_SRC;
-            } else
+            } else {
                 throw new IllegalArgumentException("unknown token " + tokens[i]
                         + " parsing " + match);
+            }
         }
     }
 

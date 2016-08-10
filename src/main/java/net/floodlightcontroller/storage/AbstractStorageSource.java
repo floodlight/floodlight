@@ -18,6 +18,8 @@
 package net.floodlightcontroller.storage;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -27,10 +29,23 @@ import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+
+import net.floodlightcontroller.core.module.FloodlightModuleContext;
+import net.floodlightcontroller.core.module.FloodlightModuleException;
+import net.floodlightcontroller.core.module.IFloodlightModule;
+import net.floodlightcontroller.core.module.IFloodlightService;
+import net.floodlightcontroller.counter.ICounter;
+import net.floodlightcontroller.counter.CounterStore;
+import net.floodlightcontroller.counter.ICounterStoreService;
+import net.floodlightcontroller.counter.CounterValue.CounterType;
+import net.floodlightcontroller.restserver.IRestApiService;
+import net.floodlightcontroller.storage.web.StorageWebRoutable;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public abstract class AbstractStorageSource implements IStorageSource {
+public abstract class AbstractStorageSource 
+    implements IStorageSourceService, IFloodlightModule {
     protected static Logger logger = LoggerFactory.getLogger(AbstractStorageSource.class);
 
     // Shared instance of the executor to use to execute the storage tasks.
@@ -42,13 +57,22 @@ public abstract class AbstractStorageSource implements IStorageSource {
     // to a single worker thread. But for now, we'll keep it simple and just have
     // a single thread for all operations.
     protected static ExecutorService defaultExecutorService = Executors.newSingleThreadExecutor();
+
+    protected final static String STORAGE_QUERY_COUNTER_NAME = "StorageQuery";
+    protected final static String STORAGE_UPDATE_COUNTER_NAME = "StorageUpdate";
+    protected final static String STORAGE_DELETE_COUNTER_NAME = "StorageDelete";
     
+    protected Set<String> allTableNames = new CopyOnWriteArraySet<String>();
+    protected ICounterStoreService counterStore;
     protected ExecutorService executorService = defaultExecutorService;
     protected IStorageExceptionHandler exceptionHandler;
 
     private Map<String, Set<IStorageSourceListener>> listeners =
         new ConcurrentHashMap<String, Set<IStorageSourceListener>>();
 
+    // Our dependencies
+    protected IRestApiService restApi = null;
+    
     abstract class StorageCallable<V> implements Callable<V> {
         public V call() {
             try {
@@ -83,12 +107,6 @@ public abstract class AbstractStorageSource implements IStorageSource {
         this.executorService = defaultExecutorService;
     }
 
-    public AbstractStorageSource(ExecutorService executorService,
-            IStorageExceptionHandler exceptionHandler) {
-        setExecutorService(executorService);
-        this.exceptionHandler = exceptionHandler;
-    }
-
     public void setExecutorService(ExecutorService executorService) {
         this.executorService = (executorService != null) ?
                 executorService : defaultExecutorService;
@@ -103,14 +121,47 @@ public abstract class AbstractStorageSource implements IStorageSource {
     public abstract void setTablePrimaryKeyName(String tableName, String primaryKeyName);
 
     @Override
-    public abstract void createTable(String tableName, Set<String> indexedColumns);
+    public void createTable(String tableName, Set<String> indexedColumns) {
+        allTableNames.add(tableName);
+    }
 
+    @Override
+    public Set<String> getAllTableNames() {
+        return allTableNames;
+    }
+    
+    public void setCounterStore(CounterStore counterStore) {
+        this.counterStore = counterStore;
+    }
+    
+    protected void updateCounters(String baseName, String tableName) {
+        if (counterStore != null) {
+            String counterName;
+            if (tableName != null) {
+                updateCounters(baseName, null);
+                counterName = baseName + CounterStore.TitleDelimitor + tableName;
+            } else {
+                counterName = baseName;
+            }
+            ICounter counter = counterStore.getCounter(counterName);
+            if (counter == null) {
+                counter = counterStore.createCounter(counterName, CounterType.LONG);
+            }
+            counter.increment();
+        }
+    }
+    
     @Override
     public abstract IQuery createQuery(String tableName, String[] columnNames,
             IPredicate predicate, RowOrdering ordering);
 
     @Override
-    public abstract IResultSet executeQuery(IQuery query);
+    public IResultSet executeQuery(IQuery query) {
+        updateCounters(STORAGE_QUERY_COUNTER_NAME, query.getTableName());
+        return executeQueryImpl(query);
+    }
+    
+    protected abstract IResultSet executeQueryImpl(IQuery query);
 
     @Override
     public IResultSet executeQuery(String tableName, String[] columnNames,
@@ -184,12 +235,23 @@ public abstract class AbstractStorageSource implements IStorageSource {
     }
 
     @Override
-    public Future<?> updateRowsAsync(final String tableName,
+    public Future<?> updateRowsAsync(final String tableName, final List<Map<String,Object>> rows) {
+        Future<?> future = executorService.submit(    
+            new StorageRunnable() {
+                public void doStorageOperation() {
+                    updateRows(tableName, rows);
+                }
+            }, null);
+        return future;
+    }
+
+    @Override
+    public Future<?> updateMatchingRowsAsync(final String tableName,
             final IPredicate predicate, final Map<String,Object> values) {
         Future<?> future = executorService.submit(    
             new StorageRunnable() {
                 public void doStorageOperation() {
-                    updateRows(tableName, predicate, values);
+                    updateMatchingRows(tableName, predicate, values);
                 }
             }, null);
         return future;
@@ -231,11 +293,22 @@ public abstract class AbstractStorageSource implements IStorageSource {
     }
 
     @Override
-    public Future<?> deleteRowsAsync(final String tableName, final IPredicate predicate) {
+    public Future<?> deleteRowsAsync(final String tableName, final Set<Object> rowKeys) {
         Future<?> future = executorService.submit(
                 new StorageRunnable() {
                     public void doStorageOperation() {
-                        deleteRows(tableName, predicate);
+                        deleteRows(tableName, rowKeys);
+                    }
+                }, null);
+        return future;
+    }
+
+    @Override
+    public Future<?> deleteMatchingRowsAsync(final String tableName, final IPredicate predicate) {
+        Future<?> future = executorService.submit(
+                new StorageRunnable() {
+                    public void doStorageOperation() {
+                        deleteMatchingRows(tableName, predicate);
                     }
                 }, null);
         return future;
@@ -264,24 +337,89 @@ public abstract class AbstractStorageSource implements IStorageSource {
     }
 
     @Override
-    public abstract void insertRow(String tableName, Map<String, Object> values);
+    public void insertRow(String tableName, Map<String, Object> values) {
+        updateCounters(STORAGE_UPDATE_COUNTER_NAME, tableName);
+        insertRowImpl(tableName, values);
+    }
+
+    protected abstract void insertRowImpl(String tableName, Map<String, Object> values);
+
+    
+    @Override
+    public void updateRows(String tableName, List<Map<String,Object>> rows) {
+        updateCounters(STORAGE_UPDATE_COUNTER_NAME, tableName);
+        updateRowsImpl(tableName, rows);
+    }
+
+    protected abstract void updateRowsImpl(String tableName, List<Map<String,Object>> rows);
 
     @Override
-    public abstract void updateRows(String tableName, IPredicate predicate,
-            Map<String, Object> values);
+    public void updateMatchingRows(String tableName, IPredicate predicate,
+            Map<String, Object> values) {
+        updateCounters(STORAGE_UPDATE_COUNTER_NAME, tableName);
+        updateMatchingRowsImpl(tableName, predicate, values);
+    }
+    
+    protected abstract void updateMatchingRowsImpl(String tableName, IPredicate predicate,
+                                    Map<String, Object> values);
 
     @Override
-    public abstract void updateRow(String tableName, Object rowKey,
-            Map<String, Object> values);
+    public void updateRow(String tableName, Object rowKey,
+            Map<String, Object> values) {
+        updateCounters(STORAGE_UPDATE_COUNTER_NAME, tableName);
+        updateRowImpl(tableName, rowKey, values);
+    }
+    
+    protected abstract void updateRowImpl(String tableName, Object rowKey,
+                                   Map<String, Object> values);
 
     @Override
-    public abstract void updateRow(String tableName, Map<String, Object> values);
+    public void updateRow(String tableName, Map<String, Object> values) {
+        updateCounters(STORAGE_UPDATE_COUNTER_NAME, tableName);
+        updateRowImpl(tableName, values);
+    }
+    
+    protected abstract void updateRowImpl(String tableName, Map<String, Object> values);
 
     @Override
-    public abstract void deleteRow(String tableName, Object rowKey);
+    public void deleteRow(String tableName, Object rowKey) {
+        updateCounters(STORAGE_DELETE_COUNTER_NAME, tableName);
+        deleteRowImpl(tableName, rowKey);
+    }
+    
+    protected abstract void deleteRowImpl(String tableName, Object rowKey);
 
     @Override
-    public abstract IResultSet getRow(String tableName, Object rowKey);
+    public void deleteRows(String tableName, Set<Object> rowKeys) {
+        updateCounters(STORAGE_DELETE_COUNTER_NAME, tableName);
+        deleteRowsImpl(tableName, rowKeys);
+    }
+
+    protected abstract void deleteRowsImpl(String tableName, Set<Object> rowKeys);
+
+    @Override
+    public void deleteMatchingRows(String tableName, IPredicate predicate) {
+        IResultSet resultSet = null;
+        try {
+            resultSet = executeQuery(tableName, null, predicate, null);
+            while (resultSet.next()) {
+                resultSet.deleteRow();
+            }
+            resultSet.save();
+        }
+        finally {
+            if (resultSet != null)
+                resultSet.close();
+        }
+    }
+    
+    @Override
+    public IResultSet getRow(String tableName, Object rowKey) {
+        updateCounters(STORAGE_QUERY_COUNTER_NAME, tableName);
+        return getRowImpl(tableName, rowKey);
+    }
+
+    protected abstract IResultSet getRowImpl(String tableName, Object rowKey);
 
     @Override
     public synchronized void addListener(String tableName, IStorageSourceListener listener) {
@@ -330,4 +468,47 @@ public abstract class AbstractStorageSource implements IStorageSource {
             notifyListeners(notification);
     }
     
+    // IFloodlightModule
+
+    @Override
+    public Collection<Class<? extends IFloodlightService>> getModuleServices() {
+        Collection<Class<? extends IFloodlightService>> l = 
+                new ArrayList<Class<? extends IFloodlightService>>();
+        l.add(IStorageSourceService.class);
+        return l;
+    }
+    
+    @Override
+    public Map<Class<? extends IFloodlightService>,
+               IFloodlightService> getServiceImpls() {
+        Map<Class<? extends IFloodlightService>,
+            IFloodlightService> m = 
+                new HashMap<Class<? extends IFloodlightService>,
+                            IFloodlightService>();
+        m.put(IStorageSourceService.class, this);
+        return m;
+    }
+    
+    @Override
+    public Collection<Class<? extends IFloodlightService>> getModuleDependencies() {
+        Collection<Class<? extends IFloodlightService>> l = 
+                new ArrayList<Class<? extends IFloodlightService>>();
+        l.add(IRestApiService.class);
+        l.add(ICounterStoreService.class);
+        return l;
+    }
+
+    @Override
+    public void init(FloodlightModuleContext context)
+            throws FloodlightModuleException {
+        restApi =
+           context.getServiceImpl(IRestApiService.class);
+        counterStore =
+            context.getServiceImpl(ICounterStoreService.class);
+    }
+
+    @Override
+    public void startUp(FloodlightModuleContext context) {
+        restApi.addRestletRoutable(new StorageWebRoutable());
+    }
 }

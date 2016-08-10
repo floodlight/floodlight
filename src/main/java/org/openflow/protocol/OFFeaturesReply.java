@@ -20,7 +20,10 @@ package org.openflow.protocol;
 import java.util.ArrayList;
 import java.util.List;
 
+
+import org.codehaus.jackson.map.annotate.JsonSerialize;
 import org.jboss.netty.buffer.ChannelBuffer;
+import org.openflow.protocol.serializers.OFFeaturesReplyJSONSerializer;
 import org.openflow.util.U16;
 
 
@@ -29,6 +32,7 @@ import org.openflow.util.U16;
  * @author David Erickson (daviderickson@cs.stanford.edu)
  *
  */
+@JsonSerialize(using=OFFeaturesReplyJSONSerializer.class)
 public class OFFeaturesReply extends OFMessage {
     public static int MINIMUM_LENGTH = 32;
 

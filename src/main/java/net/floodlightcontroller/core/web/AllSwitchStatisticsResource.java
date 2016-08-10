@@ -23,7 +23,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import net.floodlightcontroller.core.IFloodlightProvider;
+import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.types.MacVlanPair;
 
 import org.openflow.protocol.OFFeaturesReply;
@@ -74,13 +74,13 @@ public class AllSwitchStatisticsResource extends SwitchResourceBase {
             rType = REQUESTTYPE.OFSTATS;
         } else if (statType.equals("features")) {
             rType = REQUESTTYPE.OFFEATURES;
-        } else if (statType.equals("host")) {
-            rType = REQUESTTYPE.SWITCHTABLE;
         } else {
             return model;
         }
         
-        IFloodlightProvider floodlightProvider = (IFloodlightProvider)getApplication();        
+        IFloodlightProviderService floodlightProvider = 
+                (IFloodlightProviderService)getContext().getAttributes().
+                    get(IFloodlightProviderService.class.getCanonicalName());        
         Long[] switchDpids = floodlightProvider.getSwitches().keySet().toArray(new Long[0]);
         List<GetConcurrentStatsThread> activeThreads = new ArrayList<GetConcurrentStatsThread>(switchDpids.length);
         List<GetConcurrentStatsThread> pendingRemovalThreads = new ArrayList<GetConcurrentStatsThread>();
@@ -102,8 +102,6 @@ public class AllSwitchStatisticsResource extends SwitchResourceBase {
                         model.put(HexString.toHexString(curThread.getSwitchId()), curThread.getStatisticsReply());
                     } else if (rType == REQUESTTYPE.OFFEATURES) {
                         model.put(HexString.toHexString(curThread.getSwitchId()), curThread.getFeaturesReply());
-                    } else if (rType == REQUESTTYPE.SWITCHTABLE) {
-                        model.put(HexString.toHexString(curThread.getSwitchId()), getSwitchTableJson(curThread.getSwitchId()));
                     }
                     pendingRemovalThreads.add(curThread);
                 }
@@ -125,8 +123,7 @@ public class AllSwitchStatisticsResource extends SwitchResourceBase {
             try {
                 Thread.sleep(1000);
             } catch (InterruptedException e) {
-                System.out.println("CoreWebManageable thread failed to sleep!"); 
-                e.printStackTrace();
+                log.error("Failed to sleep", e);
             }
         }
         
@@ -167,14 +164,14 @@ public class AllSwitchStatisticsResource extends SwitchResourceBase {
         }
         
         public void run() {
-            IFloodlightProvider floodlightProvider = (IFloodlightProvider)getApplication();        
+            IFloodlightProviderService floodlightProvider = 
+                    (IFloodlightProviderService)getContext().getAttributes().
+                        get(IFloodlightProviderService.class.getCanonicalName());      
 
             if ((requestType == REQUESTTYPE.OFSTATS) && (statType != null)) {
                 switchReply = getSwitchStatistics(switchId, statType);
             } else if (requestType == REQUESTTYPE.OFFEATURES) {
                 featuresReply = floodlightProvider.getSwitches().get(switchId).getFeaturesReply();
-            } else if (requestType == REQUESTTYPE.SWITCHTABLE) {
-                switchTable = floodlightProvider.getSwitches().get(switchId).getMacVlanToPortMap();
             }
         }
     }

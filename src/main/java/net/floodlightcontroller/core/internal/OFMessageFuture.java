@@ -26,10 +26,8 @@ import java.util.concurrent.TimeoutException;
 import org.openflow.protocol.OFMessage;
 import org.openflow.protocol.OFType;
 
-import net.floodlightcontroller.core.IFloodlightProvider;
 import net.floodlightcontroller.core.IOFSwitch;
-import net.floodlightcontroller.core.IOFSwitchFilter;
-import net.floodlightcontroller.core.IOFSwitchListener;
+import net.floodlightcontroller.threadpool.IThreadPoolService;
 
 /**
  * A Future object used to retrieve asynchronous OFMessage replies. Unregisters
@@ -39,10 +37,9 @@ import net.floodlightcontroller.core.IOFSwitchListener;
  *
  * @author David Erickson (daviderickson@cs.stanford.edu)
  */
-public abstract class OFMessageFuture<T,V> implements Future<V>,
-        IOFSwitchFilter, IOFSwitchListener {
+public abstract class OFMessageFuture<V> implements Future<V> {
 
-    protected IFloodlightProvider floodlightProvider;
+    protected IThreadPoolService threadPool;
     protected volatile boolean canceled;
     protected CountDownLatch latch;
     protected OFType responseType;
@@ -50,22 +47,25 @@ public abstract class OFMessageFuture<T,V> implements Future<V>,
     protected IOFSwitch sw;
     protected Runnable timeoutTimer;
     protected int transactionId;
+    protected static final long DEFAULT_TIMEOUT = 60;
+    protected static final TimeUnit DEFAULT_TIMEOUT_UNIT = TimeUnit.SECONDS;
 
-    public OFMessageFuture(IFloodlightProvider floodlightProvider, IOFSwitch sw,
-            OFType responseType, int transactionId) {
-        this(floodlightProvider, sw, responseType, transactionId, 60, TimeUnit.SECONDS);
+    public OFMessageFuture(IThreadPoolService tp,
+            IOFSwitch sw, OFType responseType, int transactionId) {
+        this(tp, sw, responseType, transactionId, 
+                 DEFAULT_TIMEOUT, DEFAULT_TIMEOUT_UNIT);
     }
 
-    public OFMessageFuture(IFloodlightProvider floodlightProvider, IOFSwitch sw,
-            OFType responseType, int transactionId, long timeout, TimeUnit unit) {
-        this.floodlightProvider = floodlightProvider;
+    public OFMessageFuture(IThreadPoolService tp,
+            IOFSwitch sw, OFType responseType, int transactionId, long timeout, TimeUnit unit) {
+        this.threadPool = tp;
         this.canceled = false;
         this.latch = new CountDownLatch(1);
         this.responseType = responseType;
         this.sw = sw;
         this.transactionId = transactionId;
 
-        final OFMessageFuture<T, V> future = this;
+        final OFMessageFuture<V> future = this;
         timeoutTimer = new Runnable() {
             @Override
             public void run() {
@@ -73,36 +73,14 @@ public abstract class OFMessageFuture<T,V> implements Future<V>,
                     future.cancel(true);
             }
         };
-        floodlightProvider.getScheduledExecutor().schedule(timeoutTimer, timeout, unit);
+        threadPool.getScheduledExecutor().schedule(timeoutTimer, timeout, unit);
     }
 
     protected void unRegister() {
         this.timeoutTimer = null;
-        this.floodlightProvider.removeOFSwitchListener(this);
     }
 
-    @Override
-    public void addedSwitch(IOFSwitch sw) {
-        // Noop
-    }
-
-    @Override
-    public void removedSwitch(IOFSwitch sw) {
-        if (this.sw.equals(sw)) {
-            unRegister();
-            this.latch.countDown();
-        }
-    }
-
-    @Override
-    public boolean isInterested(IOFSwitch sw) {
-        if (this.sw.equals(sw)) {
-            return true;
-        } else {
-            return false;
-        }
-    }
-
+  
     public void deliverFuture(IOFSwitch sw, OFMessage msg) {
         if (transactionId == msg.getXid()) {
             handleReply(sw, msg);
@@ -131,11 +109,6 @@ public abstract class OFMessageFuture<T,V> implements Future<V>,
      * @return when this Future has completed its work
      */
     protected abstract boolean isFinished();
-
-    @Override
-    public String getName() {
-        return this.getClass().getSimpleName();
-    }
 
     /* (non-Javadoc)
      * @see java.util.concurrent.Future#cancel(boolean)

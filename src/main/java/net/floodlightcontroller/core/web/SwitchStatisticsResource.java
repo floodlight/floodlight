@@ -21,7 +21,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import net.floodlightcontroller.core.IFloodlightProvider;
+import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
 
 import org.openflow.protocol.OFFeaturesReply;
@@ -42,7 +42,9 @@ public class SwitchStatisticsResource extends SwitchResourceBase {
 
     @Get("json")
     public Map<String, Object> retrieve() {
-        IFloodlightProvider floodlightProvider = (IFloodlightProvider)getApplication();
+        IFloodlightProviderService floodlightProvider = 
+                (IFloodlightProviderService)getContext().getAttributes().
+                    get(IFloodlightProviderService.class.getCanonicalName());
         
         HashMap<String,Object> result = new HashMap<String,Object>();
         List<OFStatistics> values = null;
@@ -69,10 +71,8 @@ public class SwitchStatisticsResource extends SwitchResourceBase {
                 result.put(sw.getStringId(), fr);
             }
             return result;
-        } else if (statType.equals("host")) {
-            result.put(switchId, getSwitchTableJson(HexString.toLong(switchId)));
-            return result;
         }
+        
         result.put(switchId, values);
         return result;
     }

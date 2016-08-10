@@ -19,29 +19,40 @@
    limitations under the License.
 -->
 
+<!--
+    The build uses pregenerated Thrift code by default to reduce build
+    dependencies. To generate it locally run the gen-thrift target.
+    If you change the Thrift files be sure to also commit the updated
+    generated code.
+-->
 
 <project default="dist" name="Floodlight">
-
     <property name="target" location="target"/>
     <property name="build" location="${target}/bin"/>
     <property name="build-test" location="${target}/bin-test"/>
+    <property name="build-coverage" location="${target}/bin-coverage"/>
     <property name="test-output" location="${target}/test"/>
+    <property name="coverage-output" location="${target}/coverage"/>
     <property name="source" location="src/main/java"/>
+    <property name="resources" location="src/main/resources/"/>
     <property name="source-test" location="src/test/java"/>
+    <property name="python-src" location="src/main/python"/>
     <property name="docs" location="${target}/docs"/>
-    <property name="main-class" value="net.floodlightcontroller.core.internal.Controller"/>
-    <property name="packetstreamer-gen" location="${target}/gen-java" />
-    <property name="packetstreamer-gen-build" location="${target}/gen-java-bin"/>
-    <property name="packetstreamer-thrift-jar" location="${target}/lib/packetstreamer-thrift.jar"/>
+    <property name="main-class" value="net.floodlightcontroller.core.Main"/>
     <property name="floodlight-jar" location="${target}/floodlight.jar"/>
     <property name="floodlight-test-jar" location="${target}/floodlight-test.jar"/>
+    <property name="thrift.dir" value="${basedir}/src/main/thrift"/>
+    <property name="thrift.out.dir" value="lib/gen-java"/>
+    <property name="thrift.package" value="net/floodlightcontroller/packetstreamer/thrift"/>
+    <property name="ant.build.javac.source" value="1.6"/>
+    <property name="ant.build.javac.target" value="1.6"/>
+    <property name="lib" location="lib"/>
 
     <patternset id="lib">
         <include name="logback-classic-1.0.0.jar"/>
         <include name="logback-core-1.0.0.jar"/>
         <include name="jackson-core-asl-1.8.6.jar"/>
         <include name="jackson-mapper-asl-1.8.6.jar"/>
-        <include name="org.easymock_2.5.2.jar"/>
         <include name="slf4j-api-1.6.4.jar"/>
         <include name="org.restlet-2.1-RC1.jar"/>
         <include name="org.restlet.ext.jackson-2.1-RC1.jar"/>
@@ -49,55 +60,65 @@
         <include name="org.restlet.ext.slf4j-2.1-RC1.jar"/>
         <include name="simple-4.1.21.jar"/>
         <include name="netty-3.2.6.Final.jar"/>
-    </patternset>
-    <patternset id="genlib">
+        <include name="args4j-2.0.16.jar"/>
+        <include name="concurrentlinkedhashmap-lru-1.2.jar"/>
+        <include name="jython-2.5.2.jar"/>
         <include name="libthrift-0.7.0.jar"/>
-        <include name="packetstreamer-thrift.jar"/>
     </patternset>
 
     <path id="classpath">
-        <fileset dir="lib">
+        <fileset dir="${lib}">
             <patternset refid="lib"/>
         </fileset>
-        <fileset dir="${target}/lib">
-            <patternset refid="genlib"/>
-        </fileset>
+    </path>
+
+    <patternset id="lib-cobertura">
+        <include name="cobertura-1.9.4.1.jar"/>
+        <include name="asm-3.0.jar"/>
+        <include name="asm-tree-3.0.jar"/>
+        <include name="oro/jakarta-oro-2.0.8.jar"/>
+        <include name="log4j-1.2.9.jar"/>
+    </patternset>
+    <path id="classpath-cobertura">
+        <fileset dir="${lib}">
+            <patternset refid="lib-cobertura"/>
+	</fileset>
     </path>
 
     <patternset id="lib-test">
         <include name="junit-4.8.2.jar"/>
-        <include name="org.easymock_2.5.2.jar"/>
+        <include name="org.easymock-3.1.jar"/>
+		<include name="objenesis-1.2.jar"/>  <!-- required by easymock to mock classes -->
+		<include name="cglib-nodep-2.2.2.jar"/>    <!-- required by easymock to mock classes -->
     </patternset>
     <path id="classpath-test">
-        <fileset dir="lib">
+        <fileset dir="${lib}">
             <patternset refid="lib-test"/>
+            <patternset refid="lib-cobertura"/>
             <patternset refid="lib"/>
-        </fileset>
-        <fileset dir="${target}/lib">
-            <patternset refid="genlib"/>
         </fileset>
     </path>
 
     <target name="init">
-        <exec executable="${basedir}/setup.sh" failonerror="true"/>
         <mkdir dir="${build}"/>
         <mkdir dir="${build-test}"/>
         <mkdir dir="${target}/lib"/>
-        <mkdir dir="${packetstreamer-gen-build}"/>
+        <mkdir dir="${thrift.out.dir}"/>
         <mkdir dir="${test-output}"/>
     </target>
 
-    <target name="compile" depends="init,packetstreamer-thrift">
+    <target name="compile" depends="init">
         <javac includeAntRuntime="false" 
 	       classpathref="classpath" 
 	       debug="true" 
-	       srcdir="${source}:${packetstreamer-gen}"
+	       srcdir="${source}:${thrift.out.dir}"
 	       destdir="${build}">
-	</javac>
+        </javac>
     </target>
 
     <target name="compile-tests" depends="compile-test"/>
     <target name="compile-test" depends="compile">
+    	<fileset dir="${resources}"/>
         <javac includeAntRuntime="false" debug="true" 
 	       srcdir="${source-test}"
 	       classpath="${build}"
@@ -105,16 +126,19 @@
 	       destdir="${build-test}"/>
     </target>
 
-    <target name="compile-thrift" depends="init">
-        <javac srcdir="${packetstreamer-gen}" 
-	       includeantruntime="false" 
-	       destdir="${packetstreamer-gen-build}"
-	       debug="true" debuglevel="lines,vars,source"
-	       classpathref="classpath" />
-    </target>
-    <target name="packetstreamer-thrift" depends="compile-thrift">
-        <jar jarfile="${packetstreamer-thrift-jar}"
-	     basedir="${packetstreamer-gen-build}"/>
+    <!-- Thrift build based on http://www.flester.com/blog/2009/04/26/using-thrift-from-ant -->
+    <fileset id="thrift.files" dir="${thrift.dir}">
+        <include name="**/*.thrift"/>
+    </fileset>
+
+    <target name="gen-thrift" depends="init">
+        <pathconvert property="thrift.file.list" refid="thrift.files"
+            pathsep=" " dirsep="/">
+        </pathconvert>
+        <echo message="Running thrift generator on ${thrift.file.list}"/>
+        <exec executable="thrift" dir="${basedir}" failonerror="true">
+            <arg line="--strict -v --gen java -o ${thrift.out.dir}/.. ${thrift.file.list}"/>
+        </exec>
     </target>
 
     <target name="clean">
@@ -131,8 +155,13 @@
 
     <target name="tests" depends="test"/>
     <target name="test" depends="compile-test">
-        <junit failureproperty="junit.failure" printsummary="on">
+        <junit fork="true" forkmode="once"
+	       failureproperty="junit.failure"
+	       printsummary="on">
+  	    <sysproperty key="net.sourceforge.cobertura.datafile"
+			 file="${target}/cobertura.ser" />
             <classpath>
+                <pathelement location="${build-coverage}"/>
                 <pathelement location="${build}"/>
                 <pathelement location="${build-test}"/>
                 <path refid="classpath-test"/>
@@ -142,24 +171,52 @@
                 <fileset dir="${source-test}">
                     <exclude name="**/storage/tests/StorageTest.java"/>
                     <exclude name="**/test/Mock*"/>
+                    <exclude name="**/core/test/**"/>
                 </fileset>
             </batchtest>
         </junit>
         <fail if="junit.failure" message="Unit test(s) failed.  See reports!"/>
     </target>
 
-    <target name="dist" depends="compile,compile-tests">
+    <taskdef classpathref="classpath-cobertura" resource="tasks.properties"/>
+    <target name="clean-instrument">
+        <delete file="${target}/cobertura.ser"/>
+        <delete dir="${build-coverage}"/>
+    </target>
+    <target name="instrument" depends="compile,compile-test,clean-instrument">
+      <cobertura-instrument datafile="${target}/cobertura.ser"
+			    todir="${build-coverage}"
+			    classpathref="classpath-cobertura">
+	<fileset dir="${build}">
+	  <include name="**/*.class"/>
+	</fileset>
+      </cobertura-instrument>
+    </target>
+    <target name="coverage-report">
+        <cobertura-report format="html"
+			  datafile="${target}/cobertura.ser"
+			  destdir="${coverage-output}"
+			  srcdir="${source}"/>
+        <cobertura-report format="xml"
+			  datafile="${target}/cobertura.ser"
+			  destdir="${coverage-output}"
+			  srcdir="${source}"/>
+    </target>
+    <target name="coverage" depends="instrument,test,coverage-report"/>
+
+    <target name="dist" depends="compile,compile-test">
         <jar destfile="${floodlight-jar}" filesetmanifest="mergewithoutmain">
             <manifest>
                 <attribute name="Main-Class" value="${main-class}"/>
                 <attribute name="Class-Path" value="."/>
             </manifest>
             <fileset dir="${build}"/>
-            <zipgroupfileset dir="lib">
+        	<fileset dir="${resources}"/>
+            <fileset dir="${python-src}">
+                <include name="**/*.py"/>
+            </fileset>
+            <zipgroupfileset dir="${lib}">
                 <patternset refid="lib"/>
-            </zipgroupfileset>
-            <zipgroupfileset dir="${target}/lib">
-                <patternset refid="genlib"/>
             </zipgroupfileset>
         </jar>
         <jar destfile="${floodlight-test-jar}" filesetmanifest="mergewithoutmain">
@@ -167,11 +224,10 @@
                 <attribute name="Class-Path" value="."/>
             </manifest>
             <fileset dir="${build-test}"/>
-            <zipgroupfileset dir="lib">
+        	<fileset dir="${resources}"/>
+            <zipgroupfileset dir="${lib}">
                 <patternset refid="lib-test"/>
-            </zipgroupfileset>
-            <zipgroupfileset dir="${target}/lib">
-                <patternset refid="genlib"/>
+                <patternset refid="lib-cobertura"/>
             </zipgroupfileset>
         </jar>
     </target>
@@ -194,20 +250,17 @@
             version="true"/>
     </target>
 
-    <target name="eclipse" depends="init,packetstreamer-thrift">
-        <pathconvert property="lib">
+    <target name="eclipse" depends="init">
+        <pathconvert property="eclipse-lib">
             <map from="${basedir}/" to=""/>
-            <fileset dir="lib">
+            <fileset dir="${lib}">
                 <patternset refid="lib"/>
                 <patternset refid="lib-test"/>
-            </fileset>
-            <fileset dir="${target}/lib">
-                <patternset refid="genlib"/>
             </fileset>
         </pathconvert>
         <exec executable="${basedir}/setup-eclipse.sh">
             <arg value="${main-class}"/>
-            <arg value="${lib}"/>
+            <arg value="${eclipse-lib}"/>
         </exec>
     </target>
 

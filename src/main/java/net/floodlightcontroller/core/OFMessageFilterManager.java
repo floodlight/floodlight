@@ -17,9 +17,8 @@
 
 package net.floodlightcontroller.core;
 
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
-import java.util.Date;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
@@ -49,21 +48,16 @@ import org.apache.thrift.transport.TTransportException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TProtocol;
 
-import net.floodlightcontroller.packet.ARP;
-import net.floodlightcontroller.packet.BPDU;
-import net.floodlightcontroller.packet.DHCP;
-import net.floodlightcontroller.packet.Data;
+import net.floodlightcontroller.core.module.FloodlightModuleContext;
+import net.floodlightcontroller.core.module.FloodlightModuleException;
+import net.floodlightcontroller.core.module.IFloodlightModule;
+import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.packet.Ethernet;
-import net.floodlightcontroller.packet.ICMP;
-import net.floodlightcontroller.packet.IPacket;
-import net.floodlightcontroller.packet.IPv4;
-import net.floodlightcontroller.packet.LLC;
-import net.floodlightcontroller.packet.LLDP;
-import net.floodlightcontroller.packet.TCP;
-import net.floodlightcontroller.packet.UDP;
 import net.floodlightcontroller.packetstreamer.thrift.*;
+import net.floodlightcontroller.threadpool.IThreadPoolService;
 
-public class OFMessageFilterManager implements IOFMessageListener {
+public class OFMessageFilterManager 
+        implements IOFMessageListener, IFloodlightModule, IOFMessageFilterManagerService {
 
     /**
      * @author Srini
@@ -76,7 +70,8 @@ public class OFMessageFilterManager implements IOFMessageListener {
     protected static TTransport transport = null;
     protected static PacketStreamer.Client packetClient = null;
 
-    protected IFloodlightProvider floodlightProvider = null;
+    protected IFloodlightProviderService floodlightProvider = null;
+    protected IThreadPoolService threadPool = null;
     // filter List is a key value pair.  Key is the session id, value is the filter rules.
     protected ConcurrentHashMap<String, ConcurrentHashMap<String,String>> filterMap = null;
     protected ConcurrentHashMap<String, Long> filterTimeoutMap = null;
@@ -100,13 +95,6 @@ public class OFMessageFilterManager implements IOFMessageListener {
          * FILTER_MATCH:       Filter is defined and the packet matches the filter
          */
         FILTER_NOT_DEFINED, FILTER_NO_MATCH, FILTER_MATCH
-    }
-
-    public void init (IFloodlightProvider bp) {
-        floodlightProvider = bp;
-        filterMap = new ConcurrentHashMap<String, ConcurrentHashMap<String,String>>();
-        filterTimeoutMap = new ConcurrentHashMap<String, Long>();
-        serverPort = Integer.parseInt(System.getProperty("net.floodlightcontroller.packetstreamer.port", "9090"));
     }
 
     protected String addFilter(ConcurrentHashMap<String,String> f, long delta) {
@@ -211,8 +199,8 @@ public class OFMessageFilterManager implements IOFMessageListener {
         Ethernet eth = null;
 
         if (m.getType() == OFType.PACKET_IN) {
-            eth = IFloodlightProvider.bcStore.get(cntx, 
-                    IFloodlightProvider.CONTEXT_PI_PAYLOAD);
+            eth = IFloodlightProviderService.bcStore.get(cntx, 
+                    IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
         } else if (m.getType() == OFType.PACKET_OUT) {
             eth = new Ethernet();
             OFPacketOut p = (OFPacketOut) m;
@@ -265,30 +253,7 @@ public class OFMessageFilterManager implements IOFMessageListener {
         else 
             return matchedFilters;
     }
-
-
-    protected void startListening() {
-        floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
-        floodlightProvider.addOFMessageListener(OFType.PACKET_OUT, this);
-        floodlightProvider.addOFMessageListener(OFType.FLOW_MOD, this);
-    }
-
-    protected void stopListening() {
-        floodlightProvider.removeOFMessageListener(OFType.PACKET_IN, this);
-        floodlightProvider.removeOFMessageListener(OFType.PACKET_OUT, this);
-        floodlightProvider.removeOFMessageListener(OFType.FLOW_MOD, this);
-    }
-
-    public void startUp() {
-        startListening();
-        //connectToPSServer();
-    }
-
-    public void shutDown() {
-        stopListening();
-        disconnectFromPSServer();
-    }
-
+    
     public boolean connectToPSServer() {
         int numRetries = 0;
         if (transport != null && transport.isOpen()) {
@@ -333,11 +298,6 @@ public class OFMessageFilterManager implements IOFMessageListener {
     public String getName() {
         return "messageFilterManager";
     }
-    
-    @Override
-    public int getId() {
-        return FlListenerID.OFMESSAGEFILTERMANAGER;
-    }
 
     @Override
     public boolean isCallbackOrderingPrereq(OFType type, String name) {
@@ -379,7 +339,7 @@ public class OFMessageFilterManager implements IOFMessageListener {
     public class TimeoutFilterTask extends TimerTask {
 
         OFMessageFilterManager filterManager;
-        ScheduledExecutorService ses = floodlightProvider.getScheduledExecutor();
+        ScheduledExecutorService ses = threadPool.getScheduledExecutor();
 
         public TimeoutFilterTask(OFMessageFilterManager manager) {
             filterManager = manager;
@@ -425,21 +385,21 @@ public class OFMessageFilterManager implements IOFMessageListener {
                 packet.setSwPortTuple(new SwitchPortTuple(sw.getId(), pktIn.getInPort()));
                 bb = ChannelBuffers.buffer(pktIn.getLength());
                 pktIn.writeTo(bb);
-                packet.setData(getData(sw, msg, cntx));
+                packet.setData(OFMessage.getData(sw, msg, cntx));
                 break;
             case PACKET_OUT:
                 OFPacketOut pktOut = (OFPacketOut)msg;
                 packet.setSwPortTuple(new SwitchPortTuple(sw.getId(), pktOut.getInPort()));
                 bb = ChannelBuffers.buffer(pktOut.getLength());
                 pktOut.writeTo(bb);
-                packet.setData(getData(sw, msg, cntx));
+                packet.setData(OFMessage.getData(sw, msg, cntx));
                 break;
             case FLOW_MOD:
                 OFFlowMod offlowMod = (OFFlowMod)msg;
                 packet.setSwPortTuple(new SwitchPortTuple(sw.getId(), offlowMod.getOutPort()));
                 bb = ChannelBuffers.buffer(offlowMod.getLength());
                 offlowMod.writeTo(bb);
-                packet.setData(getData(sw, msg, cntx));
+                packet.setData(OFMessage.getData(sw, msg, cntx));
                 break;
             default:
                 packet.setSwPortTuple(new SwitchPortTuple(sw.getId(), (short)0));
@@ -463,202 +423,66 @@ public class OFMessageFilterManager implements IOFMessageListener {
                 packetClient.pushMessageAsync(sendMsg);
             }
         } catch (TTransportException e) {
-            log.info("Caught TTransportException: {}", e);
-            System.out.println(e);
+            log.error("Caught TTransportException: {}", e);
             disconnectFromPSServer();
             connectToPSServer();
         } catch (Exception e) {
-            log.info("Caught exception: {}", e);
-            System.out.println(e);
+            log.error("Caught exception: {}", e);
             disconnectFromPSServer();
             connectToPSServer();
         }
     }
 
-    private byte[] getData(IOFSwitch sw, OFMessage msg, FloodlightContext cntx) {
-
-        Ethernet eth;
-        StringBuffer sb =  new StringBuffer("");
-
-        DateFormat dateFormat = new SimpleDateFormat("HH:mm:ss.SSS");
-        Date date = new Date();
-
-        sb.append(dateFormat.format(date));
-        sb.append("      ");
-
-        switch (msg.getType()) {
-            case PACKET_IN:
-                OFPacketIn pktIn = (OFPacketIn) msg;
-                sb.append("packet_in          [ ");
-                sb.append(HexString.toHexString(sw.getId()));
-                sb.append(" -> Controller");
-                sb.append(" ]");
-
-                sb.append("\ntotal length: ");
-                sb.append(pktIn.getTotalLength());
-                sb.append("\nin_port: ");
-                sb.append(pktIn.getInPort());
-                sb.append("\ndata_length: ");
-                sb.append(pktIn.getTotalLength() - OFPacketIn.MINIMUM_LENGTH);
-                sb.append("\nbuffer: ");
-                sb.append(pktIn.getBufferId());
-
-                // packet type  icmp, arp, etc.
-                eth = IFloodlightProvider.bcStore.get(cntx,
-                        IFloodlightProvider.CONTEXT_PI_PAYLOAD);
-
-                sb.append(getStringFromEthernetPacket(eth));
-
-                break;
-
-            case PACKET_OUT:
-                OFPacketOut pktOut = (OFPacketOut) msg;
-                sb.append("packet_out         [ ");
-                sb.append("Controller -> ");
-                sb.append(HexString.toHexString(sw.getId()));
-                sb.append(" ]");
-
-                sb.append("\nin_port: ");
-                sb.append(pktOut.getInPort());
-                sb.append("\nactions_len: ");
-                sb.append(pktOut.getActionsLength());
-                sb.append("\nactions: ");
-                sb.append(pktOut.getActions().toString());
-                break;
-
-            case FLOW_MOD:
-                OFFlowMod fm = (OFFlowMod) msg;
-                sb.append("flow_mod           [ ");
-                sb.append("Controller -> ");
-                sb.append(HexString.toHexString(sw.getId()));
-                sb.append(" ]");
-
-                eth = new Ethernet();
-
-                eth = IFloodlightProvider.bcStore.get(cntx,
-                        IFloodlightProvider.CONTEXT_PI_PAYLOAD);
-                sb.append(getStringFromEthernetPacket(eth));
-
-                sb.append("ADD: cookie: ");
-                sb.append(fm.getCookie());
-                sb.append(" idle: ");
-                sb.append(fm.getIdleTimeout());
-                sb.append(" hard: ");
-                sb.append(fm.getHardTimeout());
-                sb.append(" pri: ");
-                sb.append(fm.getPriority());
-                sb.append(" buf: ");
-                sb.append(fm.getBufferId());
-                sb.append(" flg: ");
-                sb.append(fm.getFlags());
-                sb.append("\nactions: ");
-                sb.append(fm.getActions().toString());
-                break;
-
-            default:
-                sb.append("[Unknown Packet]");
-        }
-
-        sb.append("\n\n");
-        return sb.toString().getBytes();
+    // IFloodlightModule methods
+    
+    @Override
+    public Collection<Class<? extends IFloodlightService>> getModuleServices() {
+        Collection<Class<? extends IFloodlightService>> l = 
+                new ArrayList<Class<? extends IFloodlightService>>();
+        l.add(IOFMessageFilterManagerService.class);
+        return l;
     }
 
-    public String getStringFromEthernetPacket(Ethernet eth) {
-
-        StringBuffer sb = new StringBuffer("\n");
-
-        IPacket pkt = (IPacket) eth.getPayload();
-
-        if (pkt instanceof ARP)
-            sb.append("arp");
-        else if (pkt instanceof LLDP)
-            sb.append("lldp");
-        else if (pkt instanceof ICMP)
-            sb.append("icmp");
-        else if (pkt instanceof IPv4)
-            sb.append("ip");
-        else if (pkt instanceof DHCP)
-            sb.append("dhcp");
-        else  sb.append(eth.getEtherType());
-
-        sb.append("\ndl_vlan: ");
-        if (eth.getVlanID() == Ethernet.VLAN_UNTAGGED)
-            sb.append("untagged");
-        else
-            sb.append(eth.getVlanID());
-        sb.append("\ndl_vlan_pcp: ");
-        sb.append(eth.getPriorityCode());
-        sb.append("\ndl_src: ");
-        sb.append(HexString.toHexString(eth.getSourceMACAddress()));
-        sb.append("\ndl_dst: ");
-        sb.append(HexString.toHexString(eth.getDestinationMACAddress()));
-
-
-        if (pkt instanceof ARP) {
-            ARP p = (ARP) pkt;
-            sb.append("\nnw_src: ");
-            sb.append(IPv4.fromIPv4Address(IPv4.toIPv4Address(p.getSenderProtocolAddress())));
-            sb.append("\nnw_dst: ");
-            sb.append(IPv4.fromIPv4Address(IPv4.toIPv4Address(p.getTargetProtocolAddress())));
-        }
-        else if (pkt instanceof LLDP) {
-            sb.append("lldp packet");
-        }
-        else if (pkt instanceof ICMP) {
-            ICMP icmp = (ICMP) pkt;
-            sb.append("\nicmp_type: ");
-            sb.append(icmp.getIcmpType());
-            sb.append("\nicmp_code: ");
-            sb.append(icmp.getIcmpCode());
-        }
-        else if (pkt instanceof IPv4) {
-            IPv4 p = (IPv4) pkt;
-            sb.append("\nnw_src: ");
-            sb.append(IPv4.fromIPv4Address(p.getSourceAddress()));
-            sb.append("\nnw_dst: ");
-            sb.append(IPv4.fromIPv4Address(p.getDestinationAddress()));
-            sb.append("\nnw_tos: ");
-            sb.append(p.getDiffServ());
-            sb.append("\nnw_proto: ");
-            sb.append(p.getProtocol());
-
-            if (pkt instanceof TCP) {
-                sb.append("\ntp_src: ");
-                sb.append(((TCP) pkt).getSourcePort());
-                sb.append("\ntp_dst: ");
-                sb.append(((TCP) pkt).getDestinationPort());
-
-            } else if (pkt instanceof UDP) {
-                sb.append("\ntp_src: ");
-                sb.append(((UDP) pkt).getSourcePort());
-                sb.append("\ntp_dst: ");
-                sb.append(((UDP) pkt).getDestinationPort());
-            }
-
-            if (pkt instanceof ICMP) {
-                ICMP icmp = (ICMP) pkt;
-                sb.append("\nicmp_type: ");
-                sb.append(icmp.getIcmpType());
-                sb.append("\nicmp_code: ");
-                sb.append(icmp.getIcmpCode());
-            }
-
-        }
-        else if (pkt instanceof DHCP) {
-            sb.append("\ndhcp packet");
-        }
-        else if (pkt instanceof Data) {
-            sb.append("\ndata packet");
-        }
-        else if (pkt instanceof LLC) {
-            sb.append("\nllc packet");
-        }
-        else if (pkt instanceof BPDU) {
-            sb.append("\nbpdu packet");
-        }
-        else sb.append("\nunknwon packet");
-
-        return sb.toString();
+    @Override
+    public Map<Class<? extends IFloodlightService>, IFloodlightService>
+            getServiceImpls() {
+        Map<Class<? extends IFloodlightService>,
+        IFloodlightService> m = 
+            new HashMap<Class<? extends IFloodlightService>,
+                        IFloodlightService>();
+        // We are the class that implements the service
+        m.put(IOFMessageFilterManagerService.class, this);
+        return m;
     }
 
+    @Override
+    public Collection<Class<? extends IFloodlightService>> getModuleDependencies() {
+        Collection<Class<? extends IFloodlightService>> l = 
+                new ArrayList<Class<? extends IFloodlightService>>();
+        l.add(IFloodlightProviderService.class);
+        l.add(IThreadPoolService.class);
+        return l;
+    }
+
+    @Override
+    public void init(FloodlightModuleContext context) 
+            throws FloodlightModuleException {
+        this.floodlightProvider = 
+                context.getServiceImpl(IFloodlightProviderService.class);
+        this.threadPool =
+                context.getServiceImpl(IThreadPoolService.class);
+    }
+
+    @Override
+    public void startUp(FloodlightModuleContext context) {
+        // This is our 'constructor'
+        
+        filterMap = new ConcurrentHashMap<String, ConcurrentHashMap<String,String>>();
+        filterTimeoutMap = new ConcurrentHashMap<String, Long>();
+        serverPort = Integer.parseInt(System.getProperty("net.floodlightcontroller.packetstreamer.port", "9090"));
+        
+        floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
+        floodlightProvider.addOFMessageListener(OFType.PACKET_OUT, this);
+        floodlightProvider.addOFMessageListener(OFType.FLOW_MOD, this);
+    }
 }

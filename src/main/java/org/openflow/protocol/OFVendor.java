@@ -17,20 +17,22 @@
 
 package org.openflow.protocol;
 
-import java.util.Arrays;
-
 import org.jboss.netty.buffer.ChannelBuffer;
 import org.openflow.util.U16;
+import org.openflow.protocol.factory.OFVendorDataFactory;
+import org.openflow.protocol.factory.OFVendorDataFactoryAware;
+import org.openflow.protocol.vendor.OFVendorData;
 
 /**
  * Represents ofp_vendor_header
  * @author David Erickson (daviderickson@cs.stanford.edu)
  */
-public class OFVendor extends OFMessage {
+public class OFVendor extends OFMessage implements OFVendorDataFactoryAware {
     public static int MINIMUM_LENGTH = 12;
 
     protected int vendor;
-    protected byte[] data;
+    protected OFVendorData vendorData;
+    protected OFVendorDataFactory vendorDataFactory;
 
     public OFVendor() {
         super();
@@ -52,36 +54,42 @@ public class OFVendor extends OFMessage {
         this.vendor = vendor;
     }
 
+    /**
+     * @return the data
+     */
+    public OFVendorData getVendorData() {
+        return vendorData;
+    }
+
+    /**
+     * @param data the data to set
+     */
+    public void setVendorData(OFVendorData vendorData) {
+        this.vendorData = vendorData;
+    }
+
+    @Override
+    public void setVendorDataFactory(OFVendorDataFactory vendorDataFactory) {
+        this.vendorDataFactory = vendorDataFactory;
+    }
+      
     @Override
     public void readFrom(ChannelBuffer data) {
         super.readFrom(data);
         this.vendor = data.readInt();
-        if (this.length > MINIMUM_LENGTH) {
-            this.data = new byte[this.length - MINIMUM_LENGTH];
-            data.readBytes(this.data);
-        }
+        if (vendorDataFactory == null)
+            throw new RuntimeException("OFVendorDataFactory not set");
+            
+        this.vendorData = vendorDataFactory.parseVendorData(vendor,
+                data, super.getLengthU() - MINIMUM_LENGTH);
     }
 
     @Override
     public void writeTo(ChannelBuffer data) {
         super.writeTo(data);
         data.writeInt(this.vendor);
-        if (this.data != null)
-            data.writeBytes(this.data);
-    }
-
-    /**
-     * @return the data
-     */
-    public byte[] getData() {
-        return data;
-    }
-
-    /**
-     * @param data the data to set
-     */
-    public void setData(byte[] data) {
-        this.data = data;
+        if (vendorData != null)
+            vendorData.writeTo(data);
     }
 
     /* (non-Javadoc)
@@ -91,8 +99,9 @@ public class OFVendor extends OFMessage {
     public int hashCode() {
         final int prime = 337;
         int result = super.hashCode();
-        result = prime * result + Arrays.hashCode(data);
         result = prime * result + vendor;
+        if (vendorData != null)
+            result = prime * result + vendorData.hashCode();
         return result;
     }
 
@@ -108,10 +117,15 @@ public class OFVendor extends OFMessage {
         if (getClass() != obj.getClass())
             return false;
         OFVendor other = (OFVendor) obj;
-        if (!Arrays.equals(data, other.data))
-            return false;
         if (vendor != other.vendor)
             return false;
+        if (vendorData == null) {
+            if (other.vendorData != null) {
+                return false;
+            }
+        } else if (!vendorData.equals(other.vendorData)) {
+            return false;
+        }
         return true;
     }
 }

@@ -63,7 +63,6 @@ public class CountSeries {
   /**
    * Return a long that is the number of milliseconds in a ds (second/minute/hour/day/week).  (Utility method.)
    * 
-   * @param d
    * @param ds
    * @return
    */

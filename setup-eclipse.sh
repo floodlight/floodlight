@@ -9,7 +9,7 @@ LIBRARIES=$2
 cat >$d/.project <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <projectDescription>
-	<name>Floodlight</name>
+	<name>floodlight</name>
 	<comment></comment>
 	<projects>
 	</projects>
@@ -31,7 +31,9 @@ cat >$d/.classpath <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
 	<classpathentry kind="src" path="src/main/java" output="target/bin"/>
+	<classpathentry kind="src" path="src/main/resources"/>
         <classpathentry kind="src" path="src/test/java" output="target/bin-test"/>
+        <classpathentry kind="src" path="lib/gen-java" output="target/bin"/>
 EOF
 (
 IFS=":"

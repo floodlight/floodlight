@@ -21,7 +21,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import net.floodlightcontroller.storage.IStorageSource;
+import net.floodlightcontroller.storage.IStorageSourceService;
 import net.floodlightcontroller.storage.StorageSourceNotification;
 
 import org.codehaus.jackson.map.ObjectMapper;
@@ -42,8 +42,9 @@ public class StorageNotifyResource extends ServerResource {
             mapper.readValue(entity, 
                     new TypeReference<List<StorageSourceNotification>>(){});
         
-        IStorageSource storageSource = 
-            (IStorageSource)getContext().getAttributes().get("storageSource");
+        IStorageSourceService storageSource = 
+            (IStorageSourceService)getContext().getAttributes().
+                get(IStorageSourceService.class.getCanonicalName());
         storageSource.notifyListeners(notifications);
         
         HashMap<String, Object> model = new HashMap<String,Object>();

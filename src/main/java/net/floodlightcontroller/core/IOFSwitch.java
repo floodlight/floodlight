@@ -22,8 +22,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Future;
-
-import net.floodlightcontroller.core.types.MacVlanPair;
+import net.floodlightcontroller.core.IFloodlightProviderService.Role;
 
 import org.jboss.netty.channel.Channel;
 import org.openflow.protocol.OFFeaturesReply;
@@ -42,6 +41,7 @@ public interface IOFSwitch {
     // Attribute keys
     public static final String SWITCH_DESCRIPTION_FUTURE = "DescriptionFuture";
     public static final String SWITCH_DESCRIPTION_DATA = "DescriptionData";
+    public static final String SWITCH_SUPPORTS_NX_ROLE = "supportsNxRole";
     public static final String SWITCH_IS_CORE_SWITCH = "isCoreSwitch";
     public static final String PROP_FASTWILDCARDS = "FastWildcards";
     public static final String PROP_REQUIRES_L3_MATCH = "requiresL3Match";
@@ -51,6 +51,7 @@ public interface IOFSwitch {
     /**
      * Writes to the OFMessage to the output stream.
      * The message will be handed to the floodlightProvider for possible filtering
+     * and processing by message listeners
      * @param m   
      * @param bc  
      * @throws IOException  
@@ -60,7 +61,8 @@ public interface IOFSwitch {
     /**
      * Writes the list of messages to the output stream
      * The message will be handed to the floodlightProvider for possible filtering
-     * @param m  
+     * and processing by message listeners.
+     * @param msglist
      * @param bc
      * @throws IOException
      */
@@ -73,7 +75,8 @@ public interface IOFSwitch {
     public void disconnectOutputStream();
 
     /**
-     *
+     * FIXME: remove getChannel(). All access to the channel should be through
+     *        wrapper functions in IOFSwitch
      * @return
      */
     public Channel getChannel();
@@ -94,7 +97,7 @@ public interface IOFSwitch {
     
     /**
      * Set the SwitchProperties based on it's description
-     * @param featuresReply
+     * @param description
      */
     public void setSwitchProperties(OFDescriptionStatistics description);    
 
@@ -193,64 +196,33 @@ public interface IOFSwitch {
      */
     public Future<List<OFStatistics>> getStatistics(OFStatisticsRequest request)
             throws IOException;
-    
-    /**
-     * Adds a host to the macVlanPortMap
-     * @param mac The MAC address of the host to add
-     * @param vlan The VLAN that the host is on
-     * @param portVal The switchport that the host is on
-     */
-    public void addToPortMap(Long mac, Short vlan, short portVal);
-    
-    /**
-     * Removes a host from the macVlanPortMap 
-     * @param mac The MAC address of the host to remove
-     * @param vlan The VLAN that the host is on
-     */
-    public void removeFromPortMap(Long mac, Short vlan);
-    
-    /**
-     * Get the port that a MAC/VLAN pair is associated with
-     * @param mac The MAC address to get
-     * @param vlan The VLAN number to get
-     * @return The port the host is on
-     */
-    public Short getFromPortMap(Long mac, Short vlan);
-    
-    /**
-     * Clear the switch table
-     */
-    public void clearPortMapTable();
-    
-    /**
-     * Returns a COPY of the switch's macVlanPortMap, CAN be null.
-     */
-    public Map<MacVlanPair,Short> getMacVlanToPortMap();
-    
-    /**
-     * Set the {@link net.floodlightcontroller.topology.SwitchCluster SwitchCluster}
-     * ID that this switch is connected to.
-     * @param id The SwitchCluster ID
-     */
-    public void setSwitchClusterId(Long id);
-    
-    /**
-     * Get the {@link net.floodlightcontroller.topology.SwitchCluster SwitchCluster}
-     * ID that this switch is connected to.
-     */
-    public Long getSwitchClusterId();
-    
+
     /**
      * Check if the switch is still connected;
+     * Only call while holding processMessageLock
      * @return whether the switch is still disconnected
      */
     public boolean isConnected();
     
     /**
      * Set whether the switch is connected
+     * Only call while holding modifySwitchLock
      * @param connected whether the switch is connected
      */
     public void setConnected(boolean connected);
+    
+    /**
+     * Get the current role of the controller for the switch
+     * @return the role of the controller
+     */
+    public Role getRole();
+    
+    /**
+     * Check if the controller is an active controller for the switch.
+     * The controller is active if its role is MASTER or EQUAL.
+     * @return whether the controller is active
+     */
+    public boolean isActive();
     
     /**
      * Deliver the statistics future reply
@@ -263,6 +235,11 @@ public interface IOFSwitch {
      * @param transactionId the transaction ID
      */
     public void cancelStatisticsReply(int transactionId);
+    
+    /**
+     * Cancel all statistics replies
+     */
+    public void cancelAllStatisticsReplies();
 
     /**
      * Checks if a specific switch property exists for this switch
@@ -291,9 +268,45 @@ public interface IOFSwitch {
      * @return current value for name or null (if not present)
      */
     Object removeAttribute(String name);
-    
+
     /**
      * Clear all flowmods on this switch
      */
     public void clearAllFlowMods();
+
+    /**
+     * Update broadcast cache
+     * @param data
+     * @return true if there is a cache hit
+     *         false if there is no cache hit.
+     */
+    public boolean updateBroadcastCache(Long entry, Short port);
+    
+    /**
+     * Get the portBroadcastCacheHits
+     * @return
+     */
+    public Map<Short, Long> getPortBroadcastHits();
+
+    /**
+     * Send a flow statistics request to the switch. This call returns after
+     * sending the stats. request to the switch.
+     * @param request flow statistics request message
+     * @param xid transaction id, must be obtained by using the getXid() API.
+     * @param caller the caller of the API. receive() callback of this 
+     * caller would be called when the reply from the switch is received.
+     * @return the transaction id for the message sent to the switch. The 
+     * transaction id can be used to match the response with the request. Note
+     * that the transaction id is unique only within the scope of this switch.
+     * @throws IOException
+     */
+    public void sendStatsQuery(OFStatisticsRequest request, int xid,
+                            IOFMessageListener caller) throws IOException;
+
+    /**
+     * Flush all flows queued for this switch in the current thread.
+     * NOTE: The contract is limited to the current thread
+     */
+     public void flush();
+
 }

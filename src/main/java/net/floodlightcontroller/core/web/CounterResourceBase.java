@@ -17,18 +17,19 @@
 
 package net.floodlightcontroller.core.web;
 
-import net.floodlightcontroller.counter.CounterStore;
+import net.floodlightcontroller.counter.ICounterStoreService;
 
 import org.restlet.resource.ResourceException;
 import org.restlet.resource.ServerResource;
 
 public class CounterResourceBase extends ServerResource {
-    protected CounterStore counterStore;
+    protected ICounterStoreService counterStore;
     
     @Override
     protected void doInit() throws ResourceException {
         super.doInit();
         counterStore = 
-            (CounterStore)getContext().getAttributes().get("counterStore");
+            (ICounterStoreService)getContext().getAttributes().
+                get(ICounterStoreService.class.getCanonicalName());
     }
 }

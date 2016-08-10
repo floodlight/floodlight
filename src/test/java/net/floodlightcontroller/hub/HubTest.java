@@ -60,7 +60,7 @@ public class HubTest extends FloodlightTestCase {
     private Hub hub;
     
     @Before
-    public void setUp() {
+    public void setUp() throws Exception {
         super.setUp();
 
         mockFloodlightProvider = getMockFloodlightProvider();

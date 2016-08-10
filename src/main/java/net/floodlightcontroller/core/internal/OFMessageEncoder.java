@@ -17,6 +17,8 @@
 
 package net.floodlightcontroller.core.internal;
 
+import java.util.List;
+
 import org.jboss.netty.buffer.ChannelBuffer;
 import org.jboss.netty.buffer.ChannelBuffers;
 import org.jboss.netty.channel.Channel;
@@ -34,12 +36,20 @@ public class OFMessageEncoder extends OneToOneEncoder {
     @Override
     protected Object encode(ChannelHandlerContext ctx, Channel channel,
                             Object msg) throws Exception {
-        if (!(  msg instanceof OFMessage))
+        if (!(  msg instanceof List))
             return msg;
-        
-        OFMessage ofm = (OFMessage)msg;
-        ChannelBuffer buf = ChannelBuffers.buffer(ofm.getLengthU());
-        ofm.writeTo(buf);
+
+        @SuppressWarnings("unchecked")
+        List<OFMessage> msglist = (List<OFMessage>)msg;
+        int size = 0;
+        for (OFMessage ofm :  msglist) {
+                size += ofm.getLengthU();
+        }
+
+        ChannelBuffer buf = ChannelBuffers.buffer(size);;
+        for (OFMessage ofm :  msglist) {
+            ofm.writeTo(buf);
+        }
         return buf;
     }
 
