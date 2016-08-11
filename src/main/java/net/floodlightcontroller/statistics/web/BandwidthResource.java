@@ -4,6 +4,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
+import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.statistics.IStatisticsService;
 import net.floodlightcontroller.statistics.SwitchPortBandwidth;
@@ -66,7 +67,9 @@ public class BandwidthResource extends ServerResource {
                 spbs = new HashSet<SwitchPortBandwidth>(Collections.singleton(statisticsService.getBandwidthConsumption(dpid, port)));
             } else {
                 spbs = new HashSet<SwitchPortBandwidth>();
-                for (OFPortDesc pd : switchService.getSwitch(dpid).getPorts()) { /* do specific DPID; do all ports */
+                //fix concurrency scenario
+                IOFSwitch sw = switchService.getSwitch(dpid);
+                for (OFPortDesc pd : sw.getPorts()) { /* do specific DPID; do all ports */
                     SwitchPortBandwidth spb = statisticsService.getBandwidthConsumption(dpid, pd.getPortNo());
                     if (spb != null) {
                         spbs.add(spb);
