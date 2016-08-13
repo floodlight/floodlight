@@ -18,10 +18,7 @@ import java.util.NoSuchElementException;
 import javax.sql.ConnectionPoolDataSource;
 import javax.xml.bind.DatatypeConverter;
 
-import net.floodlightcontroller.core.annotations.LogMessageCategory;
-
 import org.apache.derby.jdbc.EmbeddedConnectionPoolDataSource40;
-
 import org.sdnplatform.sync.IClosableIterator;
 import org.sdnplatform.sync.IVersion;
 import org.sdnplatform.sync.Versioned;
@@ -46,7 +43,6 @@ import com.fasterxml.jackson.dataformat.smile.SmileFactory;
  * Persistent storage engine that keeps its data in a JDB database
  * @author readams
  */
-@LogMessageCategory("State Synchronization")
 public class JavaDBStorageEngine implements IStorageEngine<ByteArray, byte[]> {
     protected static final Logger logger =
             LoggerFactory.getLogger(JavaDBStorageEngine.class.getName());
@@ -154,7 +150,8 @@ public class JavaDBStorageEngine implements IStorageEngine<ByteArray, byte[]> {
         }
     }
 
-    @Override
+    @SuppressWarnings("resource")
+	@Override
     public void put(ByteArray key, Versioned<byte[]> value) 
             throws SyncException {
         StoreUtils.assertValidKey(key);
@@ -200,10 +197,12 @@ public class JavaDBStorageEngine implements IStorageEngine<ByteArray, byte[]> {
                 update.execute();
                 dbConnection.commit();
             } catch (SyncException e) {
-                dbConnection.rollback();
+            	if(dbConnection != null)
+            		dbConnection.rollback();
                 throw e;
             } catch (Exception e) {
-                dbConnection.rollback();
+            	if(dbConnection != null)
+            		dbConnection.rollback();
                 throw new PersistException("Could not retrieve key from database",
                                            e);
             } finally {

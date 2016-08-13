@@ -1,12 +1,30 @@
 package org.sdnplatform.sync.internal.rpc;
 
+import io.netty.bootstrap.Bootstrap;
+import io.netty.bootstrap.ServerBootstrap;
+import io.netty.channel.Channel;
+import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelFutureListener;
+import io.netty.channel.ChannelOption;
+import io.netty.channel.EventLoopGroup;
+import io.netty.channel.group.ChannelGroup;
+import io.netty.channel.group.DefaultChannelGroup;
+import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.channel.socket.nio.NioServerSocketChannel;
+import io.netty.channel.socket.nio.NioSocketChannel;
+import io.netty.util.Timer;
+import io.netty.util.concurrent.GlobalEventExecutor;
+
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedTransferQueue;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
@@ -14,40 +32,23 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.concurrent.LinkedTransferQueue;
 
-import net.floodlightcontroller.core.annotations.LogMessageCategory;
-import net.floodlightcontroller.core.annotations.LogMessageDoc;
-import net.floodlightcontroller.core.annotations.LogMessageDocs;
 import net.floodlightcontroller.core.util.SingletonTask;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
 
-import org.jboss.netty.bootstrap.ClientBootstrap;
-import org.jboss.netty.bootstrap.ServerBootstrap;
-import org.jboss.netty.channel.Channel;
-import org.jboss.netty.channel.ChannelFuture;
-import org.jboss.netty.channel.ChannelFutureListener;
-import org.jboss.netty.channel.ChannelPipelineFactory;
-import org.jboss.netty.channel.group.ChannelGroup;
-import org.jboss.netty.channel.group.DefaultChannelGroup;
-import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
-import org.jboss.netty.channel.socket.nio.NioServerSocketChannelFactory;
 import org.sdnplatform.sync.internal.SyncManager;
 import org.sdnplatform.sync.internal.config.Node;
 import org.sdnplatform.sync.internal.util.Pair;
-import org.sdnplatform.sync.thrift.SyncMessage;
 import org.sdnplatform.sync.thrift.MessageType;
+import org.sdnplatform.sync.thrift.SyncMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-
 
 /**
  * A lightweight RPC mechanism built on netty.
  * @author readams
  */
-@LogMessageCategory("State Synchronization")
-public class RPCService {
+public class RPCService{
     protected static final Logger logger =
             LoggerFactory.getLogger(RPCService.class);
 
@@ -57,6 +58,11 @@ public class RPCService {
     protected SyncManager syncManager;
 
     /**
+     *Tulio Ribeiro
+     */
+ 	protected Set<IRPCListener> rpcListeners;
+ 	
+    /**
      * Debug counter service
      */
     protected IDebugCounterService debugCounter;
@@ -64,32 +70,27 @@ public class RPCService {
     /**
      * Channel group that will hold all our channels
      */
-    final ChannelGroup cg = new DefaultChannelGroup("Internal RPC");
+    private final ChannelGroup cg = new DefaultChannelGroup("Internal RPC", GlobalEventExecutor.INSTANCE);
     
     /**
-     * {@link ExecutorService} used for netty boss threads
+     * {@link EventLoopGroup} used for netty boss threads
      */
-    protected ExecutorService bossExecutor;
+    protected EventLoopGroup bossGroup;
     
     /**
-     * {@link ExecutorService} used for netty worker threads
+     * {@link EventLoopGroup} used for netty worker threads
      */
-    protected ExecutorService workerExecutor;
+    protected EventLoopGroup workerGroup;
 
     /**
      * Netty {@link ClientBootstrap} used for creating client connections 
      */
-    protected ClientBootstrap clientBootstrap;
-    
-    /**
-     * Netty {@link ServerBootstrap} used for creating server connections 
-     */
-    protected ServerBootstrap serverBootstrap;
+    protected Bootstrap clientBootstrap;
 
     /**
-     * {@link ChannelPipelineFactory} for creating connections 
+     * {@link RPCChannelInitializer} for creating connections 
      */
-    protected RPCPipelineFactory pipelineFactory;
+    protected RPCChannelInitializer channelInitializer;
 
     /**
      * Node connections
@@ -127,6 +128,11 @@ public class RPCService {
      * Task to periodically ensure that connections are active
      */
     protected SingletonTask reconnectTask;
+    
+    /**
+     * Timer used for timeouts
+     */
+    private final Timer timer;
     
     /**
      * If we want to rate-limit certain types of messages, we can do
@@ -168,10 +174,13 @@ public class RPCService {
     protected static final int MAX_PENDING_MESSAGES = 500;
 
     public RPCService(SyncManager syncManager, 
-                      IDebugCounterService debugCounter) {
+                      IDebugCounterService debugCounter,
+                      Timer timer) {
         super();
         this.syncManager = syncManager;
         this.debugCounter = debugCounter;
+        this.timer = timer;
+        this.rpcListeners = new CopyOnWriteArraySet<IRPCListener>();
 
         messageWindows = new ConcurrentHashMap<Short, MessageWindow>();
     }
@@ -211,26 +220,18 @@ public class RPCService {
             }
         };
         
-        bossExecutor = Executors.newCachedThreadPool(f2);
-        workerExecutor = Executors.newCachedThreadPool(f2);
+        bossGroup = new NioEventLoopGroup(0, f2);
+        workerGroup = new NioEventLoopGroup(0, f2);
 
-        pipelineFactory = new RPCPipelineFactory(syncManager, this);
+        channelInitializer = new RPCChannelInitializer(syncManager, this, timer);
 
-        startServer(pipelineFactory);
-        startClients(pipelineFactory);
+        startServer(channelInitializer);
+        startClients(channelInitializer);
     }
 
     /**
      * Stop the RPC service
      */
-    @LogMessageDocs({
-        @LogMessageDoc(level="WARN",
-                message="Failed to cleanly shut down RPC server",
-                explanation="Could not close all open sockets cleanly"),
-        @LogMessageDoc(level="WARN",
-        message="Interrupted while shutting down RPC server",
-        explanation="Could not close all open sockets cleanly")
-    })
     public void shutdown() {
         shutDown = true;
         try {
@@ -238,21 +239,15 @@ public class RPCService {
                 logger.warn("Failed to cleanly shut down RPC server");
                 return;
             }
-            if (clientBootstrap != null)
-                clientBootstrap.releaseExternalResources();
+
             clientBootstrap = null;
-            if (serverBootstrap != null)
-                serverBootstrap.releaseExternalResources();
-            serverBootstrap = null;
-            if (pipelineFactory != null)
-                pipelineFactory.releaseExternalResources();
-            pipelineFactory = null;
-            if (bossExecutor != null)
-                bossExecutor.shutdown();
-            bossExecutor = null;
-            if (workerExecutor != null)
-                workerExecutor.shutdown();
-            workerExecutor = null;
+            channelInitializer = null;
+            if (bossGroup != null)
+            	bossGroup.shutdownGracefully();
+            bossGroup = null;
+            if (workerGroup != null)
+            	workerGroup.shutdownGracefully();
+            workerGroup = null;
         } catch (InterruptedException e) {
             logger.warn("Interrupted while shutting down RPC server");
         }
@@ -282,7 +277,7 @@ public class RPCService {
         NodeConnection nc = connections.get(nodeId);
         if (nc != null && nc.state == NodeConnectionState.CONNECTED) {
             waitForMessageWindow(bsm.getType(), nodeId, 0);
-            nc.nodeChannel.write(bsm);
+            nc.nodeChannel.writeAndFlush(bsm);
             return true;
         }
         return false;
@@ -313,6 +308,16 @@ public class RPCService {
                 nc.nuke();
             }
             connections.remove(nodeId);
+           
+            /**
+             * Tulio Ribeiro
+             * Inform all registered modules about disconnected node
+             */
+            if (rpcListeners != null) {
+				for (IRPCListener listener : rpcListeners) {
+					listener.disconnectedNode(nodeId);
+				}
+			}
         }
     }
     
@@ -436,22 +441,17 @@ public class RPCService {
     /**
      * Start listening sockets
      */
-    @LogMessageDoc(level="INFO",
-                   message="Listening for internal floodlight RPC on {port}",
-                   explanation="The internal RPC service is ready for connections")
-    protected void startServer(ChannelPipelineFactory pipelineFactory) {
-        final ServerBootstrap bootstrap =
-                new ServerBootstrap(
-                     new NioServerSocketChannelFactory(bossExecutor,
-                                                       workerExecutor));
-        bootstrap.setOption("reuseAddr", true);
-        bootstrap.setOption("child.keepAlive", true);
-        bootstrap.setOption("child.tcpNoDelay", true);
-        bootstrap.setOption("child.sendBufferSize", SEND_BUFFER_SIZE);
-        bootstrap.setOption("child.receiveBufferSize", SEND_BUFFER_SIZE);
-
-        bootstrap.setPipelineFactory(pipelineFactory);
-        serverBootstrap = bootstrap;
+    protected void startServer(RPCChannelInitializer channelInitializer) {
+        final ServerBootstrap bootstrap = new ServerBootstrap();
+        bootstrap.group(bossGroup, workerGroup)
+        .channel(NioServerSocketChannel.class)
+        .option(ChannelOption.SO_REUSEADDR, true)
+        .option(ChannelOption.SO_KEEPALIVE, true)
+        .option(ChannelOption.TCP_NODELAY, true)
+        .option(ChannelOption.SO_SNDBUF, SEND_BUFFER_SIZE)
+        .option(ChannelOption.SO_RCVBUF, SEND_BUFFER_SIZE)
+        .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, CONNECT_TIMEOUT)
+        .childHandler(channelInitializer);
 
         int port = syncManager.getClusterConfig().getNode().getPort();
         InetSocketAddress sa;
@@ -462,8 +462,9 @@ public class RPCService {
         else
             sa = new InetSocketAddress(port);
 
-        cg.add(bootstrap.bind(sa));
-
+        ChannelFuture bindFuture = bootstrap.bind(sa);
+        cg.add(bindFuture.channel());
+        
         logger.info("Listening for internal floodlight RPC on {}", sa);
     }
 
@@ -485,12 +486,12 @@ public class RPCService {
                 synchronized (connections) {
                     NodeConnection c = connections.remove(node.getNodeId());
                     if (c != null) c.nuke();
-                    cf.getChannel().close();
+                    cf.channel().close();
                 }
                 
                 String message = "[unknown error]";
                 if (cf.isCancelled()) message = "Timed out on connect";
-                if (cf.getCause() != null) message = cf.getCause().getMessage();
+                if (cf.cause() != null) message = cf.cause().getMessage();
                 logger.debug("[{}->{}] Could not connect to RPC " +
                              "node: {}", 
                              new Object[]{syncManager.getLocalNodeId(), 
@@ -520,6 +521,16 @@ public class RPCService {
             }
             c.nodeChannel = channel;
             c.state = NodeConnectionState.CONNECTED;
+            
+            /**
+             * Tulio Ribeiro
+             * Inform all registered modules about connected node
+             */
+            if (rpcListeners != null) {
+				for (IRPCListener listener : rpcListeners) {
+					listener.connectedNode(nodeId);
+				}
+			}
         }
     }
 
@@ -528,17 +539,16 @@ public class RPCService {
      * any nodes with a lower ID so that there will be a single connection
      * between each pair of nodes which we'll use symmetrically
      */
-    protected void startClients(ChannelPipelineFactory pipelineFactory) {
-        final ClientBootstrap bootstrap =
-                new ClientBootstrap(
-                     new NioClientSocketChannelFactory(bossExecutor,
-                                                       workerExecutor));
-        bootstrap.setOption("child.reuseAddr", true);
-        bootstrap.setOption("child.keepAlive", true);
-        bootstrap.setOption("child.tcpNoDelay", true);
-        bootstrap.setOption("child.sendBufferSize", SEND_BUFFER_SIZE);
-        bootstrap.setOption("child.connectTimeoutMillis", CONNECT_TIMEOUT);
-        bootstrap.setPipelineFactory(pipelineFactory);
+    protected void startClients(RPCChannelInitializer channelInitializer) {
+        final Bootstrap bootstrap = new Bootstrap();
+        bootstrap.group(workerGroup)
+        .channel(NioSocketChannel.class)
+        .option(ChannelOption.SO_REUSEADDR, true)
+        .option(ChannelOption.SO_KEEPALIVE, true)
+        .option(ChannelOption.TCP_NODELAY, true)
+        .option(ChannelOption.SO_SNDBUF, SEND_BUFFER_SIZE)
+        .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, CONNECT_TIMEOUT)
+        .handler(channelInitializer);
         clientBootstrap = bootstrap;
 
         ScheduledExecutorService ses = 
@@ -593,6 +603,14 @@ public class RPCService {
             doNodeConnect(n);
         }        
     }
+    
+    /**
+     * Retrieve the Netty ChannelGroup
+     * @return
+     */
+    protected ChannelGroup getChannelGroup() {
+    	return cg;
+    }
 
     /**
      * Periodically ensure that all the node connections are alive
@@ -634,7 +652,7 @@ public class RPCService {
         
         protected void nuke() {
             state = NodeConnectionState.NONE;
-            if (pendingFuture != null) pendingFuture.cancel();
+            if (pendingFuture != null) pendingFuture.cancel(false);
             if (nodeChannel != null) nodeChannel.close();
             pendingFuture = null;
             nodeChannel = null;
@@ -685,4 +703,16 @@ public class RPCService {
             }
         }
     }
+    
+    
+	//@Override
+	public void addRPCListener(IRPCListener listener) {
+		this.rpcListeners.add(listener);
+	}
+
+	//@Override
+	public void removeRPCListener(IRPCListener listener) {
+		this.rpcListeners.remove(listener);
+	}
+
 }

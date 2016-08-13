@@ -1,7 +1,7 @@
 /**
-*    Copyright 2012, Big Switch Networks, Inc. 
+*    Copyright 2012, Big Switch Networks, Inc.
 *    Originally created by David Erickson, Stanford University
-* 
+*
 *    Licensed under the Apache License, Version 2.0 (the "License"); you may
 *    not use this file except in compliance with the License. You may obtain
 *    a copy of the License at
@@ -17,7 +17,9 @@
 
 package net.floodlightcontroller.devicemanager.web;
 
+import java.util.HashMap;
 import java.util.Iterator;
+import java.util.Map;
 
 import net.floodlightcontroller.devicemanager.IDevice;
 import org.restlet.resource.Get;
@@ -26,8 +28,14 @@ import org.restlet.resource.Get;
  * Resource for querying and displaying devices that exist in the system
  */
 public class DeviceResource extends AbstractDeviceResource {
-    @Get("json")
     public Iterator<? extends IDevice> getDevices() {
         return super.getDevices();
+    }
+
+    @Get("json")
+    public Map<String, Iterator<? extends IDevice>> getNamedDeviceList() {
+        Map<String, Iterator<? extends IDevice>> result = new HashMap<String, Iterator<? extends IDevice>>();
+        result.put("devices", getDevices());
+        return result;
     }
 }

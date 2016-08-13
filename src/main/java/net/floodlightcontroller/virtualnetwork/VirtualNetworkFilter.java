@@ -520,6 +520,12 @@ implements IFloodlightModule, IVirtualNetworkService, IOFMessageListener {
 			// add or remove entry as gateway
 			deviceAdded(device);
 		}
+		
+		@Override
+		public void deviceIPV6AddrChanged(IDevice device) {
+			//TODO
+			log.debug("IPv6 address change not handled in VirtualNetworkFilter. Device: {}", device.toString());
+		}
 
 		@Override
 		public void deviceMoved(IDevice device) {

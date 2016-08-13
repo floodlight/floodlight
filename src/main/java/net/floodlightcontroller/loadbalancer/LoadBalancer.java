@@ -56,6 +56,7 @@ import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
+import net.floodlightcontroller.core.types.NodePortTuple;
 import net.floodlightcontroller.debugcounter.IDebugCounter;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
 import net.floodlightcontroller.debugcounter.IDebugCounterService.MetaData;
@@ -71,11 +72,11 @@ import net.floodlightcontroller.packet.TCP;
 import net.floodlightcontroller.packet.UDP;
 import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.routing.IRoutingService;
-import net.floodlightcontroller.routing.Route;
-import net.floodlightcontroller.staticflowentry.IStaticFlowEntryPusherService;
+import net.floodlightcontroller.routing.Path;
+import net.floodlightcontroller.staticentry.IStaticEntryPusherService;
 import net.floodlightcontroller.topology.ITopologyService;
-import net.floodlightcontroller.topology.NodePortTuple;
 import net.floodlightcontroller.util.FlowModUtils;
+import net.floodlightcontroller.util.OFMessageUtils;
 
 /**
  * A simple load balancer module for ping, tcp, and udp flows. This module is accessed 
@@ -105,7 +106,7 @@ public class LoadBalancer implements IFloodlightModule,
     protected IDeviceService deviceManagerService;
     protected IRoutingService routingEngineService;
     protected ITopologyService topologyService;
-    protected IStaticFlowEntryPusherService sfpService;
+    protected IStaticEntryPusherService sfpService;
     protected IOFSwitchService switchService;
     
     protected HashMap<String, LBVip> vips;
@@ -127,8 +128,8 @@ public class LoadBalancer implements IFloodlightModule,
             new Comparator<SwitchPort>() {
                 @Override
                 public int compare(SwitchPort d1, SwitchPort d2) {
-                    DatapathId d1ClusterId = topologyService.getL2DomainId(d1.getSwitchDPID());
-                    DatapathId d2ClusterId = topologyService.getL2DomainId(d2.getSwitchDPID());
+                    DatapathId d1ClusterId = topologyService.getClusterId(d1.getNodeId());
+                    DatapathId d2ClusterId = topologyService.getClusterId(d2.getNodeId());
                     return d1ClusterId.compareTo(d2ClusterId);
                 }
             };
@@ -190,11 +191,10 @@ public class LoadBalancer implements IFloodlightModule,
                 // retrieve arp to determine target IP address                                                       
                 ARP arpRequest = (ARP) eth.getPayload();
 
-                int targetProtocolAddress = IPv4.toIPv4Address(arpRequest
-                                                               .getTargetProtocolAddress());
+                IPv4Address targetProtocolAddress = arpRequest.getTargetProtocolAddress();
 
-                if (vipIpToId.containsKey(targetProtocolAddress)) {
-                    String vipId = vipIpToId.get(targetProtocolAddress);
+                if (vipIpToId.containsKey(targetProtocolAddress.getInt())) {
+                    String vipId = vipIpToId.get(targetProtocolAddress.getInt());
                     vipProxyArpReply(sw, pi, cntx, vipId);
                     return Command.STOP;
                 }
@@ -227,9 +227,15 @@ public class LoadBalancer implements IFloodlightModule,
                     }
                     
                     LBVip vip = vips.get(vipIpToId.get(destIpAddress));
+                    if (vip == null)			// fix dereference violations           
+                    	return Command.CONTINUE;
                     LBPool pool = pools.get(vip.pickPool(client));
+                    if (pool == null)			// fix dereference violations
+                    	return Command.CONTINUE;
                     LBMember member = members.get(pool.pickMember(client));
-
+                    if(member == null)			//fix dereference violations
+                    	return Command.CONTINUE;
+                    
                     // for chosen member, check device manager and find and push routes, in both directions                    
                     pushBidirectionalVipRoutes(sw, pi, cntx, client, member);
                    
@@ -265,11 +271,10 @@ public class LoadBalancer implements IFloodlightModule,
         ARP arpRequest = (ARP) eth.getPayload();
         
         // have to do proxy arp reply since at this point we cannot determine the requesting application type
-        byte[] vipProxyMacBytes = vips.get(vipId).proxyMac.getBytes();
         
         // generate proxy ARP reply
         IPacket arpReply = new Ethernet()
-            .setSourceMACAddress(vipProxyMacBytes)
+            .setSourceMACAddress(vips.get(vipId).proxyMac)
             .setDestinationMACAddress(eth.getSourceMACAddress())
             .setEtherType(EthType.ARP)
             .setVlanID(eth.getVlanID())
@@ -281,13 +286,10 @@ public class LoadBalancer implements IFloodlightModule,
                 .setHardwareAddressLength((byte) 6)
                 .setProtocolAddressLength((byte) 4)
                 .setOpCode(ARP.OP_REPLY)
-                .setSenderHardwareAddress(vipProxyMacBytes)
-                .setSenderProtocolAddress(
-                        arpRequest.getTargetProtocolAddress())
-                .setTargetHardwareAddress(
-                        eth.getSourceMACAddress().getBytes())
-                .setTargetProtocolAddress(
-                        arpRequest.getSenderProtocolAddress()));
+                .setSenderHardwareAddress(vips.get(vipId).proxyMac)
+                .setSenderProtocolAddress(arpRequest.getTargetProtocolAddress())
+                .setTargetHardwareAddress(eth.getSourceMACAddress())
+                .setTargetProtocolAddress(arpRequest.getSenderProtocolAddress()));
                 
         // push ARP reply out
         pushPacket(arpReply, sw, OFBufferId.NO_BUFFER, OFPort.ANY, (pi.getVersion().compareTo(OFVersion.OF_12) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT)), cntx, true);
@@ -382,7 +384,7 @@ public class LoadBalancer implements IFloodlightModule,
         // srcDevice and/or dstDevice is null, no route can be pushed
         if (srcDevice == null || dstDevice == null) return;
         
-        DatapathId srcIsland = topologyService.getL2DomainId(sw.getId());
+        DatapathId srcIsland = topologyService.getClusterId(sw.getId());
 
         if (srcIsland == null) {
             log.debug("No openflow island found for source {}/{}", 
@@ -395,11 +397,11 @@ public class LoadBalancer implements IFloodlightModule,
         boolean on_same_island = false;
         boolean on_same_if = false;
         for (SwitchPort dstDap : dstDevice.getAttachmentPoints()) {
-            DatapathId dstSwDpid = dstDap.getSwitchDPID();
-            DatapathId dstIsland = topologyService.getL2DomainId(dstSwDpid);
+            DatapathId dstSwDpid = dstDap.getNodeId();
+            DatapathId dstIsland = topologyService.getClusterId(dstSwDpid);
             if ((dstIsland != null) && dstIsland.equals(srcIsland)) {
                 on_same_island = true;
-                if ((sw.getId().equals(dstSwDpid)) && ((pi.getVersion().compareTo(OFVersion.OF_12) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT)).equals(dstDap.getPort()))) {
+                if ((sw.getId().equals(dstSwDpid)) && OFMessageUtils.getInPort(pi).equals(dstDap.getPortId())) {
                     on_same_if = true;
                 }
                 break;
@@ -440,25 +442,25 @@ public class LoadBalancer implements IFloodlightModule,
             SwitchPort srcDap = srcDaps[iSrcDaps];
             SwitchPort dstDap = dstDaps[iDstDaps];
             DatapathId srcCluster = 
-                    topologyService.getL2DomainId(srcDap.getSwitchDPID());
+                    topologyService.getClusterId(srcDap.getNodeId());
             DatapathId dstCluster = 
-                    topologyService.getL2DomainId(dstDap.getSwitchDPID());
+                    topologyService.getClusterId(dstDap.getNodeId());
 
             int srcVsDest = srcCluster.compareTo(dstCluster);
             if (srcVsDest == 0) {
                 if (!srcDap.equals(dstDap) && 
                         (srcCluster != null) && 
                         (dstCluster != null)) {
-                    Route routeIn = 
-                            routingEngineService.getRoute(srcDap.getSwitchDPID(),
-                                                   srcDap.getPort(),
-                                                   dstDap.getSwitchDPID(),
-                                                   dstDap.getPort(), U64.of(0));
-                    Route routeOut = 
-                            routingEngineService.getRoute(dstDap.getSwitchDPID(),
-                                                   dstDap.getPort(),
-                                                   srcDap.getSwitchDPID(),
-                                                   srcDap.getPort(), U64.of(0));
+                    Path routeIn = 
+                            routingEngineService.getPath(srcDap.getNodeId(),
+                                                   srcDap.getPortId(),
+                                                   dstDap.getNodeId(),
+                                                   dstDap.getPortId());
+                    Path routeOut = 
+                            routingEngineService.getPath(dstDap.getNodeId(),
+                                                   dstDap.getPortId(),
+                                                   srcDap.getNodeId(),
+                                                   srcDap.getPortId());
 
                     // use static flow entry pusher to push flow mod along in and out path
                     // in: match src client (ip, port), rewrite dest from vip ip/port to member ip/port, forward
@@ -487,12 +489,12 @@ public class LoadBalancer implements IFloodlightModule,
     /**
      * used to push given route using static flow entry pusher
      * @param boolean inBound
-     * @param Route route
+     * @param Path route
      * @param IPClient client
      * @param LBMember member
      * @param long pinSwitch
      */
-    public void pushStaticVipRoute(boolean inBound, Route route, IPClient client, LBMember member, IOFSwitch pinSwitch) {
+    public void pushStaticVipRoute(boolean inBound, Path route, IPClient client, LBMember member, IOFSwitch pinSwitch) {
         List<NodePortTuple> path = route.getPath();
         if (path.size() > 0) {
            for (int i = 0; i < path.size(); i+=2) {
@@ -510,8 +512,10 @@ public class LoadBalancer implements IFloodlightModule,
                fmb.setCookie(U64.of(0));  
                fmb.setPriority(FlowModUtils.PRIORITY_MAX);
                
+               
                if (inBound) {
-                   entryName = "inbound-vip-"+ member.vipId+"-client-"+client.ipAddress+"-port-"+client.targetPort
+                   entryName = "inbound-vip-"+ member.vipId+"-client-"+client.ipAddress
+                		   +"-srcport-"+client.srcPort+"-dstport-"+client.targetPort
                            +"-srcswitch-"+path.get(0).getNodeId()+"-sw-"+sw;
                    mb.setExact(MatchField.ETH_TYPE, EthType.IPv4)
                    .setExact(MatchField.IP_PROTO, client.nw_proto)
@@ -541,10 +545,17 @@ public class LoadBalancer implements IFloodlightModule,
                     	   actions.add(pinSwitch.getOFFactory().actions().output(path.get(i+1).getPortId(), Integer.MAX_VALUE));
                        }
                    } else {
-                	   actions.add(switchService.getSwitch(path.get(i+1).getNodeId()).getOFFactory().actions().output(path.get(i+1).getPortId(), Integer.MAX_VALUE));
+                	   //fix concurrency errors
+                	   try{
+                		   actions.add(switchService.getSwitch(path.get(i+1).getNodeId()).getOFFactory().actions().output(path.get(i+1).getPortId(), Integer.MAX_VALUE));
+                	   }
+                	   catch(NullPointerException e){
+                		   log.error("Fail to install loadbalancer flow rules to offline switch {}.", path.get(i+1).getNodeId());
+                	   }
                    }
                } else {
-                   entryName = "outbound-vip-"+ member.vipId+"-client-"+client.ipAddress+"-port-"+client.targetPort
+                   entryName = "outbound-vip-"+ member.vipId+"-client-"+client.ipAddress
+                		   +"-srcport-"+client.srcPort+"-dstport-"+client.targetPort
                            +"-srcswitch-"+path.get(0).getNodeId()+"-sw-"+sw;
                    mb.setExact(MatchField.ETH_TYPE, EthType.IPv4)
                    .setExact(MatchField.IP_PROTO, client.nw_proto)
@@ -573,10 +584,17 @@ public class LoadBalancer implements IFloodlightModule,
                     	   actions.add(pinSwitch.getOFFactory().actions().output(path.get(i+1).getPortId(), Integer.MAX_VALUE));
                        }
                    } else {
-                	   actions.add(switchService.getSwitch(path.get(i+1).getNodeId()).getOFFactory().actions().output(path.get(i+1).getPortId(), Integer.MAX_VALUE));
+                	   //fix concurrency errors
+                	   try{
+                		   actions.add(switchService.getSwitch(path.get(i+1).getNodeId()).getOFFactory().actions().output(path.get(i+1).getPortId(), Integer.MAX_VALUE));
+                	   }
+                	   catch(NullPointerException e){
+                		   log.error("Fail to install loadbalancer flow rules to offline switches {}.", path.get(i+1).getNodeId());
+                	   }
                    }
                    
                }
+               
                
                fmb.setActions(actions);
                fmb.setPriority(U16.t(LB_PRIORITY));
@@ -667,6 +685,8 @@ public class LoadBalancer implements IFloodlightModule,
         LBPool pool;
         if (pools != null) {
             pool = pools.get(poolId);
+            if (pool == null)	// fix dereference violations
+            	return -1;
             if (pool.vipId != null)
                 vips.get(pool.vipId).pools.remove(poolId);
             pools.remove(poolId);
@@ -795,7 +815,7 @@ public class LoadBalancer implements IFloodlightModule,
         l.add(IDebugCounterService.class);
         l.add(ITopologyService.class);
         l.add(IRoutingService.class);
-        l.add(IStaticFlowEntryPusherService.class);
+        l.add(IStaticEntryPusherService.class);
 
         return l;
     }
@@ -809,7 +829,7 @@ public class LoadBalancer implements IFloodlightModule,
         deviceManagerService = context.getServiceImpl(IDeviceService.class);
         routingEngineService = context.getServiceImpl(IRoutingService.class);
         topologyService = context.getServiceImpl(ITopologyService.class);
-        sfpService = context.getServiceImpl(IStaticFlowEntryPusherService.class);
+        sfpService = context.getServiceImpl(IStaticEntryPusherService.class);
         switchService = context.getServiceImpl(IOFSwitchService.class);
         
         vips = new HashMap<String, LBVip>();

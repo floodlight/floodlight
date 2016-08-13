@@ -6,8 +6,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map.Entry;
 
-import net.floodlightcontroller.core.annotations.LogMessageCategory;
-import net.floodlightcontroller.core.annotations.LogMessageDoc;
 import net.floodlightcontroller.debugcounter.IDebugCounter;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
 
@@ -26,7 +24,6 @@ import org.slf4j.LoggerFactory;
  * registered listeners of changes
  * @author readams
  */
-@LogMessageCategory("State Synchronization")
 public class ListenerStorageEngine
     implements IStorageEngine<ByteArray, byte[]> {
     protected static Logger logger =
@@ -144,10 +141,6 @@ public class ListenerStorageEngine
         notifyListeners(Collections.singleton(key).iterator(), type);
     }
 
-    @LogMessageDoc(level="ERROR",
-                   message="An error occurred in a sync listener",
-                   explanation="An unexpected error occured in a handler for " +
-                               "an update to shared state.")
     protected void notifyListeners(Iterator<ByteArray> keys, UpdateType type) {
         for (MappingStoreListener msl : listeners) {
             try {

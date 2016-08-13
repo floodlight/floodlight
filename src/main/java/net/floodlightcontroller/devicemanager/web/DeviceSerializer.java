@@ -20,6 +20,7 @@ package net.floodlightcontroller.devicemanager.web;
 import java.io.IOException;
 
 import org.projectfloodlight.openflow.types.IPv4Address;
+import org.projectfloodlight.openflow.types.IPv6Address;
 import org.projectfloodlight.openflow.types.VlanVid;
 
 import net.floodlightcontroller.devicemanager.SwitchPort;
@@ -49,6 +50,11 @@ public class DeviceSerializer extends JsonSerializer<Device> {
 
         jGen.writeArrayFieldStart("ipv4");
         for (IPv4Address ip : device.getIPv4Addresses())
+            jGen.writeString(ip.toString());
+        jGen.writeEndArray();
+        
+        jGen.writeArrayFieldStart("ipv6");
+        for (IPv6Address ip : device.getIPv6Addresses())
             jGen.writeString(ip.toString());
         jGen.writeEndArray();
 

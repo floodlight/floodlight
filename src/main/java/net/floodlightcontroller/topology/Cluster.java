@@ -21,9 +21,9 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import net.floodlightcontroller.routing.Link;
-
 import org.projectfloodlight.openflow.types.DatapathId;
+
+import net.floodlightcontroller.linkdiscovery.Link;
 
 public class Cluster {
     protected DatapathId id; // the lowest id of the nodes

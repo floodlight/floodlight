@@ -23,6 +23,8 @@ import static net.floodlightcontroller.devicemanager.IDeviceService.DeviceField.
 
 import java.util.EnumSet;
 
+import org.projectfloodlight.openflow.types.DatapathId;
+
 import net.floodlightcontroller.devicemanager.IDeviceService;
 import net.floodlightcontroller.devicemanager.IEntityClass;
 import net.floodlightcontroller.devicemanager.IDeviceService.DeviceField;
@@ -59,11 +61,11 @@ public class MockEntityClassifierMac extends DefaultEntityClassifier {
         if (entity.getSwitchDPID() == null) {
             throw new IllegalArgumentException("Not all key fields specified."
                     + " Required fields: " + getKeyFields());
-        } else if (entity.getSwitchDPID().getLong() == 1L) {
+        } else if (entity.getSwitchDPID().equals(DatapathId.of(1))) {
             return testECMac1;
-        } else if (entity.getSwitchDPID().getLong() == 2L) {
+        } else if (entity.getSwitchDPID().equals(DatapathId.of(2))) {
             return testECMac2;
-        } else if (entity.getSwitchDPID().getLong() == -1L) {
+        } else if (entity.getSwitchDPID().equals(DatapathId.of(-1))) {
             return null;
         }
         return DefaultEntityClassifier.entityClass;

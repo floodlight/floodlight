@@ -10,8 +10,6 @@ import java.util.ArrayList;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
 import net.floodlightcontroller.debugcounter.MockDebugCounterService;
-import net.floodlightcontroller.debugevent.IDebugEventService;
-import net.floodlightcontroller.debugevent.MockDebugEventService;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
 import net.floodlightcontroller.threadpool.ThreadPool;
 
@@ -47,8 +45,7 @@ public class ClientTest {
     
     @Before
     public void setUp() throws Exception {
-        keyStoreFile = new File(keyStoreFolder.getRoot(), 
-                "keystore.jceks");
+        keyStoreFile = new File(keyStoreFolder.getRoot(), "keystore.jceks");
         CryptoUtil.writeSharedSecret(keyStoreFile.getAbsolutePath(), 
                                      keyStorePassword, 
                                      CryptoUtil.secureRandom(16));
@@ -65,10 +62,9 @@ public class ClientTest {
         FloodlightModuleContext fmc = new FloodlightModuleContext();
         fmc.addService(IThreadPoolService.class, tp);
         fmc.addService(IDebugCounterService.class, new MockDebugCounterService());
-        fmc.addService(IDebugEventService.class, new MockDebugEventService());
         
         fmc.addConfigParam(syncManager, "nodes", nodeString);
-        fmc.addConfigParam(syncManager, "thisNode", ""+1);
+        fmc.addConfigParam(syncManager, "thisNodeId", ""+1);
         fmc.addConfigParam(syncManager, "persistenceEnabled", "false");
         fmc.addConfigParam(syncManager, "authScheme", "CHALLENGE_RESPONSE");
         fmc.addConfigParam(syncManager, "keyStorePath", 

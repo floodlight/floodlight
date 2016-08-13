@@ -1,0 +1,14 @@
+<configuration scan="true">
+  <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+    <encoder>
+      <pattern>%date{yyyy-MM-dd HH:mm:ss.S} %-5level [%logger{15}] %msg%n</pattern>
+    </encoder>
+  </appender>
+  <root level="INFO">
+    <appender-ref ref="STDOUT" />
+  </root>
+  <logger name="io" level="ERROR"></logger> <!-- Netty logging -->
+  <logger name="LogService" level="ERROR"/> <!-- Restlet access logging -->
+  <logger name="net.floodlightcontroller" level="ERROR"/>
+  <logger name="org.sdnplatform" level="ERROR"/>
+</configuration>

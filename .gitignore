@@ -14,3 +14,5 @@ findbugs-results
 /thrift
 *.idea/*
 *.iml
+.metadata/
+/bin/

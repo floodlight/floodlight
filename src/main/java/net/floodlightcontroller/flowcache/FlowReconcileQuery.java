@@ -16,14 +16,6 @@
 
 package net.floodlightcontroller.flowcache;
 
-import java.lang.ref.SoftReference;
-
-import net.floodlightcontroller.debugevent.IDebugEventService.EventColumn;
-import net.floodlightcontroller.debugevent.IDebugEventService.EventFieldType;
-import net.floodlightcontroller.debugevent.IDebugEventService.EventType;
-import net.floodlightcontroller.debugevent.IEventCategory;
-import net.floodlightcontroller.debugevent.IDebugEventService;
-import net.floodlightcontroller.debugevent.MockDebugEventService;
 import net.floodlightcontroller.flowcache.PriorityPendingQueue.EventPriority;
 
 /**
@@ -33,29 +25,7 @@ import net.floodlightcontroller.flowcache.PriorityPendingQueue.EventPriority;
 public class FlowReconcileQuery {
     public ReconcileQueryEvType evType;
     public EventPriority evPriority;
-    public static class FlowReconcileQueryDebugEvent {
-        @EventColumn(name = "Event Info",
-                     description = EventFieldType.SREF_OBJECT)
-        private final SoftReference<FlowReconcileQuery> eventInfo;
-        @EventColumn(name = "Stage",
-                     description = EventFieldType.STRING)
-        private final String stage;
-        @EventColumn(name = "Stage Info",
-                     description = EventFieldType.SREF_OBJECT)
-        private final SoftReference<Object> stageInfo;
-        public FlowReconcileQueryDebugEvent(FlowReconcileQuery eventInfo,
-                                            String stage,
-                                            Object stageInfo) {
-            super();
-            this.eventInfo = new SoftReference<FlowReconcileQuery>(eventInfo);
-            this.stage = stage;
-            if (stageInfo != null) {
-                this.stageInfo = new SoftReference<Object>(stageInfo);
-            } else {
-                this.stageInfo = null;
-            }
-        }
-    }
+    
     public static enum ReconcileQueryEvType {
         /* Interface rule of a bvs was modified */
         BVS_INTERFACE_RULE_CHANGED(EventPriority.LOW,
@@ -94,8 +64,6 @@ public class FlowReconcileQuery {
 
         private String description;
         private EventPriority priority;
-        private IEventCategory<FlowReconcileQueryDebugEvent> eventCategory;
-        private IDebugEventService debugEventService;
 
         private ReconcileQueryEvType(EventPriority priority, String description) {
             this.priority = priority;
@@ -108,23 +76,6 @@ public class FlowReconcileQuery {
         
         public String getDescription() {
             return description;
-        }
-        
-        public void registerDebugEvent(String packageName, IDebugEventService debugEvents) {
-        	 if (debugEventService == null) {
-                 debugEventService = new MockDebugEventService();
-             }
-                eventCategory = debugEventService.buildEvent(FlowReconcileQueryDebugEvent.class)
-                    .setModuleName(packageName)
-                    .setEventName(this.toString().toLowerCase().replace("_", "-"))
-                    .setEventDescription(this.getDescription())
-                    .setEventType(EventType.ALWAYS_LOG)
-                    .setBufferCapacity(500)
-                    .register();
-        }
-    
-        public IEventCategory<FlowReconcileQueryDebugEvent> getDebugEvent() {
-            return eventCategory;
         }
     }
     public FlowReconcileQuery(ReconcileQueryEvType evType) {

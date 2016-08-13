@@ -19,6 +19,7 @@ package net.floodlightcontroller.hub;
 
 import static org.easymock.EasyMock.createMock;
 import static org.easymock.EasyMock.replay;
+import static org.easymock.EasyMock.expect;
 import static org.easymock.EasyMock.verify;
 import static org.easymock.EasyMock.capture;
 import static org.junit.Assert.*;
@@ -120,9 +121,9 @@ public class HubTest extends FloodlightTestCase {
             .setInPort(OFPort.of(1))
             .setData(this.testPacketSerialized).build();
         
-        Capture<OFMessage> wc1 = new Capture<OFMessage>(CaptureType.ALL);
+        Capture<OFMessage> wc1 = EasyMock.newCapture(CaptureType.ALL);
         
-        mockSwitch.write(capture(wc1));
+        expect(mockSwitch.write(capture(wc1))).andReturn(true).anyTimes();
 
         // Start recording the replay on the mocks
         replay(mockSwitch);
@@ -137,7 +138,7 @@ public class HubTest extends FloodlightTestCase {
         
         assertTrue(wc1.hasCaptured());
         OFMessage m = wc1.getValue();
-        assertTrue(OFMessageUtils.equalsIgnoreXid(m, po));
+        assertEquals(OFMessageUtils.OFMessageIgnoreXid.of(m), OFMessageUtils.OFMessageIgnoreXid.of(po));
     }
 
     @Test
@@ -162,8 +163,8 @@ public class HubTest extends FloodlightTestCase {
         // Mock up our expected behavior
         IOFSwitch mockSwitch = createMock(IOFSwitch.class);
         EasyMock.expect(mockSwitch.getOFFactory()).andReturn(OFFactories.getFactory(OFVersion.OF_13)).anyTimes();
-        Capture<OFPacketOut> wc1 = new Capture<OFPacketOut>(CaptureType.ALL);
-        mockSwitch.write(capture(wc1));
+        Capture<OFPacketOut> wc1 = EasyMock.newCapture(CaptureType.ALL);
+        expect(mockSwitch.write(capture(wc1))).andReturn(true).anyTimes();
 
         // Start recording the replay on the mocks
         replay(mockSwitch);

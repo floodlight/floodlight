@@ -2,9 +2,9 @@ package net.floodlightcontroller.core.internal;
 
 import java.util.concurrent.TimeUnit;
 
-import org.jboss.netty.util.Timeout;
-import org.jboss.netty.util.Timer;
-import org.jboss.netty.util.TimerTask;
+import io.netty.util.Timeout;
+import io.netty.util.Timer;
+import io.netty.util.TimerTask;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.internal.OFSwitchHandshakeHandler.WaitAppHandshakeState;
 import org.projectfloodlight.openflow.protocol.OFMessage;

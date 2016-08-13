@@ -59,5 +59,4 @@ public class MockEntityClassifier extends DefaultEntityClassifier {
     public EnumSet<IDeviceService.DeviceField> getKeyFields() {
         return EnumSet.of(MAC, VLAN, SWITCH, PORT);
     }
-
 }

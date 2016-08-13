@@ -7,6 +7,7 @@ import org.sdnplatform.sync.ISyncService;
 import org.sdnplatform.sync.error.SyncException;
 import org.sdnplatform.sync.error.UnknownStoreException;
 import org.sdnplatform.sync.internal.AbstractSyncManager;
+import org.sdnplatform.sync.internal.rpc.IRPCListener;
 import org.sdnplatform.sync.internal.store.IStorageEngine;
 import org.sdnplatform.sync.internal.store.IStore;
 import org.sdnplatform.sync.internal.store.InMemoryStorageEngine;
@@ -119,4 +120,22 @@ public class MockSyncService extends AbstractSyncManager {
     public void reset() {
         localStores = new HashMap<String, ListenerStorageEngine>();
     }
+
+
+    /**
+     * Tulio Ribeiro
+     */
+	@Override
+	public void addRPCListener(IRPCListener listener) {
+		// TODO Auto-generated method stub
+		
+	}
+	/**
+     * Tulio Ribeiro
+     */
+	@Override
+	public void removeRPCListener(IRPCListener listener) {
+		// TODO Auto-generated method stub
+		
+	}
 }

@@ -7,7 +7,6 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import org.easymock.EasyMock;
-import net.floodlightcontroller.core.OFSwitch;
 import org.projectfloodlight.openflow.protocol.OFCapabilities;
 import org.projectfloodlight.openflow.protocol.OFFactories;
 import org.projectfloodlight.openflow.protocol.OFStatsReply;
@@ -43,7 +42,6 @@ public class MockOFSwitchImpl extends OFSwitch {
     public void setAttributes(Map<Object, Object> attrs) {
         this.attributes.putAll(attrs);
     }
-
 
     @SuppressWarnings("unchecked")
     @Override

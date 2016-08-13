@@ -16,11 +16,12 @@ import java.util.EnumSet;
 import org.hamcrest.CoreMatchers;
 import org.hamcrest.Matchers;
 import org.junit.Test;
+
 import net.floodlightcontroller.core.IOFSwitchBackend;
-import net.floodlightcontroller.core.OFConnection;
 import net.floodlightcontroller.core.SwitchDescription;
 import net.floodlightcontroller.core.internal.OFSwitchAppHandshakePlugin.PluginResultType;
 import net.floodlightcontroller.core.internal.OFSwitchHandshakeHandler.WaitAppHandshakeState;
+
 import org.projectfloodlight.openflow.protocol.OFActionType;
 import org.projectfloodlight.openflow.protocol.OFCapabilities;
 import org.projectfloodlight.openflow.protocol.OFControllerRole;
@@ -79,6 +80,7 @@ public class OFSwitchHandshakeHandlerVer10Test extends OFSwitchHandlerTestBase {
         setupSwitchForInstantiationWithReset();
         sw.startDriverHandshake();
         expectLastCall().once();
+        expect(sw.getOFFactory()).andReturn(factory).once();
         sw.isDriverHandshakeComplete();
         expectLastCall().andReturn(switchDriverComplete).once();
 
