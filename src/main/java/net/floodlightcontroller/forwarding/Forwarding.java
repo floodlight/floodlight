@@ -374,7 +374,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 
     protected void doDropFlow(IOFSwitch sw, OFPacketIn pi, IRoutingDecision decision, FloodlightContext cntx) {
         OFPort inPort = OFMessageUtils.getInPort(pi);
-        Match m = createMatchFromPacket(sw, inPort, cntx);
+        Match m = createMatchFromPacket(sw, inPort, pi, cntx);
         OFFlowMod.Builder fmb = sw.getOFFactory().buildFlowAdd();
         List<OFAction> actions = new ArrayList<OFAction>(); // set no action to drop
         U64 flowSetId = flowSetIdRegistry.generateFlowSetId();
@@ -485,7 +485,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                 dstAp.getNodeId(),
                 dstAp.getPortId());
 
-        Match m = createMatchFromPacket(sw, srcPort, cntx);
+        Match m = createMatchFromPacket(sw, srcPort, pi, cntx);
 
         if (path != null) {
             if (log.isDebugEnabled()) {
@@ -536,11 +536,20 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
      * @param cntx, the current context which contains the deserialized packet
      * @return a composed Match object based on the provided information
      */
-    protected Match createMatchFromPacket(IOFSwitch sw, OFPort inPort, FloodlightContext cntx) {
+    protected Match createMatchFromPacket(IOFSwitch sw, OFPort inPort, OFPacketIn pi, FloodlightContext cntx) {
         // The packet in match will only contain the port number.
         // We need to add in specifics for the hosts we're routing between.
         Ethernet eth = IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
-        VlanVid vlan = VlanVid.ofVlan(eth.getVlanID());
+
+        VlanVid vlan = null;      
+        if (pi.getVersion().compareTo(OFVersion.OF_11) > 0 && /* 1.0 and 1.1 do not have a match */
+                pi.getMatch().get(MatchField.VLAN_VID) != null) { 
+            vlan = pi.getMatch().get(MatchField.VLAN_VID).getVlanVid(); /* VLAN may have been popped by switch */
+        }
+        if (vlan == null) {
+            vlan = VlanVid.ofVlan(eth.getVlanID()); /* VLAN might still be in packet */
+        }
+        
         MacAddress srcMac = eth.getSourceMACAddress();
         MacAddress dstMac = eth.getDestinationMACAddress();
 
