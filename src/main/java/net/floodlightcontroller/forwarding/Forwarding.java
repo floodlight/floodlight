@@ -541,9 +541,15 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         // We need to add in specifics for the hosts we're routing between.
         Ethernet eth = IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
 
-        VlanVid vlan = pi.getMatch().get(MatchField.VLAN_VID) == null ? 
-                VlanVid.ofVlan(eth.getVlanID()) : /* VLAN in packet or untagged */
-            pi.getMatch().get(MatchField.VLAN_VID).getVlanVid(); /* VLAN may have been popped by switch */
+        VlanVid vlan = null;      
+        if (pi.getVersion().compareTo(OFVersion.OF_11) > 0 && /* 1.0 and 1.1 do not have a match */
+                pi.getMatch().get(MatchField.VLAN_VID) != null) { 
+            vlan = pi.getMatch().get(MatchField.VLAN_VID).getVlanVid(); /* VLAN may have been popped by switch */
+        }
+        if (vlan == null) {
+            vlan = VlanVid.ofVlan(eth.getVlanID()); /* VLAN might still be in packet */
+        }
+        
         MacAddress srcMac = eth.getSourceMACAddress();
         MacAddress dstMac = eth.getDestinationMACAddress();
 
