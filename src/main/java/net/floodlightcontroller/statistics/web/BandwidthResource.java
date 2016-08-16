@@ -69,6 +69,9 @@ public class BandwidthResource extends ServerResource {
                 spbs = new HashSet<SwitchPortBandwidth>();
                 //fix concurrency scenario
                 IOFSwitch sw = switchService.getSwitch(dpid);
+                if (sw == null){
+                		return Collections.singletonMap("ERROR", "Switch was not online: " + dpid);
+                }
                 for (OFPortDesc pd : sw.getPorts()) { /* do specific DPID; do all ports */
                     SwitchPortBandwidth spb = statisticsService.getBandwidthConsumption(dpid, pd.getPortNo());
                     if (spb != null) {
