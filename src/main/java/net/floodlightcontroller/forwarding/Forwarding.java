@@ -811,7 +811,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                 + ", VLAN=" + FLOWMOD_DEFAULT_MATCH_VLAN
                 + ", MAC=" + FLOWMOD_DEFAULT_MATCH_MAC
                 + ", IP=" + FLOWMOD_DEFAULT_MATCH_IP
-                + ", TPPT=" + FLOWMOD_DEFAULT_MATCH_TRANSPORT)
+                + ", TPPT=" + FLOWMOD_DEFAULT_MATCH_TRANSPORT
                 + ", FLAG=" + FLOWMOD_DEFAULT_MATCH_TCP_FLAG);
 
         tmp = configParameters.get("detailed-match");
@@ -835,7 +835,8 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                 + ", SRC_IP=" + FLOWMOD_DEFAULT_MATCH_IP_SRC
                 + ", DST_IP=" + FLOWMOD_DEFAULT_MATCH_IP_DST
                 + ", SRC_TPPT=" + FLOWMOD_DEFAULT_MATCH_TRANSPORT_SRC
-                + ", DST_TPPT=" + FLOWMOD_DEFAULT_MATCH_TRANSPORT_DST);
+                + ", DST_TPPT=" + FLOWMOD_DEFAULT_MATCH_TRANSPORT_DST
+                + ", FLAG=" + FLOWMOD_DEFAULT_MATCH_TCP_FLAG);
 
         tmp = configParameters.get("flood-arp");
         if (tmp != null) {
