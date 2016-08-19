@@ -487,7 +487,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 
         Match m = createMatchFromPacket(sw, srcPort, pi, cntx);
 
-        if (path != null) {
+        if (! path.getPath().isEmpty()) {
             if (log.isDebugEnabled()) {
                 log.debug("pushRoute inPort={} route={} " +
                         "destination={}:{}",
@@ -500,29 +500,15 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
             pushRoute(path, m, pi, sw.getId(), cookie, 
                     cntx, requestFlowRemovedNotifn,
                     OFFlowModCommand.ADD);	
-        } else {
-            /* Route traverses no links --> src/dst devices on same switch */
-            log.debug("Could not compute route. Devices should be on same switch src={} and dst={}", srcDevice, dstDevice);
-            path = new Path(srcDevice.getAttachmentPoints()[0].getNodeId(), dstDevice.getAttachmentPoints()[0].getNodeId());
-            List<NodePortTuple> npts = new ArrayList<NodePortTuple>(2);
-            npts.add(new NodePortTuple(srcDevice.getAttachmentPoints()[0].getNodeId(),
-                    srcDevice.getAttachmentPoints()[0].getPortId()));
-            npts.add(new NodePortTuple(dstDevice.getAttachmentPoints()[0].getNodeId(),
-                    dstDevice.getAttachmentPoints()[0].getPortId()));
-            path.setPath(npts);
-            pushRoute(path, m, pi, sw.getId(), cookie,
-                    cntx, requestFlowRemovedNotifn,
-                    OFFlowModCommand.ADD);
-        }
-
-        /* 
-         * Register this flowset with ingress and egress ports for link down
-         * flow removal. This is done after we push the path as it is blocking.
-         */
-        for (NodePortTuple npt : path.getPath()) {
-            flowSetIdRegistry.registerFlowSetId(npt, flowSetId);
-        }
-
+            
+            /* 
+             * Register this flowset with ingress and egress ports for link down
+             * flow removal. This is done after we push the path as it is blocking.
+             */
+            for (NodePortTuple npt : path.getPath()) {
+                flowSetIdRegistry.registerFlowSetId(npt, flowSetId);
+            }
+        } /* else no path was found */
     }
 
     /**

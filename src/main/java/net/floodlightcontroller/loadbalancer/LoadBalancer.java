@@ -466,11 +466,11 @@ public class LoadBalancer implements IFloodlightModule,
                     // in: match src client (ip, port), rewrite dest from vip ip/port to member ip/port, forward
                     // out: match dest client (ip, port), rewrite src from member ip/port to vip ip/port, forward
                     
-                    if (routeIn != null) {
+                    if (! routeIn.getPath().isEmpty()) {
                         pushStaticVipRoute(true, routeIn, client, member, sw);
                     }
                     
-                    if (routeOut != null) {
+                    if (! routeOut.getPath().isEmpty()) {
                         pushStaticVipRoute(false, routeOut, client, member, sw);
                     }
 

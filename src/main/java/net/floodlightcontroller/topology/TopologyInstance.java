@@ -1191,25 +1191,16 @@ public class TopologyInstance {
      */
     public Path getPath(DatapathId srcId, OFPort srcPort,
             DatapathId dstId, OFPort dstPort) {
-        // Return null if the route source and destination are the
-        // same switch ports.
-        if (srcId.equals(dstId) && srcPort.equals(dstPort)) {
-            return null;
-        }
-
-        List<NodePortTuple> nptList;
-        NodePortTuple npt;
         Path r = getPath(srcId, dstId);
-        if (r == null && !srcId.equals(dstId)) {
-            return null;
+        
+        /* Path cannot be null, but empty b/t 2 diff DPIDs -> not found */
+        if (! srcId.equals(dstId) && r.getPath().isEmpty()) {
+            return r;
         }
 
-        if (r != null) {
-            nptList= new ArrayList<NodePortTuple>(r.getPath());
-        } else {
-            nptList = new ArrayList<NodePortTuple>();
-        }
-        npt = new NodePortTuple(srcId, srcPort);
+        /* Else, path is valid (len=0) on the same DPID or (len>0) diff DPIDs */
+        List<NodePortTuple> nptList = new ArrayList<NodePortTuple>(r.getPath());
+        NodePortTuple npt = new NodePortTuple(srcId, srcPort);
         nptList.add(0, npt); // add src port to the front
         npt = new NodePortTuple(dstId, dstPort);
         nptList.add(npt); // add dst port to the end
@@ -1226,12 +1217,14 @@ public class TopologyInstance {
      * @param dstId
      * @return
      */
-
     public Path getPath(DatapathId srcId, DatapathId dstId) {
-        // Return null route if srcId equals dstId
-        if (srcId.equals(dstId)) return null;
-
         PathId id = new PathId(srcId, dstId);
+
+        /* Return empty route if srcId equals dstId */
+        if (srcId.equals(dstId)) {
+            return new Path(id, ImmutableList.of());
+        }
+
         Path result = null;
 
         try {
@@ -1245,7 +1238,7 @@ public class TopologyInstance {
         if (log.isTraceEnabled()) {
             log.trace("getPath: {} -> {}", id, result);
         }
-        return result == null ? new Path(id, ImmutableList.of()) : result; /* return empty route instead of null */
+        return result == null ? new Path(id, ImmutableList.of()) : result;
     }
 
     //
