@@ -856,6 +856,7 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 				break;
 			case BUNDLE_CONTROL:
 				processOFBundleCtrl((OFBundleCtrlMsg) m);
+				break;
 			default:
 				illegalMessageReceived(m);
 				break;
