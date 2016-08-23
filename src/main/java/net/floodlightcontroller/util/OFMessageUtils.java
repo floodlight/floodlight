@@ -6,10 +6,20 @@ import java.util.List;
 
 import net.floodlightcontroller.core.IOFSwitch;
 
+import org.projectfloodlight.openflow.protocol.OFAsyncGetReply;
+import org.projectfloodlight.openflow.protocol.OFBarrierReply;
+import org.projectfloodlight.openflow.protocol.OFBundleCtrlMsg;
+import org.projectfloodlight.openflow.protocol.OFBundleCtrlType;
+import org.projectfloodlight.openflow.protocol.OFEchoReply;
 import org.projectfloodlight.openflow.protocol.OFFactories;
+import org.projectfloodlight.openflow.protocol.OFFeaturesReply;
+import org.projectfloodlight.openflow.protocol.OFGetConfigReply;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.OFPacketOut;
+import org.projectfloodlight.openflow.protocol.OFQueueGetConfigReply;
+import org.projectfloodlight.openflow.protocol.OFRoleReply;
+import org.projectfloodlight.openflow.protocol.OFStatsReply;
 import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
@@ -171,5 +181,46 @@ public class OFMessageUtils {
 
 		// and write it out
 		sw.write(pob.build());
+	}
+
+	public static boolean isReplyForRequest(OFMessage request, OFMessage reply) {
+		switch (request.getType()) {
+			case BARRIER_REQUEST:
+				return (reply instanceof OFBarrierReply);
+			case BUNDLE_CONTROL:
+				return isBundleCtrlReplyForRequest((OFBundleCtrlMsg) request, reply);
+			case FEATURES_REQUEST:
+				return (reply instanceof OFFeaturesReply);
+			case GET_ASYNC_REQUEST:
+				return (reply instanceof OFAsyncGetReply);
+			case GET_CONFIG_REQUEST:
+				return (reply instanceof OFGetConfigReply);
+			case QUEUE_GET_CONFIG_REQUEST:
+				return (reply instanceof OFQueueGetConfigReply);
+			case ROLE_REQUEST:
+				return (reply instanceof OFRoleReply);
+			case STATS_REQUEST:
+				return (reply instanceof OFStatsReply);
+			case ECHO_REQUEST:
+				return (reply instanceof OFEchoReply);
+			default:
+				return false;
+		}
+	}
+
+	private static boolean isBundleCtrlReplyForRequest(OFBundleCtrlMsg request, OFMessage reply) {
+		if (!(reply instanceof OFBundleCtrlMsg))
+			return false;
+		OFBundleCtrlMsg ctrlReply = (OFBundleCtrlMsg) reply;
+		switch (request.getBundleCtrlType()) {
+			case OPEN_REQUEST:
+				return ctrlReply.getBundleCtrlType() == OFBundleCtrlType.OPEN_REPLY;
+			case CLOSE_REQUEST:
+				return ctrlReply.getBundleCtrlType() == OFBundleCtrlType.CLOSE_REPLY;
+			case COMMIT_REQUEST:
+				return ctrlReply.getBundleCtrlType() == OFBundleCtrlType.COMMIT_REPLY;
+			default:
+				return false;
+		}
 	}
 }

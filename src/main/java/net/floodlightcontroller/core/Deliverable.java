@@ -1,5 +1,7 @@
 package net.floodlightcontroller.core;
 
+import org.projectfloodlight.openflow.protocol.OFMessage;
+
 /**
  * abstracts the 'back side' of a Future that is being listened on, i.e., an
  * object that receives a result or an error of the computaton once it is ready.
@@ -35,4 +37,6 @@ public interface Deliverable<T> {
     boolean isDone();
 
     boolean cancel(boolean mayInterruptIfRunning);
+    
+    OFMessage getRequest();
 }
