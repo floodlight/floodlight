@@ -53,7 +53,6 @@ import org.projectfloodlight.openflow.protocol.OFRequest;
 import org.projectfloodlight.openflow.protocol.OFStatsReply;
 import org.projectfloodlight.openflow.protocol.OFStatsReplyFlags;
 import org.projectfloodlight.openflow.protocol.OFStatsRequest;
-import org.projectfloodlight.openflow.protocol.OFType;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFAuxId;
 import org.projectfloodlight.openflow.types.U64;
@@ -280,6 +279,10 @@ public class OFConnection implements IOFConnection, IOFConnectionBackend{
 
 	private void registerDeliverable(long xid, Deliverable<?> deliverable) {
 		this.xidDeliverableMap.put(xid, deliverable);
+		setDeliverableTimeout(xid);
+	}
+
+	private void setDeliverableTimeout(long xid) {
 		timer.newTimeout(new TimeOutDeliverable(xid), DELIVERABLE_TIME_OUT, DELIVERABLE_TIME_OUT_UNIT);
 	}
 
@@ -297,6 +300,7 @@ public class OFConnection implements IOFConnection, IOFConnectionBackend{
 					deliverable.deliver(reply);
 				} else {
 					validReply = false;
+					setDeliverableTimeout(reply.getXid());
 				}
 			}
 			if (validReply && deliverable.isDone())
