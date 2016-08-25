@@ -27,6 +27,7 @@ import org.projectfloodlight.openflow.protocol.OFActionType;
 import org.projectfloodlight.openflow.protocol.OFBadRequestCode;
 import org.projectfloodlight.openflow.protocol.OFBarrierReply;
 import org.projectfloodlight.openflow.protocol.OFBarrierRequest;
+import org.projectfloodlight.openflow.protocol.OFBundleCtrlMsg;
 import org.projectfloodlight.openflow.protocol.OFControllerRole;
 import org.projectfloodlight.openflow.protocol.OFDescStatsReply;
 import org.projectfloodlight.openflow.protocol.OFDescStatsRequest;
@@ -606,6 +607,10 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 			unhandledMessageWritten(m);
 		}
 
+		void processOFBundleCtrl(OFBundleCtrlMsg m) {
+			unhandledMessageReceived(m);
+		}
+
 		private final boolean handshakeComplete;
 		OFSwitchHandshakeState(boolean handshakeComplete) {
 			this.handshakeComplete = handshakeComplete;
@@ -848,6 +853,9 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 				break;
 			case ROLE_STATUS:
 				processOFRoleStatus((OFRoleStatus) m);
+				break;
+			case BUNDLE_CONTROL:
+				processOFBundleCtrl((OFBundleCtrlMsg) m);
 				break;
 			default:
 				illegalMessageReceived(m);
@@ -1486,6 +1494,11 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 		@Override
 		void processOFStatsReply(OFStatsReply m) {
 			super.processOFStatsReply(m);
+		}
+
+		@Override
+		void processOFBundleCtrl(OFBundleCtrlMsg m) {
+			dispatchMessage(m);
 		}
 	}
 
