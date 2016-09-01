@@ -671,19 +671,22 @@ public class StatsReplySerializer extends JsonSerializer<StatsReply> {
             case OF_14:
                 break;
             case OF_13:
+                break;
             case OF_12:
                 //Fields applicable only to OF 1.2+
                 jGen.writeNumberField("write_set_fields", entry.getWriteSetfields().getValue());
                 jGen.writeNumberField("apply_set_fields", entry.getApplySetfields().getValue());
                 jGen.writeNumberField("metadata_match", entry.getMetadataMatch().getValue());
                 jGen.writeNumberField("metadata_write", entry.getMetadataWrite().getValue());            
+                break;
             case OF_11:
                 //Fields applicable to OF 1.1 & 1.2
                 jGen.writeStringField("match", entry.getMatch().toString());
                 jGen.writeNumberField("instructions", entry.getInstructions());
                 jGen.writeNumberField("write_actions", entry.getWriteActions());
                 jGen.writeNumberField("apply_actions", entry.getApplyActions());
-                jGen.writeNumberField("config", entry.getConfig());            	
+                jGen.writeNumberField("config", entry.getConfig());         
+                break;
             case OF_10:
                 //Fields applicable to OF 1.0, 1.1 & 1.2 
                 jGen.writeStringField("name",entry.getName());                        
