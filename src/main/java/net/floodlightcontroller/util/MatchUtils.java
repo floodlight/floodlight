@@ -136,6 +136,7 @@ public class MatchUtils {
 	public static final String STR_PBB_UCA = "pbb_uca";
 
 	public static final String STR_TCP_FLAGS = "tcp_flags";
+	public static final String STR_OVS_TCP_FLAGS = "ovs_tcp_flags";//experimenter OXM before floodlight completely support of1.5
 	public static final String STR_ACTSET_OUTPUT = "actset_output";
 	public static final String STR_PACKET_TYPE = "packet_type";
 
@@ -360,6 +361,9 @@ public class MatchUtils {
 			break;
 		case TCP_FLAGS:
 			key = STR_TCP_FLAGS;
+			break;
+		case OVS_TCP_FLAGS:
+			key = STR_OVS_TCP_FLAGS;
 			break;
 		case ACTSET_OUTPUT:
 			key = STR_ACTSET_OUTPUT;
@@ -1012,6 +1016,14 @@ public class MatchUtils {
 					mb.setExact(MatchField.TCP_FLAGS, U16.of(ParseUtils.parseHexOrDecInt(dataMask[0])));
 				} else {
 					mb.setMasked(MatchField.TCP_FLAGS, U16.of(ParseUtils.parseHexOrDecInt(dataMask[0])), 
+							U16.of(ParseUtils.parseHexOrDecInt(dataMask[1])));
+				}
+				break;
+			case STR_OVS_TCP_FLAGS:
+				if (dataMask.length == 1) {
+					mb.setExact(MatchField.OVS_TCP_FLAGS, U16.of(ParseUtils.parseHexOrDecInt(dataMask[0])));
+				} else {
+					mb.setMasked(MatchField.OVS_TCP_FLAGS, U16.of(ParseUtils.parseHexOrDecInt(dataMask[0])), 
 							U16.of(ParseUtils.parseHexOrDecInt(dataMask[1])));
 				}
 				break;
