@@ -336,7 +336,7 @@
             noindex="false"
             nonavbar="false"
             notree="false"
-            source="1.7"
+            source="1.8"
             sourcepath="${source}"
             splitindex="true"
             use="true"
