@@ -76,9 +76,21 @@ public class FirewallRulesResource extends ServerResource {
 			return ("{\"status\" : \"" + status + "\"}");
 		} else {
 			// add rule to firewall
+			String res = checkRuleOverlap(rule, firewall.getRules());
+			if(res != null){ // isOverlapable
+				/**
+				 * ATENTION THIS ALGORITHM can overlap only a single rule!
+				 */
+				status = "Rule Not added";
+				log.error(res);
+
+				return ("{\"status\" : \"" + status + "\"}");
+			} 
+			//Still have to conflict Check
 			firewall.addRule(rule);
 			status = "Rule added";
 			return ("{\"status\" : \"" + status + "\", \"rule-id\" : \""+ Integer.toString(rule.ruleid) + "\"}");
+
 		}
 	}
 
@@ -100,7 +112,7 @@ public class FirewallRulesResource extends ServerResource {
 			//TODO compose the error with a json formatter
 			return "{\"status\" : \"Error! Could not parse firewall rule, see log for details.\"}";
 		}
-		
+
 		String status = null;
 		boolean exists = false;
 		Iterator<FirewallRule> iter = firewall.getRules().iterator();
@@ -328,5 +340,135 @@ public class FirewallRulesResource extends ServerResource {
 
 		// no rule matched, so it doesn't exist in the rules
 		return false;
+	}
+	public static final int DPID_BIT 	= 1;
+	public static final int IN_PORT_BIT = 2;
+	public static final int DL_SRC_BIT 	= 4;
+	public static final int DL_DST_BIT 	= 8;
+	public static final int DL_TYPE_BIT	= 16;
+	public static final int NW_SRC_BIT 	= 32;
+	public static final int NW_DST_BIT 	= 64;
+	public static final int NW_PROTO_BIT= 128;
+	public static final int TP_SRC_BIT 	= 256;
+	public static final int TP_DST_BIT 	= 512;
+	//public static final int PRIORITY_BIT= 1024;
+	public static final String NEW_RULE_OVERLAPS = "WARNING: This rule overlapes another firewall rule with rule id: ";
+	public static final String NEW_RULE_OVERLAPED = "WARNING: The rule is overlaped by another firewall rule with rule id: ";
+
+	/**
+	 * Checks for Rule Overlaping in following conditions
+	 * New rule having priority lower or equal to current rules
+	 * New rule having having equal parameters and wildcards
+	 * @param rule
+	 * @param rules
+	 * @return error a String error message. Null if no overlap event is found
+	 */
+	public static String checkRuleOverlap(FirewallRule rule, List<FirewallRule> rules) {
+		Iterator<FirewallRule> iter = rules.iterator();
+		while (iter.hasNext()) {
+			FirewallRule r = iter.next();
+			// New rules with higher priority are not evaluated has overlapable
+			// only check overlapability in cases where priority is lower or equal.
+			// wheter priority is lower or equal we need to check overlapability because
+			// they can be overlapable or not.
+			// When new rule has higher priority we accept the rule. overlapability does not matter
+			// Some actual configured rules might be overlaped by a higher priority rule because
+			// since the have lower priority they will never be verified. 
+			// Possible existence of "junk rules".
+			if(rule.priority == r.priority){ 
+
+				int overlap = 0;
+				boolean whoOverlapes = false; // if true , new rule overlapes else new rule is overlaped
+				int sameField = 0;
+
+				// Check Switch Overlap
+				if(rule.any_dpid ^ r.any_dpid){
+					overlap += DPID_BIT;
+					whoOverlapes = (rule.any_dpid && !whoOverlapes) ? true : false;
+				}
+
+				if(rule.any_in_port ^ r.any_in_port){
+					overlap += IN_PORT_BIT;
+					whoOverlapes = (rule.any_in_port && !whoOverlapes) ? true : false;
+				}
+				if(rule.dpid.equals(r.dpid))
+					sameField += DPID_BIT;
+				if(rule.in_port.equals(r.in_port))
+					sameField += IN_PORT_BIT;
+
+				if((overlap | sameField) == 3 && overlap > 0)
+					return ((whoOverlapes) ? NEW_RULE_OVERLAPS : NEW_RULE_OVERLAPED) + r.ruleid;			
+				// Check Layer 2 Overlape
+				if(rule.any_dl_src ^ r.any_dl_src){
+					overlap += DL_SRC_BIT;
+					whoOverlapes = (rule.any_dl_src && !whoOverlapes) ? true : false;
+				}
+				if(rule.any_dl_dst ^ r.any_dl_dst){
+					overlap += DL_DST_BIT;
+					whoOverlapes = (rule.any_dl_dst && !whoOverlapes) ? true : false;
+				}
+				if(rule.any_dl_type ^ r.any_dl_type){
+					overlap += DL_TYPE_BIT;
+					whoOverlapes = (rule.any_dl_type && !whoOverlapes) ? true : false;
+				}
+				if(rule.dl_src.equals(r.dl_src))
+					sameField += DL_SRC_BIT;
+				if(rule.dl_dst.equals(r.dl_src))
+					sameField += DL_DST_BIT;
+				if(rule.dl_type.equals(r.dl_type))
+					sameField += DL_TYPE_BIT;
+
+				if((overlap | sameField) == 31 && overlap > 0)
+					return ((whoOverlapes) ? NEW_RULE_OVERLAPS : NEW_RULE_OVERLAPED) + r.ruleid;
+
+				// Check Layer 3 Overlape
+				if(rule.any_nw_src ^ r.any_nw_src){
+					overlap += NW_SRC_BIT;
+					whoOverlapes = (rule.any_nw_src && !whoOverlapes) ? true : false;
+				}
+				if(rule.any_nw_dst ^ r.any_nw_dst){
+					overlap += NW_DST_BIT;
+					whoOverlapes = (rule.any_nw_src && !whoOverlapes) ? true : false;
+				}
+				if(rule.nw_src_prefix_and_mask.equals(r.nw_src_prefix_and_mask))
+					sameField += NW_SRC_BIT;
+				if(rule.nw_dst_prefix_and_mask.equals(r.nw_dst_prefix_and_mask))
+					sameField += NW_DST_BIT;
+
+				if((overlap | sameField) == 127 && overlap > 0)
+					return ((whoOverlapes) ? NEW_RULE_OVERLAPS : NEW_RULE_OVERLAPED) + r.ruleid;		
+				
+				// Check Layer 4 Overlape
+				if(rule.any_nw_proto ^ r.any_nw_proto){
+					overlap += NW_PROTO_BIT;
+					whoOverlapes = (rule.any_nw_proto && !whoOverlapes) ? true : false;
+				}
+				if(rule.any_tp_src ^ r.any_tp_src ){
+					overlap += TP_SRC_BIT;
+					whoOverlapes = (rule.any_tp_src && !whoOverlapes) ? true : false;
+				}
+				if(rule.any_tp_dst ^ r.any_tp_dst){
+					overlap += TP_DST_BIT;
+					whoOverlapes = (rule.any_tp_dst && !whoOverlapes) ? true : false;
+				}
+				if(rule.nw_proto.equals(r.nw_proto))
+					sameField += NW_PROTO_BIT;
+				if(rule.tp_src.equals(r.tp_src))
+					sameField += TP_SRC_BIT;
+				if(rule.tp_dst.equals(r.tp_dst))
+					sameField += TP_DST_BIT;
+
+				if((overlap | sameField) == 1027 && overlap > 0){
+					return ((whoOverlapes) ? NEW_RULE_OVERLAPS : NEW_RULE_OVERLAPED) + r.ruleid;
+				}
+
+				/*// isOverlapable at priority level
+			if(rule.priority == r.priority)
+				sameField += PRIORITY_BIT;
+			if((overlap | sameField) == 2047)
+				return ((whoOverlapes) ? NEW_RULE_OVERLAPS : NEW_RULE_OVERLAPED) + r.ruleid;*/
+			}
+		}
+		return null; // No overlap exists
 	}
 }
