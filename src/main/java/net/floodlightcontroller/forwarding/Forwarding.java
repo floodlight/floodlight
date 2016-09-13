@@ -210,10 +210,12 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
             flowSetIdToNpts.remove(flowSetId);
 
             Iterator<Entry<NodePortTuple, Set<U64>>> itr = nptToFlowSetIds.entrySet().iterator();
+            boolean removed = false;
             while (itr.hasNext()) {
                 Entry<NodePortTuple, Set<U64>> e = itr.next();
-                if (e.getKey().equals(avoid)) {
+                if (e.getKey().equals(avoid) && ! removed) {
                     avoidItr.remove();
+                    removed = true;
                 } else {
                     Set<U64> ids = e.getValue();
                     ids.remove(flowSetId);
