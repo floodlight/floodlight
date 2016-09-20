@@ -748,7 +748,7 @@ public class TopologyInstance {
 
                     if ((bpsTx / 10^6) / 8 > 1) {
                         int cost = (int) (bpsTx / 10^6) / 8;
-                        linkCost.put(link, ((1/cost)*1000));
+                        linkCost.put(link, cost);
                     } else {
                         linkCost.put(link, MAX_LINK_WEIGHT);
                     }
