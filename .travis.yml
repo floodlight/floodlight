@@ -1,12 +1,9 @@
 # Floodlight build and test via Travis-CI
 
 language: java
+install: ant deps
 
 jdk:
- - oraclejdk8
+ - oraclejdk7
 # - openjdk8 does not appear to be an option as of 04/29/16
 
-notifications:
-  email:
-    recipients:
-      - ryan.izard@bigswitch.com
