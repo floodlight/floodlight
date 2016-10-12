@@ -1,0 +1,9 @@
+# Floodlight build and test via Travis-CI
+
+language: java
+install: ant
+
+jdk:
+ - oraclejdk7
+# - openjdk8 does not appear to be an option as of 04/29/16
+
