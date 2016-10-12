@@ -1,7 +1,7 @@
 # Floodlight build and test via Travis-CI
 
 language: java
-install: ant deps
+install: ant
 
 jdk:
  - oraclejdk7
