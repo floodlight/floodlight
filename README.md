@@ -59,7 +59,7 @@ To best demonstrate the extent to which constructing and working with OpenFlow c
 
 **Floodlight v1.0, v1.1, v1.2 -- the new and improved way to compose an OFFlowMod**
 
-    ArrayList<OFAction> actions = new ArrayList<OFAction();
+    ArrayList<OFAction> actions = new ArrayList<OFAction>();
     actions.add(myFactory.actions().buildOutput() // builder pattern used throughout
     .setPort(OFPort.of(1)) // raw types replaced with objects for type-checking and readability
     .build()); // list of immutable OFAction objects
