@@ -94,6 +94,7 @@ public abstract class ForwardingBase implements IOFMessageListener {
     protected static boolean FLOWMOD_DEFAULT_MATCH_IP_DST = true;
     protected static boolean FLOWMOD_DEFAULT_MATCH_TRANSPORT_SRC = true;
     protected static boolean FLOWMOD_DEFAULT_MATCH_TRANSPORT_DST = true;
+    protected static boolean FLOWMOD_DEFAULT_MATCH_TCP_FLAG = true;
 
     protected static boolean FLOOD_ALL_ARP_PACKETS = false;
 

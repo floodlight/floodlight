@@ -87,6 +87,7 @@ import org.projectfloodlight.openflow.types.OFGroup;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.OFVlanVidMatch;
 import org.projectfloodlight.openflow.types.TableId;
+import org.projectfloodlight.openflow.types.U16;
 import org.projectfloodlight.openflow.types.U64;
 import org.projectfloodlight.openflow.types.VlanVid;
 import org.python.google.common.collect.ImmutableList;
@@ -595,6 +596,16 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                     if (FLOWMOD_DEFAULT_MATCH_TRANSPORT_DST) {
                         mb.setExact(MatchField.TCP_DST, tcp.getDestinationPort());
                     }
+                    if(
+                    sw.getSwitchDescription().getHardwareDescription().toLowerCase().contains("open vswitch") && (
+                    Integer.parseInt(sw.getSwitchDescription().getSoftwareDescription().toLowerCase().split("\\.")[0]) > 2  || (
+                    Integer.parseInt(sw.getSwitchDescription().getSoftwareDescription().toLowerCase().split("\\.")[0]) == 2 &&
+                    Integer.parseInt(sw.getSwitchDescription().getSoftwareDescription().toLowerCase().split("\\.")[1]) >= 1 ))
+                    ){
+	                    if(FLOWMOD_DEFAULT_MATCH_TCP_FLAG){
+	                        mb.setExact(MatchField.OVS_TCP_FLAGS, U16.of(tcp.getFlags()));
+	                    }
+                    }
                 } else if (ip.getProtocol().equals(IpProtocol.UDP)) {
                     UDP udp = (UDP) ip.getPayload();
                     mb.setExact(MatchField.IP_PROTO, IpProtocol.UDP);
@@ -640,6 +651,16 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                     }
                     if (FLOWMOD_DEFAULT_MATCH_TRANSPORT_DST) {
                         mb.setExact(MatchField.TCP_DST, tcp.getDestinationPort());
+                    }
+                    if(
+                    sw.getSwitchDescription().getHardwareDescription().toLowerCase().contains("open vswitch") && (
+                    Integer.parseInt(sw.getSwitchDescription().getSoftwareDescription().toLowerCase().split("\\.")[0]) > 2  || (
+                    Integer.parseInt(sw.getSwitchDescription().getSoftwareDescription().toLowerCase().split("\\.")[0]) == 2 &&
+                    Integer.parseInt(sw.getSwitchDescription().getSoftwareDescription().toLowerCase().split("\\.")[1]) >= 1 ))
+                    ){
+	                    if(FLOWMOD_DEFAULT_MATCH_TCP_FLAG){
+	                        mb.setExact(MatchField.OVS_TCP_FLAGS, U16.of(tcp.getFlags()));
+	                    }
                     }
                 } else if (ip.getNextHeader().equals(IpProtocol.UDP)) {
                     UDP udp = (UDP) ip.getPayload();
@@ -777,7 +798,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
             tmp = tmp.toLowerCase();
             if (!tmp.contains("in-port") && !tmp.contains("vlan") 
                     && !tmp.contains("mac") && !tmp.contains("ip") 
-                    && !tmp.contains("transport")) {
+                    && !tmp.contains("transport") && !tmp.contains("flag")) {
                 /* leave the default configuration -- blank or invalid 'match' value */
             } else {
                 FLOWMOD_DEFAULT_MATCH_IN_PORT = tmp.contains("in-port") ? true : false;
@@ -785,12 +806,14 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                 FLOWMOD_DEFAULT_MATCH_MAC = tmp.contains("mac") ? true : false;
                 FLOWMOD_DEFAULT_MATCH_IP = tmp.contains("ip") ? true : false;
                 FLOWMOD_DEFAULT_MATCH_TRANSPORT = tmp.contains("transport") ? true : false;
+				FLOWMOD_DEFAULT_MATCH_TCP_FLAG = tmp.contains("flag") ? true : false;
             }
         }
         log.info("Default flow matches set to: IN_PORT=" + FLOWMOD_DEFAULT_MATCH_IN_PORT
                 + ", VLAN=" + FLOWMOD_DEFAULT_MATCH_VLAN
                 + ", MAC=" + FLOWMOD_DEFAULT_MATCH_MAC
                 + ", IP=" + FLOWMOD_DEFAULT_MATCH_IP
+				+ ", FLAG=" + FLOWMOD_DEFAULT_MATCH_TCP_FLAG
                 + ", TPPT=" + FLOWMOD_DEFAULT_MATCH_TRANSPORT);
 
         tmp = configParameters.get("detailed-match");
