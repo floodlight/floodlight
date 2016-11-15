@@ -45,16 +45,16 @@ import com.google.common.collect.ImmutableSet;
 
 /**
  * Utilities for working with Matches. Includes workarounds for
- * current Loxi limitations/bugs. 
- * 
+ * current Loxi limitations/bugs.
+ *
  * Convert OFInstructions to and from dpctl/ofctl-style strings.
  * Used primarily by the static flow pusher to store and retreive
  * flow entries.
- * 
+ *
  * @author Ryan Izard <ryan.izard@bigswitch.com, rizard@g.clemson.edu>
- * 
+ *
  * Includes string methods adopted from OpenFlowJ for OpenFlow 1.0.
- * 
+ *
  * @author David Erickson (daviderickson@cs.stanford.edu)
  * @author Rob Sherwood (rob.sherwood@stanford.edu)
  */
@@ -370,7 +370,7 @@ public class MatchUtils {
 			break;
 		/* NOTE: keep BSN MatchFields to eliminate need for default case.
 		   Unaccounted for fields will then produce warning in future */
-		case BSN_EGR_PORT_GROUP_ID: 
+		case BSN_EGR_PORT_GROUP_ID:
 		case BSN_GLOBAL_VRF_ALLOWED:
 		case BSN_INGRESS_PORT_GROUP_ID:
 		case BSN_INNER_ETH_DST:
@@ -414,17 +414,17 @@ public class MatchUtils {
 	 * 		IPV4_SRC
 	 * 		IPV4_DST
 	 * 		IP_PROTO (might remove this)
-	 * 
+	 *
 	 * If one of the above MatchFields is wildcarded in Match m,
 	 * that MatchField will be wildcarded in the returned Match.
-	 * 
+	 *
 	 * @param m The match to remove all L4+ MatchFields from
 	 * @return A new Match object with all MatchFields masked/wildcared
 	 * except for those listed above.
 	 */
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	public static Match maskL4AndUp(Match m) {
-		Match.Builder mb = m.createBuilder(); 
+		Match.Builder mb = m.createBuilder();
 		Iterator<MatchField<?>> itr = m.getMatchFields().iterator(); // only get exact or masked fields (not fully wildcarded)
 		while(itr.hasNext()) {
 			MatchField mf = itr.next();
@@ -440,7 +440,7 @@ public class MatchUtils {
 					// it's either exact, masked, or wildcarded
 					// itr only contains exact and masked MatchFields
 					// we should never get here
-				} 
+				}
 			}
 		}
 		return mb.build();
@@ -449,33 +449,33 @@ public class MatchUtils {
 
 	/**
 	 * Retains all fields in the Match parent. Converts the parent to an
-	 * equivalent Match of OFVersion version. No polite check is done to verify 
+	 * equivalent Match of OFVersion version. No polite check is done to verify
 	 * if MatchFields in parent are supported in a Match of OFVersion
 	 * version. An exception will be thrown if there are any unsupported
 	 * fields during the conversion process.
-	 * 
+	 *
 	 * Note that a Match.Builder is returned. This is a convenience for cases
 	 * where MatchFields might be modified, added, or removed prior to being
 	 * built (e.g. in Forwarding/Routing between switches of different OFVersions).
 	 * Simply build the returned Match.Builder if you would like to treat this
 	 * function as a strict copy-to-version.
-	 * 
+	 *
 	 * @param parent, the Match to convert
 	 * @param version, the OFVersion to convert parent to
 	 * @return a Match.Builder of the newly-converted Match
 	 */
 	@SuppressWarnings("unchecked")
 	public static Match.Builder convertToVersion(Match parent, OFVersion version) {
-		/* Builder retains a parent MatchField list, but list will not be used to  
-		 * build the new match if the builder's set methods have been invoked; only 
-		 * additions will be built, and all parent MatchFields will be ignored,  
+		/* Builder retains a parent MatchField list, but list will not be used to
+		 * build the new match if the builder's set methods have been invoked; only
+		 * additions will be built, and all parent MatchFields will be ignored,
 		 * even if they were not modified by the new builder. Create a builder, and
 		 * walk through m's list of non-wildcarded MatchFields. Set them all in the
 		 * new builder by invoking a set method for each. This will make them persist
 		 * in the Match built from this builder if the user decides to add or subtract
 		 * from the MatchField list.
 		 */
-		Match.Builder mb = OFFactories.getFactory(version).buildMatch(); 
+		Match.Builder mb = OFFactories.getFactory(version).buildMatch();
 		Iterator<MatchField<?>> itr = parent.getMatchFields().iterator(); // only get exact or masked fields (not fully wildcarded)
 		while (itr.hasNext()) {
 			@SuppressWarnings("rawtypes")
@@ -494,19 +494,19 @@ public class MatchUtils {
 	}
 
 	/**
-	 * 
+	 *
 	 * Workaround for bug in Loxi:
-	 * 
+	 *
 	 * Create a builder from an existing Match object. Unlike Match's
 	 * createBuilder(), this utility function will preserve all of
 	 * Match m's MatchFields, even if new MatchFields are set or modified
 	 * with the builder after it is returned to the calling function.
-	 * 
-	 * All original MatchFields in m will be set if the build() method is 
+	 *
+	 * All original MatchFields in m will be set if the build() method is
 	 * invoked upon the returned builder. After the builder is returned, if
 	 * a MatchField is modified via setExact(), setMasked(), or wildcard(),
 	 * the newly modified MatchField will replace the original found in m.
-	 * 
+	 *
 	 * @param m; the match to create the builder from
 	 * @return Match.Builder; the builder that can be modified, and when built,
 	 * will retain all of m's MatchFields, unless you explicitly overwrite them.
@@ -518,10 +518,10 @@ public class MatchUtils {
 	/**
 	 * Create a Match builder the same OF version as Match m. The returned builder
 	 * will not retain any MatchField information from Match m and will
-	 * essentially return a clean-slate Match builder with no parent history. 
+	 * essentially return a clean-slate Match builder with no parent history.
 	 * This simple method is included as a wrapper to provide the opposite functionality
 	 * of createRetentiveBuilder().
-	 * 
+	 *
 	 * @param m; the match to create the builder from
 	 * @return Match.Builder; the builder retains no history from the parent Match m
 	 */
@@ -531,7 +531,7 @@ public class MatchUtils {
 
 	/**
 	 * Create a duplicate Match object from Match m.
-	 * 
+	 *
 	 * @param m; the match to copy
 	 * @return Match; the new copy of Match m
 	 */
@@ -541,7 +541,7 @@ public class MatchUtils {
 
 	/**
 	 * TODO NOT IMPLEMENTED!
-	 * 
+	 *
 	 * Returns empty string right now.
 	 */
 	@Deprecated
@@ -555,7 +555,7 @@ public class MatchUtils {
 	 * dpctl-style string, e.g., from the output of OFMatch.toString(). The
 	 * exact syntax for each key is defined by the string constants at the top
 	 * of MatchUtils.java. <br>
-	 * 
+	 *
 	 * @param match
 	 *            a key=value comma separated string, e.g.
 	 *            "in_port=5,nw_dst=192.168.0.0/16,tp_src=80"
@@ -589,7 +589,7 @@ public class MatchUtils {
 			}
 			tmp[0] = tmp[0].toLowerCase(); // try to make key parsing case insensitive
 			llValues.add(tmp); // llValues contains [key, value] pairs. Create a queue of pairs to process.
-		}	
+		}
 
 		Match.Builder mb = OFFactories.getFactory(ofVersion).buildMatch();
 
@@ -641,7 +641,7 @@ public class MatchUtils {
 				if (dataMask.length == 1) {
 					mb.setExact(MatchField.ETH_TYPE, EthType.of(ParseUtils.parseHexOrDecInt(dataMask[0])));
 				} else {
-					mb.setMasked(MatchField.ETH_TYPE, EthType.of(ParseUtils.parseHexOrDecInt(dataMask[0])), 
+					mb.setMasked(MatchField.ETH_TYPE, EthType.of(ParseUtils.parseHexOrDecInt(dataMask[0])),
 							EthType.of(ParseUtils.parseHexOrDecInt(dataMask[1])));
 				}
 				break;
@@ -650,7 +650,7 @@ public class MatchUtils {
 					mb.setExact(MatchField.VLAN_VID, OFVlanVidMatch.ofRawVid(ParseUtils.parseHexOrDecShort(dataMask[0])));
 				} else {
 					mb.setMasked(MatchField.VLAN_VID, OFVlanVidMatchWithMask.of(
-							OFVlanVidMatch.ofRawVid(ParseUtils.parseHexOrDecShort(dataMask[0])), 
+							OFVlanVidMatch.ofRawVid(ParseUtils.parseHexOrDecShort(dataMask[0])),
 							OFVlanVidMatch.ofRawVid(ParseUtils.parseHexOrDecShort(dataMask[1]))));
 				}
 				break;
@@ -658,7 +658,7 @@ public class MatchUtils {
 				if (dataMask.length == 1) {
 					mb.setExact(MatchField.VLAN_PCP, VlanPcp.of(U8.t(ParseUtils.parseHexOrDecShort(dataMask[0]))));
 				} else {
-					mb.setMasked(MatchField.VLAN_PCP, VlanPcp.of(U8.t(ParseUtils.parseHexOrDecShort(dataMask[0]))), 
+					mb.setMasked(MatchField.VLAN_PCP, VlanPcp.of(U8.t(ParseUtils.parseHexOrDecShort(dataMask[0]))),
 							VlanPcp.of(U8.t(ParseUtils.parseHexOrDecShort(dataMask[1]))));
 				}
 				break;
@@ -687,7 +687,7 @@ public class MatchUtils {
 				if (dataMask.length == 1) {
 					mb.setExact(MatchField.IPV6_FLABEL, IPv6FlowLabel.of(ParseUtils.parseHexOrDecInt(dataMask[0])));
 				} else {
-					mb.setMasked(MatchField.IPV6_FLABEL, IPv6FlowLabel.of(ParseUtils.parseHexOrDecInt(dataMask[0])), 
+					mb.setMasked(MatchField.IPV6_FLABEL, IPv6FlowLabel.of(ParseUtils.parseHexOrDecInt(dataMask[0])),
 							IPv6FlowLabel.of(ParseUtils.parseHexOrDecInt(dataMask[1])));
 				}
 				break;
@@ -695,26 +695,26 @@ public class MatchUtils {
 				if (dataMask.length == 1) {
 					mb.setExact(MatchField.IP_PROTO, IpProtocol.of(ParseUtils.parseHexOrDecShort(dataMask[0])));
 				} else {
-					mb.setMasked(MatchField.IP_PROTO, IpProtocol.of(ParseUtils.parseHexOrDecShort(dataMask[0])), 
+					mb.setMasked(MatchField.IP_PROTO, IpProtocol.of(ParseUtils.parseHexOrDecShort(dataMask[0])),
 							IpProtocol.of(ParseUtils.parseHexOrDecShort(dataMask[1])));
 				}
 				break;
 			case STR_NW_TOS:
 				if (dataMask.length == 1) {
-					mb.setExact(MatchField.IP_ECN, IpEcn.of(U8.t(ParseUtils.parseHexOrDecShort(dataMask[0]))));
-					mb.setExact(MatchField.IP_DSCP, IpDscp.of(U8.t(ParseUtils.parseHexOrDecShort(dataMask[0]))));
+					mb.setExact(MatchField.IP_ECN, IpEcn.of((byte)((byte) ParseUtils.parseHexOrDecShort(dataMask[0]) & 0x03)));
+					mb.setExact(MatchField.IP_DSCP, IpDscp.of((byte)((byte) ParseUtils.parseHexOrDecShort(dataMask[0]) & 0xFC >> 2)));
 				} else {
-					mb.setMasked(MatchField.IP_ECN, IpEcn.of(U8.t(ParseUtils.parseHexOrDecShort(dataMask[0]))), 
-							IpEcn.of(U8.t(ParseUtils.parseHexOrDecShort(dataMask[1]))));
-					mb.setMasked(MatchField.IP_DSCP, IpDscp.of(U8.t(ParseUtils.parseHexOrDecShort(dataMask[0]))), 
-							IpDscp.of(U8.t(ParseUtils.parseHexOrDecShort(dataMask[1]))));
+					mb.setMasked(MatchField.IP_ECN, IpEcn.of((byte)((byte) ParseUtils.parseHexOrDecShort(dataMask[0]) & 0x03)),
+							IpEcn.of((byte)((byte) ParseUtils.parseHexOrDecShort(dataMask[1]) & 0x03)));
+					mb.setMasked(MatchField.IP_DSCP, IpDscp.of((byte)((byte) ParseUtils.parseHexOrDecShort(dataMask[0]) & 0xFC >> 2)),
+							IpDscp.of((byte)((byte) ParseUtils.parseHexOrDecShort(dataMask[1]) & 0xFC >> 2)));
 				}
 				break;
 			case STR_NW_ECN:
 				if (dataMask.length == 1) {
 					mb.setExact(MatchField.IP_ECN, IpEcn.of(U8.t(ParseUtils.parseHexOrDecShort(dataMask[0]))));
 				} else {
-					mb.setMasked(MatchField.IP_ECN, IpEcn.of(U8.t(ParseUtils.parseHexOrDecShort(dataMask[0]))), 
+					mb.setMasked(MatchField.IP_ECN, IpEcn.of(U8.t(ParseUtils.parseHexOrDecShort(dataMask[0]))),
 							IpEcn.of(U8.t(ParseUtils.parseHexOrDecShort(dataMask[1]))));
 				}
 				break;
@@ -722,7 +722,7 @@ public class MatchUtils {
 				if (dataMask.length == 1) {
 					mb.setExact(MatchField.IP_DSCP, IpDscp.of(U8.t(ParseUtils.parseHexOrDecShort(dataMask[0]))));
 				} else {
-					mb.setMasked(MatchField.IP_DSCP, IpDscp.of(U8.t(ParseUtils.parseHexOrDecShort(dataMask[0]))), 
+					mb.setMasked(MatchField.IP_DSCP, IpDscp.of(U8.t(ParseUtils.parseHexOrDecShort(dataMask[0]))),
 							IpDscp.of(U8.t(ParseUtils.parseHexOrDecShort(dataMask[1]))));
 				}
 				break;
@@ -733,7 +733,7 @@ public class MatchUtils {
 					if (dataMask.length == 1) {
 						mb.setExact(MatchField.SCTP_DST, TransportPort.of(ParseUtils.parseHexOrDecInt(dataMask[0])));
 					} else {
-						mb.setMasked(MatchField.SCTP_DST, TransportPort.of(ParseUtils.parseHexOrDecInt(dataMask[0])), 
+						mb.setMasked(MatchField.SCTP_DST, TransportPort.of(ParseUtils.parseHexOrDecInt(dataMask[0])),
 								TransportPort.of(ParseUtils.parseHexOrDecInt(dataMask[1])));
 					}
 				}
@@ -745,7 +745,7 @@ public class MatchUtils {
 					if (dataMask.length == 1) {
 						mb.setExact(MatchField.SCTP_SRC, TransportPort.of(ParseUtils.parseHexOrDecInt(dataMask[0])));
 					} else {
-						mb.setMasked(MatchField.SCTP_SRC, TransportPort.of(ParseUtils.parseHexOrDecInt(dataMask[0])), 
+						mb.setMasked(MatchField.SCTP_SRC, TransportPort.of(ParseUtils.parseHexOrDecInt(dataMask[0])),
 								TransportPort.of(ParseUtils.parseHexOrDecInt(dataMask[1])));
 					}
 				}
@@ -757,7 +757,7 @@ public class MatchUtils {
 					if (dataMask.length == 1) {
 						mb.setExact(MatchField.UDP_DST, TransportPort.of(ParseUtils.parseHexOrDecInt(dataMask[0])));
 					} else {
-						mb.setMasked(MatchField.UDP_DST, TransportPort.of(ParseUtils.parseHexOrDecInt(dataMask[0])), 
+						mb.setMasked(MatchField.UDP_DST, TransportPort.of(ParseUtils.parseHexOrDecInt(dataMask[0])),
 								TransportPort.of(ParseUtils.parseHexOrDecInt(dataMask[1])));
 					}
 				}
@@ -769,7 +769,7 @@ public class MatchUtils {
 					if (dataMask.length == 1) {
 						mb.setExact(MatchField.UDP_SRC, TransportPort.of(ParseUtils.parseHexOrDecInt(dataMask[0])));
 					} else {
-						mb.setMasked(MatchField.UDP_SRC, TransportPort.of(ParseUtils.parseHexOrDecInt(dataMask[0])), 
+						mb.setMasked(MatchField.UDP_SRC, TransportPort.of(ParseUtils.parseHexOrDecInt(dataMask[0])),
 								TransportPort.of(ParseUtils.parseHexOrDecInt(dataMask[1])));
 					}
 				}
@@ -781,7 +781,7 @@ public class MatchUtils {
 					if (dataMask.length == 1) {
 						mb.setExact(MatchField.TCP_DST, TransportPort.of(ParseUtils.parseHexOrDecInt(dataMask[0])));
 					} else {
-						mb.setMasked(MatchField.TCP_DST, TransportPort.of(ParseUtils.parseHexOrDecInt(dataMask[0])), 
+						mb.setMasked(MatchField.TCP_DST, TransportPort.of(ParseUtils.parseHexOrDecInt(dataMask[0])),
 								TransportPort.of(ParseUtils.parseHexOrDecInt(dataMask[1])));
 					}
 				}
@@ -793,7 +793,7 @@ public class MatchUtils {
 					if (dataMask.length == 1) {
 						mb.setExact(MatchField.TCP_SRC, TransportPort.of(ParseUtils.parseHexOrDecInt(dataMask[0])));
 					} else {
-						mb.setMasked(MatchField.TCP_SRC, TransportPort.of(ParseUtils.parseHexOrDecInt(dataMask[0])), 
+						mb.setMasked(MatchField.TCP_SRC, TransportPort.of(ParseUtils.parseHexOrDecInt(dataMask[0])),
 								TransportPort.of(ParseUtils.parseHexOrDecInt(dataMask[1])));
 					}
 				}
@@ -805,21 +805,21 @@ public class MatchUtils {
 					if (dataMask.length == 1) {
 						mb.setExact(MatchField.TCP_DST, TransportPort.of(ParseUtils.parseHexOrDecInt(dataMask[0])));
 					} else {
-						mb.setMasked(MatchField.TCP_DST, TransportPort.of(ParseUtils.parseHexOrDecInt(dataMask[0])), 
+						mb.setMasked(MatchField.TCP_DST, TransportPort.of(ParseUtils.parseHexOrDecInt(dataMask[0])),
 								TransportPort.of(ParseUtils.parseHexOrDecInt(dataMask[1])));
 					}
 				} else if (ipProto == IpProtocol.UDP){
 					if (dataMask.length == 1) {
 						mb.setExact(MatchField.UDP_DST, TransportPort.of(ParseUtils.parseHexOrDecInt(dataMask[0])));
 					} else {
-						mb.setMasked(MatchField.UDP_DST, TransportPort.of(ParseUtils.parseHexOrDecInt(dataMask[0])), 
+						mb.setMasked(MatchField.UDP_DST, TransportPort.of(ParseUtils.parseHexOrDecInt(dataMask[0])),
 								TransportPort.of(ParseUtils.parseHexOrDecInt(dataMask[1])));
 					}
 				} else if (ipProto == IpProtocol.SCTP){
 					if (dataMask.length == 1) {
 						mb.setExact(MatchField.SCTP_DST, TransportPort.of(ParseUtils.parseHexOrDecInt(dataMask[0])));
 					} else {
-						mb.setMasked(MatchField.SCTP_DST, TransportPort.of(ParseUtils.parseHexOrDecInt(dataMask[0])), 
+						mb.setMasked(MatchField.SCTP_DST, TransportPort.of(ParseUtils.parseHexOrDecInt(dataMask[0])),
 								TransportPort.of(ParseUtils.parseHexOrDecInt(dataMask[1])));
 					}
 				}
@@ -831,21 +831,21 @@ public class MatchUtils {
 					if (dataMask.length == 1) {
 						mb.setExact(MatchField.TCP_SRC, TransportPort.of(ParseUtils.parseHexOrDecInt(dataMask[0])));
 					} else {
-						mb.setMasked(MatchField.TCP_SRC, TransportPort.of(ParseUtils.parseHexOrDecInt(dataMask[0])), 
+						mb.setMasked(MatchField.TCP_SRC, TransportPort.of(ParseUtils.parseHexOrDecInt(dataMask[0])),
 								TransportPort.of(ParseUtils.parseHexOrDecInt(dataMask[1])));
 					}
 				} else if (ipProto == IpProtocol.UDP){
 					if (dataMask.length == 1) {
 						mb.setExact(MatchField.UDP_SRC, TransportPort.of(ParseUtils.parseHexOrDecInt(dataMask[0])));
 					} else {
-						mb.setMasked(MatchField.UDP_SRC, TransportPort.of(ParseUtils.parseHexOrDecInt(dataMask[0])), 
+						mb.setMasked(MatchField.UDP_SRC, TransportPort.of(ParseUtils.parseHexOrDecInt(dataMask[0])),
 								TransportPort.of(ParseUtils.parseHexOrDecInt(dataMask[1])));
 					}
 				} else if (ipProto == IpProtocol.SCTP){
 					if (dataMask.length == 1) {
 						mb.setExact(MatchField.SCTP_SRC, TransportPort.of(ParseUtils.parseHexOrDecInt(dataMask[0])));
 					} else {
-						mb.setMasked(MatchField.SCTP_SRC, TransportPort.of(ParseUtils.parseHexOrDecInt(dataMask[0])), 
+						mb.setMasked(MatchField.SCTP_SRC, TransportPort.of(ParseUtils.parseHexOrDecInt(dataMask[0])),
 								TransportPort.of(ParseUtils.parseHexOrDecInt(dataMask[1])));
 					}
 				}
@@ -854,7 +854,7 @@ public class MatchUtils {
 				if (dataMask.length == 1) {
 					mb.setExact(MatchField.ICMPV4_TYPE, ICMPv4Type.of(ParseUtils.parseHexOrDecShort(dataMask[0])));
 				} else {
-					mb.setMasked(MatchField.ICMPV4_TYPE, ICMPv4Type.of(ParseUtils.parseHexOrDecShort(dataMask[0])), 
+					mb.setMasked(MatchField.ICMPV4_TYPE, ICMPv4Type.of(ParseUtils.parseHexOrDecShort(dataMask[0])),
 							ICMPv4Type.of(ParseUtils.parseHexOrDecShort(dataMask[1])));
 				}
 				break;
@@ -862,7 +862,7 @@ public class MatchUtils {
 				if (dataMask.length == 1) {
 					mb.setExact(MatchField.ICMPV4_CODE, ICMPv4Code.of(ParseUtils.parseHexOrDecShort(dataMask[0])));
 				} else {
-					mb.setMasked(MatchField.ICMPV4_CODE, ICMPv4Code.of(ParseUtils.parseHexOrDecShort(dataMask[0])), 
+					mb.setMasked(MatchField.ICMPV4_CODE, ICMPv4Code.of(ParseUtils.parseHexOrDecShort(dataMask[0])),
 							ICMPv4Code.of(ParseUtils.parseHexOrDecShort(dataMask[1])));
 				}
 				break;
@@ -873,7 +873,7 @@ public class MatchUtils {
 				if (dataMask.length == 1) {
 					mb.setExact(MatchField.ICMPV6_TYPE, U8.of(ParseUtils.parseHexOrDecShort(dataMask[0])));
 				} else {
-					mb.setMasked(MatchField.ICMPV6_TYPE, U8.of(ParseUtils.parseHexOrDecShort(dataMask[0])), 
+					mb.setMasked(MatchField.ICMPV6_TYPE, U8.of(ParseUtils.parseHexOrDecShort(dataMask[0])),
 					        U8.of(ParseUtils.parseHexOrDecShort(dataMask[1])));
 				}
 				break;
@@ -884,7 +884,7 @@ public class MatchUtils {
 				if (dataMask.length == 1) {
 					mb.setExact(MatchField.ICMPV6_CODE, U8.of(ParseUtils.parseHexOrDecShort(dataMask[0])));
 				} else {
-					mb.setMasked(MatchField.ICMPV6_CODE, U8.of(ParseUtils.parseHexOrDecShort(dataMask[0])), 
+					mb.setMasked(MatchField.ICMPV6_CODE, U8.of(ParseUtils.parseHexOrDecShort(dataMask[0])),
 					    U8.of(ParseUtils.parseHexOrDecShort(dataMask[1])));
 				}
 				break;
@@ -918,7 +918,7 @@ public class MatchUtils {
 				if (dataMask.length == 1) {
 					mb.setExact(MatchField.IPV6_EXTHDR, U16.of(ParseUtils.parseHexOrDecInt(dataMask[0])));
 				} else {
-					mb.setMasked(MatchField.IPV6_EXTHDR, U16.of(ParseUtils.parseHexOrDecInt(dataMask[0])), 
+					mb.setMasked(MatchField.IPV6_EXTHDR, U16.of(ParseUtils.parseHexOrDecInt(dataMask[0])),
 					        U16.of(ParseUtils.parseHexOrDecInt(dataMask[1])));
 				}
 				break;
@@ -926,7 +926,7 @@ public class MatchUtils {
 				if (dataMask.length == 1) {
 					mb.setExact(MatchField.ARP_OP, ArpOpcode.of(ParseUtils.parseHexOrDecInt(dataMask[0])));
 				} else {
-					mb.setMasked(MatchField.ARP_OP, ArpOpcode.of(ParseUtils.parseHexOrDecInt(dataMask[0])), 
+					mb.setMasked(MatchField.ARP_OP, ArpOpcode.of(ParseUtils.parseHexOrDecInt(dataMask[0])),
 							ArpOpcode.of(ParseUtils.parseHexOrDecInt(dataMask[1])));
 				}
 				break;
@@ -954,7 +954,7 @@ public class MatchUtils {
 				if (dataMask.length == 1) {
 					mb.setExact(MatchField.MPLS_LABEL, U32.of(ParseUtils.parseHexOrDecLong(dataMask[0])));
 				} else {
-					mb.setMasked(MatchField.MPLS_LABEL, U32.of(ParseUtils.parseHexOrDecLong(dataMask[0])), 
+					mb.setMasked(MatchField.MPLS_LABEL, U32.of(ParseUtils.parseHexOrDecLong(dataMask[0])),
 							U32.of(ParseUtils.parseHexOrDecLong(dataMask[1])));
 				}
 				break;
@@ -962,7 +962,7 @@ public class MatchUtils {
 				if (dataMask.length == 1) {
 					mb.setExact(MatchField.MPLS_TC, U8.of(ParseUtils.parseHexOrDecShort(dataMask[0])));
 				} else {
-					mb.setMasked(MatchField.MPLS_TC, U8.of(ParseUtils.parseHexOrDecShort(dataMask[0])), 
+					mb.setMasked(MatchField.MPLS_TC, U8.of(ParseUtils.parseHexOrDecShort(dataMask[0])),
 							U8.of(ParseUtils.parseHexOrDecShort(dataMask[1])));
 				}
 				break;
@@ -973,7 +973,7 @@ public class MatchUtils {
 				if (dataMask.length == 1) {
 					mb.setExact(MatchField.METADATA, OFMetadata.ofRaw(ParseUtils.parseHexOrDecLong(dataMask[0])));
 				} else {
-					mb.setMasked(MatchField.METADATA, OFMetadata.ofRaw(ParseUtils.parseHexOrDecLong(dataMask[0])), 
+					mb.setMasked(MatchField.METADATA, OFMetadata.ofRaw(ParseUtils.parseHexOrDecLong(dataMask[0])),
 							OFMetadata.ofRaw(ParseUtils.parseHexOrDecLong(dataMask[1])));
 				}
 				break;
@@ -981,7 +981,7 @@ public class MatchUtils {
 				if (dataMask.length == 1) {
 					mb.setExact(MatchField.TUNNEL_ID, U64.of(ParseUtils.parseHexOrDecLong(dataMask[0])));
 				} else {
-					mb.setMasked(MatchField.TUNNEL_ID, U64.of(ParseUtils.parseHexOrDecLong(dataMask[0])), 
+					mb.setMasked(MatchField.TUNNEL_ID, U64.of(ParseUtils.parseHexOrDecLong(dataMask[0])),
 							U64.of(ParseUtils.parseHexOrDecLong(dataMask[1])));
 				}
 				break;
@@ -1001,7 +1001,7 @@ public class MatchUtils {
 				break;
 			case STR_PBB_ISID:
 				log.warn("Ignoring unimplemented OXM {}", key_value[0]);
-				/*TODO no-op. Not implemented. 
+				/*TODO no-op. Not implemented.
 				if (key_value[1].startsWith("0x")) {
 					mb.setExact(MatchField.pb, U64.of(Long.parseLong(key_value[1].replaceFirst("0x", ""), 16)));
 				} else {
@@ -1015,7 +1015,7 @@ public class MatchUtils {
 				if (dataMask.length == 1) {
 					mb.setExact(MatchField.TCP_FLAGS, U16.of(ParseUtils.parseHexOrDecInt(dataMask[0])));
 				} else {
-					mb.setMasked(MatchField.TCP_FLAGS, U16.of(ParseUtils.parseHexOrDecInt(dataMask[0])), 
+					mb.setMasked(MatchField.TCP_FLAGS, U16.of(ParseUtils.parseHexOrDecInt(dataMask[0])),
 							U16.of(ParseUtils.parseHexOrDecInt(dataMask[1])));
 				}
 				break;
@@ -1023,11 +1023,11 @@ public class MatchUtils {
 				if (dataMask.length == 1) {
 					mb.setExact(MatchField.OVS_TCP_FLAGS, U16.of(ParseUtils.parseHexOrDecInt(dataMask[0])));
 				} else {
-					mb.setMasked(MatchField.OVS_TCP_FLAGS, U16.of(ParseUtils.parseHexOrDecInt(dataMask[0])), 
+					mb.setMasked(MatchField.OVS_TCP_FLAGS, U16.of(ParseUtils.parseHexOrDecInt(dataMask[0])),
 							U16.of(ParseUtils.parseHexOrDecInt(dataMask[1])));
 				}
 				break;
-			case STR_ACTSET_OUTPUT: 
+			case STR_ACTSET_OUTPUT:
 				/* TODO when loxi bug fixed if (!mb.supports(MatchField.ACTSET_OUTPUT)) {
 					log.warn("Match {} unsupported in OpenFlow version {}", MatchField.ACTSET_OUTPUT, ofVersion);
 					break;
@@ -1044,22 +1044,22 @@ public class MatchUtils {
 				if (dataMask.length != 2) {
 					log.error("Ignoring invalid PACKET_TYPE OXM. Must specify namespace and namespace type in the form 'ns/nstype'");
 				} else {
-					mb.setExact(MatchField.PACKET_TYPE, PacketType.of(ParseUtils.parseHexOrDecInt(dataMask[0]), 
+					mb.setExact(MatchField.PACKET_TYPE, PacketType.of(ParseUtils.parseHexOrDecInt(dataMask[0]),
 					        ParseUtils.parseHexOrDecInt(dataMask[1])));
 				}
 				break;
 			default:
 				throw new IllegalArgumentException("unknown token " + key_value + " parsing " + match);
-			} 
+			}
 		}
 		return mb.build();
 	}
-		
+
 	public static OFPort portFromString(String s) {
         if (s == null) {
             throw new IllegalArgumentException("Port string cannot be null");
         }
-        
+
         s = s.trim().toLowerCase();
         switch (s) {
         case MatchUtils.STR_PORT_ALL:
@@ -1091,15 +1091,15 @@ public class MatchUtils {
             return null;
         }
     }
-	
+
 	public static String portToString(OFPort p) {
         if (p == null) {
             throw new IllegalArgumentException("Port cannot be null");
         }
-        
+
         if (p.equals(OFPort.ALL)) {
             return STR_PORT_ALL;
-        } 
+        }
         if (p.equals(OFPort.ANY)) {
             return STR_PORT_ANY;
         }
