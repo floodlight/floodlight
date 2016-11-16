@@ -701,13 +701,13 @@ public class MatchUtils {
 				break;
 			case STR_NW_TOS:
 				if (dataMask.length == 1) {
-					mb.setExact(MatchField.IP_ECN, IpEcn.of((byte)((byte) ParseUtils.parseHexOrDecShort(dataMask[0]) & 0x03)));
-					mb.setExact(MatchField.IP_DSCP, IpDscp.of((byte)((byte) ParseUtils.parseHexOrDecShort(dataMask[0]) & 0xFC >> 2)));
+					mb.setExact(MatchField.IP_ECN, IpEcn.of((byte)(ParseUtils.parseHexOrDecShort(dataMask[0]) & 0x03)));
+					mb.setExact(MatchField.IP_DSCP, IpDscp.of((byte)((ParseUtils.parseHexOrDecShort(dataMask[0]) & 0xFC) >> 2)));
 				} else {
-					mb.setMasked(MatchField.IP_ECN, IpEcn.of((byte)((byte) ParseUtils.parseHexOrDecShort(dataMask[0]) & 0x03)),
-							IpEcn.of((byte)((byte) ParseUtils.parseHexOrDecShort(dataMask[1]) & 0x03)));
-					mb.setMasked(MatchField.IP_DSCP, IpDscp.of((byte)((byte) ParseUtils.parseHexOrDecShort(dataMask[0]) & 0xFC >> 2)),
-							IpDscp.of((byte)((byte) ParseUtils.parseHexOrDecShort(dataMask[1]) & 0xFC >> 2)));
+					mb.setMasked(MatchField.IP_ECN, IpEcn.of((byte)(ParseUtils.parseHexOrDecShort(dataMask[0]) & 0x03)),
+							IpEcn.of((byte)(ParseUtils.parseHexOrDecShort(dataMask[1]) & 0x03)));
+					mb.setMasked(MatchField.IP_DSCP, IpDscp.of((byte)((ParseUtils.parseHexOrDecShort(dataMask[0]) & 0xFC) >> 2)),
+							IpDscp.of((byte)((ParseUtils.parseHexOrDecShort(dataMask[1]) & 0xFC) >> 2)));
 				}
 				break;
 			case STR_NW_ECN:
