@@ -495,15 +495,17 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 					/* Only add the flow if the table exists and if it supports sending to the controller */
 					TableFeatures tf = this.sw.getTableFeatures(tid);
 					if (tf != null && (missCount < this.sw.getMaxTableForTableMissFlow().getValue())) {
-						for (OFActionId aid : tf.getPropApplyActionsMiss().getActionIds()) {
-							if (aid.getType() == OFActionType.OUTPUT) { /* The assumption here is that OUTPUT includes the special port CONTROLLER... */
-								OFFlowAdd defaultFlow = this.factory.buildFlowAdd()
-										.setTableId(tid)
-										.setPriority(0)
-										.setInstructions(Collections.singletonList((OFInstruction) this.factory.instructions().buildApplyActions().setActions(actions).build()))
-										.build();
-								flows.add(defaultFlow);
-								break; /* Stop searching for actions and go to the next table in the list */
+						if (tf.getPropApplyActionsMiss() != null) {
+							for (OFActionId aid : tf.getPropApplyActionsMiss().getActionIds()) {
+								if (aid.getType() == OFActionType.OUTPUT) { /* The assumption here is that OUTPUT includes the special port CONTROLLER... */
+									OFFlowAdd defaultFlow = this.factory.buildFlowAdd()
+											.setTableId(tid)
+											.setPriority(0)
+											.setInstructions(Collections.singletonList((OFInstruction) this.factory.instructions().buildApplyActions().setActions(actions).build()))
+											.build();
+									flows.add(defaultFlow);
+									break; /* Stop searching for actions and go to the next table in the list */
+								}
 							}
 						}
 					}
