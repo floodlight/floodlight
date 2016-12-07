@@ -259,12 +259,13 @@ public class AsyncElection implements Runnable{
 						noSet.add(entry.getKey());
 					}
 					// If we get an ACK, that's good.
-					logger.debug("[Election] Received HEARTBEAT ACK from "+entry.getKey().toString());
+					logger.info("[Election] Received HEARTBEAT reply from "+entry.getKey().toString()+" saying: "+reply);
 				}
 			}
 			
 			if(noSet.size() >= network.majority){
 				setLeader(none);
+				this.currentState = ElectionState.ELECT;
 			}
 			
 			return;
@@ -407,14 +408,14 @@ public class AsyncElection implements Runnable{
 					if ( (!r1.equals(no)) && (r2.equals(timestamp)) ){
 						leaderSet.add(r1);
 					} else {
-						logger.debug("[Election] Check Leader: " + reply +" from "+entry.getKey().toString());
+						logger.info("[Election] Check Leader: " + reply +" from "+entry.getKey().toString());
 						continue;
 					}
 					
 				}
 			}
 			
-			logger.debug("[Election checkForLeader] Leader Set: "+leaderSet.toString());
+			logger.info("[Election checkForLeader] Leader Set: "+leaderSet.toString());
 			
 			// Remove blank objects from set, if any.
 			if ( leaderSet.contains(new String("")) ){
@@ -428,7 +429,7 @@ public class AsyncElection implements Runnable{
 			
 			// Remove null objects from set, if any.
 			if( leaderSet.contains(null) ){
-				logger.debug("[Election] Leader Set contains null");
+				logger.info("[Election] Leader Set contains null");
 				leaderSet.remove(null);
 			}
 			
@@ -438,11 +439,11 @@ public class AsyncElection implements Runnable{
 										.findFirst().get()); 
 			} else if ( leaderSet.size() > 1 ){
 				setLeader(none);
-				logger.debug("[Election checkForLeader] SPLIT BRAIN!!");
-				logger.debug("[Election checkForLeader] Current Leader is none");
+				logger.info("[Election checkForLeader] SPLIT BRAIN!!");
+				logger.info("[Election checkForLeader] Current Leader is none");
 			} else if ( leaderSet.size() < 1 ){
 				setLeader(none);
-				logger.debug("[Election checkForLeader] Current Leader is none "+ this.leader.toString() );
+				logger.info("[Election checkForLeader] Current Leader is none "+ this.leader.toString() );
 			}
 			
 			return;
@@ -602,7 +603,7 @@ public class AsyncElection implements Runnable{
 					
 					// Check for new nodes to connect to, and refresh the socket connections.
 					this.connectionDict = network.checkForNewConnections();
-					logger.debug("[ELECT] =======SIZES+++++ {} {}", new Object[] {network.socketDict.size(), network.majority});
+					//logger.debug("[ELECT] =======SIZES+++++ {} {}", new Object[] {network.socketDict.size(), network.majority});
 					// Ensure that a majority of nodes have connected, otherwise demote state.
 					if( network.socketDict.size() < network.majority ){
 						this.currentState = ElectionState.CONNECT;
@@ -621,6 +622,11 @@ public class AsyncElection implements Runnable{
 					// This is the resting state after the election.
 					this.connectionDict = network.checkForNewConnections();
 					
+					// Check For Leader: This function ensures that there is only one leader set for
+					// the entire network. None or multiple leaders causes it to set the currentState to ELECT.
+					timestamp =  String.valueOf(System.nanoTime());
+					this.checkForLeader();
+					
 					if( this.leader.equals(none) ){
 						this.currentState = ElectionState.ELECT;
 						break;
@@ -628,11 +634,6 @@ public class AsyncElection implements Runnable{
 					
 					// This is the follower state, currently there is a leader in the network.
 					logger.info("+++++++++++++++ [FOLLOWER] Leader is set to: "+this.leader.toString());
-					
-					// Check For Leader: This function ensures that there is only one leader set for
-					// the entire network. None or multiple leaders causes it to set the currentState to ELECT.
-					timestamp =  String.valueOf(System.nanoTime());
-					this.checkForLeader();
 					
 					if(! publishQueue.isEmpty() ) {
 						for (String wrkr: AsyncElection.haworker.getWorkerKeys()) { 
@@ -659,6 +660,11 @@ public class AsyncElection implements Runnable{
 					// This is the resting state of the leader after the election.
 					this.connectionDict = network.checkForNewConnections();
 					
+					// Keep sending a heartbeat message, and receive a majority of acceptors,
+					// otherwise go to the elect state.
+					timestamp =  String.valueOf(System.nanoTime());
+					this.sendHeartBeat();
+					
 					if( this.leader.equals(none) ){
 						this.currentState = ElectionState.ELECT;
 						break;
@@ -675,10 +681,6 @@ public class AsyncElection implements Runnable{
 						this.setAsLeader();
 					}
 					
-					// Keep sending a heartbeat message, and receive a majority of acceptors,
-					// otherwise go to the elect state.
-					timestamp =  String.valueOf(System.nanoTime());
-					this.sendHeartBeat();
 					
 					if(! publishQueue.isEmpty() ) {
 						AsyncElection.haworker.getService("LDHAWorker").publishHook();

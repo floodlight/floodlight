@@ -27,8 +27,9 @@ import org.slf4j.LoggerFactory;
  * of the election, controller logic can be used to assign tasks from 
  * to the followers and also specify roles for the leader. Election 
  * priorities can be set, meaning, a predefined list of the order in 
- * which the election has to happen can be supplied.
- * @author Bhargav Srinivasan
+ * which the nodes get selected in the election can be supplied using the
+ * setElectionPriorities function.
+ * @author Bhargav Srinivasan, Om Kale
  */
 
 public class HAController implements IFloodlightModule, IHAControllerService {
@@ -98,10 +99,12 @@ public class HAController implements IFloodlightModule, IHAControllerService {
 	@Override
 	public void startUp(FloodlightModuleContext context) throws FloodlightModuleException {
 		// TODO Auto-generated method stub
+		
 //		priorities.add(2);
 //		priorities.add(1);
 //		priorities.add(3);
 //		priorities.add(4);
+		
 		//Read config file and start the Election class with the right params.
 		ScheduledExecutorService sesController = Executors.newScheduledThreadPool(10);
 		ael = new AsyncElection( config.get("serverPort") ,config.get("clientPort"), config.get("nodeid"), haworker );
