@@ -36,7 +36,7 @@ import net.floodlightcontroller.storage.IStorageSourceService;
  * each controller can exchange only the md5hashes and stay up 
  * to date, and sync the actual update if needed.
  * 
- * @author Om Kale
+ * @author Bhargav Srinivasan, Om Kale
  *
  */
 
@@ -257,13 +257,13 @@ public class LDSyncAdapter implements ISyncAdapter, IFloodlightModule, IStoreLis
 	        String k = keys.next();
 	        try {
 	        	String val = storeLD.get(k).getValue();
-				logger.debug("+++++++++++++ Retriving value from DB: Key:{}, Value:{}, Type: {}", 
-	                    new Object[] {
-	                            k.toString(), 
-	                            val.toString(), 
-	                            type.name()
-	                        }
-	                    );
+//				logger.debug("+++++++++++++ Retriving value from DB: Key:{}, Value:{}, Type: {}", 
+//	                    new Object[] {
+//	                            k.toString(), 
+//	                            val.toString(), 
+//	                            type.name()
+//	                        }
+//	                    );
 	        } catch (SyncException e) {
 	            e.printStackTrace();
 	        }
@@ -275,13 +275,11 @@ public class LDSyncAdapter implements ISyncAdapter, IFloodlightModule, IStoreLis
 	@Override
 	public void disconnectedNode(Short nodeId) {
 		// TODO Auto-generated method stub
-		logger.info("Node disconnected: "+nodeId.toString());
 	}
 
 	@Override
 	public void connectedNode(Short nodeId) {
 		// TODO Auto-generated method stub
-		logger.info("Node connected: "+nodeId.toString());
 	}
 
 }

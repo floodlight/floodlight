@@ -7,6 +7,12 @@ import org.slf4j.LoggerFactory;
 import org.zeromq.ZMQ;
 import org.zeromq.ZMQException;
 
+/**
+*
+* @author Bhargav Srinivasan, Om Kale
+*
+*/
+
 public class ZMQServer implements Runnable{
 	
 	
@@ -86,7 +92,7 @@ public class ZMQServer implements Runnable{
 	}
 	
 	/**
-	 * All processServerMessage functions that use the aelection objects
+	 * A function which processes the incoming message and sends appropriate response.
 	 * Only use the getters and setters provided.
 	 * @param mssg
 	 * @return

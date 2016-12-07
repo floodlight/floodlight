@@ -1,17 +1,15 @@
 package net.floodlightcontroller.hasupport;
 
-import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zeromq.ZMQ;
 import org.zeromq.ZMQException;
-import org.zeromq.ZMQQueue;
 
 /**
  * The Queue Device
- * @author Bhargav Srinivasan
+ * @author Bhargav Srinivasan, Om Kale
  */
 
 public class QueueDevice implements Runnable{
@@ -55,7 +53,7 @@ public class QueueDevice implements Runnable{
 			ZMQ.Socket serverSide = zmqcontext.socket(ZMQ.DEALER);
 			serverSide.bind("tcp://0.0.0.0:"+this.serverPort.toString());
 			
-			logger.info("Starting ZMQ Queue Device...");
+			logger.info("Starting ZMQ Queue Device on client side 0.0.0.0:"+this.clientPort+" server side 0.0.0.0:" +this.serverPort);
 			
 			/**
 			 * This is an infinite loop to run the QueueDevice!
@@ -70,7 +68,7 @@ public class QueueDevice implements Runnable{
 
 	        //  Switch messages between sockets
 	        while (!Thread.currentThread().isInterrupted()) {            
-	            //  poll and memorize multipart detection
+	            
 	            items.poll(0);
 
 	            if (items.pollin(0)) {

@@ -13,7 +13,8 @@ import java.util.Map;
  * connections between the nodes (ON/OFF). Depending on this, the 
  * election algorithm can decide whether to include this node 
  * in the election process. 
- * @author Bhargav Srinivasan
+ * 
+ * @author Bhargav Srinivasan, Om Kale
  *
  */
 

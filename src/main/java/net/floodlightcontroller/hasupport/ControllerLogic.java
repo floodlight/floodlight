@@ -45,7 +45,7 @@ public class ControllerLogic implements Runnable {
 
 	@Override
 	public void run() {
-		//logger.info("[ControllerLogic] +++++++++CLOGIC RUNNING +++++++++++++++++");
+		logger.info("[ControllerLogic] Running...");
 		try {
 			String leader;
 			while (!Thread.currentThread().isInterrupted()) {
@@ -69,7 +69,7 @@ public class ControllerLogic implements Runnable {
 						duration = (long) ((System.nanoTime() - start) / 1000000.000) ;
 						if(! ael.getLeader().toString().equals(none) ) {
 							timeoutFlag = false;
-							logger.info("[Controller Logic] Got Leader: "+ael.getLeader().toString() + " Elapsed :"+ duration.toString());
+							logger.info("[ControllerLogic] Got Leader: "+ael.getLeader().toString() + " Elapsed :"+ duration.toString());
 							break;
 						}
 						TimeUnit.MILLISECONDS.sleep(25);
@@ -78,7 +78,7 @@ public class ControllerLogic implements Runnable {
 					// If you can't get the leader within the specified timeout, 
 					// then default to controller 1 as the leader.
 					if(timeoutFlag) {
-						logger.info("Election timed out, setting Controller 1 as LEADER!");
+						logger.info("[ControllerLogic] Election timed out, setting Controller 1 as LEADER!");
 						ael.setTempLeader(new String("1"));
 						ael.setLeader(new String("1"));
 					}
@@ -90,13 +90,13 @@ public class ControllerLogic implements Runnable {
 						// Role based functions: Leader functions
 						
 						// LEADER initiates publish and subscribe
-						logger.info("[LEADER] Calling Hooks...");
+						logger.info("[ControllerLogic] Calling Hooks...");
 						
 						// Publish, meaning ask all nodes to call publish hook
 							ael.publishQueue();
-						// Subscribe, ask all nodes to subscribe to the leader
-						// can be modified to subscribe to updates from all other nodes as well by calling
-						// this in a for loop.
+						//  Subscribe, ask all nodes to subscribe to the leader
+						//  can be modified to subscribe to updates from all other 
+						//	nodes as well by calling this in a loop.
 							ael.subscribeQueue(cid);
 	
 							

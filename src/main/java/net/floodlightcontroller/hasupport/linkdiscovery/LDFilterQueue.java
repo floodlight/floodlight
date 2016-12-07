@@ -41,11 +41,11 @@ public class LDFilterQueue implements IFilterQueue {
 			newMD5 = myMD5.calculateMD5Hash(value);
 			
 			if (LDFilterQueue.myMap.size() >= mapCapacity) {
-				logger.debug("[LDFilterQ Clear] Clearing LDFilterQ's Map");
+				//logger.debug("[LDFilterQ Clear] Clearing LDFilterQ's Map");
 				LDFilterQueue.myMap.clear();
 			}
 			
-			logger.debug("[FilterQ] The MD5: {} The Value {}", new Object [] {newMD5,value});
+			//logger.debug("[FilterQ] The MD5: {} The Value {}", new Object [] {newMD5,value});
 			if( (!myMap.containsKey(newMD5)) && (!value.equals(null)) ){
 				filterQueue.offer(value);
 				myMap.put(newMD5, value);
@@ -75,15 +75,15 @@ public class LDFilterQueue implements IFilterQueue {
 				filterQueue.drainTo(LDupds);
 			}
 			if(! LDupds.isEmpty() ) {
-				logger.debug("[FilterQ] The update after drain: {} ", new Object [] {LDupds.toString()});
+				//logger.debug("[FilterQ] The update after drain: {} ", new Object [] {LDupds.toString()});
 				syncAdapter.packJSON(LDupds);
 				return true;
 			} else {
-				logger.debug("[FilterQ] The linked list is empty");
+				//logger.debug("[FilterQ] The linked list is empty");
 				return false;
 			}	
 		} catch (Exception e){
-			logger.info("[FilterQ] Dequeue Forward failed!");
+			logger.debug("[FilterQ] Dequeue Forward failed!");
 			e.printStackTrace();
 		}
 		
@@ -100,14 +100,14 @@ public class LDFilterQueue implements IFilterQueue {
 	public boolean enqueueReverse(String value) {
 		// TODO Auto-generated method stub
 		try {
-			logger.debug("[ReverseFilterQ] The Value {}", new Object [] {value});
+			//logger.debug("[ReverseFilterQ] The Value {}", new Object [] {value});
 			if( (!value.equals(null)) ){
 				reverseFilterQueue.offer(value);
 			}
 			return true;
 		} 
 		catch (Exception e){
-			logger.info("[ReverseFilterQ] Exception: enqueueFwd!");
+			//logger.info("[ReverseFilterQ] Exception: enqueueFwd!");
 			e.printStackTrace();
 			return true;
 		}
@@ -124,10 +124,10 @@ public class LDFilterQueue implements IFilterQueue {
 			}
 			
 			if(! LDupds.isEmpty() ) {
-				logger.debug("[ReverseFilterQ] The update after drain: {} ", new Object [] {LDupds.toString()});
+				//logger.debug("[ReverseFilterQ] The update after drain: {} ", new Object [] {LDupds.toString()});
 				return LDupds;
 			} else {
-				logger.debug("[ReverseFilterQ] The linked list is empty");
+				//logger.debug("[ReverseFilterQ] The linked list is empty");
 			}
 			return LDupds;
 			

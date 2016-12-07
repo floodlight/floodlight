@@ -11,7 +11,7 @@ import net.floodlightcontroller.hasupport.IFilterQueue;
 
 /**
  * A Queue to store Topology updates
- * @author Om Kale
+ * @author Bhargav Srinivasan, Om Kale
  */
 
 public class TopoFilterQueue implements IFilterQueue {

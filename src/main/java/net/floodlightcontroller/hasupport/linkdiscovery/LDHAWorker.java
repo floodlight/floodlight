@@ -25,7 +25,7 @@ import net.floodlightcontroller.threadpool.IThreadPoolService;
 /**
  * This is the Worker class used to publish, subscribe updates to
  * and from the controller respectively
- * @author Om Kale
+ * @author Bhargav Srinivasan, Om Kale
  *
  */
 public class LDHAWorker implements IHAWorker, IFloodlightModule, ILinkDiscoveryListener {
@@ -80,7 +80,7 @@ public class LDHAWorker implements IHAWorker, IFloodlightModule, ILinkDiscoveryL
 		// TODO Auto-generated method stub
 		try{
 			synchronized (synLDUList){
-				logger.debug("[Publish] Printing Updates {}: ",new Object[]{synLDUList});
+				//logger.debug("[Publish] Printing Updates {}: ",new Object[]{synLDUList});
 				List<String> updates = assembleUpdate();
 				for(String update : updates){
 					myLDFilterQueue.enqueueForward(update);
@@ -106,7 +106,7 @@ public class LDHAWorker implements IHAWorker, IFloodlightModule, ILinkDiscoveryL
 			List<String> updates = new ArrayList<String>();
 			myLDFilterQueue.subscribe(controllerID);
 			updates = myLDFilterQueue.dequeueReverse();
-			logger.info("[Subscribe] ==================== THE UPDATES: ===================");
+			logger.info("[Subscribe] LDUpdates...");
 			for (String update: updates) {
 				logger.info("Update: {}", new Object[]{update.toString()});
 			}

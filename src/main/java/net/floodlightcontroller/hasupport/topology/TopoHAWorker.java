@@ -24,7 +24,7 @@ import net.floodlightcontroller.topology.ITopologyService;
 /**
  * This is the Worker class used to publish, subscribe updates to
  * and from the controller respectively
- * @author Om Kale
+ * @author Bhargav Srinivasan, Om Kale
  *
  */
 public class TopoHAWorker implements IHAWorker, IFloodlightModule, ITopologyListener {
@@ -79,7 +79,7 @@ public class TopoHAWorker implements IHAWorker, IFloodlightModule, ITopologyList
 		// TODO Auto-generated method stub
 		try{
 			synchronized (synTopoUList){
-				logger.debug("[Publish] Printing Updates {}: ",new Object[]{synTopoUList});
+				//logger.debug("[Publish] Printing Updates {}: ",new Object[]{synTopoUList});
 				List<String> updates = assembleUpdate();
 				for(String update : updates){
 					myTopoFilterQueue.enqueueForward(update);
@@ -105,7 +105,7 @@ public class TopoHAWorker implements IHAWorker, IFloodlightModule, ITopologyList
 			List<String> updates = new ArrayList<String>();
 			myTopoFilterQueue.subscribe(controllerID);
 			updates = myTopoFilterQueue.dequeueReverse();
-			logger.info("[Subscribe] ==================== THE UPDATES: ===================");
+			logger.info("[Subscribe] TopoUpdates...");
 			for (String update: updates) {
 				logger.info("Update: {}", new Object[]{update.toString()});
 			}

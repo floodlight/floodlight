@@ -5,7 +5,7 @@ import java.util.List;
 /**
  * Maintain a queue to filter out duplicates before pulling 
  * or pushing data into syncDB 
- * @author omkale
+ * @author Bhargav Srinivasan, Om Kale
  *
  */
 public interface IFilterQueue {

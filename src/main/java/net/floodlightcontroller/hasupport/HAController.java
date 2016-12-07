@@ -29,6 +29,7 @@ import org.slf4j.LoggerFactory;
  * priorities can be set, meaning, a predefined list of the order in 
  * which the nodes get selected in the election can be supplied using the
  * setElectionPriorities function.
+ * 
  * @author Bhargav Srinivasan, Om Kale
  */
 

@@ -15,6 +15,12 @@ import org.slf4j.LoggerFactory;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+/**
+*
+* @author Bhargav Srinivasan, Om Kale
+*
+*/
+
 public class LDHAUtils {
 	protected static Logger logger = LoggerFactory.getLogger(LDHAUtils.class);
 	private final String[] lowfields = new String[]{"src", "srcPort", "dst","dstPort","type"};
@@ -45,7 +51,7 @@ public class LDHAUtils {
 			if(chunk.startsWith("LDUpdate [")){
 				chunk = chunk.substring(10, chunk.length());
 			}
-			logger.debug("\n[Assemble Update] Chunk pre: {}", new Object[] {chunk});
+			//logger.debug("\n[Assemble Update] Chunk pre: {}", new Object[] {chunk});
 			
 			//process keywords	
 			
@@ -53,7 +59,7 @@ public class LDHAUtils {
 			if(chunk.startsWith("operation=")){
 				chunk = chunk.substring(10,chunk.length());
 				op = chunk.split(",|]")[0];
-				logger.debug("[Assemble Update] Operation=: {}", new Object[]{op});
+				//logger.debug("[Assemble Update] Operation=: {}", new Object[]{op});
 				chunk = chunk.substring(op.length(), chunk.length());
 			}
 			
@@ -61,13 +67,13 @@ public class LDHAUtils {
 				chunk = chunk.substring(2, chunk.length());
 			}
 			
-			logger.debug("\n[Assemble Update] Chunk keywords: {}", new Object[] {chunk});
+			//logger.debug("\n[Assemble Update] Chunk keywords: {}", new Object[] {chunk});
 			
 			// field: src
 			if(chunk.startsWith("src=")){
 				chunk = chunk.substring(4,chunk.length());
 			    src = chunk.split(",|]")[0];
-				logger.debug("[Assemble Update] Src=: {}", new Object[]{src});
+				//logger.debug("[Assemble Update] Src=: {}", new Object[]{src});
 				chunk = chunk.substring(src.length(), chunk.length());
 			}
 			
@@ -75,13 +81,13 @@ public class LDHAUtils {
 				chunk = chunk.substring(2, chunk.length());
 			}
 			
-			logger.debug("\n[Assemble Update] Chunk keywords: {}", new Object[] {chunk});
+			//logger.debug("\n[Assemble Update] Chunk keywords: {}", new Object[] {chunk});
 			
 			// field: srcPort
 			if(chunk.startsWith("srcPort=")){
 				chunk = chunk.substring(8,chunk.length());
 				srcPort = chunk.split(",|]")[0];
-				logger.debug("[Assemble Update] SrcPort=: {}", new Object[]{srcPort});
+				//logger.debug("[Assemble Update] SrcPort=: {}", new Object[]{srcPort});
 				chunk = chunk.substring(srcPort.length(), chunk.length());
 			}
 			
@@ -89,13 +95,13 @@ public class LDHAUtils {
 				chunk = chunk.substring(2, chunk.length());
 			}
 			
-			logger.debug("\n[Assemble Update] Chunk keywords: {}", new Object[] {chunk});
+			//logger.debug("\n[Assemble Update] Chunk keywords: {}", new Object[] {chunk});
 			
 			// field: dst
 			if(chunk.startsWith("dst=")){
 				chunk = chunk.substring(4,chunk.length());
 				dst = chunk.split(",|]")[0];
-				logger.debug("[Assemble Update] Dst=: {}", new Object[]{dst});
+				//logger.debug("[Assemble Update] Dst=: {}", new Object[]{dst});
 				chunk = chunk.substring(dst.length(), chunk.length());
 			}
 			
@@ -103,13 +109,13 @@ public class LDHAUtils {
 				chunk = chunk.substring(2, chunk.length());
 			}
 			
-			logger.debug("\n[Assemble Update] Chunk keywords: {}", new Object[] {chunk});
+			//logger.debug("\n[Assemble Update] Chunk keywords: {}", new Object[] {chunk});
 			
 			// field: dstPort
 			if(chunk.startsWith("dstPort=")){
 				chunk = chunk.substring(8,chunk.length());
 				dstPort = chunk.split(",|]")[0];
-				logger.debug("[Assemble Update] DstPort=: {}", new Object[]{dstPort});
+				//logger.debug("[Assemble Update] DstPort=: {}", new Object[]{dstPort});
 				chunk = chunk.substring(dstPort.length(), chunk.length());
 			}
 			
@@ -117,13 +123,13 @@ public class LDHAUtils {
 				chunk = chunk.substring(2, chunk.length());
 			}
 			
-			logger.debug("\n[Assemble Update] Chunk keywords: {}", new Object[] {chunk});
+			//logger.debug("\n[Assemble Update] Chunk keywords: {}", new Object[] {chunk});
 			
 			// field: latency
 			if(chunk.startsWith("latency=")){
 				chunk = chunk.substring(8,chunk.length());
 				latency = chunk.split(",|]")[0];
-				logger.debug("[Assemble Update] Latency=: {}", new Object[]{latency});
+				//logger.debug("[Assemble Update] Latency=: {}", new Object[]{latency});
 				chunk = chunk.substring(latency.length(), chunk.length());
 			}
 			
@@ -131,13 +137,13 @@ public class LDHAUtils {
 				chunk = chunk.substring(2, chunk.length());
 			}
 			
-			logger.debug("\n[Assemble Update] Chunk keywords: {}", new Object[] {chunk});
+			//logger.debug("\n[Assemble Update] Chunk keywords: {}", new Object[] {chunk});
 			
 			// field: type
 			if(chunk.startsWith("type=")){
 				chunk = chunk.substring(5,chunk.length());
 				type = chunk.split(",|]")[0];
-				logger.debug("[Assemble Update] Type=: {}", new Object[]{type});
+				//logger.debug("[Assemble Update] Type=: {}", new Object[]{type});
 				chunk = chunk.substring(type.length(), chunk.length());
 			}
 			
@@ -145,15 +151,14 @@ public class LDHAUtils {
 				chunk = chunk.substring(2, chunk.length());
 			}
 			
-			logger.debug("\n[Assemble Update] Chunk keywords: {}", new Object[] {chunk});
+			//logger.debug("\n[Assemble Update] Chunk keywords: {}", new Object[] {chunk});
 			
 			//post
 			if(chunk.startsWith("], ")){
 				chunk = chunk.substring(3, chunk.length());
 			}
-			logger.debug("\n[Assemble Update] Chunk post: {}", new Object[] {chunk});
+			//logger.debug("\n[Assemble Update] Chunk post: {}", new Object[] {chunk});
 			
-			//TODO: Put it in a JSON.
 			if(! op.isEmpty() ){
 				newJson.put("operation", op);
 			}
@@ -231,10 +236,10 @@ public class LDHAUtils {
 		try {
 			LDHAUtils myCMD5 = new LDHAUtils();
 			cmd5 = myCMD5.calculateMD5Hash(md5values);
-			logger.debug("[cmd5Hash] The MD5: {} The Value {}", new Object [] {cmd5,md5values.toString()}); //use md5values instead of updates.	
+			//logger.debug("[cmd5Hash] The MD5: {} The Value {}", new Object [] {cmd5,md5values.toString()}); //use md5values instead of updates.	
 		} 
 		catch (Exception e){
-			logger.debug("[cmd5Hash] Exception: enqueueFwd!");
+			//logger.debug("[cmd5Hash] Exception: enqueueFwd!");
 			e.printStackTrace();
 		}
 		return cmd5;

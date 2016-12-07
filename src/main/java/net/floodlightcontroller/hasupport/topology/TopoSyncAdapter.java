@@ -36,7 +36,7 @@ import net.floodlightcontroller.storage.IStorageSourceService;
  * each controller can exchange only the md5hashes and stay up 
  * to date, and sync the actual update if needed.
  * 
- * @author Om Kale
+ * @author Bhargav Srinivasan, Om Kale
  *
  */
 
@@ -256,13 +256,13 @@ public class TopoSyncAdapter implements ISyncAdapter, IFloodlightModule, IStoreL
 	        String k = keys.next();
 	        try {
 	        	String val = storeTopo.get(k).getValue();
-				logger.debug("+++++++++++++ Retrieving value from Topo DB: Key:{}, Value:{}, Type: {}", 
-	                    new Object[] {
-	                            k.toString(), 
-	                            val.toString(), 
-	                            type.name()
-	                        }
-	                    );
+//				logger.debug("+++++++++++++ Retrieving value from Topo DB: Key:{}, Value:{}, Type: {}", 
+//	                    new Object[] {
+//	                            k.toString(), 
+//	                            val.toString(), 
+//	                            type.name()
+//	                        }
+//	                    );
 	        } catch (SyncException e) {
 	            e.printStackTrace();
 	        }
@@ -274,13 +274,11 @@ public class TopoSyncAdapter implements ISyncAdapter, IFloodlightModule, IStoreL
 	@Override
 	public void disconnectedNode(Short nodeId) {
 		// TODO Auto-generated method stub
-		logger.info("Node disconnected: "+nodeId.toString());
 	}
 
 	@Override
 	public void connectedNode(Short nodeId) {
 		// TODO Auto-generated method stub
-		logger.info("Node connected: "+nodeId.toString());
 	}
 
 }
