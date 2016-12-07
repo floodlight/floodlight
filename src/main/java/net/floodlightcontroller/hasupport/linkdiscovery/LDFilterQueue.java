@@ -68,7 +68,6 @@ public class LDFilterQueue implements IFilterQueue {
 	
 	@Override
 	public boolean dequeueForward() {
-		// TODO Auto-generated method stub
 		try {
 			ArrayList<String> LDupds = new ArrayList<String>();
 			if(! filterQueue.isEmpty() ) {
@@ -98,7 +97,6 @@ public class LDFilterQueue implements IFilterQueue {
 
 	@Override
 	public boolean enqueueReverse(String value) {
-		// TODO Auto-generated method stub
 		try {
 			//logger.debug("[ReverseFilterQ] The Value {}", new Object [] {value});
 			if( (!value.equals(null)) ){
@@ -116,7 +114,6 @@ public class LDFilterQueue implements IFilterQueue {
 
 	@Override
 	public List<String> dequeueReverse() {
-		// TODO Auto-generated method stub
 		ArrayList<String> LDupds = new ArrayList<String>();
 		try {
 			if(! reverseFilterQueue.isEmpty() ) {

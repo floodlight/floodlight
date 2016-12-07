@@ -16,7 +16,10 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
-*
+* This is a utility class that consists of utility/support functions
+* that are used for repetitive tasks by different topology classes 
+* Specifically consists of functions to parse the Topology updates and 
+* calculating md5 hashes 
 * @author Bhargav Srinivasan, Om Kale
 *
 */
@@ -197,6 +200,7 @@ public class TopoUtils {
 		return jsonInString;
 	}
 	
+
 	public String calculateMD5Hash(String value){
 		String md5 = new String();
 		try {

@@ -212,7 +212,6 @@ public class TopoSyncAdapter implements ISyncAdapter, IFloodlightModule, IStoreL
 
 	@Override
 	public Collection<Class<? extends IFloodlightService>> getModuleDependencies() {
-		// TODO Auto-generated method stub
         Collection<Class<? extends IFloodlightService>> l =
                 new ArrayList<Class<? extends IFloodlightService>>();
         l.add(IStorageSourceService.class);
@@ -223,7 +222,6 @@ public class TopoSyncAdapter implements ISyncAdapter, IFloodlightModule, IStoreL
 
 	@Override
 	public void init(FloodlightModuleContext context) throws FloodlightModuleException {
-		// TODO Auto-generated method stub
 		logger = LoggerFactory.getLogger(TopoSyncAdapter.class);
 		floodlightProvider = context.getServiceImpl(IFloodlightProviderService.class);
 		syncService = context.getServiceImpl(ISyncService.class);
@@ -234,7 +232,6 @@ public class TopoSyncAdapter implements ISyncAdapter, IFloodlightModule, IStoreL
 
 	@Override
 	public void startUp(FloodlightModuleContext context) throws FloodlightModuleException {
-		// TODO Auto-generated method stub
 		syncService.addRPCListener(this);
 		try {
             TopoSyncAdapter.syncService.registerStore("TopoUpdates", Scope.GLOBAL);
@@ -251,7 +248,6 @@ public class TopoSyncAdapter implements ISyncAdapter, IFloodlightModule, IStoreL
 
 	@Override
 	public void keysModified(Iterator<String> keys, org.sdnplatform.sync.IStoreListener.UpdateType type) {
-		// TODO Auto-generated method stub
 		while(keys.hasNext()){
 	        String k = keys.next();
 	        try {

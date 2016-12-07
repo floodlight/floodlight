@@ -50,7 +50,6 @@ public class TopoHAWorker implements IHAWorker, IFloodlightModule, ITopologyList
 	
 	@Override
 	public List<String> assembleUpdate() {
-		// TODO Auto-generated method stub
 		List<String> jsonInString = new LinkedList<String>();
 		TopoUtils parser = new TopoUtils();
 		
@@ -76,7 +75,6 @@ public class TopoHAWorker implements IHAWorker, IFloodlightModule, ITopologyList
      * into the syncDB
      */
 	public boolean publishHook() {
-		// TODO Auto-generated method stub
 		try{
 			synchronized (synTopoUList){
 				//logger.debug("[Publish] Printing Updates {}: ",new Object[]{synTopoUList});
@@ -100,7 +98,6 @@ public class TopoHAWorker implements IHAWorker, IFloodlightModule, ITopologyList
 	 */
 
 	public boolean subscribeHook(String controllerID) {
-		// TODO Auto-generated method stub
 		try {
 			List<String> updates = new ArrayList<String>();
 			myTopoFilterQueue.subscribe(controllerID);
@@ -117,7 +114,6 @@ public class TopoHAWorker implements IHAWorker, IFloodlightModule, ITopologyList
 
 	@Override
 	public void topologyChanged(List<LDUpdate> linkUpdates) {
-		// TODO Auto-generated method stub
 		synchronized(synTopoUList){
 			//synLDUList.clear();
 			for (LDUpdate update: linkUpdates){	
@@ -130,7 +126,6 @@ public class TopoHAWorker implements IHAWorker, IFloodlightModule, ITopologyList
 	
 	@Override
 	public Collection<Class<? extends IFloodlightService>> getModuleServices() {
-		// TODO Auto-generated method stub
 		return null;
 	}
 	
@@ -141,7 +136,6 @@ public class TopoHAWorker implements IHAWorker, IFloodlightModule, ITopologyList
 	
 	@Override
 	public Collection<Class<? extends IFloodlightService>> getModuleDependencies() {
-		// TODO Auto-generated method stub
     	Collection<Class<? extends IFloodlightService>> l = new ArrayList<Class<? extends IFloodlightService>>();
     	l.add(IHAWorkerService.class);
 		return l;
@@ -149,7 +143,6 @@ public class TopoHAWorker implements IHAWorker, IFloodlightModule, ITopologyList
 	
 	@Override
 	public void init(FloodlightModuleContext context) throws FloodlightModuleException {
-		// TODO Auto-generated method stub
 		toposerv = context.getServiceImpl(ITopologyService.class);
 		haworker = context.getServiceImpl(IHAWorkerService.class);
 		logger.info("TopoHAWorker is init...");
@@ -157,7 +150,6 @@ public class TopoHAWorker implements IHAWorker, IFloodlightModule, ITopologyList
 	
 	@Override
 	public void startUp(FloodlightModuleContext context) throws FloodlightModuleException {
-		// TODO Auto-generated method stub
 		logger = LoggerFactory.getLogger(TopoHAWorker.class);
 		toposerv.addListener(this);
 		haworker.registerService("TopoHAWorker",this);

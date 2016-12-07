@@ -51,7 +51,6 @@ public class LDHAWorker implements IHAWorker, IFloodlightModule, ILinkDiscoveryL
 	
 	@Override
 	public List<String> assembleUpdate() {
-		// TODO Auto-generated method stub
 		List<String> jsonInString = new LinkedList<String>();
 		LDHAUtils parser = new LDHAUtils();
 		
@@ -77,7 +76,6 @@ public class LDHAWorker implements IHAWorker, IFloodlightModule, ILinkDiscoveryL
      * into the syncDB
      */
 	public boolean publishHook() {
-		// TODO Auto-generated method stub
 		try{
 			synchronized (synLDUList){
 				//logger.debug("[Publish] Printing Updates {}: ",new Object[]{synLDUList});
@@ -101,7 +99,6 @@ public class LDHAWorker implements IHAWorker, IFloodlightModule, ILinkDiscoveryL
 	 */
 
 	public boolean subscribeHook(String controllerID) {
-		// TODO Auto-generated method stub
 		try {
 			List<String> updates = new ArrayList<String>();
 			myLDFilterQueue.subscribe(controllerID);
@@ -118,7 +115,6 @@ public class LDHAWorker implements IHAWorker, IFloodlightModule, ILinkDiscoveryL
 
 	@Override
 	public void linkDiscoveryUpdate(List<LDUpdate> updateList) {
-		// TODO Auto-generated method stub
 		synchronized(synLDUList){
 			//synLDUList.clear();
 			for (LDUpdate update: updateList){	
@@ -137,12 +133,12 @@ public class LDHAWorker implements IHAWorker, IFloodlightModule, ILinkDiscoveryL
 	
 	@Override
 	public Map<Class<? extends IFloodlightService>, IFloodlightService> getServiceImpls() {
+		// TODO Auto-generated method stub
 		return null;
 	}
 	
 	@Override
 	public Collection<Class<? extends IFloodlightService>> getModuleDependencies() {
-		// TODO Auto-generated method stub
     	Collection<Class<? extends IFloodlightService>> l = new ArrayList<Class<? extends IFloodlightService>>();
     	l.add(IHAWorkerService.class);
     	l.add(IThreadPoolService.class);
@@ -151,7 +147,6 @@ public class LDHAWorker implements IHAWorker, IFloodlightModule, ILinkDiscoveryL
 	
 	@Override
 	public void init(FloodlightModuleContext context) throws FloodlightModuleException {
-		// TODO Auto-generated method stub
 		linkserv = context.getServiceImpl(ILinkDiscoveryService.class);
 		haworker = context.getServiceImpl(IHAWorkerService.class);
 		logger.info("LDHAWorker is init...");
@@ -159,7 +154,6 @@ public class LDHAWorker implements IHAWorker, IFloodlightModule, ILinkDiscoveryL
 	
 	@Override
 	public void startUp(FloodlightModuleContext context) throws FloodlightModuleException {
-		// TODO Auto-generated method stub
 		logger = LoggerFactory.getLogger(LDHAWorker.class);
 		linkserv.addListener(this);
 		haworker.registerService("LDHAWorker",this);

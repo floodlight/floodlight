@@ -28,7 +28,7 @@ public class TopoFilterQueue implements IFilterQueue {
 	public TopoFilterQueue(){}
 	
 	/**
-	 * This function hashes the LDupdates received in form of json string 
+	 * This function hashes the Topology updates received in form of json string 
 	 * using md5 hashing and store them in the filter queue and in a map 
 	 * if not already present
 	 */	 
@@ -61,14 +61,13 @@ public class TopoFilterQueue implements IFilterQueue {
 	}
 
 	/**
-	 * This function pushes the LDupdates from the filter 
+	 * This function pushes the Topology updates from the filter 
 	 * queue into the syncAdapter
 	 */
 	
 	
 	@Override
 	public boolean dequeueForward() {
-		// TODO Auto-generated method stub
 		try {
 			ArrayList<String> TopoUpds = new ArrayList<String>();
 			if(! filterQueue.isEmpty() ) {
@@ -98,7 +97,6 @@ public class TopoFilterQueue implements IFilterQueue {
 
 	@Override
 	public boolean enqueueReverse(String value) {
-		// TODO Auto-generated method stub
 		try {
 			logger.debug("[ReverseFilterQ] The Value {}", new Object [] {value});
 			if( (!value.equals(null)) ){
@@ -116,7 +114,6 @@ public class TopoFilterQueue implements IFilterQueue {
 
 	@Override
 	public List<String> dequeueReverse() {
-		// TODO Auto-generated method stub
 		ArrayList<String> TopoUpds = new ArrayList<String>();
 		try {
 			if(! reverseFilterQueue.isEmpty() ) {
