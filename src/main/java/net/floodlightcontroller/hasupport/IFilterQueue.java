@@ -3,8 +3,11 @@ package net.floodlightcontroller.hasupport;
 import java.util.List;
 
 /**
- * Maintain a queue to filter out duplicates before pulling 
- * or pushing data into syncDB 
+ * Maintain a queue to filter out duplicates before 
+ * pushing data into syncDB, and maintain a queue 
+ * to receive the data while retrieving it out of the 
+ * syncDB.
+ * 
  * @author Bhargav Srinivasan, Om Kale
  *
  */

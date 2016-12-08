@@ -17,9 +17,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
 * This is a utility class that consists of utility/support functions
-* that are used for repetitive tasks by different Link discovery classes 
+* that are used for certain tasks by different Link discovery classes 
 * Specifically consists of functions to parse the Link discovery updates and 
-* calculating md5 hashes 
+* calculating md5 hashes, the updates are parsed in O(n) time to get the JSON
+* equivalent.
+* 
 * @author Bhargav Srinivasan, Om Kale
 *
 */

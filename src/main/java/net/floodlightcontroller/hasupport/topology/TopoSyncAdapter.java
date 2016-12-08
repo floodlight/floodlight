@@ -31,10 +31,35 @@ import net.floodlightcontroller.storage.IStorageSourceService;
 /**
  * This class gets the updates from the Filter Queue
  * and puts them into the SyncDB.
+ * 
  * The primary key fields are MD5 hashed and the md5hashes are
  * stored under the controller ID which published them. Now
  * each controller can exchange only the md5hashes and stay up 
- * to date, and sync the actual update if needed.
+ * to date, and sync the actual update only if needed.
+ * 
+ * Low frequency fields (mentioned in LDUtils): 
+ * These are the primary key fields, i.e. when the data is viewed as relational
+ * data, these fields would be the primary key fields. This mapping is done so that
+ * we can avoid duplication of stored data and also improve our write speed to the 
+ * syncDB as compared to completely denormalized data where we would have to populate 
+ * a seperate table for each key field.
+ * 
+ * High Frequency Fields (mentioned here):
+ * These are fields which vary a lot and are stored in an array in the JSON that is 
+ * pushed into the DB. The primary key fields or low frequency fields are attached to
+ * these fields to help identify which particular NodePortTuple this update belongs to.
+ * 
+ * The data model used to design this system can be found here (similar, not same):
+ * https://docs.mongodb.com/v3.2/tutorial/model-referenced-one-to-many-relationships-between-documents
+ * 
+ * Possible improvement:
+ * Store the collatedcmd5 hashes as a HashMap with keys as the md5hashes and the values
+ * as '1' so that retrieval can be optimized. Meaning, lets say you wanted updates for C1, for
+ * a particular NodePortTuple, say, 'B' then you first retrieve all the collatedcmd5 hashes
+ * associated with C1, which is a string (right now), search for 'B' and if present, 
+ * you go ahead and look for B in the database, which will then give you the 
+ * corresponding JSON update for 'B'. Instead if the collatedcmd5 hashes were stored as a 
+ * hashmap then we wouldn't need to parse the collatedcmd5 string.
  * 
  * @author Bhargav Srinivasan, Om Kale
  *
@@ -52,6 +77,7 @@ public class TopoSyncAdapter implements ISyncAdapter, IFloodlightModule, IStoreL
 	private final String none = new String("none");
 	private final String[] highfields = new String[]{"operation",  "latency", "timestamp"};
 	private static final TopoFilterQueue myTopoFilterQueue = new TopoFilterQueue();
+	private Integer saveCount = new Integer(0);
 	
 	@Override
 	public void packJSON(List<String> newUpdates) {
@@ -102,22 +128,24 @@ public class TopoSyncAdapter implements ISyncAdapter, IFloodlightModule, IStoreL
 	                            oldUpdates.toString()
 	                        }
 	                 );
+	        		saveCount += 1;
+	        		logger.info("Number of repetitions avoided : {}", new Object[] {saveCount});
 				
 					//parse the Json String into a Map, then query the entries.
 					updateMap = myMapper.readValue(oldUpdates.toString(), typeRef);		
 					
 				    String oldOp = updateMap.get(highfields[0]);
-				    logger.debug("++++OLD OP: {}", new Object[] {oldOp});
+				    //logger.debug("++++OLD OP: {}", new Object[] {oldOp});
 				    String opList = topohautils.appendUpdate(oldOp, newUpdateMap.get(highfields[0]) );
 					updateMap.put(highfields[0], opList); //update high freq fields
 					
 					String oldLatency = updateMap.get(highfields[1]);
-				    logger.debug("++++OLD LATENCY: {}", new Object[] {oldLatency});
+				    //logger.debug("++++OLD LATENCY: {}", new Object[] {oldLatency});
 				    String latList = topohautils.appendUpdate(oldLatency, newUpdateMap.get(highfields[1]));
 					updateMap.put(highfields[1], latList); //update high freq fields
 					
 					String oldTimestamp = updateMap.get(highfields[2]);
-					logger.debug("++++OLD TS: {}", new Object[] {oldTimestamp});
+					//logger.debug("++++OLD TS: {}", new Object[] {oldTimestamp});
 					Long ts2 = new Long(Instant.now().getEpochSecond());
 					Long nano2 = new Long(Instant.now().getNano());
 					String tmList = topohautils.appendUpdate(oldTimestamp, ts2.toString()+nano2.toString());
@@ -135,9 +163,9 @@ public class TopoSyncAdapter implements ISyncAdapter, IFloodlightModule, IStoreL
 	        			
 	        			if ( collatedcmd5.equals(none) ) {
 	        				collatedcmd5 = cmd5Hash;
-	        				logger.debug("Collated CMD5: {} ", new Object [] {collatedcmd5.toString()});
+	        				//logger.debug("Collated CMD5: {} ", new Object [] {collatedcmd5.toString()});
 	        			} else {
-	        				logger.debug("================ Append update to HashMap ================");
+	        				//logger.debug("================ Append update to HashMap ================");
 	        				collatedcmd5 = topohautils.appendUpdate(collatedcmd5, cmd5Hash);
 	        			}
 	        			
@@ -177,13 +205,13 @@ public class TopoSyncAdapter implements ISyncAdapter, IFloodlightModule, IStoreL
 					collatedcmd5 = collatedcmd5.substring(0, collatedcmd5.length()-2);
 				}
 				
-				logger.debug("[Unpack] Collated CMD5: {}", new Object[] {collatedcmd5.toString()});
+				//logger.debug("[Unpack] Collated CMD5: {}", new Object[] {collatedcmd5.toString()});
 				
 				String[] cmd5hashes = collatedcmd5.split(", ");
 				for (String cmd5: cmd5hashes) {
 					String update = TopoSyncAdapter.storeTopo.getValue(cmd5, none);
 					if(! update.equals(none) ) {
-						logger.debug("[Unpack]: {}", new Object [] {update.toString()});
+						//logger.debug("[Unpack]: {}", new Object [] {update.toString()});
 						myTopoFilterQueue.enqueueReverse(update);
 					}
 				}

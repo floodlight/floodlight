@@ -22,8 +22,8 @@ import net.floodlightcontroller.topology.ITopologyListener;
 import net.floodlightcontroller.topology.ITopologyService;
 
 /**
- * This is the Worker class used to publish, subscribe updates to
- * and from the controller respectively
+ * This is the Topology Worker class used to publish, subscribe updates to
+ * and from the controller respectively.
  * @author Bhargav Srinivasan, Om Kale
  *
  */
@@ -104,7 +104,7 @@ public class TopoHAWorker implements IHAWorker, IFloodlightModule, ITopologyList
 			updates = myTopoFilterQueue.dequeueReverse();
 			logger.info("[Subscribe] TopoUpdates...");
 			for (String update: updates) {
-				logger.info("Update: {}", new Object[]{update.toString()});
+				//logger.info("Update: {}", new Object[]{update.toString()});
 			}
 		} catch (Exception e) {
 			e.printStackTrace();

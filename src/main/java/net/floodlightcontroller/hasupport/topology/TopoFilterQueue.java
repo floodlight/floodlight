@@ -11,6 +11,10 @@ import net.floodlightcontroller.hasupport.IFilterQueue;
 
 /**
  * A Queue to store Topology updates
+ * 
+ * Also filters out duplicates up to a specified 
+ * capacity.
+ * 
  * @author Bhargav Srinivasan, Om Kale
  */
 
@@ -41,11 +45,11 @@ public class TopoFilterQueue implements IFilterQueue {
 			newMD5 = myMD5.calculateMD5Hash(value);
 			
 			if (TopoFilterQueue.myMap.size() >= mapCapacity) {
-				logger.debug("[TopoFilterQ Clear] Clearing TopoFilterQ's Map");
+				//logger.debug("[TopoFilterQ Clear] Clearing TopoFilterQ's Map");
 				TopoFilterQueue.myMap.clear();
 			}
 			
-			logger.debug("[FilterQ] The MD5: {} The Value {}", new Object [] {newMD5,value});
+			//logger.debug("[FilterQ] The MD5: {} The Value {}", new Object [] {newMD5,value});
 			if( (!myMap.containsKey(newMD5)) && (!value.equals(null)) ){
 				filterQueue.offer(value);
 				myMap.put(newMD5, value);
@@ -74,11 +78,11 @@ public class TopoFilterQueue implements IFilterQueue {
 				filterQueue.drainTo(TopoUpds);
 			}
 			if(! TopoUpds.isEmpty() ) {
-				logger.debug("[FilterQ] The update after drain: {} ", new Object [] {TopoUpds.toString()});
+				//logger.debug("[FilterQ] The update after drain: {} ", new Object [] {TopoUpds.toString()});
 				TopoSyncAdapter.packJSON(TopoUpds);
 				return true;
 			} else {
-				logger.debug("[FilterQ] The linked list is empty");
+				//logger.debug("[FilterQ] The linked list is empty");
 				return false;
 			}	
 		} catch (Exception e){
@@ -98,7 +102,7 @@ public class TopoFilterQueue implements IFilterQueue {
 	@Override
 	public boolean enqueueReverse(String value) {
 		try {
-			logger.debug("[ReverseFilterQ] The Value {}", new Object [] {value});
+			//logger.debug("[ReverseFilterQ] The Value {}", new Object [] {value});
 			if( (!value.equals(null)) ){
 				reverseFilterQueue.offer(value);
 			}
@@ -121,10 +125,10 @@ public class TopoFilterQueue implements IFilterQueue {
 			}
 			
 			if(! TopoUpds.isEmpty() ) {
-				logger.debug("[ReverseFilterQ] The update after drain: {} ", new Object [] {TopoUpds.toString()});
+				//logger.debug("[ReverseFilterQ] The update after drain: {} ", new Object [] {TopoUpds.toString()});
 				return TopoUpds;
 			} else {
-				logger.debug("[ReverseFilterQ] The linked list is empty");
+				//logger.debug("[ReverseFilterQ] The linked list is empty");
 			}
 			return TopoUpds;
 			

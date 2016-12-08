@@ -11,7 +11,16 @@ import net.floodlightcontroller.hasupport.IFilterQueue;
 
 /**
  * A Queue to store LDupdates
- * @author Om Kale
+ * 
+ * Also filters out duplicates up to a specified 
+ * capacity.
+ * 
+ * Possible improvement:
+ * Implement a data structure which can eliminate duplicates 
+ * completely, without a threshold on the amount of filtering 
+ * it can do which is currently limited by the mapCapacity.
+ * 
+ * @author Bhargav Srinivasan, Om Kale
  */
 
 public class LDFilterQueue implements IFilterQueue {

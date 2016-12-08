@@ -105,7 +105,7 @@ public class LDHAWorker implements IHAWorker, IFloodlightModule, ILinkDiscoveryL
 			updates = myLDFilterQueue.dequeueReverse();
 			logger.info("[Subscribe] LDUpdates...");
 			for (String update: updates) {
-				logger.info("Update: {}", new Object[]{update.toString()});
+				//logger.info("Update: {}", new Object[]{update.toString()});
 			}
 		} catch (Exception e) {
 			e.printStackTrace();

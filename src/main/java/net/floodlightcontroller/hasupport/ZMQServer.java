@@ -8,6 +8,12 @@ import org.zeromq.ZMQ;
 import org.zeromq.ZMQException;
 
 /**
+* The ZMQ Server
+* This server class is instantiated by the ZMQNode (Connection Manager),
+* and it connects to the back-end of the QueueDevice. This means that 
+* more than one of these classes can be instantiated depending on the load.
+* The server processes the request and sends out a reply, through the queue
+* device to the front-end of the queue to which the clients connect to.
 *
 * @author Bhargav Srinivasan, Om Kale
 *
@@ -25,7 +31,7 @@ public class ZMQServer implements Runnable{
 	private ZMQ.Context zmqcontext = ZMQ.context(1);
 	
 	/**
-	 * Possible outgoing server messages
+	 * Possible outgoing server messages, replies.
 	 */
 	
 	private final String ack      = new String ("ACK");
@@ -103,8 +109,9 @@ public class ZMQServer implements Runnable{
 		// get the best perf: 
 		// 1) using first 1 chars of 'stg' to find out what
 		// message it was.
-		// 2) Is substring the most optimal way to get first char
-		// of string? Should we do string or char comparisons?
+		// 2) StringTokenizer to split the string at ' ' to get 
+		// different parts of the message rather than using String.split
+		// because split uses a regex based match which is slower.
 		
 		char cmp = mssg.charAt(0);
 		st = new StringTokenizer(mssg);
@@ -117,13 +124,14 @@ public class ZMQServer implements Runnable{
 		}
 		
 		try{
+			
 			if(cmp == 'I') {
 				
 				//logger.info("[ZMQServer] Received IWon message: " + mssg.toString());
 				this.aelection.setTempLeader(r2);
 				this.aelection.setTimeStamp(r3);
 				return ack;
-				
+			
 			} else if (cmp == 'L') {
 				
 				//logger.info("[ZMQServer] Received LEADER message: " + mssg.toString());

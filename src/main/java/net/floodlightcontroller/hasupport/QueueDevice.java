@@ -9,6 +9,13 @@ import org.zeromq.ZMQException;
 
 /**
  * The Queue Device
+ * 
+ * Consists of a front-end socket to which all the REQuestors 
+ * (clients) connect to, these connections are from other controllers
+ * in the network. The back-end of the queue is connected to the ZMQ
+ * Server classes which processes the requests and sends replies back to 
+ * the front-end socket which relays it to the clients.
+ * 
  * @author Bhargav Srinivasan, Om Kale
  */
 
