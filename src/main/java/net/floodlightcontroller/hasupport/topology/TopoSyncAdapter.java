@@ -122,12 +122,12 @@ public class TopoSyncAdapter implements ISyncAdapter, IFloodlightModule, IStoreL
 	        			continue;
 	        		}
 		        			
-	        		logger.debug("+++++++++++++ Retrieving old update from Topo DB: Key:{}, Value:{} ", 
-	                    new Object[] {
-	                            cmd5Hash.toString(), 
-	                            oldUpdates.toString()
-	                        }
-	                 );
+//	        		logger.debug("+++++++++++++ Retrieving old update from Topo DB: Key:{}, Value:{} ", 
+//	                    new Object[] {
+//	                            cmd5Hash.toString(), 
+//	                            oldUpdates.toString()
+//	                        }
+//	                 );
 	        		saveCount += 1;
 	        		logger.info("Number of repetitions avoided : {}", new Object[] {saveCount});
 				
@@ -254,7 +254,7 @@ public class TopoSyncAdapter implements ISyncAdapter, IFloodlightModule, IStoreL
 		floodlightProvider = context.getServiceImpl(IFloodlightProviderService.class);
 		syncService = context.getServiceImpl(ISyncService.class);
 		controllerId = new String("C" + floodlightProvider.getControllerId());
-        logger.info("Node Id: {}", new Object[] {controllerId});
+        //logger.info("Node Id: {}", new Object[] {controllerId});
 		
 	}
 

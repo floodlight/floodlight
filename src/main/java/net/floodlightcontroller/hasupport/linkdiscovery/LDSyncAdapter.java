@@ -123,12 +123,12 @@ public class LDSyncAdapter implements ISyncAdapter, IFloodlightModule, IStoreLis
 	        			continue;
 	        		}
 		        			
-	        		logger.debug("+++++++++++++ Retriving old update from DB: Key:{}, Value:{} ", 
-	                    new Object[] {
-	                            cmd5Hash.toString(), 
-	                            oldUpdates.toString()
-	                        }
-	                 );
+//	        		logger.debug("+++++++++++++ Retriving old update from DB: Key:{}, Value:{} ", 
+//	                    new Object[] {
+//	                            cmd5Hash.toString(), 
+//	                            oldUpdates.toString()
+//	                        }
+//	                 );
 				
 	        		saveCount += 1;
 	        		logger.info("Number of repetitions avoided : {}", new Object[] {saveCount});
@@ -195,7 +195,7 @@ public class LDSyncAdapter implements ISyncAdapter, IFloodlightModule, IStoreLis
 	
 	@Override
 	public void unpackJSON(String controllerID) {
-		// 1. Get all cmd5 hashes for the particular controller ID.
+		//  Get all cmd5 hashes for the particular controller ID:
 		try {
 			String collatedcmd5 = LDSyncAdapter.storeLD.getValue(controllerID, none);
 			
@@ -254,7 +254,7 @@ public class LDSyncAdapter implements ISyncAdapter, IFloodlightModule, IStoreLis
 		floodlightProvider = context.getServiceImpl(IFloodlightProviderService.class);
 		syncService = context.getServiceImpl(ISyncService.class);
 		controllerId = new String("C" + floodlightProvider.getControllerId());
-        logger.info("Node Id: {}", new Object[] {controllerId});
+        //logger.info("Node Id: {}", new Object[] {controllerId});
 		
 	}
 

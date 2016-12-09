@@ -66,7 +66,7 @@ public class TopoHAWorker implements IHAWorker, IFloodlightModule, ITopologyList
 			jsonInString = parser.parseChunk(chunk);
 		}
 
-		logger.debug("[Assemble Update] JSON String: {}", new Object[] {jsonInString});
+		//logger.debug("[Assemble Update] JSON String: {}", new Object[] {jsonInString});
 		return jsonInString;
 	}
 
@@ -145,7 +145,7 @@ public class TopoHAWorker implements IHAWorker, IFloodlightModule, ITopologyList
 	public void init(FloodlightModuleContext context) throws FloodlightModuleException {
 		toposerv = context.getServiceImpl(ITopologyService.class);
 		haworker = context.getServiceImpl(IHAWorkerService.class);
-		logger.info("TopoHAWorker is init...");
+		//logger.info("TopoHAWorker is init...");
 	}
 	
 	@Override

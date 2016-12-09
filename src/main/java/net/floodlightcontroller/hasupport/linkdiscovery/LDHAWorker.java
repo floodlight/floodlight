@@ -67,7 +67,7 @@ public class LDHAWorker implements IHAWorker, IFloodlightModule, ILinkDiscoveryL
 			jsonInString = parser.parseChunk(chunk);
 		}
 
-		logger.debug("[Assemble Update] JSON String: {}", new Object[] {jsonInString});
+		//logger.debug("[Assemble Update] JSON String: {}", new Object[] {jsonInString});
 		return jsonInString;
 	}
 
@@ -149,7 +149,7 @@ public class LDHAWorker implements IHAWorker, IFloodlightModule, ILinkDiscoveryL
 	public void init(FloodlightModuleContext context) throws FloodlightModuleException {
 		linkserv = context.getServiceImpl(ILinkDiscoveryService.class);
 		haworker = context.getServiceImpl(IHAWorkerService.class);
-		logger.info("LDHAWorker is init...");
+		//logger.info("LDHAWorker is init...");
 	}
 	
 	@Override
