@@ -42,7 +42,7 @@ public class QueueDevice implements Runnable{
 			 * Number of I/O threads assigned to the queue device.
 			 */
 			ZMQ.Context zmqcontext = ZMQ.context(1);
-			
+			zmqcontext.setMaxSockets(999999999);
 			/** 
 			 * Connection facing the outside, where other nodes can connect 
 			 * to this node. (frontend)

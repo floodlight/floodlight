@@ -68,6 +68,7 @@ public class ZMQServer implements Runnable{
 	@Override
 	public void run() {
 		// TODO Auto-generated method stub
+		zmqcontext.setMaxSockets(999999999);
 		ZMQ.Socket serverSocket = zmqcontext.socket(ZMQ.REP);
 		
 		logger.info("Starting ZMQ Server on port: "+ this.serverPort.toString());

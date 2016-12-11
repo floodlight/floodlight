@@ -36,6 +36,7 @@ public class ZMQNode implements NetworkInterface, Runnable {
 	private static Logger logger = LoggerFactory.getLogger(ZMQNode.class);
 	
 	private ZMQ.Context zmqcontext = ZMQ.context(1);
+	
 	private ZMQ.Socket clientSock;
 	
 	public final String controllerID;
@@ -446,6 +447,7 @@ public class ZMQNode implements NetworkInterface, Runnable {
 	public void run() {
 		// TODO Auto-generated method stub
 		//ScheduledExecutorService sesNode = Executors.newScheduledThreadPool(10);
+		zmqcontext.setMaxSockets(999999999);
 		try{
 			//logger.debug("Server List: "+this.serverList.toString());
 			Thread qd = new Thread(qDevice,"QueueDeviceThread");
