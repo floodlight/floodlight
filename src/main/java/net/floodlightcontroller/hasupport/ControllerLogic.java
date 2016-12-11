@@ -32,7 +32,8 @@ public class ControllerLogic implements Runnable {
 	private final String controllerID;
 	
 	private final Integer timeout     = new Integer(60000);
-	private final Integer pollTime     = new Integer(5);
+	private final Integer pollTime    = new Integer(5);
+	private Integer ticks		      = new Integer(0);
 	private boolean timeoutFlag;
 	
 	public static final LDHAWorker ldworker = new LDHAWorker();
@@ -116,8 +117,14 @@ public class ControllerLogic implements Runnable {
 					}
 					
 					TimeUnit.SECONDS.sleep(pollTime);
-					// Uncomment this if you care about memory usage
-					//System.gc(); 
+					
+					// Uncomment this: memory usage/too many files
+					if (ticks > 5) {
+						System.gc();
+						ticks = 0;
+					}
+					
+					ticks += 1;
 				}
 				
 			}

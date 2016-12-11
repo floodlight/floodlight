@@ -254,7 +254,7 @@ public class ZMQNode implements NetworkInterface, Runnable {
 						allsocketDict.put(client, clientSock);
 					} else {
 						//logger.debug("[Node] This socket already exists, refreshing: "+client.toString());
-						clientSock.setLinger(0);
+						//clientSock.setLinger(0);
 						clientSock.close();
 						ZMQ.Socket requester1 = zmqcontext.socket(ZMQ.REQ);
 						requester1.setReceiveTimeOut(500);
@@ -265,7 +265,7 @@ public class ZMQNode implements NetworkInterface, Runnable {
 					}
 				} else {
 					//logger.debug("[Node] Received bad reply: "+client.toString());
-					clientSock.setLinger(0);
+					//clientSock.setLinger(0);
 					clientSock.close();
 					//logger.debug("[Node] Closed Socket"+client.toString());		
 				}
@@ -275,7 +275,7 @@ public class ZMQNode implements NetworkInterface, Runnable {
 				//ne.printStackTrace();
 			}  catch (ZMQException ze){
 				if(clientSock != null){
-					clientSock.setLinger(0);
+					//clientSock.setLinger(0);
 					clientSock.close();
 					ZMQ.Socket requester1 = zmqcontext.socket(ZMQ.REQ);
 					requester1.setReceiveTimeOut(500);
@@ -286,7 +286,7 @@ public class ZMQNode implements NetworkInterface, Runnable {
 				//ze.printStackTrace();
 			} catch (Exception e){
 				if(clientSock != null){
-					clientSock.setLinger(0);
+					//clientSock.setLinger(0);
 					clientSock.close();
 					ZMQ.Socket requester1 = zmqcontext.socket(ZMQ.REQ);
 					requester1.setReceiveTimeOut(500);
