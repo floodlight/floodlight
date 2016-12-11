@@ -90,7 +90,8 @@ else
 	sudo add-apt-repository ppa:git-core/ppa -y
 	sudo apt-get update
 	sudo apt-get -y install git ant g++ valgrind
-	sudo apt-get -y install build-essential uuid-dev libtool autoconf automake pkg-config asciidoc
+	#sudo apt-get -y install build-essential uuid-dev libtool autoconf automake pkg-config asciidoc
+	sudo apt-get -y install uuid-dev libtool autoconf automake pkg-config xmlto
 	git clone git://github.com/zeromq/libzmq.git
 	cd libzmq
 	git checkout 8cf4832e01cf9f3161157373e9c66e7be18ae0bb
@@ -112,7 +113,7 @@ else
 	cd ../..
 	rm -rf jzmq libzmq
 	cp /usr/local/share/java/zmq.jar lib/jzmq-3.1.0.jar
-	cp /usr/local/libjzmq* lib/
+	cp /usr/local/lib/libjzmq* lib/
 
 fi
 
