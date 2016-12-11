@@ -90,8 +90,9 @@ else
 	sudo add-apt-repository ppa:git-core/ppa -y
 	sudo apt-get update
 	sudo apt-get -y install git ant g++ valgrind
-	#sudo apt-get -y install build-essential uuid-dev libtool autoconf automake pkg-config asciidoc
-	sudo apt-get -y install uuid-dev libtool autoconf automake pkg-config xmlto
+	# The following commented  line will need about 800 MB when unpacked: (so you can try this if it doesn't work)
+	#sudo apt-get -y install build-essential uuid-dev libtool autoconf automake pkg-config asciidoc xmlto
+	sudo apt-get -y install uuid-dev libtool autoconf automake pkg-config
 	git clone git://github.com/zeromq/libzmq.git
 	cd libzmq
 	git checkout 8cf4832e01cf9f3161157373e9c66e7be18ae0bb
