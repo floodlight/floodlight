@@ -2,8 +2,9 @@ package net.floodlightcontroller.hasupport;
 
 import static org.junit.Assert.*;
 
-import java.io.IOException;
 import java.lang.reflect.Field;
+import java.util.concurrent.TimeUnit;
+
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -175,7 +176,7 @@ public class ZMQServerTest {
 		ae.setTempLeader("2");
 		ae.setLeader("2");
 		String resp = tc.send("HEARTBEAT 2 ");
-		assertEquals(resp,dc);
+		assertEquals(resp,ack+none);
 		ae.setTempLeader(none);
 		ae.setLeader(none);
 	}
@@ -221,7 +222,7 @@ public class ZMQServerTest {
 			/**
 			 * Number of I/O threads assigned to the queue device.
 			 */
-			ZMQ.Context zmqcontext = ZMQ.context(10);
+			ZMQ.Context zmqcontext = ZMQ.context(1);
 			
 			/** 
 			 * Connection facing the outside, where other nodes can connect 
@@ -240,23 +241,57 @@ public class ZMQServerTest {
 			ZMQ.Socket serverSide = zmqcontext.socket(ZMQ.DEALER);
 			serverSide.bind("tcp://0.0.0.0:4242");
 			
-			System.out.println("Starting ZMQueue device...");
-			
 			/**
 			 * This is an infinite loop to run the QueueDevice!
 			 */
-			ZMQQueue queue = new ZMQQueue(zmqcontext,clientSide,serverSide);
-			queue.run();
-			
-			queue.close();
-			clientSide.close();
-			serverSide.close();
-			zmqcontext.term();
+		//  Initialize poll set
+	        ZMQ.Poller items = new ZMQ.Poller (2);
+	        items.register(clientSide, ZMQ.Poller.POLLIN);
+	        items.register(serverSide, ZMQ.Poller.POLLIN);
+
+	        boolean more = false;
+	        byte[] message;
+
+	        //  Switch messages between sockets
+	        while (!Thread.currentThread().isInterrupted()) {            
+	            
+	            items.poll(0);
+
+	            if (items.pollin(0)) {
+	                while (true) {
+	                    // receive message
+	                    message = clientSide.recv(0);
+	                    more = clientSide.hasReceiveMore();
+
+	                    // Broker it
+	                    serverSide.send(message, more ? ZMQ.SNDMORE : 0);
+	                    if(!more){
+	                        break;
+	                    }
+	                }
+	            }
+	            if (items.pollin(1)) {
+	                while (true) {
+	                    // receive message
+	                    message = serverSide.recv(0);
+	                    more = serverSide.hasReceiveMore();
+	                    // Broker it
+	                    clientSide.send(message,  more ? ZMQ.SNDMORE : 0);
+	                    if(!more){
+	                        break;
+	                    }
+	                }
+	            }
+	            
+	            TimeUnit.MICROSECONDS.sleep(30000);
+	        }
+	        //  We never get here but clean up anyhow
+	        clientSide.close();
+	        serverSide.close();
+	        zmqcontext.term();
 			
 		} catch (ZMQException ze){		
 			ze.printStackTrace();	
-		} catch (IOException ie){
-			ie.printStackTrace();
 		} catch (Exception e){
 			e.printStackTrace();
 		}

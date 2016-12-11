@@ -115,6 +115,7 @@ public class ZMQServer implements Runnable{
 		
 		char cmp = mssg.charAt(0);
 		st = new StringTokenizer(mssg);
+		r3=none;
 		r1 = st.nextToken();
 		if (st.hasMoreTokens()) {
 			r2 = st.nextToken();
