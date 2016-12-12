@@ -34,7 +34,7 @@ import org.zeromq.ZMQException;
  * this class can be completely re-implemented, if you adhere to NetworkInterface,
  * and expose socketDict and connectionDict to AsyncElection in a similar manner.
  * 
- * b. Improve the existing connection manager. Currently, we are using the 
+ * b. Improve the existing connection manager (ZMQNode). Currently, we are using the 
  * extended request-reply pattern, mentioned in the ZGuide. We could identify
  * a good alternative and implement it.
  * 
@@ -135,6 +135,13 @@ public class ZMQNode implements NetworkInterface, Runnable {
 		qDevice = new QueueDevice(this.serverPort,this.clientPort);
 	}
 	
+	/**
+	 * Parses server.config located in the resources folder in order
+	 * to obtain the IP:ports of all the nodes that are configured to
+	 * be a part of this network.
+	 * 
+	 */
+	
 	public void preStart(){
 		String filename = "src/main/resources/server.config";
 		
@@ -173,7 +180,11 @@ public class ZMQNode implements NetworkInterface, Runnable {
 		}
 	}
 	
-
+    /**
+     * Sends a message to a specified client IP:port, if possible.
+     * 
+     * @return boolean value that indicates success or failure.
+     */
 	
 	@Override
 	public Boolean send(String clientPort, String message) {
@@ -203,6 +214,12 @@ public class ZMQNode implements NetworkInterface, Runnable {
 		}
 	}
 
+	/**
+	 * Receives a message from the specified IP:port, if possible.
+	 * 
+	 * @return String containing the received message.
+	 */
+	
 	@Override
 	public String recv(String receivingPort) {
 		// TODO Auto-generated method stub
@@ -229,6 +246,16 @@ public class ZMQNode implements NetworkInterface, Runnable {
 		}
 		
 	}
+	
+	/**
+	 * This method maintains the hashmap socketDict, which holds the socket
+	 * objects for the current active connections. It tries to connect the 
+	 * nodes which have been configured but not connected yet, and adds them to
+	 * the socketDict if the connection is successful. This method has been 
+	 * optimized to instantiate as few socket objects as possible without loss
+	 * of functionality.
+	 * 
+	 */
 	
 	public void doConnect(){
 		
@@ -309,6 +336,14 @@ public class ZMQNode implements NetworkInterface, Runnable {
 		return;
 		
 	}
+	
+	/**
+	 * Called by the blockUntilConnected() method in order to perform an
+	 * initial connection to all the nodes and store all their socket objects in
+	 * the socketDict and connectDict which are then passed to the election class.
+	 * 
+	 * @return Unmodifiable hashmap of connectDict <IP:port, ON/OFF>
+	 */
 
 	@Override
 	public Map<String, netState> connectClients() {
@@ -328,6 +363,15 @@ public class ZMQNode implements NetworkInterface, Runnable {
 		updateConnectDict();
 		return (Map<String, netState>) Collections.unmodifiableMap(this.connectDict);
 	}
+	
+	/**
+	 * This method is periodically called by the election class so
+	 * that we can identify if any more of the configured nodes have 
+	 * become active, and if so establish connections to them and store
+	 * the corresponding socket objects.
+	 * 
+	 * @return Unmodifiable hashmap of connectDict <IP:port, ON/OFF>
+	 */
 
 	@Override
 	public Map<String, netState> checkForNewConnections() {
@@ -341,6 +385,16 @@ public class ZMQNode implements NetworkInterface, Runnable {
 		updateConnectDict();
 		return (Map<String, netState>) Collections.unmodifiableMap(this.connectDict);
 	}
+	
+	/**
+	 * This method is used by the election class as a failure detector,
+	 * meaning it can detect if the connected nodes are still responding, 
+	 * and are active. If not, it closes the corresponding socket and removes it
+	 * from the socketDict & connectDict, in order to inform the election class that 
+	 * the following nodes are no longer active.
+	 * 
+	 * @return Unmodifiable hashmap of connectDict <IP:port, ON/OFF>
+	 */
 
 	@Override
 	public Map<String, netState> expireOldConnections() {
@@ -398,6 +452,15 @@ public class ZMQNode implements NetworkInterface, Runnable {
 	}
 	
 	
+	/**
+	 * This method is used to completely refresh the state of the connection manager,
+	 * closing all sockets, both active and inactive, and spawning new socket objects
+	 * for all configured nodes. This function is called by the blockUntilConnected() 
+	 * method in order to refresh state every five minutes in order to avoid an excess
+	 * of open files / sockets.
+	 * 
+	 */
+	
 	
 	public void cleanState() {
 		
@@ -449,6 +512,7 @@ public class ZMQNode implements NetworkInterface, Runnable {
 	 * Will first expire all connections in the socketDict and keep spinning until,
 	 * > majority % nodes from the connectSet get connected.
 	 */
+	
 	@Override
 	public ElectionState blockUntilConnected() {
 		// TODO Auto-generated method stub
