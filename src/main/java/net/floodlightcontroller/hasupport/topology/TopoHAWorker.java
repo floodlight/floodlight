@@ -22,11 +22,33 @@ import net.floodlightcontroller.topology.ITopologyListener;
 import net.floodlightcontroller.topology.ITopologyService;
 
 /**
- * This is the Topology Worker class used to publish, subscribe updates to
- * and from the controller respectively.
+ * TopoHAWorker
+ * 
+ * This is the HAWorker class that is used to push updates into the 
+ * queue using the publishHook method. Also, subscribe to updates from
+ * the syncDB, and display/process them if needed using subscribeHook.
+ * 
+ * The assemble update function is used to convert the updates into a JSON
+ * for easier storage (i.e. as a string which can then be processed using 
+ * Jackson) and storing them into the syncDB. JSON relational mapping is
+ * performed in the SyncAdapter class, because the data in the updates are 
+ * relational in nature and this improves write efficiency.
+ * 
+ * Forward flow:
+ * 
+ *  HAWorker         |             FilterQueue                  |     SyncAdapter
+ * publishHook()     -> enqueueForward() -> dequeueForward()    ->  packJSON() -> syncDB.
+ * 
+ * Reverse Flow:
+ * 
+ *  HAWorker         |             FilterQueue                  |     SyncAdapter
+ * subscribeHook()   ->   subscribe()                           ->  unpackJSON()
+ * subscribeHook()	 <-  dequeueReverse() <- enqueueReverse()   <-  unpackJSON()  <- syncDB
+ * 
  * @author Bhargav Srinivasan, Om Kale
  *
  */
+
 public class TopoHAWorker implements IHAWorker, IFloodlightModule, ITopologyListener {
 	protected static Logger logger = LoggerFactory.getLogger(TopoHAWorker.class);
 	protected static ITopologyService toposerv;
@@ -43,7 +65,7 @@ public class TopoHAWorker implements IHAWorker, IFloodlightModule, ITopologyList
 	}
 	
 	/**
-	 * This function is used to assemble the LDupdates into
+	 * This method is used to assemble the Topo Updates into
 	 * a JSON string using JSON Jackson API
 	 * @return JSON string
 	 */
@@ -71,9 +93,11 @@ public class TopoHAWorker implements IHAWorker, IFloodlightModule, ITopologyList
 	}
 
     /**
-     * This function is called in order to start pushing updates 
+     * This method is called in order to start pushing updates 
      * into the syncDB
+     * @return boolean value indicating success or failure
      */
+	
 	public boolean publishHook() {
 		try{
 			synchronized (synTopoUList){
@@ -93,8 +117,9 @@ public class TopoHAWorker implements IHAWorker, IFloodlightModule, ITopologyList
 	}
 
 	/**
-	 * This function is used to subscribe to updates from the syncDB, and 
+	 * This method is used to subscribe to updates from the syncDB, and 
 	 * stay in sync. Can be used to unpack the updates, if needed.
+	 * @return boolean value indicating success or failure
 	 */
 
 	public boolean subscribeHook(String controllerID) {
@@ -104,7 +129,7 @@ public class TopoHAWorker implements IHAWorker, IFloodlightModule, ITopologyList
 			updates = myTopoFilterQueue.dequeueReverse();
 			logger.info("[Subscribe] TopoUpdates...");
 			for (String update: updates) {
-				//logger.info("Update: {}", new Object[]{update.toString()});
+				logger.debug("Update: {}", new Object[]{update.toString()});
 			}
 		} catch (Exception e) {
 			e.printStackTrace();

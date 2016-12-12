@@ -6,14 +6,18 @@ import net.floodlightcontroller.core.module.IFloodlightService;
 
 /**
  * IHAControllerService
+ * 
  * Exposes two of the HAController features to the user, 
- * first is to getLeader() which gets the current network-wide
- * leader and the second function can be used to set pre-defined
- * priorities for the election, by supplying an ordered list of 
- * Integers which hold the order in which the nodes are to be 
+ * first is to getLeaderNonBlocking() which gets the current network-wide
+ * leader and returns immediately  and the setElectionPriorities method 
+ * can be used to set pre-defined priorities for the election, by supplying an 
+ * ordered list of Integers which hold the order in which the nodes are to be 
  * selected in the election process.
- * This service can be used by any module, as it is exposed using
- * IFloodlightService.
+ * 
+ * The pollForLeader method is a blocking call which is used to poll until
+ * a current network-wide leader is available. This function will either 
+ * timeout and return "none" if there isn't a leader in the network, or 
+ * will return the current leader.
  * 
  * @author Bhargav Srinivasan, Om Kale
  *
@@ -21,7 +25,9 @@ import net.floodlightcontroller.core.module.IFloodlightService;
 
 public interface IHAControllerService extends IFloodlightService {
 	
-	public String getLeader();
+	public String getLeaderNonBlocking();
+	
+	public String pollForLeader();
 	
 	public void setElectionPriorities(ArrayList<Integer> priorities);
 

@@ -52,8 +52,8 @@ import net.floodlightcontroller.storage.IStorageSourceService;
  * The data model used to design this system can be found here (similar, not same):
  * https://docs.mongodb.com/v3.2/tutorial/model-referenced-one-to-many-relationships-between-documents
  * 
- * Possible improvement:
- * Store the collatedcmd5 hashes as a HashMap with keys as the md5hashes and the values
+ * Possible improvements:
+ * a. Store the collatedcmd5 hashes as a HashMap with keys as the md5hashes and the values
  * as '1' so that retrieval can be optimized. Meaning, lets say you wanted updates for C1, for
  * a particular NodePortTuple, say, 'B' then you first retrieve all the collatedcmd5 hashes
  * associated with C1, which is a string (right now), search for 'B' and if present, 
@@ -79,6 +79,28 @@ public class LDSyncAdapter implements ISyncAdapter, IFloodlightModule, IStoreLis
 	private final String[] highfields = new String[]{"operation",  "latency", "timestamp"};
 	private static final LDFilterQueue myLDFilterQueue = new LDFilterQueue();
 	private Integer saveCount = new Integer(0);
+	
+	
+	/**
+	 * Receives the updates from the FilterQueue's enqueueForward method,
+	 * and assembles the JSON object that is to be pushed into the syncDB
+	 * using Jackson.
+	 * 
+	 * This method first checks if the incoming update's primary key is already 
+	 * in the syncDB, if so, it retrieves that particular update and appends the new
+	 * values to it along with a timestamp.
+	 * 
+	 * If the incoming update does not exist in the syncDB, it hashes the primary key
+	 * or low frequency fields of the update and this forms the "KEY" for this update
+	 * in the syncDB. It is appended with a timestamp and then pushed into the syncDB.
+	 * 
+	 * The MD5Hashes of the primary key fields or "KEY"s are collected in a String 
+	 * called the collatedmd5hashes. Now this string is pushed into the syncDB as well,
+	 * with the corresponding controller ID from which it came from as key: <C1, collatedmd5hashes>.
+	 * Now every controller will have access to the collatedmd5hashes of every other controller,
+	 * and can hence retrieve any update from any controller.
+	 * 
+	 */
 	
 	@Override
 	public void packJSON(List<String> newUpdates) {
@@ -193,6 +215,18 @@ public class LDSyncAdapter implements ISyncAdapter, IFloodlightModule, IStoreLis
 		
 	}
 	
+	
+	/**
+	 * This method is called by the subscribe function in FilterQueue, 
+	 * which initiates the retrieval of data from the syncDB. The FilterQueue
+	 * is then populated with the updates, using the enqueueReverse() method, 
+	 * which is later read by the subscribe hook.
+	 * 
+	 * It first retrieves the collatedmd5hashes, as explained above, for a 
+	 * particular controller, and then retrieves the actual updates.
+	 * 
+	 */
+	
 	@Override
 	public void unpackJSON(String controllerID) {
 		//  Get all cmd5 hashes for the particular controller ID:
@@ -276,10 +310,10 @@ public class LDSyncAdapter implements ISyncAdapter, IFloodlightModule, IStoreLis
 
 	@Override
 	public void keysModified(Iterator<String> keys, org.sdnplatform.sync.IStoreListener.UpdateType type) {
-		while(keys.hasNext()){
-	        String k = keys.next();
-	        try {
-	        	String val = storeLD.get(k).getValue();
+//		while(keys.hasNext()){
+//	        String k = keys.next();
+//	        try {
+//	        	String val = storeLD.get(k).getValue();
 //				logger.debug("+++++++++++++ Retriving value from DB: Key:{}, Value:{}, Type: {}", 
 //	                    new Object[] {
 //	                            k.toString(), 
@@ -287,10 +321,10 @@ public class LDSyncAdapter implements ISyncAdapter, IFloodlightModule, IStoreLis
 //	                            type.name()
 //	                        }
 //	                    );
-	        } catch (SyncException e) {
-	            e.printStackTrace();
-	        }
-	    }
+//	        } catch (SyncException e) {
+//	            e.printStackTrace();
+//	        }
+//	    }
 
 		
 	}

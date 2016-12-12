@@ -13,10 +13,12 @@ import net.floodlightcontroller.core.module.IFloodlightService;
 
 /**
  * HAWorkerService
+ * 
  * This class allows the individual *HAWorker classes
  * to register to the workers HashMap to hold their current
  * objects, in order to facilitate calling their publish and
- * subscribe hooks dynamically.
+ * subscribe hooks dynamically, which is managed by the 
+ * HAController.
  * 
  * @author Bhargav Srinivasan, Om Kale
  *
@@ -62,6 +64,13 @@ public class HAWorkerService implements IHAWorkerService, IFloodlightModule {
 		return;
 	}
 
+	/**
+	 * Allows the HAWorker classes to register their class 
+	 * objects into the hashmap, so that the HAController 
+	 * can use them.
+	 * 
+	 */
+	
 	@Override
 	public void registerService(String serviceName, IHAWorker haw) {
 		// TODO Auto-generated method stub
@@ -71,6 +80,10 @@ public class HAWorkerService implements IHAWorkerService, IFloodlightModule {
 
 	}
 
+	/**
+	 * Gets the specified HAWorker object.
+	 */
+	
 	@Override
 	public IHAWorker getService(String serviceName) {
 		// TODO Auto-generated method stub
@@ -78,6 +91,13 @@ public class HAWorkerService implements IHAWorkerService, IFloodlightModule {
 			return workers.get(serviceName);
 		}
 	}
+	
+	/**
+	 * Returns the keys of the workers hashmap, which
+	 * holds the objects corresponding to the registered
+	 * HAWorker classes.
+	 * 
+	 */
 	
 	public Set<String> getWorkerKeys() {
 		// TODO Auto-generated method stub

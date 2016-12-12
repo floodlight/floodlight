@@ -28,9 +28,23 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class TopoUtils {
 	protected static Logger logger = LoggerFactory.getLogger(TopoUtils.class);
-	// These are the primary key fields, i.e. when the data is viewed as relational
-	// data.
+
+	/**
+	 * These are the primary key / low frequency fields, which are used to index the 
+	 * updates in the syncDB.
+	 */
+	
 	private final String[] lowfields = new String[]{"src", "srcPort", "dst","dstPort","type"};
+	
+	/**
+	 * A parser which takes the list of updates as one 
+	 * continuous string and makes an O(n) pass over them to 
+	 * convert them to a list of JSON objects which can then be
+	 * pushed into the FilterQueue.
+	 * 
+	 * @param chunk: Continuous String representation of an array of Topology Updates.
+	 * @return List of JSON representation of the Topology Updates which were input.
+	 */
 	
 	public List<String> parseChunk(String chunk){
 		
@@ -204,6 +218,12 @@ public class TopoUtils {
 		return jsonInString;
 	}
 	
+	/**
+	 * Calculates the MD5 hash of the given String.
+	 * 
+	 * @param Input String.
+	 * @return MD5 hash of the given String.
+	 */
 
 	public String calculateMD5Hash(String value){
 		String md5 = new String();
@@ -220,6 +240,17 @@ public class TopoUtils {
 		}
 		return md5;	
 	}
+	
+	/**
+	 * MD5 hash of the primary key / low frequency fields for the 
+	 * given updates. This is used by the packJSON method in order
+	 * to form the "KEY" for pushing into the syncDB.
+	 * 
+	 * @param update:       String representation of the JSON form of the LDUpdate.
+	 * @param newUpdateMap: A hashmap which has the <"field", "value"> pairs of the 
+	 * 						JSON representation of the incoming updates in the packJSON method.
+	 * @return				MD5 hash of the primary key fields in the supplied update.
+	 */
 	
 	public String getCMD5Hash(String update, Map<String, String> newUpdateMap) {				
 		ArrayList<String> cmd5fields = new ArrayList<String>(); 
@@ -253,6 +284,15 @@ public class TopoUtils {
 		}
 		return cmd5;
 	}
+	
+	/**
+	 * Sticks the two updates together in a comma separated manner.
+	 * 
+	 * @param oldUpdate : Update retrieved from the syncDB (existing value).
+	 * @param newUpdate : Incoming update (new value).
+	 * @return 			: "oldUpdate, newUpdate"
+	 */
+	
 	
 	public String appendUpdate(String oldUpdate, String newUpdate) {
 		

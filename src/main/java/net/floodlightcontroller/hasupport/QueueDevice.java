@@ -28,7 +28,7 @@ public class QueueDevice implements Runnable{
 	
 	public QueueDevice(String servePort, String clienPort) {
 		// TODO Auto-generated constructor stub
-		// Chops "127.0.0.1:" to return the server and client port.
+		// Chops "IP:" to return the server and client port.
 		this.serverPort = servePort.substring(10);
 		this.clientPort = clienPort.substring(10);
 	}

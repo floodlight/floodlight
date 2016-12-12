@@ -10,10 +10,15 @@ import org.slf4j.LoggerFactory;
 import net.floodlightcontroller.hasupport.IFilterQueue;
 
 /**
- * A Queue to store Topology updates
+ * Two Queues to store Topology Updates
  * 
- * Also filters out duplicates up to a specified 
+ * Filters out duplicates up to a specified 
  * capacity.
+ * 
+ * Possible improvements:
+ * a. Implement a data structure which can eliminate duplicates 
+ * completely, without a threshold on the amount of filtering 
+ * it can do which is currently limited by the mapCapacity.
  * 
  * @author Bhargav Srinivasan, Om Kale
  */
@@ -26,15 +31,15 @@ public class TopoFilterQueue implements IFilterQueue {
 	public static LinkedBlockingQueue<String> filterQueue = new LinkedBlockingQueue<>();
 	public static HashMap<String, String> myMap = new HashMap<String, String>();
 	private final Integer mapCapacity = new Integer(1073741000);
-	
 	public static LinkedBlockingQueue<String> reverseFilterQueue = new LinkedBlockingQueue<>();
 	
 	public TopoFilterQueue(){}
 	
 	/**
-	 * This function hashes the Topology updates received in form of json string 
+	 * This method hashes the Topology updates received in form of JSON string 
 	 * using md5 hashing and store them in the filter queue and in a map 
-	 * if not already present
+	 * if not already present.
+	 * @return boolean value indicating success or failure
 	 */	 
 	
 	@Override
@@ -65,10 +70,10 @@ public class TopoFilterQueue implements IFilterQueue {
 	}
 
 	/**
-	 * This function pushes the Topology updates from the filter 
+	 * This method pushes the Topology updates from the filter 
 	 * queue into the syncAdapter
+	 * @return boolean value indicating success or failure
 	 */
-	
 	
 	@Override
 	public boolean dequeueForward() {
@@ -93,12 +98,24 @@ public class TopoFilterQueue implements IFilterQueue {
 		return false;
 	}
 	
+	/**
+	 * This method is used by the subscribeHook to initiate 
+	 * the retrieval of updates from the syncDB. This method
+	 * returns only after unpackJSON has finished executing.
+	 */
+	
 	@Override
 	public void subscribe(String controllerID) {
 		TopoSyncAdapter.unpackJSON(controllerID);
 		return;
 	}
 
+	/**
+	 * This method is called by the syncDB in order to enqueue the 
+	 * updates that it received from the syncDB.
+	 * @return boolean value indicating success.
+	 */
+	
 	@Override
 	public boolean enqueueReverse(String value) {
 		try {
@@ -116,6 +133,15 @@ public class TopoFilterQueue implements IFilterQueue {
 		
 	}
 
+	/**
+	 * This method is used by the subscribeHook in HAWorker, in 
+	 * order to finally obtain the updates from the syncDB, in order
+	 * to display/process them.
+	 * 
+	 * @return List<String> of updates in JSON format, which can be
+	 * parsed using Jackson.
+	 */
+	
 	@Override
 	public List<String> dequeueReverse() {
 		ArrayList<String> TopoUpds = new ArrayList<String>();

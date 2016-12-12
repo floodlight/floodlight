@@ -38,8 +38,11 @@ import net.floodlightcontroller.hasupport.NetworkInterface.netState;
  * FD: expireOldConnections() uses PULSE to detect failures.
  * 
  * Possible improvements:
- * Messages between nodes are being sent sequentially in a for loop,
+ * a. Messages between nodes are being sent sequentially in a for loop,
  * this can be modified to happen in parallel.
+ * 
+ * b. Find out about the Raft leader election algorithm and implement it,
+ * and see if it can offer better performance.
  * 
  * @author Bhargav Srinivasan, Om Kale
  */

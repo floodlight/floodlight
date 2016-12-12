@@ -23,11 +23,33 @@ import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryService;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
 
 /**
- * This is the Worker class used to publish, subscribe updates to
- * and from the controller respectively
+ * LDHAWorker
+ * 
+ * This is the HAWorker class that is used to push updates into the 
+ * queue using the publishHook method. Also, subscribe to updates from
+ * the syncDB, and display/process them if needed using subscribeHook.
+ * 
+ * The assemble update function is used to convert the updates into a JSON
+ * for easier storage (i.e. as a string which can then be processed using 
+ * Jackson) and storing them into the syncDB. JSON relational mapping is
+ * performed in the SyncAdapter class, because the data in the updates are 
+ * relational in nature and this improves write efficiency.
+ * 
+ * Forward flow:
+ * 
+ *  HAWorker         |             FilterQueue                  |     SyncAdapter
+ * publishHook()     -> enqueueForward() -> dequeueForward()    ->  packJSON() -> syncDB.
+ * 
+ * Reverse Flow:
+ * 
+ *  HAWorker         |             FilterQueue                  |     SyncAdapter
+ * subscribeHook()   ->   subscribe()                           ->  unpackJSON()
+ * subscribeHook()	 <-  dequeueReverse() <- enqueueReverse()   <-  unpackJSON()  <- syncDB
+ * 
  * @author Bhargav Srinivasan, Om Kale
  *
  */
+
 public class LDHAWorker implements IHAWorker, IFloodlightModule, ILinkDiscoveryListener {
 	protected static Logger logger = LoggerFactory.getLogger(LDHAWorker.class);
 	protected static ILinkDiscoveryService linkserv;
@@ -44,7 +66,7 @@ public class LDHAWorker implements IHAWorker, IFloodlightModule, ILinkDiscoveryL
 	}
 	
 	/**
-	 * This function is used to assemble the LDupdates into
+	 * This method is used to assemble the LDupdates into
 	 * a JSON string using JSON Jackson API
 	 * @return JSON string
 	 */
@@ -72,8 +94,9 @@ public class LDHAWorker implements IHAWorker, IFloodlightModule, ILinkDiscoveryL
 	}
 
     /**
-     * This function is called in order to start pushing updates 
+     * This method is called in order to start pushing updates 
      * into the syncDB
+     * @return boolean value indicating success or failure
      */
 	public boolean publishHook() {
 		try{
@@ -94,8 +117,9 @@ public class LDHAWorker implements IHAWorker, IFloodlightModule, ILinkDiscoveryL
 	}
 
 	/**
-	 * This function is used to subscribe to updates from the syncDB, and 
+	 * This method is used to subscribe to updates from the syncDB, and 
 	 * stay in sync. Can be used to unpack the updates, if needed.
+	 * @return boolean value indicating success or failure
 	 */
 
 	public boolean subscribeHook(String controllerID) {
@@ -105,7 +129,7 @@ public class LDHAWorker implements IHAWorker, IFloodlightModule, ILinkDiscoveryL
 			updates = myLDFilterQueue.dequeueReverse();
 			logger.info("[Subscribe] LDUpdates...");
 			for (String update: updates) {
-				//logger.info("Update: {}", new Object[]{update.toString()});
+				logger.debug("Update: {}", new Object[]{update.toString()});
 			}
 		} catch (Exception e) {
 			e.printStackTrace();

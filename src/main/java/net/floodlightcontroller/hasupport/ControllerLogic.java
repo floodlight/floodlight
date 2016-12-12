@@ -8,6 +8,8 @@ import org.slf4j.LoggerFactory;
 import net.floodlightcontroller.hasupport.linkdiscovery.LDHAWorker;
 
 /**
+ * The Controller's Logic
+ * 
  * This thread ensures that the election class is polled every
  * "pollTime" seconds such that it checks if a new leader is 
  * present in the network. Once you get the leader, you can 
@@ -16,6 +18,10 @@ import net.floodlightcontroller.hasupport.linkdiscovery.LDHAWorker;
  * and separate functions that the followers do. Currently, the 
  * leader is used to manage network-wide publishing and 
  * subscribing of updates across all nodes.
+ * 
+ * Possible extensions:
+ * a. Offer "Leader Role" and "Follower Role" as a service which other
+ * modules can access in order to be able to do role based programming.
  * 
  * @author Bhargav Srinivasan, Om Kale
  *

@@ -14,7 +14,6 @@ import org.python.modules.math;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zeromq.ZMQ;
-import org.zeromq.ZContext;
 import org.zeromq.ZMQException;
 
 /**
@@ -29,6 +28,15 @@ import org.zeromq.ZMQException;
  * are populated and updated similar to the way the updateConnectDict()
  * maintains these objects. This method is called as soon as a state
  * change to even one of the sockets is detected.
+ * 
+ * Possible improvements:
+ * a. Implement a better topology, i.e. the topology is now a complete mesh,
+ * this class can be completely re-implemented, if you adhere to NetworkInterface,
+ * and expose socketDict and connectionDict to AsyncElection in a similar manner.
+ * 
+ * b. Improve the existing connection manager. Currently, we are using the 
+ * extended request-reply pattern, mentioned in the ZGuide. We could identify
+ * a good alternative and implement it.
  * 
  * @author Bhargav Srinivasan, Om Kale
  */
@@ -453,8 +461,8 @@ public class ZMQNode implements NetworkInterface, Runnable {
 				this.connectClients();
 				
 				//Flush the context to avoid too many open files
-				// 450 ticks = 5 min 40 seconds
-				if(ticks > 100) {
+				// 250 ticks = 4 min 55 seconds
+				if(ticks > 250) {
 					logger.info("[ZMQ Node] Refreshing state....");
 					ZMQ.Context oldcontext = this.zmqcontext;
 					this.zmqcontext = ZMQ.context(1);
