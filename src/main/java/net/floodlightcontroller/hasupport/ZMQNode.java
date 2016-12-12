@@ -8,11 +8,13 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import org.python.modules.math;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zeromq.ZMQ;
+import org.zeromq.ZContext;
 import org.zeromq.ZMQException;
 
 /**
@@ -80,6 +82,9 @@ public class ZMQNode implements NetworkInterface, Runnable {
 	
 	public final Integer socketTimeout 		      = new Integer(500);
 	public final Integer numberOfPulses		      = new Integer(1);
+	public final Integer pollTime				  = new Integer(1);
+	public Integer ticks						  = new Integer(0);
+	public final Integer maxSockets				  = new Integer(5000);
 	public final Integer chill				      = new Integer(5);
 	
 	/**
@@ -146,6 +151,7 @@ public class ZMQNode implements NetworkInterface, Runnable {
 				ZMQ.Socket requester1 = zmqcontext.socket(ZMQ.REQ);
 				requester1.setReceiveTimeOut(500);
 				requester1.setSendTimeOut(500);
+				requester1.setLinger(0);
 				this.allsocketDict.put(client, requester1);
 			}
 			
@@ -174,7 +180,6 @@ public class ZMQNode implements NetworkInterface, Runnable {
 			return Boolean.TRUE;
 		} catch(ZMQException ze){
 			if(clientSock != null){
-				//clientSock.setLinger(0);
 				clientSock.close();
 			}
 			logger.info("Send Failed: "+message+" not sent through port: "+clientPort.toString());
@@ -182,7 +187,6 @@ public class ZMQNode implements NetworkInterface, Runnable {
 			return Boolean.FALSE;
 		} catch(Exception e){
 			if(clientSock != null){
-				//clientSock.setLinger(0);
 				clientSock.close();
 			}
 			logger.info("Send Failed: "+message+" not sent through port: "+clientPort.toString());
@@ -202,7 +206,6 @@ public class ZMQNode implements NetworkInterface, Runnable {
 			return response;
 		} catch(ZMQException ze){
 			if(clientSock != null){
-				//clientSock.setLinger(0);
 				clientSock.close();
 			}
 			logger.info("Recv Failed on port: "+receivingPort.toString());
@@ -210,7 +213,6 @@ public class ZMQNode implements NetworkInterface, Runnable {
 			return "";
 		} catch (Exception e){
 			if(clientSock != null){
-				//clientSock.setLinger(0);
 				clientSock.close();
 			}
 			logger.info("Recv Failed on port: "+receivingPort.toString());
@@ -251,21 +253,18 @@ public class ZMQNode implements NetworkInterface, Runnable {
 					//logger.debug("[Node] Client: "+client.toString()+"Client Sock: "+clientSock.toString());
 					if (!socketDict.containsKey(client)){
 						socketDict.put(client, clientSock);
-						allsocketDict.put(client, clientSock);
 					} else {
 						//logger.debug("[Node] This socket already exists, refreshing: "+client.toString());
-						//clientSock.setLinger(0);
 						clientSock.close();
 						ZMQ.Socket requester1 = zmqcontext.socket(ZMQ.REQ);
 						requester1.setReceiveTimeOut(500);
 						requester1.setSendTimeOut(500);
-						allsocketDict.put(client, requester1);
+						requester1.setLinger(0);
 						this.socketDict.remove(client);
 						this.socketDict.put(client, requester1);
 					}
 				} else {
 					//logger.debug("[Node] Received bad reply: "+client.toString());
-					//clientSock.setLinger(0);
 					clientSock.close();
 					//logger.debug("[Node] Closed Socket"+client.toString());		
 				}
@@ -275,22 +274,22 @@ public class ZMQNode implements NetworkInterface, Runnable {
 				//ne.printStackTrace();
 			}  catch (ZMQException ze){
 				if(clientSock != null){
-					//clientSock.setLinger(0);
 					clientSock.close();
 					ZMQ.Socket requester1 = zmqcontext.socket(ZMQ.REQ);
 					requester1.setReceiveTimeOut(500);
 					requester1.setSendTimeOut(500);
+					requester1.setLinger(0);
 					allsocketDict.put(client, requester1);
 				}
 				//logger.debug("[Node] ConnectClients errored out: "+client.toString());
 				//ze.printStackTrace();
 			} catch (Exception e){
 				if(clientSock != null){
-					//clientSock.setLinger(0);
 					clientSock.close();
 					ZMQ.Socket requester1 = zmqcontext.socket(ZMQ.REQ);
 					requester1.setReceiveTimeOut(500);
 					requester1.setSendTimeOut(500);
+					requester1.setLinger(0);
 					allsocketDict.put(client, requester1);
 				}
 				//logger.debug("[Node] ConnectClients errored out: "+client.toString());
@@ -352,7 +351,6 @@ public class ZMQNode implements NetworkInterface, Runnable {
 				
 				if (! reply.equals(ack) ) {
 					//logger.debug("[Node] Closing stale connection: "+entry.getKey().toString());
-					//entry.getValue().setLinger(0);
 					entry.getValue().close();
 					delmark.put(entry.getKey(),entry.getValue());
 				}
@@ -377,7 +375,6 @@ public class ZMQNode implements NetworkInterface, Runnable {
 			for (HashMap.Entry<String, ZMQ.Socket> entry: delmark.entrySet()){
 				this.socketDict.remove(entry.getKey());
 				if(entry.getValue() != null) {
-					//entry.getValue().setLinger(0);
 					entry.getValue().close();
 				}
 			}
@@ -391,21 +388,26 @@ public class ZMQNode implements NetworkInterface, Runnable {
 		updateConnectDict();
 		return (Map<String, netState>) Collections.unmodifiableMap(this.connectDict);
 	}
-
-	/**
-	 * Will first expire all connections in the socketDict and keep spinning until,
-	 * > majority % nodes from the connectSet get connected.
-	 */
-	@Override
-	public ElectionState blockUntilConnected() {
-		// TODO Auto-generated method stub
+	
+	
+	
+	public void cleanState() {
+		
 		this.connectSet = new HashSet<String> (this.serverList);
 		delmark = new HashMap<String, ZMQ.Socket>();
+		
+		for (String client: this.connectSet) {
+			this.allsocketDict.get(client).close();
+			ZMQ.Socket requester1 = this.zmqcontext.socket(ZMQ.REQ);
+			requester1.setReceiveTimeOut(500);
+			requester1.setSendTimeOut(500);
+			requester1.setLinger(0);
+			this.allsocketDict.put(client, requester1);
+		}
 		
 		for (HashMap.Entry<String,ZMQ.Socket> entry: this.socketDict.entrySet()){
 			try{
 				//logger.debug("[Node] Closing connection: "+entry.getKey().toString());
-				//entry.getValue().setLinger(0);
 				entry.getValue().close();
 				delmark.put(entry.getKey(), entry.getValue());
 				
@@ -430,10 +432,42 @@ public class ZMQNode implements NetworkInterface, Runnable {
 		
 		this.socketDict = new HashMap<String, ZMQ.Socket>();
 		
+		return;
+		
+	}
+	
+
+	/**
+	 * Will first expire all connections in the socketDict and keep spinning until,
+	 * > majority % nodes from the connectSet get connected.
+	 */
+	@Override
+	public ElectionState blockUntilConnected() {
+		// TODO Auto-generated method stub
+		
+		cleanState();
+		
 		while (this.socketDict.size() < this.majority){
 			try {
 				//logger.debug("[Node] BlockUntil: Trying to connect...");
 				this.connectClients();
+				
+				//Flush the context to avoid too many open files
+				// 450 ticks = 5 min 40 seconds
+				if(ticks > 100) {
+					logger.info("[ZMQ Node] Refreshing state....");
+					ZMQ.Context oldcontext = this.zmqcontext;
+					this.zmqcontext = ZMQ.context(1);
+					this.zmqcontext.setMaxSockets(maxSockets);
+					cleanState();
+					logger.info("[ZMQ Node] Refreshed state....");
+					oldcontext.term();
+					ticks = 0;
+				}
+				
+				ticks += 1;
+				logger.info("[ZMQ Node] Tick {} ", new Object[] {ticks});
+				TimeUnit.MILLISECONDS.sleep(pollTime);
 			} catch (Exception e){
 				logger.debug("[Node] BlockUntil errored out: "+e.toString());
 				e.printStackTrace();
@@ -448,7 +482,7 @@ public class ZMQNode implements NetworkInterface, Runnable {
 	public void run() {
 		// TODO Auto-generated method stub
 		//ScheduledExecutorService sesNode = Executors.newScheduledThreadPool(10);
-		zmqcontext.setMaxSockets(9999);
+		this.zmqcontext.setMaxSockets(maxSockets);
 		try{
 			//logger.debug("Server List: "+this.serverList.toString());
 			Thread qd = new Thread(qDevice,"QueueDeviceThread");
