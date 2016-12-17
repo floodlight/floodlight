@@ -209,6 +209,7 @@ public class ZMQServer implements Runnable{
 				
 			} else if (cmp == 'm') {
 				//TODO: Custom message template.
+				return ack;
 			}
 		} catch (StringIndexOutOfBoundsException si) {
 			si.printStackTrace();

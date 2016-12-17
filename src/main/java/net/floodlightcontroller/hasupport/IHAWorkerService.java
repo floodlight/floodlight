@@ -20,9 +20,34 @@ import net.floodlightcontroller.core.module.IFloodlightService;
 
 public interface IHAWorkerService extends IFloodlightService {
 	
+	/** 
+	 * The HAWorker service you want to register such that the controller
+	 * module will call publish/subscribe on it periodically.
+	 * 
+	 * Note: refer to LDHAWorker to see how this can be used.
+	 * 
+	 * @param serviceName : Unique name corresponding to your HAWorker class object
+	 * @param haw		  : Your HAWorker class object.
+	 */
+	
 	public void registerService(String serviceName, IHAWorker haw);
 	
+	/**
+	 * Retrieve a HAWorker class object that has been registered, using
+	 * its serviceName.
+	 * 
+	 * @param serviceName : Unique name corresponding to the HAWorker class object
+	 * @return The HAWorker class object corresponding to 'serviceName'
+	 */
+	
 	public IHAWorker getService(String serviceName);
+	
+	/**
+	 * Get a set of all currently registered HAWorker class object 
+	 * serviceNames.
+	 * 
+	 * @return Set of all HAWorker serviceNames.
+	 */
 	
 	public Set<String> getWorkerKeys();
 
