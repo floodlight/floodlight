@@ -188,7 +188,7 @@ public class ZMQServerTest {
 			servThread.interrupt();
 			qD.interrupt();
 		} catch (Exception e) {
-			e.printStackTrace();
+			//e.printStackTrace();
 		}
 	}
 
@@ -293,7 +293,7 @@ public class ZMQServerTest {
 		} catch (ZMQException ze){		
 			ze.printStackTrace();	
 		} catch (Exception e){
-			e.printStackTrace();
+			//e.printStackTrace();
 		}
 		
 	}

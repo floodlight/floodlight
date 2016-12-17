@@ -207,6 +207,8 @@ public class ZMQServer implements Runnable{
 				aelection.subscribeQueue(r2);
 				return ack;
 				
+			} else if (cmp == 'm') {
+				//TODO: Custom message template.
 			}
 		} catch (StringIndexOutOfBoundsException si) {
 			si.printStackTrace();

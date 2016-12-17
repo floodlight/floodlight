@@ -527,18 +527,18 @@ public class ZMQNode implements NetworkInterface, Runnable {
 				//Flush the context to avoid too many open files
 				// 250 ticks = 4 min 55 seconds
 				if(ticks > 250) {
-					logger.info("[ZMQ Node] Refreshing state....");
+					logger.debug("[ZMQ Node] Refreshing state....");
 					ZMQ.Context oldcontext = this.zmqcontext;
 					this.zmqcontext = ZMQ.context(1);
 					this.zmqcontext.setMaxSockets(maxSockets);
 					cleanState();
-					logger.info("[ZMQ Node] Refreshed state....");
+					logger.debug("[ZMQ Node] Refreshed state....");
 					oldcontext.term();
 					ticks = 0;
 				}
 				
 				ticks += 1;
-				logger.info("[ZMQ Node] Tick {} ", new Object[] {ticks});
+				//logger.debug("[ZMQ Node] Tick {} ", new Object[] {ticks});
 				TimeUnit.MILLISECONDS.sleep(pollTime);
 			} catch (Exception e){
 				logger.debug("[Node] BlockUntil errored out: "+e.toString());

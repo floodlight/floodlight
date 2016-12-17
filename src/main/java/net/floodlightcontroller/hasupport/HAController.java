@@ -179,4 +179,14 @@ public class HAController implements IFloodlightModule, IHAControllerService {
 		return;
 	}
 	
+	@Override
+	public boolean send(String to, String msg) {
+		return AsyncElection.network.send(to, msg);
+	}
+	
+	@Override
+	public String recv(String from) {
+		return AsyncElection.network.recv(from);
+	}
+	
 }

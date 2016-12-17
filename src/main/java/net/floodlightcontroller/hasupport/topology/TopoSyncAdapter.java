@@ -151,7 +151,7 @@ public class TopoSyncAdapter implements ISyncAdapter, IFloodlightModule, IStoreL
 //	                        }
 //	                 );
 	        		saveCount += 1;
-	        		logger.info("Number of repetitions avoided : {}", new Object[] {saveCount});
+	        		//logger.info("Number of repetitions avoided : {}", new Object[] {saveCount});
 				
 					//parse the Json String into a Map, then query the entries.
 					updateMap = myMapper.readValue(oldUpdates.toString(), typeRef);		

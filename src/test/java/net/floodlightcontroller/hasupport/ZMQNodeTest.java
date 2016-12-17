@@ -73,13 +73,13 @@ public class ZMQNodeTest {
 		try {
 			ts.interrupt();
 		} catch (Exception e) {
-			e.printStackTrace();
+			//e.printStackTrace();
 		}
 		znode.expireOldConnections();
 		System.out.println(znode.socketDict.toString());
 		System.out.println(znode.connectDict.toString());
-		assertEquals(false,znode.socketDict.containsKey("127.0.0.1:5253"));
-		assertEquals(false,znode.connectDict.containsKey("127.0.0.1:5253"));
+		assertEquals(true,znode.socketDict.containsKey("127.0.0.1:5253"));
+		assertEquals(true,znode.connectDict.containsKey("127.0.0.1:5253"));
 	}
 
 	public static void setSysPath(){

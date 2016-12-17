@@ -1,7 +1,11 @@
 package net.floodlightcontroller.hasupport;
 
+
+import org.junit.Ignore;
+import org.junit.Test;
 import org.zeromq.ZMQ;
 
+@Ignore 
 public class TestClient {
 	
 	String mockClientPort = new String();
@@ -28,6 +32,11 @@ public class TestClient {
 			
 		}
 		return new String("none");
+	}
+	
+	@Test
+	public void nothing() {
+		return;
 	}
 
 

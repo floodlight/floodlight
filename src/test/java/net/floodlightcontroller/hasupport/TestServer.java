@@ -1,7 +1,9 @@
 package net.floodlightcontroller.hasupport;
 
+import org.junit.Ignore;
 import org.zeromq.ZMQ;
 
+@Ignore
 public class TestServer implements Runnable {
 	
 	String mockServerPort = new String();
