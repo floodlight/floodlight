@@ -126,6 +126,10 @@ public class AsyncElection implements Runnable{
 	
 	private String timestamp = new String();
 	
+	/**
+	 * Gets the current network-wide leader.
+	 * @return Current network-wide leader.
+	 */
 
 	public String getLeader(){
 		final String lead; 
@@ -135,6 +139,11 @@ public class AsyncElection implements Runnable{
 		return lead;
 	}
 	
+	/**
+	 * Used by the leader election protocol, internal function
+	 * @return Temp Leader
+	 */
+	
 	public String gettempLeader(){
 		final String tempLead;
 		synchronized (this.tempLeader) {
@@ -143,12 +152,22 @@ public class AsyncElection implements Runnable{
 		return tempLead;
 	}
 	
+	/**
+	 * Set the leader variable for this node.
+	 * @param String leader
+	 */
+	
 	public void setLeader(String leader){
 		synchronized (this.leader) { 
 			this.leader = leader;
 		}
 		return;
 	}
+	
+	/**
+	 * Set the temp leader. Internal function.
+	 * @param String tempLeader
+	 */
 	
 	public void setTempLeader(String tempLeader){
 		synchronized(this.tempLeader) {
@@ -157,12 +176,23 @@ public class AsyncElection implements Runnable{
 		return;
 	}
 	
+	/**
+	 * Sets the timestamp variable before sending/receiving
+	 * messages.
+	 * @param String timestamp
+	 */
+	
 	public void setTimeStamp(String ts) {
 		synchronized(this.timestamp) {
 			this.timestamp = ts;
 		}
 		return;
 	}
+	
+	/**
+	 * Gets the timestamp variable before sending/receiving messages
+	 * @return String timestamp
+	 */
 	
 	public String getTimeStamp() {
 		final String ts;
@@ -172,8 +202,13 @@ public class AsyncElection implements Runnable{
 		return ts;
 	}
 	
+	/**
+	 * Set the order in which nodes are supposed to get elected.
+	 * @param priorities is an ordered arraylist of integers which 
+	 * contain the order in which the controllers should be picked as leader. (optional)
+	 */
+	
 	public void setElectionPriorities(ArrayList<Integer> priorities) {
-		// Set the order in which nodes are supposed to get elected.
 		synchronized (electionPriorities) {
 			if( (priorities.size()) > 0 && (priorities.size() == network.totalRounds+1) ) {
 				electionPriorities.addAll(priorities);
@@ -188,7 +223,9 @@ public class AsyncElection implements Runnable{
 	 * Server start: Start the network and ZMQServer Threads.
 	 */
 	
-	
+	/**
+	 * Adds a control message instructing the controller to call publsihHook
+	 */
 	public void publishQueue(){
 		synchronized (publishQueue) {
 			publishQueue.offer("PUBLISH");
@@ -196,6 +233,9 @@ public class AsyncElection implements Runnable{
 		return;
 	}
 	
+	/**
+	 * Adds a control message instructing the controller to call subscribeHook
+	 */
 	public void subscribeQueue(String sub){
 		synchronized (subscribeQueue) {
 			subscribeQueue.offer(sub);
@@ -203,6 +243,9 @@ public class AsyncElection implements Runnable{
 		return;
 	}
 	
+	/**
+	 * Used by the leader to initiate a network-wide publish.
+	 */
 	public void publish(){
 		try{
 			// Check for new nodes to connect to, and refresh the socket connections.
@@ -228,6 +271,11 @@ public class AsyncElection implements Runnable{
 		
 	}
 	
+	/**
+	 * Used by the leader to initiate a network-wide subscribe to the 
+	 * specified controller ID
+	 * @param Controller ID you wish to subscribe to.
+	 */
 	public void subscribe(String cid){
 		try{
 			// Check for new nodes to connect to, and refresh the socket connections.
@@ -256,12 +304,13 @@ public class AsyncElection implements Runnable{
 		
 	}
 	
+	/**
+	 *  The Leader will send a HEARTBEAT message in the COORDINATE state
+	 *  after the election and will expect a reply from a majority of acceptors.
+	 */
+	
 	private void sendHeartBeat(){
-		// The Leader will send a HEARTBEAT message in the COORDINATE state
-		// after the election and will expect a reply from a majority of
-		// acceptors.
-		
-		
+
 		HashSet<String> noSet = new HashSet<String>();
 		try{
 			
@@ -294,11 +343,15 @@ public class AsyncElection implements Runnable{
 		
 	}
 	
+	/**
+	 *  The winner of the election, or the largest node that is currently active
+	 *  in the network sends an "IWON" message in order to initiate the three phase
+	 *	commit to set itself as the leader of the network.
+	 *	Phase 1 of the three phase commit.
+	 */
+	
 	private void sendIWon(){
-		// The winner of the election, or the largest node that is currently active
-		// in the network sends an "IWON" message in order to initiate the three phase
-		// commit to set itself as the leader of the network.
-		// Phase 1 of the three phase commit.
+		
 		try{
 			Set<String> reply = new HashSet<String>();
 			for(HashMap.Entry<String, netState> entry: this.connectionDict.entrySet()){
@@ -324,11 +377,15 @@ public class AsyncElection implements Runnable{
 		
 	}
 	
+	/**
+	 * Send a "LEADER" message to all nodes and try to receive "LEADOK"
+     * messages from them. If count("LEADOK") > majority, then you have
+	 * won the election and hence become the leader.
+	 * Phase 2 of the three phase commit.
+	 */
+	
 	private void sendLeaderMsg(){
-		// Send a "LEADER" message to all nodes and try to receive "LEADOK"
-		// messages from them. If count("LEADOK") > majority, then you have
-		// won the election and hence become the leader.
-		// Phase 2 of the three phase commit.
+		
 		
 		HashSet<String> acceptors = new HashSet<String>();
 		try{
@@ -364,10 +421,14 @@ public class AsyncElection implements Runnable{
 		
 	}
 	
+	/**
+	 * The leader will set itself as leader during each COORDINATE
+     * state loop, to ensure that all nodes see it as the leader.
+     * Phase 3 of the three phase commit.
+	 */
+	
 	private void setAsLeader(){
-		// The leader will set itself as leader during each COORDINATE
-		// state loop, to ensure that all nodes see it as the leader.
-		// Phase 3 of the three phase commit.
+		
 		
 		HashSet<String> noSet = new HashSet<String>();
 		try{
@@ -401,9 +462,13 @@ public class AsyncElection implements Runnable{
 		
 	}
 	
+	/**
+	 * Ask each node if they are the leader, you should get an
+	 * ACK from only one of them, if not, then reset the leader.
+	 */
+	
 	private void checkForLeader(){
-		// Ask each node if they are the leader, you should get an
-		// ACK from only one of them, if not, then reset the leader.
+		
 		HashSet<String> leaderSet = new HashSet<String>();
 		String reply = new String();
 		String r1 = new String();
@@ -472,6 +537,14 @@ public class AsyncElection implements Runnable{
 		}
 		
 	}
+	
+	/**
+	 * This is the logic that will be performed by the controller
+	 * in order to pick a leader. It is an operation which is performed
+	 * on the priorities array provided it supplied earlier, otherwise it
+	 * constructs an array which contains all configured nodes in the descending
+	 * order of their controller IDs.
+	 */
 	
 	private void electionLogic(){
 		// List of controllerIDs of all nodes.
@@ -543,11 +616,15 @@ public class AsyncElection implements Runnable{
 		
 	}
 	
+	/**
+	 * Election:
+	 * All nodes will pick the max CID which they see in the network,
+	 * any scenario wherein two different leaders might be picked gets resolved
+	 * using the checkForLeader function.
+	 */
+	
 	private void elect(){
-		// Election:
-		// All nodes will pick the max CID which they see in the network,
-		// any scenario wherein two different leaders might be picked gets resolved
-		// using the checkForLeader function.
+		
 		
 		// Ensure that majority are still connected.
 		if( network.socketDict.size() < network.majority ){
@@ -600,6 +677,11 @@ public class AsyncElection implements Runnable{
 		// End of Actual Election logic.
 		return;
 	}
+	
+	/**
+	 * These are the different possible states the controller can be
+	 * in during the election process.
+	 */
 	
 	private void cases(){
 		try {
