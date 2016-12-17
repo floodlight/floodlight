@@ -111,7 +111,7 @@ public class ControllerLogic implements Runnable {
 						// Role based functions: Leader functions
 						
 						// LEADER initiates publish and subscribe
-						logger.info("[ControllerLogic] Calling Hooks...");
+						//logger.info("[ControllerLogic] Calling Hooks...");
 						
 						// Publish, meaning ask all nodes to call publish hook
 							ael.publishQueue();

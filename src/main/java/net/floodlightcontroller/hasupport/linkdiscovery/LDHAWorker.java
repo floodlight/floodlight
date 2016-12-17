@@ -138,13 +138,13 @@ public class LDHAWorker implements IHAWorker, IFloodlightModule, ILinkDiscoveryL
 
 	public boolean subscribeHook(String controllerID) {
 		try {
-			List<String> updates = new ArrayList<String>();
+//			List<String> updates = new ArrayList<String>();
 			myLDFilterQueue.subscribe(controllerID);
-			updates = myLDFilterQueue.dequeueReverse();
-			logger.info("[Subscribe] LDUpdates...");
-			for (String update: updates) {
-				logger.info("Update: {}", new Object[]{update.toString()});
-			}
+			myLDFilterQueue.dequeueReverse();
+//			logger.info("[Subscribe] LDUpdates...");
+//			for (String update: updates) {
+//				logger.info("Update: {}", new Object[]{update.toString()});
+//			}
 		} catch (Exception e) {
 			e.printStackTrace();
 		}

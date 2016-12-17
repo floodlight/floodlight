@@ -213,7 +213,7 @@ public class AsyncElection implements Runnable{
 			if( (priorities.size()) > 0 && (priorities.size() == network.totalRounds+1) ) {
 				electionPriorities.addAll(priorities);
 			} else {
-				logger.info("[AsyncElection] Could not set pritorities!");
+				logger.info("[AsyncElection] Priorities are not set.");
 			}
 		}
 		return;
@@ -498,7 +498,7 @@ public class AsyncElection implements Runnable{
 				}
 			}
 			
-			logger.info("[AsyncElection checkForLeader] Leader Set: "+leaderSet.toString());
+			//logger.info("[AsyncElection checkForLeader] Leader Set: "+leaderSet.toString());
 			
 			// Remove blank objects from set, if any.
 			if ( leaderSet.contains(new String("")) ){
@@ -512,7 +512,7 @@ public class AsyncElection implements Runnable{
 			
 			// Remove null objects from set, if any.
 			if( leaderSet.contains(null) ){
-				logger.info("[Election] Leader Set contains null");
+				//logger.info("[Election] Leader Set contains null");
 				leaderSet.remove(null);
 			}
 			
@@ -522,11 +522,11 @@ public class AsyncElection implements Runnable{
 										.findFirst().get()); 
 			} else if ( leaderSet.size() > 1 ){
 				setLeader(none);
-				logger.info("[Election checkForLeader] SPLIT BRAIN!!");
-				logger.info("[Election checkForLeader] Current Leader is none");
+				//logger.info("[Election checkForLeader] SPLIT BRAIN!!");
+				//logger.info("[Election checkForLeader] Current Leader is none");
 			} else if ( leaderSet.size() < 1 ){
 				setLeader(none);
-				logger.info("[Election checkForLeader] Current Leader is none "+ this.leader.toString() );
+				//logger.info("[Election checkForLeader] Current Leader is none "+ this.leader.toString() );
 			}
 			
 			return;
@@ -560,7 +560,7 @@ public class AsyncElection implements Runnable{
 			}
 		}
 		
-		logger.info("[AsyncElection ElectionLogic] Nodes participating: "+nodes.toString());
+		//logger.info("[AsyncElection ElectionLogic] Nodes participating: "+nodes.toString());
 		
 		// Get the node whose CID is numerically greater.
 		Set<String> connectDictKeys =  this.connectionDict.keySet();
@@ -686,7 +686,7 @@ public class AsyncElection implements Runnable{
 	private void cases(){
 		try {
 		while(! Thread.currentThread().isInterrupted()) {
-			logger.info("[AsyncElection] Current State: "+currentState.toString());
+			//logger.info("[AsyncElection] Current State: "+currentState.toString());
 			switch(currentState){
 				
 				case CONNECT:
@@ -733,7 +733,7 @@ public class AsyncElection implements Runnable{
 					}
 					
 					// This is the follower state, currently there is a leader in the network.
-					logger.info("+++++++++++++++ [FOLLOWER] Leader is set to: "+this.leader.toString());
+					//logger.info("+++++++++++++++ [FOLLOWER] Leader is set to: "+this.leader.toString());
 					
 					if(! publishQueue.isEmpty() ) {
 						for (String wrkr: AsyncElection.haworker.getWorkerKeys()) { 
@@ -771,7 +771,7 @@ public class AsyncElection implements Runnable{
 					}
 					
 					// This is the follower state, currently I am the leader of the network.
-					logger.info("+++++++++++++++ [LEADER] Leader is set to: "+this.leader.toString());
+					//logger.info("+++++++++++++++ [LEADER] Leader is set to: "+this.leader.toString());
 					
 					// Keep the leader in coordinate state.
 					timestamp =  String.valueOf(System.nanoTime());

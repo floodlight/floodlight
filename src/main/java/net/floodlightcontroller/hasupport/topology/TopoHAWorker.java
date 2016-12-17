@@ -138,13 +138,13 @@ public class TopoHAWorker implements IHAWorker, IFloodlightModule, ITopologyList
 
 	public boolean subscribeHook(String controllerID) {
 		try {
-			List<String> updates = new ArrayList<String>();
+//			List<String> updates = new ArrayList<String>();
 			myTopoFilterQueue.subscribe(controllerID);
-			updates = myTopoFilterQueue.dequeueReverse();
-			logger.info("[Subscribe] TopoUpdates...");
-			for (String update: updates) {
-				logger.debug("Update: {}", new Object[]{update.toString()});
-			}
+			myTopoFilterQueue.dequeueReverse();
+//			logger.info("[Subscribe] TopoUpdates...");
+//			for (String update: updates) {
+//				logger.debug("Update: {}", new Object[]{update.toString()});
+//			}
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
