@@ -1358,14 +1358,14 @@ public class ActionUtils {
      */
     private static OFAction decode_set_dst_port(String actionToDecode, OFVersion version) {
         try {
-            OFActionSetTpSrc a = OFFactories.getFactory(version).actions().buildSetTpSrc()
+            OFActionSetTpDst a = OFFactories.getFactory(version).actions().buildSetTpDst()
                     .setTpPort(TransportPort.of(Integer.parseInt(actionToDecode)))
                     .build();
             log.debug("action {}", a);
             return a;
-        } 
+        }
         catch (NumberFormatException e) {
-            log.debug("Invalid src-port in: {} (error ignored)", actionToDecode);
+            log.debug("Invalid dst-port in: {} (error ignored)", actionToDecode);
             return null;
         }
     }
