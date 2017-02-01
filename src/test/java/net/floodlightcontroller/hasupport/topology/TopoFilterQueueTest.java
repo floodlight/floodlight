@@ -5,8 +5,12 @@ import static org.junit.Assert.*;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.sdnplatform.sync.IStoreClient;
 
 public class TopoFilterQueueTest {
+	
+	protected static IStoreClient<String,String> storeTopo;
+	protected static String controllerID = "none";
 
 	@Before
 	public void setUp() throws Exception {
@@ -18,7 +22,7 @@ public class TopoFilterQueueTest {
 
 	@Test
 	public void testEnqueueForward () {
-		TopoFilterQueue tf = new TopoFilterQueue();
+		TopoFilterQueue tf = new TopoFilterQueue(storeTopo,controllerID);
 		assertEquals(tf.enqueueForward("cat"),true);
 		assertEquals(TopoFilterQueue.myMap.get("d077f244def8a70e5ea758bd8352fcd8"),"cat");
 		TopoFilterQueue.myMap.clear();
@@ -27,7 +31,7 @@ public class TopoFilterQueueTest {
 	
 	@Test
 	public void testEnqueueForward2 () {
-		TopoFilterQueue Topof2 = new TopoFilterQueue();
+		TopoFilterQueue Topof2 = new TopoFilterQueue(storeTopo,controllerID);
 		String testJson = new String("{\"src\":\"00:00:00:00:00:00:00:05\",\"operation\":\"Switch Removed\"}");
 		assertEquals(Topof2.enqueueForward(testJson),true);
 		assertEquals(TopoFilterQueue.myMap.get("f6816a638cbd1fcec9dcd88ebc2cfcb0"),testJson);
@@ -39,7 +43,7 @@ public class TopoFilterQueueTest {
 	
 	@Test
 	public void testDequeueForward () {
-		TopoFilterQueue Topof2 = new TopoFilterQueue();
+		TopoFilterQueue Topof2 = new TopoFilterQueue(storeTopo,controllerID);
 		String testJson = new String("{\"src\":\"00:00:00:00:00:00:00:05\",\"operation\":\"Switch Removed\"}");
 		assertEquals(Topof2.enqueueForward(testJson),true);
 		Topof2.dequeueForward();
@@ -50,13 +54,13 @@ public class TopoFilterQueueTest {
 	
 	@Test
 	public void testDequeueForward2 () {
-		TopoFilterQueue Topof2 = new TopoFilterQueue();
+		TopoFilterQueue Topof2 = new TopoFilterQueue(storeTopo,controllerID);
 		assertEquals(Topof2.dequeueForward(),false);
 	}
 	
 	@Test
 	public void testReverse () {
-		TopoFilterQueue Topof2 = new TopoFilterQueue();
+		TopoFilterQueue Topof2 = new TopoFilterQueue(storeTopo,controllerID);
 		String testJson = new String("{\"src\":\"00:00:00:00:00:00:00:05\",\"operation\":\"Switch Removed\"}");
 		assertEquals(Topof2.enqueueReverse(testJson),true);
 		Topof2.dequeueReverse();
@@ -66,7 +70,7 @@ public class TopoFilterQueueTest {
 	
 	@Test
 	public void testReverse2 () {
-		TopoFilterQueue Topof2 = new TopoFilterQueue();
+		TopoFilterQueue Topof2 = new TopoFilterQueue(storeTopo,controllerID);
 		String testJson = new String("cat{\"src\":\"00:00:00:00:00:00::\"Switch Removed\"}");
 		assertEquals(Topof2.enqueueReverse(testJson),true);
 		Topof2.dequeueReverse();

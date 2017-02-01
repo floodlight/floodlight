@@ -19,6 +19,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.LinkedBlockingQueue;
 
+import org.sdnplatform.sync.IStoreClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import net.floodlightcontroller.hasupport.IFilterQueue;
@@ -40,15 +41,21 @@ import net.floodlightcontroller.hasupport.IFilterQueue;
 public class LDFilterQueue implements IFilterQueue {
 	
 	protected static Logger logger = LoggerFactory.getLogger(LDFilterQueue.class);
-	private static final LDSyncAdapter syncAdapter = new LDSyncAdapter();
+	protected static IStoreClient<String, String> storeLD;
+	private static LDSyncAdapter syncAdapter;
 	
 	public static LinkedBlockingQueue<String> filterQueue = new LinkedBlockingQueue<>();
 	public static HashMap<String, String> myMap = new HashMap<String, String>();
 	private final Integer mapCapacity = new Integer(1073741000);
+	protected String controllerID;
 	
 	public static LinkedBlockingQueue<String> reverseFilterQueue = new LinkedBlockingQueue<>();
 	
-	public LDFilterQueue(){}
+	public LDFilterQueue(IStoreClient<String, String> storeLD, String controllerID){
+		LDFilterQueue.storeLD  = storeLD;
+		this.controllerID = controllerID;
+		LDFilterQueue.syncAdapter = new LDSyncAdapter(storeLD,controllerID,this);
+	}
 	
 	/**
 	 * This method hashes the LDupdates received in form of JSON string 
@@ -135,14 +142,14 @@ public class LDFilterQueue implements IFilterQueue {
 	@Override
 	public boolean enqueueReverse(String value) {
 		try {
-			//logger.debug("[ReverseFilterQ] The Value {}", new Object [] {value});
+			//logger.info("[ReverseFilterQ] The Value {}", new Object [] {value});
 			if( (!value.equals(null)) ){
 				reverseFilterQueue.offer(value);
 			}
 			return true;
 		} 
 		catch (Exception e){
-			//logger.info("[ReverseFilterQ] Exception: enqueueFwd!");
+			logger.info("[ReverseFilterQ] Exception: enqueueFwd!");
 			e.printStackTrace();
 			return true;
 		}
@@ -167,10 +174,10 @@ public class LDFilterQueue implements IFilterQueue {
 			}
 			
 			if(! LDupds.isEmpty() ) {
-				//logger.debug("[ReverseFilterQ] The update after drain: {} ", new Object [] {LDupds.toString()});
+				//logger.info("[ReverseFilterQ] The update after drain: {} ", new Object [] {LDupds.toString()});
 				return LDupds;
 			} else {
-				//logger.debug("[ReverseFilterQ] The linked list is empty");
+				//logger.info("[ReverseFilterQ] The linked list is empty");
 			}
 			return LDupds;
 			

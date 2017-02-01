@@ -13,6 +13,7 @@ import java.util.Set;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.sdnplatform.sync.IStoreClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,8 +25,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 public class TopoHAWorkerTest {
 	
 	protected static Logger logger = LoggerFactory.getLogger(TopoHAWorkerTest.class);
-	private static final TopoHAWorker topohaworker = new TopoHAWorker();
-	private static final TopoFilterQueue filterQ = new TopoFilterQueue();
+	protected static IStoreClient<String,String> storeTopo;
+	protected static String controllerID = "none";
+	private static TopoHAWorker topohaworker = new TopoHAWorker(storeTopo, controllerID);
+	private static TopoFilterQueue filterQ = new TopoFilterQueue(storeTopo, controllerID);
 	
 	@BeforeClass
 	public static void setUp() throws Exception {

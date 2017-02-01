@@ -15,19 +15,11 @@
 package net.floodlightcontroller.hasupport.linkdiscovery;
 
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 
 import org.sdnplatform.sync.IStoreClient;
-import org.sdnplatform.sync.IStoreListener;
-import org.sdnplatform.sync.ISyncService;
-import org.sdnplatform.sync.ISyncService.Scope;
 import org.sdnplatform.sync.error.SyncException;
-import org.sdnplatform.sync.internal.rpc.IRPCListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,12 +27,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import net.floodlightcontroller.core.IFloodlightProviderService;
-import net.floodlightcontroller.core.module.FloodlightModuleContext;
-import net.floodlightcontroller.core.module.FloodlightModuleException;
-import net.floodlightcontroller.core.module.IFloodlightModule;
-import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.hasupport.ISyncAdapter;
-import net.floodlightcontroller.storage.IStorageSourceService;
 
 /**
  * This class gets the updates from the Filter Queue
@@ -81,18 +68,23 @@ import net.floodlightcontroller.storage.IStorageSourceService;
  */
 
 
-public class LDSyncAdapter implements ISyncAdapter, IFloodlightModule, IStoreListener<String>, IRPCListener {
+public class LDSyncAdapter implements  ISyncAdapter  {
 
 	protected static Logger logger = LoggerFactory.getLogger(LDSyncAdapter.class);
-	protected static ISyncService syncService;
-	protected static IStoreClient<String, String> storeLD;
+
 	protected static IFloodlightProviderService floodlightProvider;
+	private static IStoreClient<String, String> storeLD;
 	
-	public static String controllerId;
+	private String controllerID;
 	private final String none = new String("none");
 	private final String[] highfields = new String[]{"operation",  "latency", "timestamp"};
-	private static final LDFilterQueue myLDFilterQueue = new LDFilterQueue();
-	private Integer saveCount = new Integer(0);
+	private static LDFilterQueue myLDFilterQueue;
+	
+    public LDSyncAdapter(IStoreClient<String, String> storeLD, String controllerID, LDFilterQueue ldFilterQueue){
+    	LDSyncAdapter.storeLD = storeLD;
+    	this.controllerID = controllerID;
+    	LDSyncAdapter.myLDFilterQueue = ldFilterQueue;
+    }
 	
 	
 	/**
@@ -159,16 +151,6 @@ public class LDSyncAdapter implements ISyncAdapter, IFloodlightModule, IStoreLis
 	        			continue;
 	        		}
 		        			
-//	        		logger.debug("+++++++++++++ Retriving old update from DB: Key:{}, Value:{} ", 
-//	                    new Object[] {
-//	                            cmd5Hash.toString(), 
-//	                            oldUpdates.toString()
-//	                        }
-//	                 );
-				
-	        		saveCount += 1;
-	        		//logger.info("Number of repetitions avoided : {}", new Object[] {saveCount});
-	        		
 					//parse the Json String into a Map, then query the entries.
 					updateMap = myMapper.readValue(oldUpdates.toString(), typeRef);		
 					
@@ -197,17 +179,17 @@ public class LDSyncAdapter implements ISyncAdapter, IFloodlightModule, IStoreLis
 	        				
 	        			LDSyncAdapter.storeLD.put(cmd5Hash.toString(), myMapper.writeValueAsString(newUpdateMap));
 	        			
-	        			String collatedcmd5 = LDSyncAdapter.storeLD.getValue(controllerId.toString(), none);
+	        			String collatedcmd5 = LDSyncAdapter.storeLD.getValue(this.controllerID.toString(), none);
 	        			
 	        			if ( collatedcmd5.equals(none) ) {
 	        				collatedcmd5 = cmd5Hash;
-	        				//logger.debug("Collated CMD5: {} ", new Object [] {collatedcmd5.toString()});
+	        				//logger.info("Collated CMD5: {} ", new Object [] {collatedcmd5.toString()});
 	        			} else {
 	        				//logger.debug("================ Append update to HashMap ================");
 	        				collatedcmd5 = ldhautils.appendUpdate(collatedcmd5, cmd5Hash);
 	        			}
 	        			
-	        			LDSyncAdapter.storeLD.put(controllerId, collatedcmd5);
+	        			LDSyncAdapter.storeLD.put(this.controllerID, collatedcmd5);
 	        			
 	        		} catch (SyncException se) {
 	        			logger.debug("[LDSync] Exception: sync packJSON!");
@@ -253,14 +235,14 @@ public class LDSyncAdapter implements ISyncAdapter, IFloodlightModule, IStoreLis
 					collatedcmd5 = collatedcmd5.substring(0, collatedcmd5.length()-2);
 				}
 				
-				//logger.debug("[Unpack] Collated CMD5: {}", new Object[] {collatedcmd5.toString()});
+				//logger.info("[Unpack] Collated CMD5: {}", new Object[] {collatedcmd5.toString()});
 				
 				String[] cmd5hashes = collatedcmd5.split(", ");
 				for (String cmd5: cmd5hashes) {
 					String update = LDSyncAdapter.storeLD.getValue(cmd5, none);
 					if(! update.equals(none) ) {
-						//logger.debug("[Unpack]: {}", new Object [] {update.toString()});
-						myLDFilterQueue.enqueueReverse(update);
+						//logger.info("[Unpack]: {}", new Object [] {update.toString()});
+						LDSyncAdapter.myLDFilterQueue.enqueueReverse(update);
 					}
 				}
 			}
@@ -272,85 +254,6 @@ public class LDSyncAdapter implements ISyncAdapter, IFloodlightModule, IStoreLis
 			e.printStackTrace();
 		}	
 
-	}
-
-	@Override
-	public Collection<Class<? extends IFloodlightService>> getModuleServices() {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public Map<Class<? extends IFloodlightService>, IFloodlightService> getServiceImpls() {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public Collection<Class<? extends IFloodlightService>> getModuleDependencies() {
-        Collection<Class<? extends IFloodlightService>> l =
-                new ArrayList<Class<? extends IFloodlightService>>();
-        l.add(IStorageSourceService.class);
-        l.add(IFloodlightProviderService.class);
-        l.add(ISyncService.class);
-		return l;
-	}
-
-	@Override
-	public void init(FloodlightModuleContext context) throws FloodlightModuleException {
-		logger = LoggerFactory.getLogger(LDSyncAdapter.class);
-		floodlightProvider = context.getServiceImpl(IFloodlightProviderService.class);
-		syncService = context.getServiceImpl(ISyncService.class);
-		controllerId = new String("C" + floodlightProvider.getControllerId());
-        //logger.info("Node Id: {}", new Object[] {controllerId});
-		
-	}
-
-	@Override
-	public void startUp(FloodlightModuleContext context) throws FloodlightModuleException {
-		syncService.addRPCListener(this);
-		try {
-            LDSyncAdapter.syncService.registerStore("LDUpdates", Scope.GLOBAL);
-            
-            LDSyncAdapter.storeLD = LDSyncAdapter.syncService
-            		.getStoreClient("LDUpdates", 
-            				String.class, 
-            				String.class);
-            LDSyncAdapter.storeLD.addStoreListener(this);
-        } catch (SyncException e) {
-            throw new FloodlightModuleException("Error while setting up sync service", e);
-        }
-	}
-
-	@Override
-	public void keysModified(Iterator<String> keys, org.sdnplatform.sync.IStoreListener.UpdateType type) {
-//		while(keys.hasNext()){
-//	        String k = keys.next();
-//	        try {
-//	        	String val = storeLD.get(k).getValue();
-//				logger.debug("+++++++++++++ Retriving value from DB: Key:{}, Value:{}, Type: {}", 
-//	                    new Object[] {
-//	                            k.toString(), 
-//	                            val.toString(), 
-//	                            type.name()
-//	                        }
-//	                    );
-//	        } catch (SyncException e) {
-//	            e.printStackTrace();
-//	        }
-//	    }
-
-		
-	}
-
-	@Override
-	public void disconnectedNode(Short nodeId) {
-		// TODO Auto-generated method stub
-	}
-
-	@Override
-	public void connectedNode(Short nodeId) {
-		// TODO Auto-generated method stub
 	}
 
 }

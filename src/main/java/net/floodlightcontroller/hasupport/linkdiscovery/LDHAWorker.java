@@ -16,25 +16,19 @@ package net.floodlightcontroller.hasupport.linkdiscovery;
 
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 
+
+import org.sdnplatform.sync.IStoreClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import net.floodlightcontroller.core.IFloodlightProviderService;
-import net.floodlightcontroller.core.module.FloodlightModuleContext;
-import net.floodlightcontroller.core.module.FloodlightModuleException;
-import net.floodlightcontroller.core.module.IFloodlightModule;
-import net.floodlightcontroller.core.module.IFloodlightService;
+
 import net.floodlightcontroller.hasupport.IHAWorker;
-import net.floodlightcontroller.hasupport.IHAWorkerService;
+
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryListener;
-import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryService;
-import net.floodlightcontroller.threadpool.IThreadPoolService;
 
 /**
  * LDHAWorker
@@ -64,16 +58,18 @@ import net.floodlightcontroller.threadpool.IThreadPoolService;
  *
  */
 
-public class LDHAWorker implements IHAWorker, IFloodlightModule, ILinkDiscoveryListener {
+public class LDHAWorker implements IHAWorker, ILinkDiscoveryListener  {
 	protected static Logger logger = LoggerFactory.getLogger(LDHAWorker.class);
-	protected static ILinkDiscoveryService linkserv;
-	protected static IFloodlightProviderService floodlightProvider;
-	protected static IHAWorkerService haworker;
+
+	protected static IStoreClient<String, String> storeLD;
+	public static String controllerID;
 	
 	List<String> synLDUList = Collections.synchronizedList(new ArrayList<String>());
-	private static final LDFilterQueue myLDFilterQueue = new LDFilterQueue(); 
+	private static LDFilterQueue myLDFilterQueue; 
 	
-	public LDHAWorker(){};
+	public LDHAWorker(IStoreClient<String, String> storeLD, String controllerID){		
+		LDHAWorker.myLDFilterQueue = new LDFilterQueue(storeLD, controllerID);	
+	}
 	
 	public LDFilterQueue getFilterQ(){
 		return myLDFilterQueue;
@@ -115,7 +111,7 @@ public class LDHAWorker implements IHAWorker, IFloodlightModule, ILinkDiscoveryL
 	public boolean publishHook() {
 		try{
 			synchronized (synLDUList){
-				//logger.debug("[Publish] Printing Updates {}: ",new Object[]{synLDUList});
+				//logger.info("[Publish] Printing Updates {}: ",new Object[]{synLDUList});
 				List<String> updates = assembleUpdate();
 				for(String update : updates){
 					myLDFilterQueue.enqueueForward(update);
@@ -138,7 +134,7 @@ public class LDHAWorker implements IHAWorker, IFloodlightModule, ILinkDiscoveryL
 
 	public boolean subscribeHook(String controllerID) {
 		try {
-//			List<String> updates = new ArrayList<String>();
+			//List<String> updates = new ArrayList<String>();
 			myLDFilterQueue.subscribe(controllerID);
 			myLDFilterQueue.dequeueReverse();
 //			logger.info("[Subscribe] LDUpdates...");
@@ -161,43 +157,5 @@ public class LDHAWorker implements IHAWorker, IFloodlightModule, ILinkDiscoveryL
 		}
 		
 	}
-	
-	
-	@Override
-	public Collection<Class<? extends IFloodlightService>> getModuleServices() {
-		// TODO Auto-generated method stub
-		return null;
-	}
-	
-	@Override
-	public Map<Class<? extends IFloodlightService>, IFloodlightService> getServiceImpls() {
-		// TODO Auto-generated method stub
-		return null;
-	}
-	
-	@Override
-	public Collection<Class<? extends IFloodlightService>> getModuleDependencies() {
-    	Collection<Class<? extends IFloodlightService>> l = new ArrayList<Class<? extends IFloodlightService>>();
-    	l.add(IHAWorkerService.class);
-    	l.add(IThreadPoolService.class);
-		return l;
-	}
-	
-	@Override
-	public void init(FloodlightModuleContext context) throws FloodlightModuleException {
-		linkserv = context.getServiceImpl(ILinkDiscoveryService.class);
-		haworker = context.getServiceImpl(IHAWorkerService.class);
-		//logger.info("LDHAWorker is init...");
-	}
-	
-	@Override
-	public void startUp(FloodlightModuleContext context) throws FloodlightModuleException {
-		logger = LoggerFactory.getLogger(LDHAWorker.class);
-		linkserv.addListener(this);
-		haworker.registerService("LDHAWorker",this);
-		logger.info("LDHAWorker is starting...");
-		
-		return;
-	}
-	
+
 }

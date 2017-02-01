@@ -13,6 +13,7 @@ import java.util.Set;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.sdnplatform.sync.IStoreClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,8 +25,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 public class LDHAWorkerTest {
 	
 	protected static Logger logger = LoggerFactory.getLogger(LDHAWorkerTest.class);
-	private static final LDHAWorker ldhaworker = new LDHAWorker();
-	private static final LDFilterQueue filterQ = new LDFilterQueue();
+	protected static IStoreClient<String,String> storeLD;
+	protected static String controllerID = "none";
+	private static final LDHAWorker ldhaworker = new LDHAWorker(storeLD, controllerID);
+	private static final LDFilterQueue filterQ = new LDFilterQueue(storeLD, controllerID);
 	
 	@BeforeClass
 	public static void setUp() throws Exception {

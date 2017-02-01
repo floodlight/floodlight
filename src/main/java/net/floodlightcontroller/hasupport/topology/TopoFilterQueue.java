@@ -19,6 +19,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.LinkedBlockingQueue;
 
+import org.sdnplatform.sync.IStoreClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import net.floodlightcontroller.hasupport.IFilterQueue;
@@ -40,14 +41,20 @@ import net.floodlightcontroller.hasupport.IFilterQueue;
 public class TopoFilterQueue implements IFilterQueue {
 	
 	protected static Logger logger = LoggerFactory.getLogger(TopoFilterQueue.class);
-	private static final TopoSyncAdapter TopoSyncAdapter = new TopoSyncAdapter();
+	protected static IStoreClient<String, String> storeTopo;
+	private static TopoSyncAdapter syncAdapter;	
+	protected String controllerID;
 	
 	public static LinkedBlockingQueue<String> filterQueue = new LinkedBlockingQueue<>();
 	public static HashMap<String, String> myMap = new HashMap<String, String>();
 	private final Integer mapCapacity = new Integer(1073741000);
 	public static LinkedBlockingQueue<String> reverseFilterQueue = new LinkedBlockingQueue<>();
 	
-	public TopoFilterQueue(){}
+	public TopoFilterQueue(IStoreClient<String, String> storeTopo, String controllerID){
+		TopoFilterQueue.storeTopo  = storeTopo;
+		this.controllerID = controllerID;
+		TopoFilterQueue.syncAdapter = new TopoSyncAdapter(storeTopo,controllerID,this);
+	}
 	
 	/**
 	 * This method hashes the Topology updates received in form of JSON string 
@@ -98,7 +105,7 @@ public class TopoFilterQueue implements IFilterQueue {
 			}
 			if(! TopoUpds.isEmpty() ) {
 				//logger.debug("[FilterQ] The update after drain: {} ", new Object [] {TopoUpds.toString()});
-				TopoSyncAdapter.packJSON(TopoUpds);
+				TopoFilterQueue.syncAdapter.packJSON(TopoUpds);
 				return true;
 			} else {
 				//logger.debug("[FilterQ] The linked list is empty");
@@ -120,7 +127,7 @@ public class TopoFilterQueue implements IFilterQueue {
 	
 	@Override
 	public void subscribe(String controllerID) {
-		TopoSyncAdapter.unpackJSON(controllerID);
+		TopoFilterQueue.syncAdapter.unpackJSON(controllerID);
 		return;
 	}
 
@@ -165,7 +172,7 @@ public class TopoFilterQueue implements IFilterQueue {
 			}
 			
 			if(! TopoUpds.isEmpty() ) {
-				//logger.debug("[ReverseFilterQ] The update after drain: {} ", new Object [] {TopoUpds.toString()});
+				logger.info("[ReverseFilterQ] The update after drain: {} ", new Object [] {TopoUpds.toString()});
 				return TopoUpds;
 			} else {
 				//logger.debug("[ReverseFilterQ] The linked list is empty");

@@ -34,7 +34,7 @@ import net.floodlightcontroller.core.module.IFloodlightModule;
 *
 */
 
-public interface IHAWorker extends IFloodlightModule {
+public interface IHAWorker {
 	
 	public List<String> assembleUpdate();
 	

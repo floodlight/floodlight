@@ -19,8 +19,6 @@ import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import net.floodlightcontroller.hasupport.linkdiscovery.LDHAWorker;
-
 /**
  * The Controller's Logic
  * 
@@ -55,8 +53,6 @@ public class ControllerLogic implements Runnable {
 	private final Integer pollTime    = new Integer(5);
 	private Integer ticks		      = new Integer(0);
 	private boolean timeoutFlag;
-	
-	public static final LDHAWorker ldworker = new LDHAWorker();
 
 	public ControllerLogic (AsyncElection ae, String cID ) {
 		this.ael = ae;

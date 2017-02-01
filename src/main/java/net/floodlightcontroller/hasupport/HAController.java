@@ -19,7 +19,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -29,7 +31,17 @@ import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
+import net.floodlightcontroller.hasupport.linkdiscovery.LDHAWorker;
+import net.floodlightcontroller.hasupport.topology.TopoHAWorker;
+import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryService;
+import net.floodlightcontroller.storage.IStorageSourceService;
+import net.floodlightcontroller.topology.ITopologyService;
 
+import org.sdnplatform.sync.IStoreClient;
+import org.sdnplatform.sync.IStoreListener;
+import org.sdnplatform.sync.ISyncService;
+import org.sdnplatform.sync.ISyncService.Scope;
+import org.sdnplatform.sync.error.SyncException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,6 +57,10 @@ import org.slf4j.LoggerFactory;
  * which the nodes get selected in the election can be supplied using the
  * setElectionPriorities function.
  * 
+ * Individual *HAWorker classes register to the workers HashMap 
+ * to hold their current objects, in order to facilitate 
+ * calling their publish and subscribe hooks dynamically.
+ * 
  * Possible improvements:
  * a. Implement a better scheduling algorithm, and schedule the election
  * and controller logic threads to engineer the scheduling more effectively.
@@ -52,11 +68,22 @@ import org.slf4j.LoggerFactory;
  * @author Bhargav Srinivasan, Om Kale
  */
 
-public class HAController implements IFloodlightModule, IHAControllerService {
+public class HAController implements IFloodlightModule, IHAControllerService, IStoreListener<String>, IHAWorkerService {
 
 	private static Logger logger = LoggerFactory.getLogger(HAController.class);
 	protected static IHAWorkerService haworker;
+	protected static ILinkDiscoveryService linkserv;
+	protected static ITopologyService toposerv;
+	protected static IFloodlightProviderService floodlightProvider;
+	protected static ISyncService syncService;
+	protected static IStoreClient<String, String> storeLD;
+	protected static IStoreClient<String, String> storeTopo;
+	public static String controllerID;
+	protected static LDHAWorker ldhaworker;
+	protected static TopoHAWorker topohaworker;
+	
 	private static Map<String, String> config = new HashMap<String, String>();
+	public static HashMap<String,IHAWorker> workers = new HashMap<>();
 	private final ArrayList<Integer> priorities = new ArrayList<Integer>();
 	private final String none = new String("none");
 	private AsyncElection ael;
@@ -85,6 +112,7 @@ public class HAController implements IFloodlightModule, IHAControllerService {
 		// TODO Auto-generated method stub
 		Collection<Class<? extends IFloodlightService>> l =
 				new ArrayList<Class<? extends IFloodlightService>>();
+		l.add(IHAWorkerService.class);
 		l.add(IHAControllerService.class);
 		return l;
 	}
@@ -94,16 +122,17 @@ public class HAController implements IFloodlightModule, IHAControllerService {
 		Map<Class<? extends IFloodlightService>, IFloodlightService> m =
 				new HashMap<Class<? extends IFloodlightService>, IFloodlightService>();
 		// We are the class that implements the service
-		m.put(IHAControllerService.class, this);
+		m.put(IHAWorkerService.class, this);
+		m.put(IHAControllerService.class, this);	
 		return m;
 	}
 
 	@Override
 	public Collection<Class<? extends IFloodlightService>> getModuleDependencies() {
-		// TODO Auto-generated method stub
     	Collection<Class<? extends IFloodlightService>> l = new ArrayList<Class<? extends IFloodlightService>>();
-		l.add(IHAWorkerService.class);
-		l.add(IFloodlightProviderService.class);
+        l.add(IStorageSourceService.class);
+        l.add(IFloodlightProviderService.class);
+        l.add(ISyncService.class);
 		return l;
 	}
 
@@ -112,20 +141,54 @@ public class HAController implements IFloodlightModule, IHAControllerService {
 		// TODO Auto-generated method stub
 		setSysPath();
 		logger = LoggerFactory.getLogger(HAController.class);
-		haworker = context.getServiceImpl(IHAWorkerService.class);
+		haworker = this;
 		config = context.getConfigParams(this);
+		linkserv = context.getServiceImpl(ILinkDiscoveryService.class);
+		toposerv = context.getServiceImpl(ITopologyService.class);
+		floodlightProvider = context.getServiceImpl(IFloodlightProviderService.class);
+		syncService = context.getServiceImpl(ISyncService.class);
+		controllerID = new String("C" + floodlightProvider.getControllerId());
 		logger.info("Configuration parameters: {} {} ", new Object[] {config.toString(), config.get("nodeid")});
 	}
 
 	@Override
 	public void startUp(FloodlightModuleContext context) throws FloodlightModuleException {
-		// TODO Auto-generated method stub
 		
-//		priorities.add(2);
-//		priorities.add(1);
-//		priorities.add(3);
-//		priorities.add(4);
+		logger.info("LDHAWorker is starting...");
+		try {
+            HAController.syncService.registerStore("LDUpdates", Scope.GLOBAL);
+            
+            HAController.storeLD = HAController.syncService
+            		.getStoreClient("LDUpdates", 
+            				String.class, 
+            				String.class);
+            HAController.storeLD.addStoreListener(this);
+        } catch (SyncException e) {
+            throw new FloodlightModuleException("Error while setting up sync service", e);
+        }
+		HAController.ldhaworker = new LDHAWorker(HAController.storeLD,controllerID);
+		linkserv.addListener(HAController.ldhaworker);
+		haworker.registerService("LDHAWorker",HAController.ldhaworker);
 		
+		
+		logger.info("TopoHAWorker is starting...");
+		try {
+            HAController.syncService.registerStore("TopoUpdates", Scope.GLOBAL);
+            
+            HAController.storeTopo = HAController.syncService
+            		.getStoreClient("TopoUpdates", 
+            				String.class, 
+            				String.class);
+            HAController.storeTopo.addStoreListener(this);
+        } catch (SyncException e) {
+            throw new FloodlightModuleException("Error while setting up sync service", e);
+        }
+		HAController.topohaworker = new TopoHAWorker(HAController.storeTopo,controllerID);
+		toposerv.addListener(HAController.topohaworker);
+		haworker.registerService("TopoHAWorker",HAController.topohaworker);
+		
+		
+
 		//Read config file and start the Election class with the right params.
 		ScheduledExecutorService sesController = Executors.newScheduledThreadPool(10);
 		ael = new AsyncElection( config.get("serverPort") ,config.get("clientPort"), config.get("nodeid"), haworker );
@@ -154,13 +217,11 @@ public class HAController implements IFloodlightModule, IHAControllerService {
 
 	@Override
 	public String getLeaderNonBlocking() {
-		// TODO Auto-generated method stub
 		return ael.getLeader().toString();
 	}
 
 	@Override
 	public String pollForLeader() {
-		// TODO Auto-generated method stub
 		try {
 			Integer timeout     = new Integer(60000);
 			Long start 			= System.nanoTime();
@@ -174,11 +235,9 @@ public class HAController implements IFloodlightModule, IHAControllerService {
 				TimeUnit.MILLISECONDS.sleep(25);	
 			}
 		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
 			logger.info("pollForLeader was interrupted!");
 			e.printStackTrace();
 		} catch (Exception e) {
-			// TODO Auto-generated catch block
 			logger.info("ERROR: [HAController] pollForLeader");
 			e.printStackTrace();
 		}
@@ -188,7 +247,6 @@ public class HAController implements IFloodlightModule, IHAControllerService {
 
 	@Override
 	public void setElectionPriorities(ArrayList<Integer> priorities) {
-		// TODO Auto-generated method stub
 		ael.setElectionPriorities(priorities);
 		return;
 	}
@@ -202,5 +260,54 @@ public class HAController implements IFloodlightModule, IHAControllerService {
 	public String recv(String from) {
 		return AsyncElection.network.recv(from);
 	}
+	
+	/**
+	 * Allows the HAWorker classes to register their class 
+	 * objects into the hashmap, so that the HAController 
+	 * can use them.
+	 * 
+	 */
+	
+	@Override
+	public void registerService(String serviceName, IHAWorker haw) {
+		// TODO Auto-generated method stub
+		synchronized (workers) {
+			workers.putIfAbsent(serviceName, haw);
+		}
+
+	}
+
+	/**
+	 * Gets the specified HAWorker object.
+	 */
+	
+	@Override
+	public IHAWorker getService(String serviceName) {
+		// TODO Auto-generated method stub
+		synchronized (workers) {
+			return workers.get(serviceName);
+		}
+	}
+	
+	/**
+	 * Returns the keys of the workers hashmap, which
+	 * holds the objects corresponding to the registered
+	 * HAWorker classes.
+	 * 
+	 */
+	
+	public Set<String> getWorkerKeys() {
+		// TODO Auto-generated method stub
+		synchronized (workers) {
+			return workers.keySet();
+		}
+	}
+
+
+	@Override
+	public void keysModified(Iterator<String> keys, org.sdnplatform.sync.IStoreListener.UpdateType type) {
+		
+	}
+
 	
 }

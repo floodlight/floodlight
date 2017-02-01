@@ -15,22 +15,15 @@
 package net.floodlightcontroller.hasupport.topology;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 
+import org.sdnplatform.sync.IStoreClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import net.floodlightcontroller.core.IFloodlightProviderService;
-import net.floodlightcontroller.core.module.FloodlightModuleContext;
-import net.floodlightcontroller.core.module.FloodlightModuleException;
-import net.floodlightcontroller.core.module.IFloodlightModule;
-import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.hasupport.IHAWorker;
-import net.floodlightcontroller.hasupport.IHAWorkerService;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscovery.LDUpdate;
 import net.floodlightcontroller.topology.ITopologyListener;
 import net.floodlightcontroller.topology.ITopologyService;
@@ -63,16 +56,16 @@ import net.floodlightcontroller.topology.ITopologyService;
  *
  */
 
-public class TopoHAWorker implements IHAWorker, IFloodlightModule, ITopologyListener {
+public class TopoHAWorker implements IHAWorker, ITopologyListener {
 	protected static Logger logger = LoggerFactory.getLogger(TopoHAWorker.class);
 	protected static ITopologyService toposerv;
-	protected static IFloodlightProviderService floodlightProvider;
-	protected static IHAWorkerService haworker;
 	
 	List<String> synTopoUList = Collections.synchronizedList(new ArrayList<String>());
-	private static final TopoFilterQueue myTopoFilterQueue = new TopoFilterQueue(); 
+	private static TopoFilterQueue myTopoFilterQueue; 
 	
-	public TopoHAWorker(){};
+	public TopoHAWorker(IStoreClient<String, String> storeTopo, String controllerID){		
+		TopoHAWorker.myTopoFilterQueue = new TopoFilterQueue(storeTopo, controllerID);	
+	}
 	
 	public TopoFilterQueue getFilterQ(){
 		return myTopoFilterQueue;
@@ -115,7 +108,7 @@ public class TopoHAWorker implements IHAWorker, IFloodlightModule, ITopologyList
 	public boolean publishHook() {
 		try{
 			synchronized (synTopoUList){
-				//logger.debug("[Publish] Printing Updates {}: ",new Object[]{synTopoUList});
+				logger.info("[Publish] Printing Updates {}: ",new Object[]{synTopoUList});
 				List<String> updates = assembleUpdate();
 				for(String update : updates){
 					myTopoFilterQueue.enqueueForward(update);
@@ -138,13 +131,13 @@ public class TopoHAWorker implements IHAWorker, IFloodlightModule, ITopologyList
 
 	public boolean subscribeHook(String controllerID) {
 		try {
-//			List<String> updates = new ArrayList<String>();
+			List<String> updates = new ArrayList<String>();
 			myTopoFilterQueue.subscribe(controllerID);
-			myTopoFilterQueue.dequeueReverse();
-//			logger.info("[Subscribe] TopoUpdates...");
-//			for (String update: updates) {
-//				logger.debug("Update: {}", new Object[]{update.toString()});
-//			}
+			updates = myTopoFilterQueue.dequeueReverse();
+			logger.info("[Subscribe] TopoUpdates...");
+			for (String update: updates) {
+				logger.info("Update: {}", new Object[]{update.toString()});
+			}
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -161,40 +154,5 @@ public class TopoHAWorker implements IHAWorker, IFloodlightModule, ITopologyList
 		}
 		
 	}
-	
-	
-	@Override
-	public Collection<Class<? extends IFloodlightService>> getModuleServices() {
-		return null;
-	}
-	
-	@Override
-	public Map<Class<? extends IFloodlightService>, IFloodlightService> getServiceImpls() {
-		return null;
-	}
-	
-	@Override
-	public Collection<Class<? extends IFloodlightService>> getModuleDependencies() {
-    	Collection<Class<? extends IFloodlightService>> l = new ArrayList<Class<? extends IFloodlightService>>();
-    	l.add(IHAWorkerService.class);
-		return l;
-	}
-	
-	@Override
-	public void init(FloodlightModuleContext context) throws FloodlightModuleException {
-		toposerv = context.getServiceImpl(ITopologyService.class);
-		haworker = context.getServiceImpl(IHAWorkerService.class);
-		//logger.info("TopoHAWorker is init...");
-	}
-	
-	@Override
-	public void startUp(FloodlightModuleContext context) throws FloodlightModuleException {
-		logger = LoggerFactory.getLogger(TopoHAWorker.class);
-		toposerv.addListener(this);
-		haworker.registerService("TopoHAWorker",this);
-		logger.info("TopoHAWorker is starting...");
-		
-		return;
-	}	
 	
 }

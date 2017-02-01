@@ -5,8 +5,12 @@ import static org.junit.Assert.*;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.sdnplatform.sync.IStoreClient;
 
 public class LDFilterQueueTest {
+	
+	protected static IStoreClient<String,String> storeLD;
+	protected static String controllerID = "none";
 
 	@Before
 	public void setUp() throws Exception {
@@ -18,7 +22,7 @@ public class LDFilterQueueTest {
 
 	@Test
 	public void testEnqueueForward () {
-		LDFilterQueue ldf = new LDFilterQueue();
+		LDFilterQueue ldf = new LDFilterQueue(storeLD,controllerID);
 		assertEquals(ldf.enqueueForward("cat"),true);
 		assertEquals(LDFilterQueue.myMap.get("d077f244def8a70e5ea758bd8352fcd8"),"cat");
 		LDFilterQueue.myMap.clear();
@@ -27,7 +31,7 @@ public class LDFilterQueueTest {
 	
 	@Test
 	public void testEnqueueForward2 () {
-		LDFilterQueue ldf2 = new LDFilterQueue();
+		LDFilterQueue ldf2 = new LDFilterQueue(storeLD,controllerID);
 		String testJson = new String("{\"src\":\"00:00:00:00:00:00:00:05\",\"operation\":\"Switch Removed\"}");
 		assertEquals(ldf2.enqueueForward(testJson),true);
 		assertEquals(LDFilterQueue.myMap.get("f6816a638cbd1fcec9dcd88ebc2cfcb0"),testJson);
@@ -39,7 +43,7 @@ public class LDFilterQueueTest {
 	
 	@Test
 	public void testDequeueForward () {
-		LDFilterQueue ldf2 = new LDFilterQueue();
+		LDFilterQueue ldf2 = new LDFilterQueue(storeLD,controllerID);
 		String testJson = new String("{\"src\":\"00:00:00:00:00:00:00:05\",\"operation\":\"Switch Removed\"}");
 		assertEquals(ldf2.enqueueForward(testJson),true);
 		ldf2.dequeueForward();
@@ -50,13 +54,13 @@ public class LDFilterQueueTest {
 	
 	@Test
 	public void testDequeueForward2 () {
-		LDFilterQueue ldf2 = new LDFilterQueue();
+		LDFilterQueue ldf2 = new LDFilterQueue(storeLD,controllerID);
 		assertEquals(ldf2.dequeueForward(),false);
 	}
 	
 	@Test
 	public void testReverse () {
-		LDFilterQueue ldf2 = new LDFilterQueue();
+		LDFilterQueue ldf2 = new LDFilterQueue(storeLD,controllerID);
 		String testJson = new String("{\"src\":\"00:00:00:00:00:00:00:05\",\"operation\":\"Switch Removed\"}");
 		assertEquals(ldf2.enqueueReverse(testJson),true);
 		ldf2.dequeueReverse();
@@ -66,7 +70,7 @@ public class LDFilterQueueTest {
 	
 	@Test
 	public void testReverse2 () {
-		LDFilterQueue ldf2 = new LDFilterQueue();
+		LDFilterQueue ldf2 = new LDFilterQueue(storeLD,controllerID);
 		String testJson = new String("cat{\"src\":\"00:00:00:00:00:00::\"Switch Removed\"}");
 		assertEquals(ldf2.enqueueReverse(testJson),true);
 		ldf2.dequeueReverse();

@@ -28,9 +28,4 @@ net.floodlightcontroller.dhcpserver.DHCPServer
 net.floodlightcontroller.learningswitch.LearningSwitch
 net.floodlightcontroller.statistics.StatisticsCollector
 net.floodlightcontroller.routing.RoutingManager
-net.floodlightcontroller.hasupport.HAWorkerService
-net.floodlightcontroller.hasupport.linkdiscovery.LDHAWorker
-net.floodlightcontroller.hasupport.linkdiscovery.LDSyncAdapter
-net.floodlightcontroller.hasupport.topology.TopoHAWorker
-net.floodlightcontroller.hasupport.topology.TopoSyncAdapter
 net.floodlightcontroller.hasupport.HAController

@@ -7,6 +7,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import org.junit.Test;
+import org.sdnplatform.sync.IStoreClient;
 
 /**
  * Unit tests for the Sync Adapter class. Test both packing 
@@ -17,13 +18,16 @@ import org.junit.Test;
  *
  */
 public class LDSyncAdapterTest {
+	
+	protected static IStoreClient<String,String> storeLD;
+	protected static String controllerID = "none";
 
 	@Test
 	public void testPackJSON () {
 		try {
 			List<String> updates = Arrays.asList("{\"src\":\"00:00:00:00:00:00:00:01\",\"operation\":\"Switch Updated\"}", "{\"src\":\"00:00:00:00:00:00:00:01\",\"srcPort\":\"1\",\"operation\":\"Port Up\"}", "{\"src\":\"00:00:00:00:00:00:00:01\",\"srcPort\":\"2\",\"operation\":\"Port Up\"}", "{\"src\":\"00:00:00:00:00:00:00:01\",\"srcPort\":\"local\",\"operation\":\"Port Up\"}", "{\"src\":\"00:00:00:00:00:00:00:02\",\"srcPort\":\"local\",\"operation\":\"Switch Updated\"}", "{\"src\":\"00:00:00:00:00:00:00:02\",\"srcPort\":\"1\",\"operation\":\"Port Up\"}", "{\"src\":\"00:00:00:00:00:00:00:02\",\"srcPort\":\"2\",\"operation\":\"Port Up\"}", "{\"src\":\"00:00:00:00:00:00:00:02\",\"srcPort\":\"3\",\"operation\":\"Port Up\"}", "{\"src\":\"00:00:00:00:00:00:00:02\",\"srcPort\":\"local\",\"operation\":\"Port Up\"}", "{\"dstPort\":\"2\",\"dst\":\"00:00:00:00:00:00:00:01\",\"src\":\"00:00:00:00:00:00:00:02\",\"latency\":\"0x0000000000000177\",\"srcPort\":\"2\",\"type\":\"external\",\"operation\":\"Link Updated\"}", "{\"dstPort\":\"2\",\"dst\":\"00:00:00:00:00:00:00:02\",\"src\":\"00:00:00:00:00:00:00:01\",\"latency\":\"0x0000000000000177\",\"srcPort\":\"2\",\"type\":\"external\",\"operation\":\"Link Updated\"}");
-			LDFilterQueue ldfq   = new LDFilterQueue();
-			LDSyncAdapter.controllerId = new String("C1");
+			LDFilterQueue ldfq   = new LDFilterQueue(storeLD,controllerID);
+			controllerID = new String("C1");
 			
 			for (String upd: updates){
 				try {
@@ -44,8 +48,8 @@ public class LDSyncAdapterTest {
 	public void testPackJSON2 () {
 		try {
 			List<String> updates = Arrays.asList("{\"src\":\"00:00:00:00:00:00:00:01\",\"op00:00:00:01\",\"srcPort\":\"1\",\"opera Up\"}:\"00:00:00:00:00:00:00:01\",\"srcPort\":\"2\",\"operation\":\"Port Up\"}", "{\"src\":\"00:00:00:00:00:00:00:01\",p\"}", "{\"src\":\"00:00:00:00:00:00:00:02\",\"srcPort\":\"local\",\"operation\":\"Switch Updated\"}", "{\"src\":\"00:00:00:00:00:00:00:02\",\"srcPort\":\"1\",\"operation\":\"Port Up\"}", "{\"src\":\"00:00:00:00:00:00:00:02\",\"srcPort\":\"2\",\"operation\":\"Port Up\"}", "{\"src\":\"00:00:00:00:00:00:00:02\",\"srcPort\":\"3\",\"operation\":\"Port Up\"}", "{\"src\":\"00:00:00:00:00:00:00:02\",\"srcPort\":\"local\",\"operation\":\"Port Up\"}", "{\"dstPort\":\"2\",\"dst\":\"00:00:00:00:00:00:00:01\",\"src\":\"00:00:00:00:00:00:00:02\",\"latency\":\"0x0000000000000177\",\"srcPort\":\"2\",\"type\":\"external\",\"operation\":\"Link Updated\"}", "{\"dstPort\":\"2\",\"dst\":\"00:00:00:00:00:00:00:02\",\"src\":\"00:00:00:00:00:00:00:01\",\"latency\":\"0x0000000000000177\",\"srcPort\":\"2\",\"type\":\"external\",\"operation\":\"Link Updated\"}");
-			LDFilterQueue ldfq   = new LDFilterQueue();
-			LDSyncAdapter.controllerId = new String("C1");
+			LDFilterQueue ldfq   = new LDFilterQueue(storeLD,controllerID);
+			controllerID = new String("C1");
 			
 			for (String upd: updates){
 				ldfq.enqueueForward(upd);
@@ -68,8 +72,8 @@ public class LDSyncAdapterTest {
 	public void testUnpackJSON () {
 		try {
 			List<String> updates = Arrays.asList("{\"src\":\"00:00:00:00:00:00:00:01\",\"operation\":\"Switch Updated\"}", "{\"src\":\"00:00:00:00:00:00:00:01\",\"srcPort\":\"1\",\"operation\":\"Port Up\"}", "{\"src\":\"00:00:00:00:00:00:00:01\",\"srcPort\":\"2\",\"operation\":\"Port Up\"}", "{\"src\":\"00:00:00:00:00:00:00:01\",\"srcPort\":\"local\",\"operation\":\"Port Up\"}", "{\"src\":\"00:00:00:00:00:00:00:02\",\"srcPort\":\"local\",\"operation\":\"Switch Updated\"}", "{\"src\":\"00:00:00:00:00:00:00:02\",\"srcPort\":\"1\",\"operation\":\"Port Up\"}", "{\"src\":\"00:00:00:00:00:00:00:02\",\"srcPort\":\"2\",\"operation\":\"Port Up\"}", "{\"src\":\"00:00:00:00:00:00:00:02\",\"srcPort\":\"3\",\"operation\":\"Port Up\"}", "{\"src\":\"00:00:00:00:00:00:00:02\",\"srcPort\":\"local\",\"operation\":\"Port Up\"}", "{\"dstPort\":\"2\",\"dst\":\"00:00:00:00:00:00:00:01\",\"src\":\"00:00:00:00:00:00:00:02\",\"latency\":\"0x0000000000000177\",\"srcPort\":\"2\",\"type\":\"external\",\"operation\":\"Link Updated\"}", "{\"dstPort\":\"2\",\"dst\":\"00:00:00:00:00:00:00:02\",\"src\":\"00:00:00:00:00:00:00:01\",\"latency\":\"0x0000000000000177\",\"srcPort\":\"2\",\"type\":\"external\",\"operation\":\"Link Updated\"}");
-			LDFilterQueue ldfq   = new LDFilterQueue();
-			LDSyncAdapter.controllerId = new String("C1");
+			LDFilterQueue ldfq   = new LDFilterQueue(storeLD,controllerID);
+			controllerID = new String("C1");
 			
 			for (String upd: updates){
 				ldfq.enqueueForward(upd);
@@ -93,8 +97,8 @@ public class LDSyncAdapterTest {
 	public void testUnpackJSON2 () {
 		try {
 			List<String> updates = Arrays.asList("{\"src\":\"00:00:00:00:00:00:00:01\",\"operation\":\"Switch Updated\"}", "{\"src\":\"00:00:00:00:00:00:00:01\",\"srcPort\":\"1\",\"operation\":\"Port Up\"}", "{\"src\":\"00:00:00:00:00:00:00:01\",\"srcPort\":\"2\",\"operation\":\"Port Up\"}", "{\"src\":\"00:00:00:00:00:00:00:01\",\"srcPort\":\"local\",\"operation\":\"Port Up\"}", "{\"src\":\"00:00:00:00:00:00:00:02\",\"srcPort\":\"local\",\"operation\":\"Switch Updated\"}", "{\"src\":\"00:00:00:00:00:00:00:02\",\"srcPort\":\"1\",\"operation\":\"Port Up\"}", "{\"src\":\"00:00:00:00:00:00:00:02\",\"srcPort\":\"2\",\"operation\":\"Port Up\"}", "{\"src\":\"00:00:00:00:00:00:00:02\",\"srcPort\":\"3\",\"operation\":\"Port Up\"}", "{\"src\":\"00:00:00:00:00:00:00:02\",\"srcPort\":\"local\",\"operation\":\"Port Up\"}", "{\"dstPort\":\"2\",\"dst\":\"00:00:00:00:00:00:00:01\",\"src\":\"00:00:00:00:00:00:00:02\",\"latency\":\"0x0000000000000177\",\"srcPort\":\"2\",\"type\":\"external\",\"operation\":\"Link Updated\"}", "{\"dstPort\":\"2\",\"dst\":\"00:00:00:00:00:00:00:02\",\"src\":\"00:00:00:00:00:00:00:01\",\"latency\":\"0x0000000000000177\",\"srcPort\":\"2\",\"type\":\"external\",\"operation\":\"Link Updated\"}");
-			LDFilterQueue ldfq   = new LDFilterQueue();
-			LDSyncAdapter.controllerId = new String("C1");
+			LDFilterQueue ldfq   = new LDFilterQueue(storeLD,controllerID);
+			controllerID = new String("C1");
 			
 			for (String upd: updates){
 				ldfq.enqueueForward(upd);
