@@ -1,11 +1,6 @@
 package net.floodlightcontroller.hasupport;
 
-import static org.junit.Assert.*;
-
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
 import org.junit.Ignore;
-import org.junit.Test;
 
 @Ignore 
 public class ZMQServerTest {
@@ -189,86 +184,86 @@ public class ZMQServerTest {
 //		}
 //	}
 //
-////	public static void startQueue() {
-////		
-////		try{
-////			/**
-////			 * Number of I/O threads assigned to the queue device.
-////			 */
-////			ZMQ.Context zmqcontext = ZMQ.context(1);
-////			
-////			/** 
-////			 * Connection facing the outside, where other nodes can connect 
-////			 * to this node. (frontend)
-////			 */
-////
-////			ZMQ.Socket clientSide = zmqcontext.socket(ZMQ.ROUTER);
-////			clientSide.bind("tcp://0.0.0.0:5252");
-////			
-////			
-////			/**
-////			 * The backend of the load balancing queue and the server 
-////			 * which handles all the incoming requests from the frontend.
-////			 * (backend)
-////			 */
-////			ZMQ.Socket serverSide = zmqcontext.socket(ZMQ.DEALER);
-////			serverSide.bind("tcp://0.0.0.0:4242");
-////			
-////			/**
-////			 * This is an infinite loop to run the QueueDevice!
-////			 */
-////		//  Initialize poll set
-////	        ZMQ.Poller items = new ZMQ.Poller (2);
-////	        items.register(clientSide, ZMQ.Poller.POLLIN);
-////	        items.register(serverSide, ZMQ.Poller.POLLIN);
-////
-////	        boolean more = false;
-////	        byte[] message;
-////
-////	        //  Switch messages between sockets
-////	        while (!Thread.currentThread().isInterrupted()) {            
-////	            
-////	            items.poll(0);
-////
-////	            if (items.pollin(0)) {
-////	                while (true) {
-////	                    // receive message
-////	                    message = clientSide.recv(0);
-////	                    more = clientSide.hasReceiveMore();
-////
-////	                    // Broker it
-////	                    serverSide.send(message, more ? ZMQ.SNDMORE : 0);
-////	                    if(!more){
-////	                        break;
-////	                    }
-////	                }
-////	            }
-////	            if (items.pollin(1)) {
-////	                while (true) {
-////	                    // receive message
-////	                    message = serverSide.recv(0);
-////	                    more = serverSide.hasReceiveMore();
-////	                    // Broker it
-////	                    clientSide.send(message,  more ? ZMQ.SNDMORE : 0);
-////	                    if(!more){
-////	                        break;
-////	                    }
-////	                }
-////	            }
-////	            
-////	            TimeUnit.MICROSECONDS.sleep(30000);
-////	        }
-////	        //  We never get here but clean up anyhow
-////	        clientSide.close();
-////	        serverSide.close();
-////	        zmqcontext.term();
-////			
-////		} catch (ZMQException ze){		
-////			ze.printStackTrace();	
-////		} catch (Exception e){
-////			//e.printStackTrace();
-////		}
-////		
-////	}
+//	public static void startQueue() {
+//		
+//		try{
+//			/**
+//			 * Number of I/O threads assigned to the queue device.
+//			 */
+//			ZMQ.Context zmqcontext = ZMQ.context(1);
+//			
+//			/** 
+//			 * Connection facing the outside, where other nodes can connect 
+//			 * to this node. (frontend)
+//			 */
+//
+//			ZMQ.Socket clientSide = zmqcontext.socket(ZMQ.ROUTER);
+//			clientSide.bind("tcp://0.0.0.0:5252");
+//			
+//			
+//			/**
+//			 * The backend of the load balancing queue and the server 
+//			 * which handles all the incoming requests from the frontend.
+//			 * (backend)
+//			 */
+//			ZMQ.Socket serverSide = zmqcontext.socket(ZMQ.DEALER);
+//			serverSide.bind("tcp://0.0.0.0:4242");
+//			
+//			/**
+//			 * This is an infinite loop to run the QueueDevice!
+//			 */
+//		//  Initialize poll set
+//	        ZMQ.Poller items = new ZMQ.Poller (2);
+//	        items.register(clientSide, ZMQ.Poller.POLLIN);
+//	        items.register(serverSide, ZMQ.Poller.POLLIN);
+//
+//	        boolean more = false;
+//	        byte[] message;
+//
+//	        //  Switch messages between sockets
+//	        while (!Thread.currentThread().isInterrupted()) {            
+//	            
+//	            items.poll(0);
+//
+//	            if (items.pollin(0)) {
+//	                while (true) {
+//	                    // receive message
+//	                    message = clientSide.recv(0);
+//	                    more = clientSide.hasReceiveMore();
+//
+//	                    // Broker it
+//	                    serverSide.send(message, more ? ZMQ.SNDMORE : 0);
+//	                    if(!more){
+//	                        break;
+//	                    }
+//	                }
+//	            }
+//	            if (items.pollin(1)) {
+//	                while (true) {
+//	                    // receive message
+//	                    message = serverSide.recv(0);
+//	                    more = serverSide.hasReceiveMore();
+//	                    // Broker it
+//	                    clientSide.send(message,  more ? ZMQ.SNDMORE : 0);
+//	                    if(!more){
+//	                        break;
+//	                    }
+//	                }
+//	            }
+//	            
+//	            TimeUnit.MICROSECONDS.sleep(30000);
+//	        }
+//	        //  We never get here but clean up anyhow
+//	        clientSide.close();
+//	        serverSide.close();
+//	        zmqcontext.term();
+//			
+//		} catch (ZMQException ze){		
+//			ze.printStackTrace();	
+//		} catch (Exception e){
+//			//e.printStackTrace();
+//		}
+//		
+//	}
 
 }

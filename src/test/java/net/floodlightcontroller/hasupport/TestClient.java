@@ -2,7 +2,6 @@ package net.floodlightcontroller.hasupport;
 
 
 import org.junit.Ignore;
-import org.junit.Test;
 
 @Ignore 
 public class TestClient {

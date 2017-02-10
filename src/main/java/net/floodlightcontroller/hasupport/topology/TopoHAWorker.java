@@ -108,7 +108,7 @@ public class TopoHAWorker implements IHAWorker, ITopologyListener {
 	public boolean publishHook() {
 		try{
 			synchronized (synTopoUList){
-				logger.info("[Publish] Printing Updates {}: ",new Object[]{synTopoUList});
+				// logger.info("[Publish] Printing Updates {}: ",new Object[]{synTopoUList});
 				List<String> updates = assembleUpdate();
 				for(String update : updates){
 					myTopoFilterQueue.enqueueForward(update);
@@ -131,13 +131,13 @@ public class TopoHAWorker implements IHAWorker, ITopologyListener {
 
 	public boolean subscribeHook(String controllerID) {
 		try {
-			List<String> updates = new ArrayList<String>();
+//			List<String> updates = new ArrayList<String>();
 			myTopoFilterQueue.subscribe(controllerID);
-			updates = myTopoFilterQueue.dequeueReverse();
-			logger.info("[Subscribe] TopoUpdates...");
-			for (String update: updates) {
-				logger.info("Update: {}", new Object[]{update.toString()});
-			}
+			myTopoFilterQueue.dequeueReverse();
+			// logger.info("[Subscribe] TopoUpdates...");
+//			for (String update: updates) {
+//				logger.info("Update: {}", new Object[]{update.toString()});
+//			}
 		} catch (Exception e) {
 			e.printStackTrace();
 		}

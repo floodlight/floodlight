@@ -118,7 +118,6 @@ public class NetworkNode implements NetworkInterface, Runnable {
 	
 	public final Integer majority;
 	public final Integer totalRounds;
-	//private QueueDevice qDevice;
 	private String response = new String();
 	
 	/**
@@ -139,15 +138,14 @@ public class NetworkNode implements NetworkInterface, Runnable {
 		this.controllerID = controllerID;
 		preStart();
 		this.totalRounds = new Integer(this.connectSet.size());
-		logger.debug("Total Rounds: "+this.totalRounds.toString());
+		// logger.debug("Total Rounds: "+this.totalRounds.toString());
 		if(this.totalRounds >= 2){
 			this.majority = new Integer((int) math.ceil(new Double(0.51 * this.connectSet.size())));
 		} else {
 			this.majority = new Integer(1);
 		}
-		logger.debug("Other Servers: "+this.connectSet.toString()+"Majority: "+this.majority);
+		// logger.debug("Other Servers: "+this.connectSet.toString()+"Majority: "+this.majority);
 		
-		//qDevice = new QueueDevice(this.serverPort,this.clientPort);
 	}
 	
 	/**
@@ -185,7 +183,7 @@ public class NetworkNode implements NetworkInterface, Runnable {
 			configFile.close();
 			
 		} catch (FileNotFoundException e){
-			logger.debug("[NetworkNode] This file was not found! Please place the server config file in the right location.");	
+			// logger.debug("[NetworkNode] This file was not found! Please place the server config file in the right location.");	
 		} catch(Exception e){
 			e.printStackTrace();
 		}
@@ -264,7 +262,7 @@ public class NetworkNode implements NetworkInterface, Runnable {
 		diffSet.addAll(this.connectSet);
 		diffSet.removeAll(connectedNodes);
 		
-		logger.info("[Node] New connections to look for (ConnectSet - Connected): "+diffSet.toString());
+		// logger.info("[Node] New connections to look for (ConnectSet - Connected): "+diffSet.toString());
 		
 		
 		// Try connecting to all nodes that are in the diffSet and store the 
@@ -391,7 +389,7 @@ public class NetworkNode implements NetworkInterface, Runnable {
 				// reply = new String(rep,0,rep.length);
 				
 				if (! reply.equals(ack) ) {
-					logger.info("[Node] Closing stale connection: "+entry.getKey().toString());
+					//logger.info("[Node] Closing stale connection: "+entry.getKey().toString());
 					entry.getValue().deleteConnection();
 					delmark.put(entry.getKey(),entry.getValue());
 				}
@@ -493,9 +491,9 @@ public class NetworkNode implements NetworkInterface, Runnable {
 				//Flush the context to avoid too many open files
 				// 250 ticks = 4 min 55 seconds
 				if(ticks > 250) {
-					logger.debug("[NetworkNode] Refreshing state....");
+					//logger.debug("[NetworkNode] Refreshing state....");
 					cleanState();
-					logger.debug("[NetworkNode] Refreshed state....");
+					//logger.debug("[NetworkNode] Refreshed state....");
 					ticks = 0;
 				}
 				
@@ -503,7 +501,7 @@ public class NetworkNode implements NetworkInterface, Runnable {
 				//logger.debug("[ZMQ Node] Tick {} ", new Object[] {ticks});
 				TimeUnit.MILLISECONDS.sleep(pollTime);
 			} catch (Exception e){
-				logger.debug("[NetworkNode] BlockUntil errored out: "+e.toString());
+				//logger.debug("[NetworkNode] BlockUntil errored out: "+e.toString());
 				e.printStackTrace();
 			}
 		}
@@ -553,7 +551,7 @@ public class NetworkNode implements NetworkInterface, Runnable {
 			this.connectDict.put(entry.getKey(), netState.ON);
 		}
 		
-		logger.info("Connect Dict: "+this.connectDict.toString());
+		// logger.info("Connect Dict: "+this.connectDict.toString());
 		//logger.info("Socket Dict: "+this.socketDict.toString());
 		
 		return;

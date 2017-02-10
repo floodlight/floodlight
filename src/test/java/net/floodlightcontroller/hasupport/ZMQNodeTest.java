@@ -1,11 +1,6 @@
 package net.floodlightcontroller.hasupport;
 
-import static org.junit.Assert.*;
-
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
 import org.junit.Ignore;
-import org.junit.Test;
 
 @Ignore 
 public class ZMQNodeTest {
