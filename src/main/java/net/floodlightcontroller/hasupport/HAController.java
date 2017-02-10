@@ -14,9 +14,7 @@
 
 package net.floodlightcontroller.hasupport;
 
-import java.lang.reflect.Field;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -89,27 +87,8 @@ public class HAController implements IFloodlightModule, IHAControllerService, IS
 	private AsyncElection ael;
 	private ControllerLogic cLogic;
 	
-	public static void setSysPath(){
-		try {
-			final Field usrPathsField = ClassLoader.class.getDeclaredField("usr_paths");
-			usrPathsField.setAccessible(true);
-			final String[] path = (String[]) usrPathsField.get(null);
-			final String[] newPaths = Arrays.copyOf(path, path.length +2);
-			newPaths[newPaths.length - 2] = "lib/";
-			newPaths[newPaths.length - 1] = "lib/jzmq-3.1.0.jar";
-			usrPathsField.set(null, newPaths);		
-		} catch (NoSuchFieldException | SecurityException 
-				|  IllegalArgumentException |  IllegalAccessException e) {
-			logger.debug(new String(e.toString()));
-		}
-		
-		return;
-	}	
-
-	
 	@Override
 	public Collection<Class<? extends IFloodlightService>> getModuleServices() {
-		// TODO Auto-generated method stub
 		Collection<Class<? extends IFloodlightService>> l =
 				new ArrayList<Class<? extends IFloodlightService>>();
 		l.add(IHAWorkerService.class);
@@ -138,8 +117,6 @@ public class HAController implements IFloodlightModule, IHAControllerService, IS
 
 	@Override
 	public void init(FloodlightModuleContext context) throws FloodlightModuleException {
-		// TODO Auto-generated method stub
-		setSysPath();
 		logger = LoggerFactory.getLogger(HAController.class);
 		haworker = this;
 		config = context.getConfigParams(this);
@@ -270,7 +247,6 @@ public class HAController implements IFloodlightModule, IHAControllerService, IS
 	
 	@Override
 	public void registerService(String serviceName, IHAWorker haw) {
-		// TODO Auto-generated method stub
 		synchronized (workers) {
 			workers.putIfAbsent(serviceName, haw);
 		}
@@ -283,7 +259,6 @@ public class HAController implements IFloodlightModule, IHAControllerService, IS
 	
 	@Override
 	public IHAWorker getService(String serviceName) {
-		// TODO Auto-generated method stub
 		synchronized (workers) {
 			return workers.get(serviceName);
 		}
@@ -297,7 +272,6 @@ public class HAController implements IFloodlightModule, IHAControllerService, IS
 	 */
 	
 	public Set<String> getWorkerKeys() {
-		// TODO Auto-generated method stub
 		synchronized (workers) {
 			return workers.keySet();
 		}

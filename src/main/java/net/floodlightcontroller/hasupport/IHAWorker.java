@@ -17,8 +17,6 @@ package net.floodlightcontroller.hasupport;
 
 import java.util.List;
 
-import net.floodlightcontroller.core.module.IFloodlightModule;
-
 /**
 * IHAWorker
 * 

@@ -27,8 +27,7 @@ import java.util.concurrent.TimeUnit;
 import org.python.modules.math;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.zeromq.ZMQ;
-import org.zeromq.ZMQException;
+
 
 /**
  * The Network Node (Connection Manager)
@@ -48,20 +47,18 @@ import org.zeromq.ZMQException;
  * this class can be completely re-implemented, if you adhere to NetworkInterface,
  * and expose socketDict and connectionDict to AsyncElection in a similar manner.
  * 
- * b. Improve the existing connection manager (ZMQNode). Currently, we are using the 
+ * b. Improve the existing connection manager (NetworkNode). Currently, we are using the 
  * extended request-reply pattern, mentioned in the ZGuide. We could identify
  * a good alternative and implement it.
  * 
  * @author Bhargav Srinivasan, Om Kale
  */
 
-public class ZMQNode implements NetworkInterface, Runnable {
+public class NetworkNode implements NetworkInterface, Runnable {
 	
-	private static Logger logger = LoggerFactory.getLogger(ZMQNode.class);
+	private static Logger logger = LoggerFactory.getLogger(NetworkNode.class);
 	
-	private ZMQ.Context zmqcontext = ZMQ.context(1);
-	
-	private ZMQ.Socket clientSock;
+	private NioClient clientSock;
 	
 	public final String controllerID;
 	public final String serverPort;
@@ -70,7 +67,7 @@ public class ZMQNode implements NetworkInterface, Runnable {
 	/**
 	 * The server list holds the server port IDs of all present 
 	 * connections.
-	 * The connectSet is a set of nodes defined in the serverlist 
+	 * The connectSet is a set of nodes defined in the server list 
 	 * which are to be connected
 	 */
 
@@ -86,23 +83,26 @@ public class ZMQNode implements NetworkInterface, Runnable {
 	 * connections.
 	 */
 	
-	public HashMap<String, ZMQ.Socket>  socketDict             = new HashMap<String, ZMQ.Socket>();
-	public HashMap<String, netState>    connectDict            = new HashMap<String, netState>();
-	public HashMap<String, String>      controllerIDNetStatic  = new HashMap<String, String>();
-	public HashMap<String, Integer>     netcontrollerIDStatic  = new HashMap<String, Integer>();
-	public HashMap<String, ZMQ.Socket>  allsocketDict             = new HashMap<String, ZMQ.Socket>();
+	public  HashMap<String, NioClient>  socketDict                   = new HashMap<String, NioClient>();
+	public  HashMap<String, netState>   connectDict                  = new HashMap<String, netState>();
+	public  HashMap<String, String>     controllerIDNetStatic        = new HashMap<String, String>();
+	public  HashMap<String, Integer>    netcontrollerIDStatic        = new HashMap<String, Integer>();
+	public  HashMap<String, NioClient>  allsocketDict                = new HashMap<String, NioClient>();
+	private HashMap<String, NioClient>  delmark                      = new HashMap<String, NioClient>();
 	
-	private HashMap<String, ZMQ.Socket> delmark = new HashMap<String, ZMQ.Socket>();
 	/**
 	 * Standardized sleep times for socket timeouts,
 	 * number of pulses to send before expiring.
 	 */
 	
-	// Decide the socket timeout value based on how fast you think the leader should
-	// respond and also how far apart the actual nodes are placed. If you are trying
-	// to communicate with servers far away, then anything upto 10s would be a good value.
+	/** 
+	 * Decide the socket timeout value based on how fast you think the leader should
+	 * respond and also how far apart the actual nodes are placed. If you are trying
+	 * to communicate with servers far away, then anything up to 10s would be a good value.
+	 */
 	
 	public final Integer socketTimeout 		      = new Integer(500);
+	public final Integer linger 		          = new Integer(0);
 	public final Integer numberOfPulses		      = new Integer(1);
 	public final Integer pollTime				  = new Integer(1);
 	public Integer ticks						  = new Integer(0);
@@ -115,9 +115,10 @@ public class ZMQNode implements NetworkInterface, Runnable {
 	 * the number of expected failures which is set to len(serverList) beacuse
 	 * we assume that any/every node can fail.
 	 */
+	
 	public final Integer majority;
 	public final Integer totalRounds;
-	private QueueDevice qDevice;
+	//private QueueDevice qDevice;
 	private String response = new String();
 	
 	/**
@@ -128,10 +129,10 @@ public class ZMQNode implements NetworkInterface, Runnable {
 	 * @param controllerID
 	 */
 
-	public ZMQNode(String serverPort, String clientPort, String controllerID){
+	public NetworkNode(String serverPort, String clientPort, String controllerID){
 		/**
 		 * The port variables needed in order to start the
-		 * backend and frontend of the queue device.
+		 * back-end and front-end of the queue device.
 		 */
 		this.serverPort = serverPort.toString();
 		this.clientPort = clientPort.toString();
@@ -146,7 +147,7 @@ public class ZMQNode implements NetworkInterface, Runnable {
 		}
 		logger.debug("Other Servers: "+this.connectSet.toString()+"Majority: "+this.majority);
 		
-		qDevice = new QueueDevice(this.serverPort,this.clientPort);
+		//qDevice = new QueueDevice(this.serverPort,this.clientPort);
 	}
 	
 	/**
@@ -177,18 +178,14 @@ public class ZMQNode implements NetworkInterface, Runnable {
 			this.connectSet = new HashSet<String>(this.serverList);
 			
 			for (String client: this.connectSet) {
-				ZMQ.Socket requester1 = zmqcontext.socket(ZMQ.REQ);
-				requester1.setReceiveTimeOut(500);
-				requester1.setSendTimeOut(500);
-				requester1.setLinger(0);
-				this.allsocketDict.put(client, requester1);
+				this.allsocketDict.put(client, new NioClient(socketTimeout,linger));
 			}
 			
 			br.close();
 			configFile.close();
 			
 		} catch (FileNotFoundException e){
-			logger.debug("This file was not found! Please place the server config file in the right location.");	
+			logger.debug("[NetworkNode] This file was not found! Please place the server config file in the right location.");	
 		} catch(Exception e){
 			e.printStackTrace();
 		}
@@ -202,28 +199,21 @@ public class ZMQNode implements NetworkInterface, Runnable {
 	
 	@Override
 	public Boolean send(String clientPort, String message) {
-		// TODO Auto-generated method stub
 		if( message.equals(null) ) {
 			return Boolean.FALSE;
 		}
 		
 		clientSock = socketDict.get(clientPort);
 		try{
-			clientSock.send(message.getBytes(),0);
+			//logger.info("[NetworkNode] Sending: "+message+" sent through port: "+clientPort.toString());
+			clientSock.send(message);
 			return Boolean.TRUE;
-		} catch(ZMQException ze){
-			if(clientSock != null){
-				clientSock.close();
-			}
-			logger.info("Send Failed: "+message+" not sent through port: "+clientPort.toString());
-			//ze.printStackTrace();
-			return Boolean.FALSE;
+			
 		} catch(Exception e){
-			if(clientSock != null){
-				clientSock.close();
+			if(clientSock.getSocketChannel() != null){
+				clientSock.deleteConnection();
 			}
-			logger.info("Send Failed: "+message+" not sent through port: "+clientPort.toString());
-			//e.printStackTrace();
+			//logger.info("[NetworkNode] Send Failed: "+message+" not sent through port: "+clientPort.toString());
 			return Boolean.FALSE;
 		}
 	}
@@ -236,26 +226,17 @@ public class ZMQNode implements NetworkInterface, Runnable {
 	
 	@Override
 	public String recv(String receivingPort) {
-		// TODO Auto-generated method stub
 		clientSock = socketDict.get(receivingPort);
-		try{
-			byte[] msg = clientSock.recv(0);
-			response = new String(msg,0,msg.length);
+		try{		
+			response = clientSock.recv();
 			response.trim();
+			//logger.info("[NetworkNode] Recv on port: "+receivingPort.toString()+response);
 			return response;
-		} catch(ZMQException ze){
-			if(clientSock != null){
-				clientSock.close();
-			}
-			logger.info("Recv Failed on port: "+receivingPort.toString());
-			//ze.printStackTrace();
-			return "";
 		} catch (Exception e){
-			if(clientSock != null){
-				clientSock.close();
+			if(clientSock.getSocketChannel() != null){
+				clientSock.deleteConnection();
 			}
-			logger.info("Recv Failed on port: "+receivingPort.toString());
-			//e.printStackTrace();
+			//logger.info("[NetworkNode] Recv Failed on port: "+receivingPort.toString());
 			return "";
 		}
 		
@@ -276,72 +257,56 @@ public class ZMQNode implements NetworkInterface, Runnable {
 		HashSet<String> diffSet 		= new HashSet<String>();
 		HashSet<String> connectedNodes  = new HashSet<String>();
 		
-		for(HashMap.Entry<String, ZMQ.Socket> entry: this.socketDict.entrySet()){
+		for(HashMap.Entry<String, NioClient> entry: this.socketDict.entrySet()){
 			connectedNodes.add(entry.getKey());
 		}
 		
 		diffSet.addAll(this.connectSet);
 		diffSet.removeAll(connectedNodes);
 		
-		//logger.debug("[Node] New connections to look for (ConnectSet - Connected): "+diffSet.toString());
+		logger.info("[Node] New connections to look for (ConnectSet - Connected): "+diffSet.toString());
 		
 		
 		// Try connecting to all nodes that are in the diffSet and store the 
 		// successful ones in the  socketDict.
-		byte[] rep;
+		// byte[] rep;
 		String reply;
 		for (String client: diffSet){
+			reply="";
 			clientSock = allsocketDict.get(client);
 			try{
-				clientSock.connect(new String("tcp://"+client.toString()) );
-				clientSock.send(pulse.getBytes(),0);
-				rep = clientSock.recv(0);
-				reply = new String(rep,0,rep.length);
+				// logger.info("[Node] Trying to connect to Client: "+client.toString()+"Client Sock: "+clientSock.toString());
+				clientSock.connectClient(client);
+				clientSock.send(pulse);
+				// rep = clientSock.recv(0);
+				// reply = new String(rep,0,rep.length);
+				reply = clientSock.recv();
 				
 				if( reply.equals(ack) ){
-					//logger.debug("[Node] Client: "+client.toString()+"Client Sock: "+clientSock.toString());
+					// logger.info("[Node] Client: "+client.toString()+"Client Sock: "+clientSock.toString());
 					if (!socketDict.containsKey(client)){
 						socketDict.put(client, clientSock);
 					} else {
-						//logger.debug("[Node] This socket already exists, refreshing: "+client.toString());
-						clientSock.close();
-						ZMQ.Socket requester1 = zmqcontext.socket(ZMQ.REQ);
-						requester1.setReceiveTimeOut(500);
-						requester1.setSendTimeOut(500);
-						requester1.setLinger(0);
+						// logger.info("[Node] This socket already exists, refreshing: "+client.toString());
+						clientSock.deleteConnection();
 						this.socketDict.remove(client);
-						this.socketDict.put(client, requester1);
+						this.socketDict.put(client, new NioClient(socketTimeout,linger));
 					}
 				} else {
-					//logger.debug("[Node] Received bad reply: "+client.toString());
-					clientSock.close();
-					//logger.debug("[Node] Closed Socket"+client.toString());		
+					// logger.info("[Node] Received bad reply: "+client.toString()+" "+reply);
+					clientSock.deleteConnection();
+					// logger.info("[Node] Closed Socket"+client.toString());		
 				}
 				
 			} catch(NullPointerException ne){
-				//logger.debug("[Node] ConnectClients: Reply had a null value from: "+client.toString());
+				// logger.info("[Node] ConnectClients: Reply had a null value from: "+client.toString());
 				//ne.printStackTrace();
-			}  catch (ZMQException ze){
-				if(clientSock != null){
-					clientSock.close();
-					ZMQ.Socket requester1 = zmqcontext.socket(ZMQ.REQ);
-					requester1.setReceiveTimeOut(500);
-					requester1.setSendTimeOut(500);
-					requester1.setLinger(0);
-					allsocketDict.put(client, requester1);
-				}
-				//logger.debug("[Node] ConnectClients errored out: "+client.toString());
-				//ze.printStackTrace();
 			} catch (Exception e){
 				if(clientSock != null){
-					clientSock.close();
-					ZMQ.Socket requester1 = zmqcontext.socket(ZMQ.REQ);
-					requester1.setReceiveTimeOut(500);
-					requester1.setSendTimeOut(500);
-					requester1.setLinger(0);
-					allsocketDict.put(client, requester1);
+					clientSock.deleteConnection();
+					allsocketDict.put(client, new NioClient(socketTimeout,linger));
 				}
-				//logger.debug("[Node] ConnectClients errored out: "+client.toString());
+				// logger.info("[Node] ConnectClients errored out: "+client.toString());
 				//e.printStackTrace();
 			} 
 			
@@ -361,17 +326,16 @@ public class ZMQNode implements NetworkInterface, Runnable {
 
 	@Override
 	public Map<String, netState> connectClients() {
-		// TODO Auto-generated method stub
-		//logger.debug("[Node] To Connect: "+this.connectSet.toString());
-		//logger.debug("[Node] Connected: "+this.socketDict.keySet().toString());
+		// logger.info("[Node] To Connect: "+this.connectSet.toString());
+		// logger.info("[Node] Connected: "+this.socketDict.keySet().toString());
 		
 		doConnect();
 		
 		//Delete the already connected connections from the ToConnect Set.
-		for(HashMap.Entry<String, ZMQ.Socket> entry: this.socketDict.entrySet()){
+		for(HashMap.Entry<String, NioClient> entry: this.socketDict.entrySet()){
 			if(this.connectSet.contains(entry.getKey())){
 				this.connectSet.remove(entry.getKey());
-				//logger.debug("Discarding already connected client: "+entry.getKey().toString());
+				// logger.info("Discarding already connected client: "+entry.getKey().toString());
 			}
 		}	
 		updateConnectDict();
@@ -389,7 +353,7 @@ public class ZMQNode implements NetworkInterface, Runnable {
 
 	@Override
 	public Map<String, netState> checkForNewConnections() {
-		// TODO Auto-generated method stub
+		
 		expireOldConnections();
 		
 		this.connectSet = new HashSet<String> (this.serverList);
@@ -412,22 +376,23 @@ public class ZMQNode implements NetworkInterface, Runnable {
 
 	@Override
 	public Map<String, netState> expireOldConnections() {
-		// TODO Auto-generated method stub
-		//logger.debug("Expiring old connections...");
-		delmark = new HashMap<String, ZMQ.Socket>();
-		byte[] rep = null;
+		// logger.info("Expiring old connections...");
+		delmark = new HashMap <String, NioClient>();
+		// byte[] rep = null;
 		String reply;
-		for(HashMap.Entry<String, ZMQ.Socket> entry: this.socketDict.entrySet()){
+		for(HashMap.Entry<String, NioClient> entry: this.socketDict.entrySet()){
+			clientSock = entry.getValue();
+			reply = "";
 			try{
 				for(int i=0; i < this.numberOfPulses; i++){
-					entry.getValue().send(pulse.getBytes(),0);
-					rep = entry.getValue().recv(0);
+					clientSock.send(pulse);
+					reply = clientSock.recv();
 				}
-				reply = new String(rep,0,rep.length);
+				// reply = new String(rep,0,rep.length);
 				
 				if (! reply.equals(ack) ) {
-					//logger.debug("[Node] Closing stale connection: "+entry.getKey().toString());
-					entry.getValue().close();
+					logger.info("[Node] Closing stale connection: "+entry.getKey().toString());
+					entry.getValue().deleteConnection();
 					delmark.put(entry.getKey(),entry.getValue());
 				}
 				
@@ -435,31 +400,27 @@ public class ZMQNode implements NetworkInterface, Runnable {
 				//logger.debug("[Node] Expire: Reply had a null value: "+entry.getKey().toString());
 				delmark.put(entry.getKey(),entry.getValue());
 				//ne.printStackTrace();
-			} catch(ZMQException ze){
-				//logger.debug("[Node] Expire: ZMQ socket error: "+entry.getKey().toString());
-				delmark.put(entry.getKey(),entry.getValue());
-				//ze.printStackTrace();
 			} catch (Exception e){
 				//logger.debug("[Node] Expire: Exception! : "+entry.getKey().toString());
 				delmark.put(entry.getKey(),entry.getValue());
-				e.printStackTrace();
+				//e.printStackTrace();
 			}
 		}
 		
 		//Pop out all the expired connections from socketDict.
 		try{
-			for (HashMap.Entry<String, ZMQ.Socket> entry: delmark.entrySet()){
+			for (HashMap.Entry<String, NioClient> entry: delmark.entrySet()){
 				this.socketDict.remove(entry.getKey());
 				if(entry.getValue() != null) {
-					entry.getValue().close();
+					entry.getValue().deleteConnection();
 				}
 			}
 		} catch (Exception e) {
-			logger.debug("[ZMQNode] Error in expireOldConnections, while deleting socket");
+			//logger.debug("[NetworkNode] Error in expireOldConnections, while deleting socket");
 			e.printStackTrace();
 		}
 		
-		//logger.debug("Expired old connections.");
+		//logger.info("Expired old connections.");
 		
 		updateConnectDict();
 		return (Map<String, netState>) Collections.unmodifiableMap(this.connectDict);
@@ -479,43 +440,35 @@ public class ZMQNode implements NetworkInterface, Runnable {
 	public void cleanState() {
 		
 		this.connectSet = new HashSet<String> (this.serverList);
-		delmark = new HashMap<String, ZMQ.Socket>();
+		delmark = new HashMap<String, NioClient>();
 		
 		for (String client: this.connectSet) {
-			this.allsocketDict.get(client).close();
-			ZMQ.Socket requester1 = this.zmqcontext.socket(ZMQ.REQ);
-			requester1.setReceiveTimeOut(500);
-			requester1.setSendTimeOut(500);
-			requester1.setLinger(0);
-			this.allsocketDict.put(client, requester1);
+			this.allsocketDict.get(client).deleteConnection();
+			this.allsocketDict.put(client, new NioClient(socketTimeout,linger));
 		}
 		
-		for (HashMap.Entry<String,ZMQ.Socket> entry: this.socketDict.entrySet()){
+		for (HashMap.Entry<String, NioClient> entry: this.socketDict.entrySet()){
 			try{
-				//logger.debug("[Node] Closing connection: "+entry.getKey().toString());
-				entry.getValue().close();
+				//logger.info("[Node] Closing connection: "+entry.getKey().toString());
+				entry.getValue().deleteConnection();
 				delmark.put(entry.getKey(), entry.getValue());
 				
 			} catch(NullPointerException ne){
-				//logger.debug("[Node] BlockUntil: Reply had a null value"+entry.getKey().toString());
+				//logger.info("[Node] BlockUntil: Reply had a null value"+entry.getKey().toString());
 				delmark.put(entry.getKey(),entry.getValue());
 				//ne.printStackTrace();
-			} catch (ZMQException ze){
-				//logger.debug("[Node] Error closing connection: "+entry.getKey().toString());
-				delmark.put(entry.getKey(),entry.getValue());
-				//ze.printStackTrace();
 			} catch (Exception e){
-				//logger.debug("[Node] Error closing connection: "+entry.getKey().toString());
+				//logger.info("[Node] Error closing connection: "+entry.getKey().toString());
 				delmark.put(entry.getKey(),entry.getValue());
 				e.printStackTrace();
 			}
 		}
 		
-		for (HashMap.Entry<String, ZMQ.Socket> entry: delmark.entrySet()){
+		for (HashMap.Entry<String, NioClient> entry: delmark.entrySet()){
 			this.socketDict.remove(entry.getKey());
 		}
 		
-		this.socketDict = new HashMap<String, ZMQ.Socket>();
+		this.socketDict = new HashMap<String, NioClient>();
 		
 		return;
 		
@@ -529,25 +482,20 @@ public class ZMQNode implements NetworkInterface, Runnable {
 	
 	@Override
 	public ElectionState blockUntilConnected() {
-		// TODO Auto-generated method stub
 		
 		cleanState();
 		
 		while (this.socketDict.size() < this.majority){
 			try {
-				//logger.debug("[Node] BlockUntil: Trying to connect...");
+				// logger.info("[Node] BlockUntil: Trying to connect...");
 				this.connectClients();
 				
 				//Flush the context to avoid too many open files
 				// 250 ticks = 4 min 55 seconds
 				if(ticks > 250) {
-					logger.debug("[ZMQ Node] Refreshing state....");
-					ZMQ.Context oldcontext = this.zmqcontext;
-					this.zmqcontext = ZMQ.context(1);
-					this.zmqcontext.setMaxSockets(maxSockets);
+					logger.debug("[NetworkNode] Refreshing state....");
 					cleanState();
-					logger.debug("[ZMQ Node] Refreshed state....");
-					oldcontext.term();
+					logger.debug("[NetworkNode] Refreshed state....");
 					ticks = 0;
 				}
 				
@@ -555,7 +503,7 @@ public class ZMQNode implements NetworkInterface, Runnable {
 				//logger.debug("[ZMQ Node] Tick {} ", new Object[] {ticks});
 				TimeUnit.MILLISECONDS.sleep(pollTime);
 			} catch (Exception e){
-				logger.debug("[Node] BlockUntil errored out: "+e.toString());
+				logger.debug("[NetworkNode] BlockUntil errored out: "+e.toString());
 				e.printStackTrace();
 			}
 		}
@@ -566,16 +514,14 @@ public class ZMQNode implements NetworkInterface, Runnable {
 
 	@Override
 	public void run() {
-		// TODO Auto-generated method stub
 		//ScheduledExecutorService sesNode = Executors.newScheduledThreadPool(10);
-		this.zmqcontext.setMaxSockets(maxSockets);
 		try{
-			//logger.debug("Server List: "+this.serverList.toString());
-			Thread qd = new Thread(qDevice,"QueueDeviceThread");
-			qd.start();
-			qd.join();
+			//logger.info("Server List: "+this.serverList.toString());
+			//Thread qd = new Thread(qDevice,"QueueDeviceThread");
+			//qd.start();
+			//qd.join();
 		} catch (Exception e){
-			logger.debug("Queue Device encountered an exception! "+e.toString());
+			//logger.debug("[NetworkNode] Queue Device encountered an exception! "+e.toString());
 			e.printStackTrace();
 		}
 	}
@@ -597,19 +543,18 @@ public class ZMQNode implements NetworkInterface, Runnable {
 	
 	@Override
 	public void updateConnectDict() {
-		// TODO Auto-generated method stub
 		this.connectDict     = new HashMap<String, netState>();
 		
 		for (String seten: this.connectSet){
 			this.connectDict.put(seten, netState.OFF);
 		}
 		
-		for (HashMap.Entry<String, ZMQ.Socket> entry: this.socketDict.entrySet()){
+		for (HashMap.Entry<String, NioClient> entry: this.socketDict.entrySet()){
 			this.connectDict.put(entry.getKey(), netState.ON);
 		}
 		
-		//logger.debug("Connect Dict: "+this.connectDict.toString());
-		//logger.debug("Socket Dict: "+this.socketDict.toString());
+		logger.info("Connect Dict: "+this.connectDict.toString());
+		//logger.info("Socket Dict: "+this.socketDict.toString());
 		
 		return;
 		
