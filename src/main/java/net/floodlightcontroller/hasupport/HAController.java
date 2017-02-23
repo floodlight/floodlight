@@ -76,12 +76,12 @@ public class HAController implements IFloodlightModule, IHAControllerService, IS
 	protected static ISyncService syncService;
 	protected static IStoreClient<String, String> storeLD;
 	protected static IStoreClient<String, String> storeTopo;
-	public static String controllerID;
+	private static String controllerID;
 	protected static LDHAWorker ldhaworker;
 	protected static TopoHAWorker topohaworker;
 	
 	private static Map<String, String> config = new HashMap<String, String>();
-	public static HashMap<String,IHAWorker> workers = new HashMap<>();
+	private static HashMap<String,IHAWorker> workers = new HashMap<>();
 	private final ArrayList<Integer> priorities = new ArrayList<Integer>();
 	private final String none = new String("none");
 	private AsyncElection ael;
@@ -230,12 +230,12 @@ public class HAController implements IFloodlightModule, IHAControllerService, IS
 	
 	@Override
 	public boolean send(String to, String msg) {
-		return AsyncElection.network.send(to, msg);
+		return AsyncElection.getNetwork().send(to, msg);
 	}
 	
 	@Override
 	public String recv(String from) {
-		return AsyncElection.network.recv(from);
+		return AsyncElection.getNetwork().recv(from);
 	}
 	
 	/**
@@ -279,8 +279,7 @@ public class HAController implements IFloodlightModule, IHAControllerService, IS
 
 
 	@Override
-	public void keysModified(Iterator<String> keys, org.sdnplatform.sync.IStoreListener.UpdateType type) {
-		
+	public void keysModified(Iterator<String> keys, org.sdnplatform.sync.IStoreListener.UpdateType type) {		
 	}
 
 	

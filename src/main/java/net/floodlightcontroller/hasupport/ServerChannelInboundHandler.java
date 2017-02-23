@@ -13,7 +13,7 @@ import io.netty.util.CharsetUtil;
 
 public class ServerChannelInboundHandler extends SimpleChannelInboundHandler<ByteBuf>{
 	
-	private static Logger logger = LoggerFactory.getLogger(ServerChannelInboundHandler.class);
+	private static final Logger logger = LoggerFactory.getLogger(ServerChannelInboundHandler.class);
 	
 	private final AsyncElection aelection;
 	private final String controllerID;
@@ -22,11 +22,11 @@ public class ServerChannelInboundHandler extends SimpleChannelInboundHandler<Byt
 	 * Possible outgoing server messages, replies.
 	 */
 	
-	private final String ack      = new String ("ACK");
-	private final String no       = new String ("NO");
-	private final String lead     = new String ("LEADOK");
-	private final String dc       = new String ("DONTCARE");
-	private final String none     = new String ("none");
+	private final String ack      = "ACK";
+	private final String no       = "NO";
+	private final String lead     = "LEADOK";
+	private final String dc       = "DONTCARE";
+	private final String none     = "none";
 	
 	private String r1 = new String();
 	private String r2 = new String();
@@ -79,14 +79,14 @@ public class ServerChannelInboundHandler extends SimpleChannelInboundHandler<Byt
 			
 			if(cmp == 'I') {
 				
-				logger.info("[HAServer] Received IWon message: " + mssg.toString());
+				//logger.info("[HAServer] Received IWon message: " + mssg.toString());
 				this.aelection.setTempLeader(r2);
 				this.aelection.setTimeStamp(r3);
 				return ack;
 			
 			} else if (cmp == 'L') {
 				
-				logger.info("[HAServer] Received LEADER message: " + mssg.toString());
+				//logger.info("[HAServer] Received LEADER message: " + mssg.toString());
 				
 				// logger.debug("[HAServer] Get tempLeader: "+this.aelection.gettempLeader());
 				
@@ -100,7 +100,7 @@ public class ServerChannelInboundHandler extends SimpleChannelInboundHandler<Byt
 				
 			} else if (cmp == 'S') {
 				
-				logger.info("[HAServer] Received SETLEAD message: " + mssg.toString());
+				//logger.info("[HAServer] Received SETLEAD message: " + mssg.toString());
 				
 				// logger.info("[HAServer] Get Leader: "+this.aelection.getLeader());
 				
@@ -122,7 +122,7 @@ public class ServerChannelInboundHandler extends SimpleChannelInboundHandler<Byt
 				
 			} else if (cmp == 'Y'){
 				
-				logger.info("[HAServer] Received YOU? message: " + mssg.toString());
+				//logger.info("[HAServer] Received YOU? message: " + mssg.toString());
 				
 				if( this.aelection.getLeader().equals(this.controllerID) ) {
 					return this.controllerID+" "+r2;
@@ -132,7 +132,7 @@ public class ServerChannelInboundHandler extends SimpleChannelInboundHandler<Byt
 				
 			} else if (cmp == 'H') {
 				
-				logger.info("[HAServer] Received HEARTBEAT message: " + mssg.toString());
+				//logger.info("[HAServer] Received HEARTBEAT message: " + mssg.toString());
 				
 				if ( this.aelection.getLeader().equals(r2) ) {
 					return ack+r3;
@@ -162,9 +162,11 @@ public class ServerChannelInboundHandler extends SimpleChannelInboundHandler<Byt
 				return ack;
 			}
 		} catch (StringIndexOutOfBoundsException si) {
+			logger.debug("[HAServer] Possible buffer overflow!");
 			si.printStackTrace();
 			return dc;
 	    } catch (Exception e){
+	    	logger.debug("[HAServer] Error while processing message!");
 			e.printStackTrace();
 			return dc;
 		}

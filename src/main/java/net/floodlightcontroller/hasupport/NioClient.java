@@ -1,6 +1,5 @@
 package net.floodlightcontroller.hasupport;
 
-import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
@@ -40,8 +39,6 @@ public class NioClient {
 		Integer port = Integer.valueOf(host.substring(10));
 		String host2 = host.substring(0, 9);
 		
-		// System.out.println("HostPort:  "+ host2+":"+port);
-		
 		InetSocketAddress inet = new InetSocketAddress(host2,port);
 		try {
 			sc = SocketChannel.open(inet);
@@ -49,13 +46,9 @@ public class NioClient {
 			sc.socket().setTcpNoDelay(false);
 			sc.socket().setSoLinger(false, linger);
 			sc.socket().setReuseAddress(true);
-			sc.socket().setPerformancePreferences(1, 2, 0);
-			
-			
-			
+			sc.socket().setPerformancePreferences(1, 2, 0);		
 			return sc;
-		} catch (IOException e) {
-			//e.printStackTrace();
+		} catch (Exception e) {
 			return null;
 		}
 	}
@@ -64,7 +57,6 @@ public class NioClient {
 		try {
 				return sc;
 		} catch (Exception e) {
-			//e.printStackTrace();
 			return null;
 		}
 	}
@@ -78,7 +70,6 @@ public class NioClient {
 			sc.write( ByteBuffer.wrap(message.getBytes(Charset.forName("UTF-8"))) );
 			return Boolean.TRUE;
 		} catch (Exception e) {
-			//e.printStackTrace();
 			if(sc != null){
 				this.deleteConnection();
 			}
@@ -93,7 +84,6 @@ public class NioClient {
 			sc.read(dst);
 			return new String(dst.array()).trim();
 		} catch (Exception e) {
-			//e.printStackTrace();
 			if(sc != null){
 				this.deleteConnection();
 			}
@@ -109,29 +99,9 @@ public class NioClient {
 			}
 			return Boolean.TRUE;
 		} catch (Exception e) {
-			e.printStackTrace();
 			return Boolean.FALSE;
 		}
 		
 	}
-	
-//	public static void main(String[] args) {
-//		NioClient nc = new NioClient(500,0);
-//		nc.connectClient("127.0.0.1:4242");
-//		//nc.connectClient("127.0.0.1", 9009);
-//		nc.send("127.0.0.1:4242", "I'm a pedantic performer");
-//		//nc.send("127.0.0.1:9009", "I'm a melancholic alcoholic");
-//		System.out.println("This is what servers say these days: "+nc.recv("127.0.0.1:4242"));
-//		//System.out.println("This is what servers say these days: "+nc.recv("127.0.0.1:9009"));
-//		//nc.deleteConnection("127.0.0.1:9009");
-//		
-//		if ( !nc.send("127.0.0.1:9009", "I'm a melancholic alcoholic") ) {
-//			System.out.println("Send was unsuccessful!");
-//		}
-//		
-//		nc.send("127.0.0.1:4242", "I'm a coy comedian");
-//		System.out.println("This is what servers say these days: "+nc.recv("127.0.0.1:4242"));
-//		nc.deleteConnection("127.0.0.1:4242");
-//	}
 
 }

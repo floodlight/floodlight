@@ -42,10 +42,10 @@ import org.slf4j.LoggerFactory;
 
 public class ControllerLogic implements Runnable {
 	
-	private static Logger logger = LoggerFactory.getLogger(ControllerLogic.class);
+	private static final Logger logger = LoggerFactory.getLogger(ControllerLogic.class);
 	
-	private AsyncElection ael;
-	private final String none = new String("none");
+	private final AsyncElection ael;
+	private final String none = "none";
 	private final String cid;
 	private final String controllerID;
 	
@@ -146,7 +146,6 @@ public class ControllerLogic implements Runnable {
 			}
 			
 		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		} catch (Exception e) {
 			e.printStackTrace();

@@ -21,7 +21,9 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import org.python.modules.math;
@@ -56,13 +58,12 @@ import org.slf4j.LoggerFactory;
 
 public class NetworkNode implements NetworkInterface, Runnable {
 	
-	private static Logger logger = LoggerFactory.getLogger(NetworkNode.class);
+	private static final Logger logger = LoggerFactory.getLogger(NetworkNode.class);
 	
 	private NioClient clientSock;
-	
-	public final String controllerID;
-	public final String serverPort;
-	public final String clientPort;
+	private final String controllerID;
+	private final String serverPort;
+	private final String clientPort;
 	
 	/**
 	 * The server list holds the server port IDs of all present 
@@ -71,24 +72,24 @@ public class NetworkNode implements NetworkInterface, Runnable {
 	 * which are to be connected
 	 */
 
-	public LinkedList<String> serverList = new LinkedList<String>();
-	public LinkedList<String> allServerList = new LinkedList<String>();
-	public HashSet<String>    connectSet = new HashSet<String>();
+	private List<String>   serverList    = new LinkedList<String>();
+	private List<String>   allServerList = new LinkedList<String>();
+	private Set<String>    connectSet    = new HashSet<String>();
 	
-	private final String pulse  = new String("PULSE");
-	private final String ack    = new String("ACK");
+	private final String pulse  = "PULSE";
+	private final String ack    = "ACK";
 	
 	/**
 	 * Holds the connection state/ socket object for each of the client
 	 * connections.
 	 */
 	
-	public  HashMap<String, NioClient>  socketDict                   = new HashMap<String, NioClient>();
-	public  HashMap<String, netState>   connectDict                  = new HashMap<String, netState>();
-	public  HashMap<String, String>     controllerIDNetStatic        = new HashMap<String, String>();
-	public  HashMap<String, Integer>    netcontrollerIDStatic        = new HashMap<String, Integer>();
-	public  HashMap<String, NioClient>  allsocketDict                = new HashMap<String, NioClient>();
-	private HashMap<String, NioClient>  delmark                      = new HashMap<String, NioClient>();
+	private  Map<String, NioClient>  socketDict                   = new HashMap<String, NioClient>();
+	private  Map<String, netState>   connectDict                  = new HashMap<String, netState>();
+	private  Map<String, String>     controllerIDNetStatic        = new HashMap<String, String>();
+	private  Map<String, Integer>    netcontrollerIDStatic        = new HashMap<String, Integer>();
+	private  Map<String, NioClient>  allsocketDict                = new HashMap<String, NioClient>();
+	private  Map<String, NioClient>  delmark                      = new HashMap<String, NioClient>();
 	
 	/**
 	 * Standardized sleep times for socket timeouts,
@@ -101,13 +102,11 @@ public class NetworkNode implements NetworkInterface, Runnable {
 	 * to communicate with servers far away, then anything up to 10s would be a good value.
 	 */
 	
-	public final Integer socketTimeout 		      = new Integer(500);
-	public final Integer linger 		          = new Integer(0);
-	public final Integer numberOfPulses		      = new Integer(1);
-	public final Integer pollTime				  = new Integer(1);
-	public Integer ticks						  = new Integer(0);
-	public final Integer maxSockets				  = new Integer(5000);
-	public final Integer chill				      = new Integer(5);
+	private final Integer socketTimeout 		      = new Integer(500);
+	private final Integer linger 		              = new Integer(0);
+	private final Integer numberOfPulses		      = new Integer(1);
+	private final Integer pollTime				      = new Integer(1);
+	private Integer ticks						      = new Integer(0);
 	
 	/**
 	 * Majority is a variable that holds what % of servers need to be
@@ -116,8 +115,8 @@ public class NetworkNode implements NetworkInterface, Runnable {
 	 * we assume that any/every node can fail.
 	 */
 	
-	public final Integer majority;
-	public final Integer totalRounds;
+	private final Integer majority;
+	private final Integer totalRounds;
 	private String response = new String();
 	
 	/**
@@ -138,13 +137,14 @@ public class NetworkNode implements NetworkInterface, Runnable {
 		this.controllerID = controllerID;
 		preStart();
 		this.totalRounds = new Integer(this.connectSet.size());
-		// logger.debug("Total Rounds: "+this.totalRounds.toString());
+		logger.debug("Total Rounds: "+this.totalRounds.toString());
+		
 		if(this.totalRounds >= 2){
 			this.majority = new Integer((int) math.ceil(new Double(0.51 * this.connectSet.size())));
 		} else {
 			this.majority = new Integer(1);
 		}
-		// logger.debug("Other Servers: "+this.connectSet.toString()+"Majority: "+this.majority);
+		logger.debug("Other Servers: "+this.connectSet.toString()+"Majority: "+this.majority+"ClientPort: "+this.clientPort);
 		
 	}
 	
@@ -172,8 +172,8 @@ public class NetworkNode implements NetworkInterface, Runnable {
 				cidIter += 1;
 			}
 			
-			this.serverList.remove(this.clientPort);
-			this.connectSet = new HashSet<String>(this.serverList);
+			this.serverList.remove(this.serverPort);
+			this.setConnectSet(new HashSet<String>(this.serverList));
 			
 			for (String client: this.connectSet) {
 				this.allsocketDict.put(client, new NioClient(socketTimeout,linger));
@@ -183,7 +183,7 @@ public class NetworkNode implements NetworkInterface, Runnable {
 			configFile.close();
 			
 		} catch (FileNotFoundException e){
-			// logger.debug("[NetworkNode] This file was not found! Please place the server config file in the right location.");	
+			logger.debug("[NetworkNode] This file was not found! Please place the server config file in the right location.");	
 		} catch(Exception e){
 			e.printStackTrace();
 		}
@@ -211,7 +211,7 @@ public class NetworkNode implements NetworkInterface, Runnable {
 			if(clientSock.getSocketChannel() != null){
 				clientSock.deleteConnection();
 			}
-			//logger.info("[NetworkNode] Send Failed: "+message+" not sent through port: "+clientPort.toString());
+			logger.debug("[NetworkNode] Send Failed: "+message+" not sent through port: "+clientPort.toString());
 			return Boolean.FALSE;
 		}
 	}
@@ -234,7 +234,7 @@ public class NetworkNode implements NetworkInterface, Runnable {
 			if(clientSock.getSocketChannel() != null){
 				clientSock.deleteConnection();
 			}
-			//logger.info("[NetworkNode] Recv Failed on port: "+receivingPort.toString());
+			logger.debug("[NetworkNode] Recv Failed on port: "+receivingPort.toString());
 			return "";
 		}
 		
@@ -252,10 +252,10 @@ public class NetworkNode implements NetworkInterface, Runnable {
 	
 	public void doConnect(){
 		
-		HashSet<String> diffSet 		= new HashSet<String>();
-		HashSet<String> connectedNodes  = new HashSet<String>();
+		Set<String> diffSet 		= new HashSet<String>();
+		Set<String> connectedNodes  = new HashSet<String>();
 		
-		for(HashMap.Entry<String, NioClient> entry: this.socketDict.entrySet()){
+		for(Map.Entry<String, NioClient> entry: this.socketDict.entrySet()){
 			connectedNodes.add(entry.getKey());
 		}
 		
@@ -267,7 +267,6 @@ public class NetworkNode implements NetworkInterface, Runnable {
 		
 		// Try connecting to all nodes that are in the diffSet and store the 
 		// successful ones in the  socketDict.
-		// byte[] rep;
 		String reply;
 		for (String client: diffSet){
 			reply="";
@@ -276,8 +275,6 @@ public class NetworkNode implements NetworkInterface, Runnable {
 				// logger.info("[Node] Trying to connect to Client: "+client.toString()+"Client Sock: "+clientSock.toString());
 				clientSock.connectClient(client);
 				clientSock.send(pulse);
-				// rep = clientSock.recv(0);
-				// reply = new String(rep,0,rep.length);
 				reply = clientSock.recv();
 				
 				if( reply.equals(ack) ){
@@ -297,14 +294,14 @@ public class NetworkNode implements NetworkInterface, Runnable {
 				}
 				
 			} catch(NullPointerException ne){
-				// logger.info("[Node] ConnectClients: Reply had a null value from: "+client.toString());
+				logger.debug("[NetworkNode] ConnectClients: Reply had a null value from: "+client.toString());
 				//ne.printStackTrace();
 			} catch (Exception e){
 				if(clientSock != null){
 					clientSock.deleteConnection();
 					allsocketDict.put(client, new NioClient(socketTimeout,linger));
 				}
-				// logger.info("[Node] ConnectClients errored out: "+client.toString());
+				logger.debug("[NetworkNode] ConnectClients errored out: "+client.toString());
 				//e.printStackTrace();
 			} 
 			
@@ -330,7 +327,7 @@ public class NetworkNode implements NetworkInterface, Runnable {
 		doConnect();
 		
 		//Delete the already connected connections from the ToConnect Set.
-		for(HashMap.Entry<String, NioClient> entry: this.socketDict.entrySet()){
+		for(Map.Entry<String, NioClient> entry: this.socketDict.entrySet()){
 			if(this.connectSet.contains(entry.getKey())){
 				this.connectSet.remove(entry.getKey());
 				// logger.info("Discarding already connected client: "+entry.getKey().toString());
@@ -354,7 +351,7 @@ public class NetworkNode implements NetworkInterface, Runnable {
 		
 		expireOldConnections();
 		
-		this.connectSet = new HashSet<String> (this.serverList);
+		this.setConnectSet(new HashSet<String> (this.serverList));
 		
 		doConnect();
 		
@@ -378,7 +375,7 @@ public class NetworkNode implements NetworkInterface, Runnable {
 		delmark = new HashMap <String, NioClient>();
 		// byte[] rep = null;
 		String reply;
-		for(HashMap.Entry<String, NioClient> entry: this.socketDict.entrySet()){
+		for(Map.Entry<String, NioClient> entry: this.socketDict.entrySet()){
 			clientSock = entry.getValue();
 			reply = "";
 			try{
@@ -395,11 +392,11 @@ public class NetworkNode implements NetworkInterface, Runnable {
 				}
 				
 			} catch(NullPointerException ne){
-				//logger.debug("[Node] Expire: Reply had a null value: "+entry.getKey().toString());
+				logger.debug("[NetworkNode] Expire: Reply had a null value: "+entry.getKey().toString());
 				delmark.put(entry.getKey(),entry.getValue());
 				//ne.printStackTrace();
 			} catch (Exception e){
-				//logger.debug("[Node] Expire: Exception! : "+entry.getKey().toString());
+				logger.debug("[NetworkNode] Expire: Exception! : "+entry.getKey().toString());
 				delmark.put(entry.getKey(),entry.getValue());
 				//e.printStackTrace();
 			}
@@ -407,14 +404,14 @@ public class NetworkNode implements NetworkInterface, Runnable {
 		
 		//Pop out all the expired connections from socketDict.
 		try{
-			for (HashMap.Entry<String, NioClient> entry: delmark.entrySet()){
+			for (Map.Entry<String, NioClient> entry: delmark.entrySet()){
 				this.socketDict.remove(entry.getKey());
 				if(entry.getValue() != null) {
 					entry.getValue().deleteConnection();
 				}
 			}
 		} catch (Exception e) {
-			//logger.debug("[NetworkNode] Error in expireOldConnections, while deleting socket");
+			logger.debug("[NetworkNode] Error in expireOldConnections, while deleting socket");
 			e.printStackTrace();
 		}
 		
@@ -437,7 +434,7 @@ public class NetworkNode implements NetworkInterface, Runnable {
 	
 	public void cleanState() {
 		
-		this.connectSet = new HashSet<String> (this.serverList);
+		this.setConnectSet(new HashSet<String> (this.serverList));
 		delmark = new HashMap<String, NioClient>();
 		
 		for (String client: this.connectSet) {
@@ -445,7 +442,7 @@ public class NetworkNode implements NetworkInterface, Runnable {
 			this.allsocketDict.put(client, new NioClient(socketTimeout,linger));
 		}
 		
-		for (HashMap.Entry<String, NioClient> entry: this.socketDict.entrySet()){
+		for (Map.Entry<String, NioClient> entry: this.socketDict.entrySet()){
 			try{
 				//logger.info("[Node] Closing connection: "+entry.getKey().toString());
 				entry.getValue().deleteConnection();
@@ -462,11 +459,11 @@ public class NetworkNode implements NetworkInterface, Runnable {
 			}
 		}
 		
-		for (HashMap.Entry<String, NioClient> entry: delmark.entrySet()){
+		for (Map.Entry<String, NioClient> entry: delmark.entrySet()){
 			this.socketDict.remove(entry.getKey());
 		}
 		
-		this.socketDict = new HashMap<String, NioClient>();
+		this.setSocketDict(new HashMap<String, NioClient>());
 		
 		return;
 		
@@ -491,17 +488,16 @@ public class NetworkNode implements NetworkInterface, Runnable {
 				//Flush the context to avoid too many open files
 				// 250 ticks = 4 min 55 seconds
 				if(ticks > 250) {
-					//logger.debug("[NetworkNode] Refreshing state....");
+					logger.debug("[NetworkNode] Refreshing state....");
 					cleanState();
-					//logger.debug("[NetworkNode] Refreshed state....");
+					logger.debug("[NetworkNode] Refreshed state....");
 					ticks = 0;
 				}
 				
 				ticks += 1;
-				//logger.debug("[ZMQ Node] Tick {} ", new Object[] {ticks});
 				TimeUnit.MILLISECONDS.sleep(pollTime);
 			} catch (Exception e){
-				//logger.debug("[NetworkNode] BlockUntil errored out: "+e.toString());
+				logger.debug("[NetworkNode] BlockUntil errored out: "+e.toString());
 				e.printStackTrace();
 			}
 		}
@@ -512,14 +508,10 @@ public class NetworkNode implements NetworkInterface, Runnable {
 
 	@Override
 	public void run() {
-		//ScheduledExecutorService sesNode = Executors.newScheduledThreadPool(10);
 		try{
 			//logger.info("Server List: "+this.serverList.toString());
-			//Thread qd = new Thread(qDevice,"QueueDeviceThread");
-			//qd.start();
-			//qd.join();
 		} catch (Exception e){
-			//logger.debug("[NetworkNode] Queue Device encountered an exception! "+e.toString());
+			logger.debug("[NetworkNode] Interrupted! "+e.toString());
 			e.printStackTrace();
 		}
 	}
@@ -530,7 +522,7 @@ public class NetworkNode implements NetworkInterface, Runnable {
 	}
 	
 	public Map<String, Integer> getnetControllerIDStatic(){
-		return (Map<String, Integer>) Collections.unmodifiableMap(this.netcontrollerIDStatic);
+		return (Map<String, Integer>) Collections.unmodifiableMap(this.getNetcontrollerIDStatic());
 	}
 
 	/**
@@ -547,7 +539,7 @@ public class NetworkNode implements NetworkInterface, Runnable {
 			this.connectDict.put(seten, netState.OFF);
 		}
 		
-		for (HashMap.Entry<String, NioClient> entry: this.socketDict.entrySet()){
+		for (Map.Entry<String, NioClient> entry: this.socketDict.entrySet()){
 			this.connectDict.put(entry.getKey(), netState.ON);
 		}
 		
@@ -557,6 +549,70 @@ public class NetworkNode implements NetworkInterface, Runnable {
 		return;
 		
 		
+	}
+
+	public String getControllerID() {
+		return controllerID;
+	}
+
+	public Integer getTotalRounds() {
+		return totalRounds;
+	}
+
+	public Integer getMajority() {
+		return majority;
+	}
+
+	public Map<String, Integer> getNetcontrollerIDStatic() {
+		return netcontrollerIDStatic;
+	}
+
+	public void setNetcontrollerIDStatic(Map<String, Integer> netcontrollerIDStatic) {
+		this.netcontrollerIDStatic = netcontrollerIDStatic;
+	}
+
+	public Map<String, String> getControllerIDNetStatic() {
+		return controllerIDNetStatic;
+	}
+
+	public void setControllerIDNetStatic(Map<String, String> controllerIDNetStatic) {
+		this.controllerIDNetStatic = controllerIDNetStatic;
+	}
+
+	public Integer getNumberOfPulses() {
+		return numberOfPulses;
+	}
+
+	public Map<String, NioClient> getSocketDict() {
+		return socketDict;
+	}
+
+	public void setSocketDict(Map<String, NioClient> socketDict) {
+		this.socketDict = socketDict;
+	}
+
+	public List<String> getAllServerList() {
+		return allServerList;
+	}
+
+	public void setAllServerList(List<String> allServerList) {
+		this.allServerList = allServerList;
+	}
+
+	public List<String> getServerList() {
+		return serverList;
+	}
+
+	public void setServerList(List<String> serverList) {
+		this.serverList = serverList;
+	}
+
+	public Set<String> getConnectSet() {
+		return connectSet;
+	}
+
+	public void setConnectSet(Set<String> connectSet) {
+		this.connectSet = connectSet;
 	}
 
 }

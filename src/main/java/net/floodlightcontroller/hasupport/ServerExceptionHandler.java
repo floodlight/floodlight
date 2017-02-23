@@ -8,7 +8,7 @@ import org.slf4j.LoggerFactory;
 
 public class ServerExceptionHandler implements ChannelHandler{
 	
-	private static Logger logger = LoggerFactory.getLogger(ServerExceptionHandler.class);
+	private static final Logger logger = LoggerFactory.getLogger(ServerExceptionHandler.class);
 
 	@Override
 	public void exceptionCaught(ChannelHandlerContext ctx, Throwable exp) throws Exception {

@@ -17,7 +17,9 @@ package net.floodlightcontroller.hasupport;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 import java.util.Set;
 import java.util.StringTokenizer;
 import java.util.concurrent.Executors;
@@ -63,51 +65,50 @@ import net.floodlightcontroller.hasupport.NetworkInterface.netState;
 
 public class AsyncElection implements Runnable{
 	
-	private static Logger logger = LoggerFactory.getLogger(AsyncElection.class);
-	public  static NetworkNode network;
+	private  static final Logger logger = LoggerFactory.getLogger(AsyncElection.class);
+	private  static NetworkNode network;
 	
 	protected static IHAWorkerService haworker;
 	
 	private final String serverPort;
-	ArrayList<Thread> serverThreads = new ArrayList<Thread>();
-	private final ArrayList<Integer> electionPriorities = new ArrayList<Integer>();
-	private final LinkedBlockingQueue<String> publishQueue = new LinkedBlockingQueue<String>();
-	private final LinkedBlockingQueue<String> subscribeQueue = new LinkedBlockingQueue<String>();
+	private final List<Integer> electionPriorities = new ArrayList<Integer>();
+	private final Queue<String> publishQueue = new LinkedBlockingQueue<String>();
+	private final Queue<String> subscribeQueue = new LinkedBlockingQueue<String>();
 	private final String controllerID;
 	
 	public AsyncElection(String sp, String cid) {
 		this.serverPort    = sp;
-		this.controllerID = cid;
-		this.setlead       = new String("SETLEAD "   + this.controllerID);
-		this.leadermsg     = new String("LEADER "    + this.controllerID);
-		this.iwon 		   = new String("IWON "      + this.controllerID);
-		this.heartbeat     = new String("HEARTBEAT " + this.controllerID);
+		this.controllerID  = cid;
+		this.setlead       = "SETLEAD "   + this.controllerID;
+		this.leadermsg     = "LEADER "    + this.controllerID;
+		this.iwon 		   = "IWON "      + this.controllerID;
+		this.heartbeat     = "HEARTBEAT " + this.controllerID;
 	}
 	
 	public AsyncElection(String serverPort, String clientPort, String controllerID, IHAWorkerService haw){
-		AsyncElection.network       = new NetworkNode(serverPort,clientPort,controllerID);
+		AsyncElection.setNetwork(new NetworkNode(serverPort,clientPort,controllerID));
 		this.serverPort    = serverPort;
 		this.controllerID  = controllerID;
-		this.setlead       = new String("SETLEAD "   + this.controllerID);
-		this.leadermsg     = new String("LEADER "    + this.controllerID);
-		this.iwon 		   = new String("IWON "      + this.controllerID);
-		this.heartbeat     = new String("HEARTBEAT " + this.controllerID);
+		this.setlead       = "SETLEAD "   + this.controllerID;
+		this.leadermsg     = "LEADER "    + this.controllerID;
+		this.iwon 		   = "IWON "      + this.controllerID;
+		this.heartbeat     = "HEARTBEAT " + this.controllerID;
 		AsyncElection.haworker      = haw;
 	}
 	
 	/**
 	 * Indicates who the current leader of the entire system is.
 	 */
-	private String leader             = new String("none");
-	private String tempLeader         = new String("none");
-	private final String none         = new String("none");
-	private final String ack 		  = new String("ACK");
-	private final String publish 	  = new String("BPUBLISH");
-	private final String subscribe 	  = new String("KSUBSCRIBE");
-	private final String pulse        = new String("PULSE");
-	private final String you		  = new String("YOU?");
-	private final String no			  = new String("NO");
-	private final String leadok       = new String("LEADOK");
+	private String leader             = "none";
+	private String tempLeader         = "none";
+	private final String none         = "none";
+	private final String ack 		  = "ACK";
+	private final String publish 	  = "BPUBLISH";
+	private final String subscribe 	  = "KSUBSCRIBE";
+	private final String pulse        = "PULSE";
+	private final String you		  = "YOU?";
+	private final String no			  = "NO";
+	private final String leadok       = "LEADOK";
 	private final String iwon;
 	private final String setlead;
 	private final String leadermsg;
@@ -210,7 +211,7 @@ public class AsyncElection implements Runnable{
 	
 	public void setElectionPriorities(ArrayList<Integer> priorities) {
 		synchronized (electionPriorities) {
-			if( (priorities.size()) > 0 && (priorities.size() == network.totalRounds+1) ) {
+			if( (priorities.size()) > 0 && (priorities.size() == network.getTotalRounds()+1) ) {
 				electionPriorities.addAll(priorities);
 			} else {
 				logger.info("[AsyncElection] Priorities are not set.");
@@ -329,7 +330,7 @@ public class AsyncElection implements Runnable{
 				}
 			}
 			
-			if(noSet.size() >= network.majority){
+			if(noSet.size() >= network.getMajority()){
 				setLeader(none);
 				this.currentState = ElectionState.ELECT;
 			}
@@ -402,9 +403,9 @@ public class AsyncElection implements Runnable{
 				
 			}
 			
-			if( acceptors.size() >= network.majority ){
+			if( acceptors.size() >= network.getMajority() ){
 				// logger.info("[Election sendLeaderMsg] Accepted leader: "+this.controllerID+" Majority: "+network.majority+"Acceptors: "+acceptors.toString());
-				setLeader(network.controllerID);
+				setLeader(network.getControllerID());
 				this.currentState = ElectionState.COORDINATE;
 			} else {
 				// logger.info("[Election sendLeaderMsg] Did not accept leader: "+this.controllerID+" Majority: "+network.majority+"Acceptors: "+acceptors.toString());
@@ -449,7 +450,7 @@ public class AsyncElection implements Runnable{
 				}
 			}
 			
-			if(noSet.size() >= network.majority){
+			if(noSet.size() >= network.getMajority()){
 				setLeader(none);
 			}
 			
@@ -526,7 +527,7 @@ public class AsyncElection implements Runnable{
 				// logger.info("[Election checkForLeader] Current Leader is none");
 			} else if ( leaderSet.size() < 1 ){
 				setLeader(none);
-				logger.info("[Election checkForLeader] Current Leader is none "+ this.leader.toString() );
+				//logger.info("[Election checkForLeader] Current Leader is none "+ this.leader.toString() );
 			}
 			
 			return;
@@ -551,11 +552,11 @@ public class AsyncElection implements Runnable{
 		ArrayList<Integer> nodes = new ArrayList<Integer>();
 		Integer maxNode = new Integer(0);
 		
-		if( (electionPriorities.size() > 0) && (electionPriorities.size() == network.totalRounds+1) ) { 
+		if( (electionPriorities.size() > 0) && (electionPriorities.size() == network.getTotalRounds()+1) ) { 
 			nodes.addAll(electionPriorities);
 		} else {
 			// Generate list of total possible CIDs.
-			for (Integer i = (network.totalRounds+1) ; i > 0 ; i--){
+			for (Integer i = (network.getTotalRounds()+1) ; i > 0 ; i--){
 				nodes.add(i);
 			}
 		}
@@ -569,7 +570,7 @@ public class AsyncElection implements Runnable{
 		// Convert active controller ports into a Set of their IDs.
 		for (String port: connectDictKeys) {
 			if ( this.connectionDict.get(port) != null  && this.connectionDict.get(port).equals(netState.ON) ) {
-				activeCIDs.add(network.netcontrollerIDStatic.get(port));
+				activeCIDs.add(network.getNetcontrollerIDStatic().get(port));
 			}
 		}
 		
@@ -592,12 +593,12 @@ public class AsyncElection implements Runnable{
 			return;
 		}
 		
-		String maxNodePort = network.controllerIDNetStatic.get(maxNode.toString()).toString();
+		String maxNodePort = network.getControllerIDNetStatic().get(maxNode.toString()).toString();
 		
 		// Check if Max Node is alive, and set it as leader if it is.
 		try{
 			
-			for(int i=0; i < network.numberOfPulses; i++){
+			for(int i=0; i < network.getNumberOfPulses(); i++){
 				
 				network.send(maxNodePort, pulse);
 				String reply = network.recv(maxNodePort);
@@ -627,7 +628,7 @@ public class AsyncElection implements Runnable{
 		
 		
 		// Ensure that majority are still connected.
-		if( network.socketDict.size() < network.majority ){
+		if( network.getSocketDict().size() < network.getMajority() ){
 			return;
 		}
 		
@@ -660,12 +661,12 @@ public class AsyncElection implements Runnable{
 		// Actual election logic.
 		this.electionLogic();
 		
-		if( this.leader.equals(network.controllerID) ){
+		if( this.leader.equals(network.getControllerID()) ){
 			// logger.info("[Election] I WON THE ELECTION!");
 			timestamp =  String.valueOf(System.nanoTime());
 			this.sendIWon();
 			this.sendLeaderMsg();
-			if(this.leader.equals(network.controllerID)) {
+			if(this.leader.equals(network.getControllerID())) {
 				this.setAsLeader();
 			}
 		} else if ( this.leader.equals(none) ){
@@ -705,7 +706,7 @@ public class AsyncElection implements Runnable{
 					// logger.info("[ELECT] =======SIZES+++++ {} {}", new Object[] {network.socketDict.size(), network.majority});
 					
 					// Ensure that a majority of nodes have connected, otherwise demote state.
-					if( network.socketDict.size() < network.majority ){
+					if( network.getSocketDict().size() < network.getMajority() ){
 						this.currentState = ElectionState.CONNECT;
 						break;
 					}
@@ -777,7 +778,7 @@ public class AsyncElection implements Runnable{
 					timestamp =  String.valueOf(System.nanoTime());
 					this.sendIWon();
 					this.sendLeaderMsg();
-					if(this.leader.equals(network.controllerID)) {
+					if(this.leader.equals(network.getControllerID())) {
 						this.setAsLeader();
 					}
 					
@@ -827,10 +828,10 @@ public class AsyncElection implements Runnable{
 			Integer noServers = new Integer(0);
 			HAServer serverTh = new HAServer(this.serverPort, this, this.controllerID);
 			
-			if (network.totalRounds <= 1){
+			if (network.getTotalRounds() <= 1){
 				noServers = 1;
 			} else {
-				noServers = (int) Math.ceil(Math.log10(network.totalRounds));
+				noServers = (int) Math.ceil(Math.log10(network.getTotalRounds()));
 			}
 			
 			if(noServers <= 1){
@@ -852,6 +853,14 @@ public class AsyncElection implements Runnable{
 			e.printStackTrace();
 			sesElection.shutdownNow();
 		}
+	}
+
+	public static NetworkNode getNetwork() {
+		return network;
+	}
+
+	public static void setNetwork(NetworkNode network) {
+		AsyncElection.network = network;
 	}
 
 }

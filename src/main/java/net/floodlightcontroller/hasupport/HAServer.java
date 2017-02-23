@@ -79,8 +79,6 @@ public class HAServer implements Runnable{
 			EventLoopGroup serverbossPool = new NioEventLoopGroup(1);
 			EventLoopGroup serverworkerPool = new NioEventLoopGroup(16);
 			
-			logger.info("Last four:"+lastfour.toString());
-			
 			ServerBootstrap sb = new ServerBootstrap();
 			sb.group(serverbossPool,serverworkerPool)
 	            .channel(NioServerSocketChannel.class)
@@ -92,7 +90,7 @@ public class HAServer implements Runnable{
 				logger.info("Starting HAServer...");
 				ls.closeFuture().sync();
 			} catch (InterruptedException e) {
-				e.printStackTrace();
+				// e.printStackTrace();
 			} finally {
 				serverbossPool.shutdownGracefully();
 				serverworkerPool.shutdownGracefully();
