@@ -40,6 +40,7 @@ public class NetworkNodeTest {
 			aelt.setDaemon(true);
 			ts.start();
 			aelt.start();
+			Thread.sleep(500);
 		} catch (Exception e) {
 		}
 	}
