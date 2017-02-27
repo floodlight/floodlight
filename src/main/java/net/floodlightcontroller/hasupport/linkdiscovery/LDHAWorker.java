@@ -59,7 +59,7 @@ import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryListener;
  */
 
 public class LDHAWorker implements IHAWorker, ILinkDiscoveryListener  {
-	protected static Logger logger = LoggerFactory.getLogger(LDHAWorker.class);
+	private static final Logger logger = LoggerFactory.getLogger(LDHAWorker.class);
 
 	protected static IStoreClient<String, String> storeLD;
 	public static String controllerID;
@@ -87,7 +87,9 @@ public class LDHAWorker implements IHAWorker, ILinkDiscoveryListener  {
 		LDHAUtils parser = new LDHAUtils();
 		
 		String preprocess = new String (synLDUList.toString());
-		// Flatten the updates and strip off leading [
+		/**
+		 * Flatten the updates and strip off leading [
+		 */
 		
 		if(preprocess.startsWith("[")){
 			preprocess = preprocess.substring(1, preprocess.length());
@@ -132,25 +134,22 @@ public class LDHAWorker implements IHAWorker, ILinkDiscoveryListener  {
 	 * @return boolean value indicating success or failure
 	 */
 
-	public boolean subscribeHook(String controllerID) {
+	public List<String> subscribeHook(String controllerID) {
+		List<String> updates = new ArrayList<String>();
 		try {
-			//List<String> updates = new ArrayList<String>();
 			myLDFilterQueue.subscribe(controllerID);
 			myLDFilterQueue.dequeueReverse();
-//			logger.info("[Subscribe] LDUpdates...");
-//			for (String update: updates) {
-//				logger.info("Update: {}", new Object[]{update.toString()});
-//			}
+			// logger.info("[Subscribe] LDUpdates...");
+			return updates;
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-		return true;
+		return updates;
 	}
 
 	@Override
 	public void linkDiscoveryUpdate(List<LDUpdate> updateList) {
-		synchronized(synLDUList){
-			//synLDUList.clear();
+		synchronized(synLDUList){	
 			for (LDUpdate update: updateList){	
 				synLDUList.add(update.toString());
 			}
