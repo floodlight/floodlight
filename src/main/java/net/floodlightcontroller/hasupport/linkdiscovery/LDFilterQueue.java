@@ -17,6 +17,7 @@ package net.floodlightcontroller.hasupport.linkdiscovery;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.LinkedBlockingQueue;
 
 import org.sdnplatform.sync.IStoreClient;
@@ -44,7 +45,7 @@ public class LDFilterQueue implements IFilterQueue {
 	private static LDSyncAdapter syncAdapter;
 
 	public static LinkedBlockingQueue<String> filterQueue = new LinkedBlockingQueue<>();
-	public static HashMap<String, String> myMap = new HashMap<>();
+	public static Map<String, String> myMap = new HashMap<>();
 	public static LinkedBlockingQueue<String> reverseFilterQueue = new LinkedBlockingQueue<>();
 	private final Integer mapCapacity = new Integer(1073741000);
 
@@ -59,7 +60,7 @@ public class LDFilterQueue implements IFilterQueue {
 	/**
 	 * This method pushes the LDupdates from the filter queue into the
 	 * syncAdapter
-	 * 
+	 *
 	 * @return boolean value indicating success or failure
 	 */
 
@@ -125,7 +126,7 @@ public class LDFilterQueue implements IFilterQueue {
 	 * This method hashes the LDupdates received in form of JSON string using
 	 * md5 hashing and store them in the filter queue and in a map if not
 	 * already present.
-	 * 
+	 *
 	 * @return boolean value indicating success or failure
 	 */
 
@@ -159,7 +160,7 @@ public class LDFilterQueue implements IFilterQueue {
 	/**
 	 * This method is called by the syncDB in order to enqueue the updates that
 	 * it received from the syncDB.
-	 * 
+	 *
 	 * @return boolean value indicating success.
 	 */
 

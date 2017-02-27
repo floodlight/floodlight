@@ -61,7 +61,7 @@ public interface NetworkInterface {
 	 *
 	 * connectDict : HashMap which holds the <portnumber, state> of all the
 	 * nodes.
-	 * 
+	 *
 	 * @return : Updated unmodifiable copy of the connectDict
 	 */
 
@@ -74,7 +74,7 @@ public interface NetworkInterface {
 	 *
 	 * connectSet : A set that holds a list of the configured nodes from the
 	 * server configuration
-	 * 
+	 *
 	 * @return : An Unmodifiable copy of the HashMap which holds the
 	 *         <portnumber, state> of all the nodes. (connectDict)
 	 */
@@ -87,7 +87,7 @@ public interface NetworkInterface {
 	 *
 	 * connectDict : HashMap which holds the <portnumber, state> of all the
 	 * nodes.
-	 * 
+	 *
 	 * @return : Updated unmodifiable copy of the connectDict
 	 */
 
@@ -95,7 +95,7 @@ public interface NetworkInterface {
 
 	/**
 	 * Get an unmodifiable version of the connectDict.
-	 * 
+	 *
 	 * @return : Updated unmodifiable copy of the connectDict
 	 */
 

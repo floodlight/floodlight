@@ -17,6 +17,7 @@ package net.floodlightcontroller.hasupport.linkdiscovery;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.sdnplatform.sync.IStoreClient;
 import org.sdnplatform.sync.error.SyncException;
@@ -115,8 +116,8 @@ public class LDSyncAdapter implements ISyncAdapter {
 		ObjectMapper myMapper = new ObjectMapper();
 		TypeReference<HashMap<String, String>> typeRef = new TypeReference<HashMap<String, String>>() {
 		};
-		HashMap<String, String> newUpdateMap = new HashMap<>();
-		HashMap<String, String> updateMap = new HashMap<>();
+		Map<String, String> newUpdateMap = new HashMap<>();
+		Map<String, String> updateMap = new HashMap<>();
 		String cmd5Hash = new String();
 		LDHAUtils ldhautils = new LDHAUtils();
 

@@ -18,7 +18,7 @@ import java.util.List;
 
 /**
  * ISyncAdapter
- * 
+ *
  * This interface specifies the methods used to push to and retrieve updates
  * from the syncDB. packJSON is called by FilterQueue's dequeueForward method
  * and unpackJSON is called by FilterQueue's subscribe method. unpackJSON

@@ -109,7 +109,7 @@ public class LDHAUtils {
 	 */
 
 	public String getCMD5Hash(String update, Map<String, String> newUpdateMap) {
-		ArrayList<String> cmd5fields = new ArrayList<>();
+		List<String> cmd5fields = new ArrayList<>();
 		String cmd5 = new String();
 		/**
 		 * check map for low freq updates
@@ -175,7 +175,9 @@ public class LDHAUtils {
 		try {
 			while (!chunk.equals("]]")) {
 
-				// pre
+				/**
+				 * pre
+				 */
 				if (chunk.startsWith("LDUpdate [")) {
 					chunk = chunk.substring(10, chunk.length());
 				}
@@ -344,7 +346,6 @@ public class LDHAUtils {
 				try {
 					jsonInString.add(mapper.writeValueAsString(newJson));
 				} catch (JsonProcessingException e) {
-					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
 

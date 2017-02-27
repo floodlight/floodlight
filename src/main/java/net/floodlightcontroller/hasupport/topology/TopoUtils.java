@@ -108,7 +108,7 @@ public class TopoUtils {
 	 */
 
 	public String getCMD5Hash(String update, Map<String, String> newUpdateMap) {
-		ArrayList<String> cmd5fields = new ArrayList<>();
+		List<String> cmd5fields = new ArrayList<>();
 		String cmd5 = new String();
 		/**
 		 * check map for low freq updates

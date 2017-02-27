@@ -48,7 +48,7 @@ public interface IHAControllerService extends IFloodlightService {
 	/**
 	 * Gets the current network-wide leader, returns "none" if no leader is
 	 * currently available.
-	 * 
+	 *
 	 * @return Current network-wide leader.
 	 */
 	public String getLeaderNonBlocking();
@@ -57,7 +57,7 @@ public interface IHAControllerService extends IFloodlightService {
 	 * Gets the current network-wide leader, if available, it returns
 	 * immidiately, otherwise it polls every 25ms for 60s to try and get the
 	 * leader. If unsuccessful, returns "none".
-	 * 
+	 *
 	 * @return Current network-wide leader.
 	 */
 
@@ -109,7 +109,7 @@ public interface IHAControllerService extends IFloodlightService {
 	 * network to be picked as the leader. Pass an ordered ArrayList of integers
 	 * to this method, consisting of nodeids mentioned in the properties files,
 	 * in the desired order.
-	 * 
+	 *
 	 * @param priorities
 	 *            : Ordered ArrayList of nodeids
 	 */

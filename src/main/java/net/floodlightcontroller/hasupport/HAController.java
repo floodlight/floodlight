@@ -18,6 +18,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Executors;
@@ -80,8 +81,8 @@ public class HAController implements IFloodlightModule, IHAControllerService, IS
 	protected static TopoHAWorker topohaworker;
 
 	private static Map<String, String> config = new HashMap<>();
-	private static HashMap<String, IHAWorker> workers = new HashMap<>();
-	private final ArrayList<Integer> priorities = new ArrayList<>();
+	private static Map<String, IHAWorker> workers = new HashMap<>();
+	private final List<Integer> priorities = new ArrayList<>();
 	private final String none = new String("none");
 	private AsyncElection ael;
 	private ControllerLogic cLogic;
@@ -248,7 +249,7 @@ public class HAController implements IFloodlightModule, IHAControllerService, IS
 		 */
 		ScheduledExecutorService sesController = Executors.newScheduledThreadPool(10);
 		ael = new AsyncElection(config.get("serverPort"), config.get("clientPort"), config.get("nodeid"), haworker);
-		ael.setElectionPriorities(priorities);
+		ael.setElectionPriorities((ArrayList<Integer>) priorities);
 		cLogic = new ControllerLogic(ael, config.get("nodeid"));
 		try {
 			/**

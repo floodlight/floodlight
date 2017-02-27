@@ -14,6 +14,8 @@
 
 package net.floodlightcontroller.hasupport;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
@@ -50,6 +52,7 @@ public class ControllerLogic implements Runnable {
 	private final Integer pollTime = new Integer(5);
 	private Integer ticks = new Integer(0);
 	private boolean timeoutFlag;
+	private Map<String,String> leaderChange = new HashMap<>();
 
 	public ControllerLogic(AsyncElection ae, String cID) {
 		ael = ae;
@@ -62,12 +65,16 @@ public class ControllerLogic implements Runnable {
 		logger.info("[ControllerLogic] Running...");
 		try {
 			String leader;
+			leaderChange.put("leader",none);
 			while (!Thread.currentThread().isInterrupted()) {
 
 				leader = ael.getLeader();
 
-				if (leader.equals(none)) {
-					logger.info("[ControllerLogic] FAILED Getting Leader: " + ael.getLeader().toString());
+				if (!leader.equals(none)) {
+					if(!leaderChange.get("leader").equals(leader)){
+						logger.info("[ControllerLogic] Getting Leader: " + ael.getLeader().toString());
+						leaderChange.put("leader",leader);
+					}
 				}
 
 				/**

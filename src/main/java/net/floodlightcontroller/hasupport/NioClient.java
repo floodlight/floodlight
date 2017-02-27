@@ -1,3 +1,17 @@
+/**
+ *    Licensed under the Apache License, Version 2.0 (the "License"); you may
+ *    not use this file except in compliance with the License. You may obtain
+ *    a copy of the License at
+ *
+ *         http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *    Unless required by applicable law or agreed to in writing, software
+ *    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ *    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ *    License for the specific language governing permissions and limitations
+ *    under the License.
+ **/
+
 package net.floodlightcontroller.hasupport;
 
 import java.net.InetSocketAddress;
@@ -5,21 +19,14 @@ import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 import java.nio.charset.Charset;
 
+/**
+ * Doesn't hold socket objects, however, holds all general options, configs in
+ * order to create the sockets.
+ */
+
 public class NioClient {
 
 	private static final int READ_BUF_SIZE = 1024;
-	/**
-	 * Doesn't hold socket objects, however, holds all general options, configs
-	 * in order to create the sockets.
-	 *
-	 * Now we are keeping all these general methods in this particular object,
-	 * why?, so that the underlying socket can be replaced without much hassle.
-	 * The right thing was done when we made Network Interface, so that we now
-	 * don't have to touch anything in the election algos. However we should
-	 * have abstracted the socket from the ConnectionManager, but we thought
-	 * that would be too many layers
-	 */
-
 	private Integer sendTO;
 	private Integer linger;
 	private SocketChannel sc;

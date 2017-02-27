@@ -31,8 +31,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * The Network Node (Connection Manager) Implements the NetworkInterface, which
- * dictates the topology of how the controllers are communicating with each
+ * The Network Node (Connection Manager) 
+ * Implements the NetworkInterface, which dictates 
+ * the topology of how the controllers are communicating with each
  * other in order to perform role based functions, after electing a leader.
  * Currently, the topology is set to a mesh topology, however this can be
  * changed completely if needed, as long as the functions from NetworkInterface
@@ -119,7 +120,7 @@ public class NetworkNode implements NetworkInterface, Runnable {
 	/**
 	 * Constructor needs both the backend and frontend ports and the serverList
 	 * file which specifies a port number for each connected client.
-	 * 
+	 *
 	 * @param serverPort
 	 * @param clientPort
 	 * @param controllerID
@@ -554,7 +555,7 @@ public class NetworkNode implements NetworkInterface, Runnable {
 
 	/**
 	 * Sends a message to a specified client IP:port, if possible.
-	 * 
+	 *
 	 * @return boolean value that indicates success or failure.
 	 */
 

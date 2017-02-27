@@ -17,6 +17,7 @@ package net.floodlightcontroller.hasupport.topology;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.LinkedBlockingQueue;
 
 import org.sdnplatform.sync.IStoreClient;
@@ -44,7 +45,7 @@ public class TopoFilterQueue implements IFilterQueue {
 	private static TopoSyncAdapter syncAdapter;
 	public static LinkedBlockingQueue<String> filterQueue = new LinkedBlockingQueue<>();
 
-	public static HashMap<String, String> myMap = new HashMap<>();
+	public static Map<String, String> myMap = new HashMap<>();
 	public static LinkedBlockingQueue<String> reverseFilterQueue = new LinkedBlockingQueue<>();
 	protected String controllerID;
 	private final Integer mapCapacity = new Integer(1073741000);
