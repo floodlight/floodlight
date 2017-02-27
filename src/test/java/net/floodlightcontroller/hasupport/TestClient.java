@@ -18,26 +18,24 @@ import org.junit.Ignore;
 
 @Ignore
 public class TestClient {
-	
-	private String mockClientPort = new String();
-	private NioClient nclient = new NioClient(500,0);
 
-	public TestClient(String clientPort){
-		this.mockClientPort = clientPort;
-		System.out.println("Starting client...");
+	private String mockClientPort = new String();
+	private NioClient nclient = new NioClient(500, 0);
+
+	public TestClient(String clientPort) {
+		mockClientPort = clientPort;
 	}
 
-	public String send(String message){
-		try{
+	public String send(String message) {
+		try {
 			nclient.connectClient(mockClientPort);
 			nclient.send(message);
 			String resp = nclient.recv();
 			resp.trim();
 			nclient.deleteConnection();
 			return resp;
-		} catch (Exception e){
-			System.out.println(e);
-			nclient.deleteConnection();	
+		} catch (Exception e) {
+			nclient.deleteConnection();
 		}
 		return new String("none");
 	}

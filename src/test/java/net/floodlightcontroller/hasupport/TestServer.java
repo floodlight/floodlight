@@ -18,25 +18,23 @@ import org.junit.Ignore;
 
 @Ignore
 public class TestServer implements Runnable {
-	
+
 	private final AsyncElection aelection;
 	private final String controllerID = "1";
 	private final HAServer haserver;
 	private final String mockServerPort;
-	
-	public TestServer(String serverPort, AsyncElection ae){
-		this.mockServerPort = serverPort;
-		this.aelection      = ae;
-		this.haserver       = new HAServer(mockServerPort,aelection,controllerID);
-		
-		System.out.println("Starting HAServer...");
+
+	public TestServer(String serverPort, AsyncElection ae) {
+		mockServerPort = serverPort;
+		aelection = ae;
+		haserver = new HAServer(mockServerPort, aelection, controllerID);
 	}
-	
+
 	@Override
 	public void run() {
-		try{
-			this.haserver.run();
-		} catch(Exception e){
+		try {
+			haserver.run();
+		} catch (Exception e) {
 		}
 	}
 

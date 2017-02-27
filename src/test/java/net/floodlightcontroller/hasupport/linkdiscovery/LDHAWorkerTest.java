@@ -1,14 +1,29 @@
+/**
+ *    Licensed under the Apache License, Version 2.0 (the "License"); you may
+ *    not use this file except in compliance with the License. You may obtain
+ *    a copy of the License at
+ *
+ *         http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *    Unless required by applicable law or agreed to in writing, software
+ *    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ *    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ *    License for the specific language governing permissions and limitations
+ *    under the License.
+ **/
+
 package net.floodlightcontroller.hasupport.linkdiscovery;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
-
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -23,16 +38,16 @@ import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class LDHAWorkerTest {
-	
-	protected static Logger logger = LoggerFactory.getLogger(LDHAWorkerTest.class);
-	protected static IStoreClient<String,String> storeLD;
+
+	private static final Logger logger = LoggerFactory.getLogger(LDHAWorkerTest.class);
+	protected static IStoreClient<String, String> storeLD;
 	protected static String controllerID = "none";
 	private static final LDHAWorker ldhaworker = new LDHAWorker(storeLD, controllerID);
 	private static final LDFilterQueue filterQ = new LDFilterQueue(storeLD, controllerID);
-	
+
 	@BeforeClass
 	public static void setUp() throws Exception {
-		
+
 	}
 
 	@AfterClass
@@ -41,285 +56,254 @@ public class LDHAWorkerTest {
 
 	@Test
 	public void testassembleUpdate() {
-		// TODO Auto-generated method stub
-		TypeReference<HashMap<String, String>> typeRef = new TypeReference<HashMap<String,String>>() {};
-		Set<String> resultSet = new HashSet<String>();
+		TypeReference<HashMap<String, String>> typeRef = new TypeReference<HashMap<String, String>>() {
+		};
+		Set<String> resultSet = new HashSet<>();
 		resultSet.add("operation");
 		resultSet.add("src");
-		List<String> jsonInString = new LinkedList<String>();
-		HashMap<String, String> jsonMap = new HashMap<String, String>();
-	    ObjectMapper myObj = new ObjectMapper();
+		List<String> jsonInString = new LinkedList<>();
+		Map<String, String> jsonMap = new HashMap<>();
+		ObjectMapper myObj = new ObjectMapper();
 		LDHAUtils parser = new LDHAUtils();
-		
-		String preprocess = new String ("[LDUpdate [operation=Switch Removed, src=00:00:00:00:00:00:00:05]]");
-		// Flatten the updates and strip off leading [
-		
-		if(preprocess.startsWith("[")){
+
+		String preprocess = new String("[LDUpdate [operation=Switch Removed, src=00:00:00:00:00:00:00:05]]");
+
+		if (preprocess.startsWith("[")) {
 			preprocess = preprocess.substring(1, preprocess.length());
 		}
-		
+
 		String chunk = new String(preprocess.toString());
-		
-		if(! preprocess.startsWith("]") ) {
+
+		if (!preprocess.startsWith("]")) {
 			jsonInString = parser.parseChunk(chunk);
 			try {
 				jsonMap = myObj.readValue(jsonInString.get(0).toString(), typeRef);
 			} catch (JsonParseException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			} catch (JsonMappingException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			} catch (IOException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 		}
-		
-		assertEquals(resultSet,jsonMap.keySet());
-		logger.info("[Test1] JSON String: {} {}", new Object[] {jsonMap.keySet().toString(), resultSet.toString()});
-		
-		jsonInString = new LinkedList<String>();
-		jsonMap = new HashMap<String,String>();
-	    resultSet = new HashSet<String>();
+
+		assertEquals(resultSet, jsonMap.keySet());
+		logger.info("[Test1] JSON String: {} {}", new Object[] { jsonMap.keySet().toString(), resultSet.toString() });
+
+		jsonInString = new LinkedList<>();
+		jsonMap = new HashMap<>();
+		resultSet = new HashSet<>();
 		resultSet.add("operation");
-		
-		preprocess = new String ("[LDUpdate [operation=Switch Removed src=00:00:00:00:00:00:00:05]]");
-		// Flatten the updates and strip off leading [
-		
-		if(preprocess.startsWith("[")){
+
+		preprocess = new String("[LDUpdate [operation=Switch Removed src=00:00:00:00:00:00:00:05]]");
+
+		if (preprocess.startsWith("[")) {
 			preprocess = preprocess.substring(1, preprocess.length());
 		}
-		
+
 		chunk = new String(preprocess.toString());
-		
-		if(! preprocess.startsWith("]") ) {
+
+		if (!preprocess.startsWith("]")) {
 			jsonInString = parser.parseChunk(chunk);
 			try {
 				jsonMap = myObj.readValue(jsonInString.get(0).toString(), typeRef);
 			} catch (JsonParseException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			} catch (JsonMappingException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			} catch (IOException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 		}
-		
-		assertEquals(resultSet,jsonMap.keySet());
-		logger.info("[Test2] JSON String: {} {}", new Object[] {jsonMap.keySet().toString(), resultSet.toString()});
-		
-		jsonInString = new LinkedList<String>();
-		jsonMap = new HashMap<String,String>();
-		
-		preprocess = new String ("[]]");
-		// Flatten the updates and strip off leading [
-		
-		if(preprocess.startsWith("[")){
+
+		assertEquals(resultSet, jsonMap.keySet());
+		logger.info("[Test2] JSON String: {} {}", new Object[] { jsonMap.keySet().toString(), resultSet.toString() });
+
+		jsonInString = new LinkedList<>();
+		jsonMap = new HashMap<>();
+
+		preprocess = new String("[]]");
+
+		if (preprocess.startsWith("[")) {
 			preprocess = preprocess.substring(1, preprocess.length());
 		}
-		
+
 		chunk = new String(preprocess.toString());
-		
-		if(! preprocess.startsWith("]") ) {
+
+		if (!preprocess.startsWith("]")) {
 			jsonInString = parser.parseChunk(chunk);
 			try {
 				jsonMap = myObj.readValue(jsonInString.get(0).toString(), typeRef);
 				fail("Equals");
 			} catch (JsonParseException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			} catch (JsonMappingException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			} catch (IOException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 		} else {
 			logger.info("[Test3] Success, did not decode invalid input");
 		}
-		
-		
-		jsonInString = new LinkedList<String>();
-		jsonMap = new HashMap<String,String>();
-	    resultSet = new HashSet<String>();
+
+		jsonInString = new LinkedList<>();
+		jsonMap = new HashMap<>();
+		resultSet = new HashSet<>();
 		resultSet.add("operation");
 		resultSet.add("src");
-		
-		preprocess = new String ("[asda]");
-		// Flatten the updates and strip off leading [
-		
-		if(preprocess.startsWith("[")){
+
+		preprocess = new String("[asda]");
+
+		if (preprocess.startsWith("[")) {
 			preprocess = preprocess.substring(1, preprocess.length());
 		}
-		
-	   chunk = new String(preprocess.toString());
-		
+
+		chunk = new String(preprocess.toString());
+
 		try {
-			if(! preprocess.startsWith("]") ) {
+			if (!preprocess.startsWith("]")) {
 				jsonInString = parser.parseChunk(chunk);
 				jsonMap = myObj.readValue(jsonInString.get(0).toString(), typeRef);
 			}
 		} catch (JsonParseException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		} catch (JsonMappingException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
-		} catch (IndexOutOfBoundsException e){
+		} catch (IndexOutOfBoundsException e) {
 			logger.info("[Test4] Successfully caught IndexOutOfBounds Exception");
 		}
-		
-		if(! jsonMap.keySet().isEmpty() ) {
+
+		if (!jsonMap.keySet().isEmpty()) {
 			fail("Result should be empty");
 		}
-		
-		jsonInString = new LinkedList<String>();
-		jsonMap = new HashMap<String,String>();
-	    resultSet = new HashSet<String>();
+
+		jsonInString = new LinkedList<>();
+		jsonMap = new HashMap<>();
+		resultSet = new HashSet<>();
 		resultSet.add("operation");
 		resultSet.add("src");
-		
-		preprocess = new String ("");
-		// Flatten the updates and strip off leading [
-		
-		if(preprocess.startsWith("[")){
+
+		preprocess = new String("");
+
+		if (preprocess.startsWith("[")) {
 			preprocess = preprocess.substring(1, preprocess.length());
 		}
-		
-	   chunk = new String(preprocess.toString());
-		
+
+		chunk = new String(preprocess.toString());
+
 		try {
-			if(! preprocess.startsWith("]") ) {
+			if (!preprocess.startsWith("]")) {
 				jsonInString = parser.parseChunk(chunk);
 				jsonMap = myObj.readValue(jsonInString.get(0).toString(), typeRef);
 			}
 		} catch (JsonParseException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		} catch (JsonMappingException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
-		} catch (IndexOutOfBoundsException e){
+		} catch (IndexOutOfBoundsException e) {
 			logger.info("[Test5] Successfully caught IndexOutOfBounds Exception");
 		}
-		
-		if(! jsonMap.keySet().isEmpty() ) {
+
+		if (!jsonMap.keySet().isEmpty()) {
 			fail("Result should be empty");
 		}
-		
-		jsonInString = new LinkedList<String>();
-		jsonMap = new HashMap<String,String>();
-	    resultSet = new HashSet<String>();
+
+		jsonInString = new LinkedList<>();
+		jsonMap = new HashMap<>();
+		resultSet = new HashSet<>();
 		resultSet.add("operation");
 		resultSet.add("src");
-		
+
 		preprocess = null;
-		// Flatten the updates and strip off leading [
-		
+
 		try {
 			jsonInString = parser.parseChunk(chunk);
 			jsonMap = myObj.readValue(jsonInString.get(0).toString(), typeRef);
 		} catch (JsonParseException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		} catch (JsonMappingException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		} catch (IndexOutOfBoundsException e) {
 			logger.info("[Test6] Successfully caught IndexOutOfBounds Exception");
 		} catch (NullPointerException ne) {
 			ne.printStackTrace();
 		}
-		
-		if(! jsonMap.keySet().isEmpty() ) {
+
+		if (!jsonMap.keySet().isEmpty()) {
 			fail("Result should be empty");
 		}
-		
-		jsonInString = new LinkedList<String>();
-		jsonMap = new HashMap<String,String>();
-	    resultSet = new HashSet<String>();
+
+		jsonInString = new LinkedList<>();
+		jsonMap = new HashMap<>();
+		resultSet = new HashSet<>();
 		resultSet.add("operation");
 		resultSet.add("src");
-		
-		preprocess = new String ("[]][");
-		// Flatten the updates and strip off leading [
-		
-		if(preprocess.startsWith("[")){
+
+		preprocess = new String("[]][");
+
+		if (preprocess.startsWith("[")) {
 			preprocess = preprocess.substring(1, preprocess.length());
 		}
-		
-	   chunk = new String(preprocess.toString());
-		
+
+		chunk = new String(preprocess.toString());
+
 		try {
-			if(! preprocess.startsWith("]") ) {
+			if (!preprocess.startsWith("]")) {
 				jsonInString = parser.parseChunk(chunk);
 				jsonMap = myObj.readValue(jsonInString.get(0).toString(), typeRef);
 			}
 		} catch (JsonParseException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		} catch (JsonMappingException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		
-		if(! jsonMap.keySet().isEmpty() ) {
+
+		if (!jsonMap.keySet().isEmpty()) {
 			fail("Result should be empty");
 		}
-		
+
 		logger.info("[Test7] Success, Result set is empty.");
-		
+
 	}
-	
+
 	@Test
 	public void testPublishHook() {
-		List<String> updates = new LinkedList<String>();
+		List<String> updates = new LinkedList<>();
 		LDHAUtils parser = new LDHAUtils();
-		String preprocess = new String ("[LDUpdate [operation=Switch Removed, src=00:00:00:00:00:00:00:05]]");
-		
-		// Flatten the updates and strip off leading [	
-		if(preprocess.startsWith("[")){
+		String preprocess = new String("[LDUpdate [operation=Switch Removed, src=00:00:00:00:00:00:00:05]]");
+
+		if (preprocess.startsWith("[")) {
 			preprocess = preprocess.substring(1, preprocess.length());
 		}
-		
+
 		String chunk = new String(preprocess.toString());
-		
-		if(! preprocess.startsWith("]") ) {
+
+		if (!preprocess.startsWith("]")) {
 			updates = parser.parseChunk(chunk);
 		} else {
 			fail("[Test Publish] Could not assemble updates");
 		}
-		
-		try { 
-			for( String update: updates) {
+
+		try {
+			for (String update : updates) {
 				filterQ.enqueueForward(update);
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
 			fail("[Test Publish] Exception!");
 		}
-		
+
 		logger.info("[Test Publish 1] Success, updates were sent to the queue.");
 		LDFilterQueue.filterQueue.clear();
-		
-		
+
 		try {
 			ldhaworker.synLDUList.add("");
 			ldhaworker.publishHook();
@@ -327,39 +311,31 @@ public class LDHAWorkerTest {
 			e.printStackTrace();
 			fail("[Test Publish] Exception!");
 		}
-		
+
 		LDFilterQueue.filterQueue.clear();
 		LDFilterQueue.myMap.clear();
 		ldhaworker.synLDUList.clear();
-		
+
 		logger.info("[Test Publish 2] Success, Published blank update string.");
-		
+
 	}
-	
-	
+
 	@Test
 	public void testSubscribeHook() {
-		try{
+		try {
 			ldhaworker.synLDUList.add("LDUpdate [operation=Switch Removed, src=00:00:00:00:00:00:00:05]");
 			List<String> updates = ldhaworker.assembleUpdate();
-			for(String update: updates){
+			for (String update : updates) {
 				filterQ.enqueueReverse(update);
-			}		
+			}
 			filterQ.dequeueReverse();
-			
-		} catch (Exception e){
+
+		} catch (Exception e) {
 			e.printStackTrace();
 			fail("[Test Subscribe] Failed, exception occured");
-			
+
 		}
-		
+
 	}
-	
+
 }
-
-
-
-
-
-
-
