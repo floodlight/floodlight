@@ -40,6 +40,7 @@ import net.floodlightcontroller.debugcounter.IDebugCounterService;
 import net.floodlightcontroller.debugcounter.IDebugCounterService.MetaData;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.restserver.IRestApiService;
+import net.floodlightcontroller.util.FlowModUtils;
 import net.floodlightcontroller.util.OFMessageUtils;
 import org.projectfloodlight.openflow.protocol.*;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
@@ -253,12 +254,7 @@ implements IFloodlightModule, ILearningSwitchService, IOFMessageListener, IContr
 		List<OFAction> al = new ArrayList<OFAction>();
 		al.add(sw.getOFFactory().actions().buildOutput().setPort(outPort).setMaxLen(0xffFFffFF).build());
 
-		ArrayList<OFInstruction> instructionsList = new ArrayList<OFInstruction>();
-		OFInstructionApplyActions applyActions = sw.getOFFactory().instructions().buildApplyActions()
-				.setActions(al)
-				.build();
-		instructionsList.add(applyActions);
-		fmb.setInstructions(instructionsList);
+		FlowModUtils.setActions(fmb, al, sw);
 
 		if (log.isTraceEnabled()) {
 			log.trace("{} {} flow mod {}",
