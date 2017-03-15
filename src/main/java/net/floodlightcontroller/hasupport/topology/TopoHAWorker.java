@@ -141,7 +141,7 @@ public class TopoHAWorker implements IHAWorker, ITopologyListener {
 		List<String> updates = new ArrayList<>();
 		try {
 			myTopoFilterQueue.subscribe(controllerID);
-			myTopoFilterQueue.dequeueReverse();
+			updates = myTopoFilterQueue.dequeueReverse();
 			// logger.info("[Subscribe] TopoUpdates...");
 			return updates;
 		} catch (Exception e) {

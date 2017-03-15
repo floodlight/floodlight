@@ -138,7 +138,7 @@ public class LDHAWorker implements IHAWorker, ILinkDiscoveryListener  {
 		List<String> updates = new ArrayList<String>();
 		try {
 			myLDFilterQueue.subscribe(controllerID);
-			myLDFilterQueue.dequeueReverse();
+			updates = myLDFilterQueue.dequeueReverse();
 			// logger.info("[Subscribe] LDUpdates...");
 			return updates;
 		} catch (Exception e) {

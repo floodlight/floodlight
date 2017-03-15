@@ -40,6 +40,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  */
 
 public class LDHAUtils {
+
 	private static final Logger logger = LoggerFactory.getLogger(LDHAUtils.class);
 
 	/**
@@ -89,7 +90,7 @@ public class LDHAUtils {
 			BigInteger bigInt = new BigInteger(1, digest);
 			md5 = bigInt.toString(16);
 		} catch (NoSuchAlgorithmException e) {
-			// TODO Auto-generated catch block
+			logger.debug("[cmd5Hash] Error in EnqueueFwd!");
 			e.printStackTrace();
 		}
 		return md5;
@@ -138,7 +139,7 @@ public class LDHAUtils {
 			// logger.debug("[cmd5Hash] The MD5: {} The Value {}", new Object []
 			// {cmd5,md5values.toString()}); //use md5values instead of updates.
 		} catch (Exception e) {
-			// logger.debug("[cmd5Hash] Exception: enqueueFwd!");
+			logger.debug("[cmd5Hash] Exception: enqueueFwd!");
 			e.printStackTrace();
 		}
 		return cmd5;
