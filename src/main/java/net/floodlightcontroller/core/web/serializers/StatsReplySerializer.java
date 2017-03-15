@@ -17,99 +17,15 @@
 
 package net.floodlightcontroller.core.web.serializers;
 
-import java.io.IOException;
-import java.lang.reflect.Field;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonGenerator.Feature;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonSerializer;
 import com.fasterxml.jackson.databind.SerializerProvider;
-
 import net.floodlightcontroller.core.web.OFStatsTypeStrings;
 import net.floodlightcontroller.core.web.StatsReply;
 import net.floodlightcontroller.util.OXMUtils;
-
-import org.projectfloodlight.openflow.protocol.OFActionType;
-import org.projectfloodlight.openflow.protocol.OFBucket;
-import org.projectfloodlight.openflow.protocol.OFBucketCounter;
-import org.projectfloodlight.openflow.protocol.OFBundleFeatureFlags;
-import org.projectfloodlight.openflow.protocol.OFBundleFeaturesStatsReply;
-import org.projectfloodlight.openflow.protocol.OFControllerStatusEntry;
-import org.projectfloodlight.openflow.protocol.OFControllerStatusStatsReply;
-import org.projectfloodlight.openflow.protocol.OFFeaturesReply;
-import org.projectfloodlight.openflow.protocol.OFFlowLightweightStatsEntry;
-import org.projectfloodlight.openflow.protocol.OFFlowLightweightStatsReply;
-import org.projectfloodlight.openflow.protocol.OFFlowModFlags;
-import org.projectfloodlight.openflow.protocol.OFFlowMonitorReply;
-import org.projectfloodlight.openflow.protocol.OFFlowMonitorReplyEntry;
-import org.projectfloodlight.openflow.protocol.OFFlowStatsReply;
-import org.projectfloodlight.openflow.protocol.OFFlowStatsEntry;
-import org.projectfloodlight.openflow.protocol.OFDescStatsReply;
-import org.projectfloodlight.openflow.protocol.OFGroupCapabilities;
-import org.projectfloodlight.openflow.protocol.OFGroupDescStatsEntry;
-import org.projectfloodlight.openflow.protocol.OFGroupDescStatsReply;
-import org.projectfloodlight.openflow.protocol.OFGroupFeaturesStatsReply;
-import org.projectfloodlight.openflow.protocol.OFGroupStatsEntry;
-import org.projectfloodlight.openflow.protocol.OFGroupStatsReply;
-import org.projectfloodlight.openflow.protocol.OFMeterBandStats;
-import org.projectfloodlight.openflow.protocol.OFMeterConfig;
-import org.projectfloodlight.openflow.protocol.OFMeterConfigStatsReply;
-import org.projectfloodlight.openflow.protocol.OFMeterFeatures;
-import org.projectfloodlight.openflow.protocol.OFMeterFeaturesStatsReply;
-import org.projectfloodlight.openflow.protocol.OFMeterFlags;
-import org.projectfloodlight.openflow.protocol.OFMeterStats;
-import org.projectfloodlight.openflow.protocol.OFMeterStatsReply;
-import org.projectfloodlight.openflow.protocol.OFPortConfig;
-import org.projectfloodlight.openflow.protocol.OFPortDescProp;
-import org.projectfloodlight.openflow.protocol.OFPortFeatures;
-import org.projectfloodlight.openflow.protocol.OFPortState;
-import org.projectfloodlight.openflow.protocol.OFPortStatsReply;
-import org.projectfloodlight.openflow.protocol.OFQueueDesc;
-import org.projectfloodlight.openflow.protocol.OFQueueDescStatsReply;
-import org.projectfloodlight.openflow.protocol.OFQueueStatsEntry;
-import org.projectfloodlight.openflow.protocol.OFQueueStatsReply;
-import org.projectfloodlight.openflow.protocol.OFPortStatsEntry;
-import org.projectfloodlight.openflow.protocol.OFPortStatsProp;
-import org.projectfloodlight.openflow.protocol.OFPortStatsPropEthernet;
-import org.projectfloodlight.openflow.protocol.OFPortStatsPropExperimenter;
-import org.projectfloodlight.openflow.protocol.OFPortStatsPropOptical;
-import org.projectfloodlight.openflow.protocol.OFPortDescStatsReply;
-import org.projectfloodlight.openflow.protocol.OFPortDesc;
-import org.projectfloodlight.openflow.protocol.OFStatsReplyFlags;
-import org.projectfloodlight.openflow.protocol.OFTableConfig;
-import org.projectfloodlight.openflow.protocol.OFTableDesc;
-import org.projectfloodlight.openflow.protocol.OFTableDescStatsReply;
-import org.projectfloodlight.openflow.protocol.OFTableFeatureProp;
-import org.projectfloodlight.openflow.protocol.OFTableFeaturePropApplyActions;
-import org.projectfloodlight.openflow.protocol.OFTableFeaturePropApplyActionsMiss;
-import org.projectfloodlight.openflow.protocol.OFTableFeaturePropApplyCopyfield;
-import org.projectfloodlight.openflow.protocol.OFTableFeaturePropApplyCopyfieldMiss;
-import org.projectfloodlight.openflow.protocol.OFTableFeaturePropApplySetfield;
-import org.projectfloodlight.openflow.protocol.OFTableFeaturePropApplySetfieldMiss;
-import org.projectfloodlight.openflow.protocol.OFTableFeaturePropExperimenter;
-import org.projectfloodlight.openflow.protocol.OFTableFeaturePropExperimenterMiss;
-import org.projectfloodlight.openflow.protocol.OFTableFeaturePropInstructions;
-import org.projectfloodlight.openflow.protocol.OFTableFeaturePropInstructionsMiss;
-import org.projectfloodlight.openflow.protocol.OFTableFeaturePropMatch;
-import org.projectfloodlight.openflow.protocol.OFTableFeaturePropNextTables;
-import org.projectfloodlight.openflow.protocol.OFTableFeaturePropNextTablesMiss;
-import org.projectfloodlight.openflow.protocol.OFTableFeaturePropOxmValues;
-import org.projectfloodlight.openflow.protocol.OFTableFeaturePropTableSyncFrom;
-import org.projectfloodlight.openflow.protocol.OFTableFeaturePropWildcards;
-import org.projectfloodlight.openflow.protocol.OFTableFeaturePropWriteActions;
-import org.projectfloodlight.openflow.protocol.OFTableFeaturePropWriteActionsMiss;
-import org.projectfloodlight.openflow.protocol.OFTableFeaturePropWriteCopyfield;
-import org.projectfloodlight.openflow.protocol.OFTableFeaturePropWriteCopyfieldMiss;
-import org.projectfloodlight.openflow.protocol.OFTableFeaturePropWriteSetfield;
-import org.projectfloodlight.openflow.protocol.OFTableFeaturePropWriteSetfieldMiss;
-import org.projectfloodlight.openflow.protocol.OFTableFeatures;
-import org.projectfloodlight.openflow.protocol.OFTableFeaturesStatsReply;
-import org.projectfloodlight.openflow.protocol.OFTableStatsEntry;
-import org.projectfloodlight.openflow.protocol.OFTableStatsReply;
+import org.projectfloodlight.openflow.protocol.*;
 import org.projectfloodlight.openflow.protocol.actionid.OFActionId;
 import org.projectfloodlight.openflow.protocol.instructionid.OFInstructionId;
 import org.projectfloodlight.openflow.protocol.meterband.OFMeterBand;
@@ -121,13 +37,17 @@ import org.projectfloodlight.openflow.protocol.ver15.OFMeterBandTypeSerializerVe
 import org.projectfloodlight.openflow.protocol.ver15.OFPortDescPropTypeSerializerVer15;
 import org.projectfloodlight.openflow.protocol.ver15.OFPortStatsPropTypeSerializerVer15;
 import org.projectfloodlight.openflow.protocol.ver15.OFTableFeaturePropTypeSerializerVer15;
-import org.projectfloodlight.openflow.protocol.OFAggregateStatsReply;
-import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.types.U32;
 import org.projectfloodlight.openflow.types.U64;
 import org.projectfloodlight.openflow.types.U8;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.lang.reflect.Field;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 /**
  * Serialize any OFStatsReply or OFFeaturesReply in JSON
@@ -996,6 +916,29 @@ public class StatsReplySerializer extends JsonSerializer<StatsReply> {
                             jGen.writeNumberField("tx_grid_span", ((OFPortStatsPropOptical) p).getTxGridSpan());
                             jGen.writeNumberField("tx_offset", ((OFPortStatsPropOptical) p).getTxOffset());
                             jGen.writeNumberField("tx_power", ((OFPortStatsPropOptical) p).getTxPwr());
+                        } else if (p instanceof OFPortStatsPropExperimenterIntel) {
+                            jGen.writeStringField("type", OFPortStatsPropTypeSerializerVer15.ofWireValue((short)p.getType()).name());
+                            jGen.writeNumberField("rx_1_to_64_packets", ((OFPortStatsPropExperimenterIntel) p).getRx1To64Packets().getValue());
+                            jGen.writeNumberField("rx_65_to_127_packets", ((OFPortStatsPropExperimenterIntel) p).getRx65To127Packets().getValue());
+                            jGen.writeNumberField("rx_128_to_255_packets", ((OFPortStatsPropExperimenterIntel) p).getRx128To255Packets().getValue());
+                            jGen.writeNumberField("rx_256_to_511_packets", ((OFPortStatsPropExperimenterIntel) p).getRx256To511Packets().getValue());
+                            jGen.writeNumberField("rx_512_to_1023_packets", ((OFPortStatsPropExperimenterIntel) p).getRx512To1023Packets().getValue());
+                            jGen.writeNumberField("rx_1024_to_1522_packets", ((OFPortStatsPropExperimenterIntel) p).getRx1024To1522Packets().getValue());
+                            jGen.writeNumberField("rx_1523_to_max_packets", ((OFPortStatsPropExperimenterIntel) p).getRx1523ToMaxPackets().getValue());
+                            jGen.writeNumberField("tx_1_to_64_packets", ((OFPortStatsPropExperimenterIntel) p).getTx1To64Packets().getValue());
+                            jGen.writeNumberField("tx_65_to_127_packets", ((OFPortStatsPropExperimenterIntel) p).getTx65To127Packets().getValue());
+                            jGen.writeNumberField("tx_128_to_255_packets", ((OFPortStatsPropExperimenterIntel) p).getTx128To255Packets().getValue());
+                            jGen.writeNumberField("tx_256_to_511_packets", ((OFPortStatsPropExperimenterIntel) p).getTx256To511Packets().getValue());
+                            jGen.writeNumberField("tx_512_to_1023_packets", ((OFPortStatsPropExperimenterIntel) p).getTx512To1023Packets().getValue());
+                            jGen.writeNumberField("tx_1024_to_1522_packets", ((OFPortStatsPropExperimenterIntel) p).getTx1024To1522Packets().getValue());
+                            jGen.writeNumberField("tx_1523_to_max_packets", ((OFPortStatsPropExperimenterIntel) p).getTx1523ToMaxPackets().getValue());
+                            jGen.writeNumberField("tx_multicast_packets", ((OFPortStatsPropExperimenterIntel) p).getTxMulticastPackets().getValue());
+                            jGen.writeNumberField("rx_broadcast_packets", ((OFPortStatsPropExperimenterIntel) p).getRxBroadcastPackets().getValue());
+                            jGen.writeNumberField("tx_broadcast_packets", ((OFPortStatsPropExperimenterIntel) p).getTxBroadcastPackets().getValue());
+                            jGen.writeNumberField("rx_undersized_errors", ((OFPortStatsPropExperimenterIntel) p).getRxUndersizedErrors().getValue());
+                            jGen.writeNumberField("rx_oversize_errors", ((OFPortStatsPropExperimenterIntel) p).getRxOversizeErrors().getValue());
+                            jGen.writeNumberField("rx_fragmented_errors", ((OFPortStatsPropExperimenterIntel) p).getRxFragmentedErrors().getValue());
+                            jGen.writeNumberField("rx_jabber_errors", ((OFPortStatsPropExperimenterIntel) p).getRxJabberErrors().getValue());
                         } else if (p instanceof OFPortStatsPropExperimenter) {
                             jGen.writeStringField("type", OFPortStatsPropTypeSerializerVer15.ofWireValue((short)p.getType()).name());
                         }

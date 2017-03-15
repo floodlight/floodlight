@@ -687,7 +687,7 @@ public class LoadBalancer implements IFloodlightModule,
             pool = pools.get(poolId);
             if (pool == null)	// fix dereference violations
             	return -1;
-            if (pool.vipId != null)
+            if (pool.vipId != null && vips.containsKey(pool.vipId))
                 vips.get(pool.vipId).pools.remove(poolId);
             pools.remove(poolId);
             return 0;
@@ -750,7 +750,7 @@ public class LoadBalancer implements IFloodlightModule,
         member = members.get(memberId);
         
         if(member != null){
-            if (member.poolId != null)
+            if (member.poolId != null && pools.containsKey(member.poolId))
                 pools.get(member.poolId).members.remove(memberId);
             members.remove(memberId);
             return 0;

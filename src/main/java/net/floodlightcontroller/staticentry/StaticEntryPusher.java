@@ -312,7 +312,7 @@ implements IOFSwitchListener, IFloodlightModule, IStaticEntryPusherService, ISto
 			} /* else use default of flow */
 
 			if (!entries.containsKey(switchName)) {
-				entries.put(switchName, new HashMap<String, OFMessage>());
+				entries.put(switchName, new ConcurrentHashMap<String, OFMessage>());
 			}
 
 			/* get the correct builder for the OF version supported by the switch */
