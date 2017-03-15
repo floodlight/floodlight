@@ -174,7 +174,7 @@ public class LDFilterQueue implements IFilterQueue {
 			}
 			return true;
 		} catch (Exception e) {
-			logger.info("[ReverseFilterQ] Exception: enqueueFwd!");
+			logger.debug("[ReverseFilterQ] Exception: enqueueFwd!");
 			e.printStackTrace();
 			return true;
 		}

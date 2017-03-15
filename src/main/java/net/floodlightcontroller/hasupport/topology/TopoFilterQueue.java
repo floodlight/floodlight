@@ -104,7 +104,7 @@ public class TopoFilterQueue implements IFilterQueue {
 			}
 
 			if (!TopoUpds.isEmpty()) {
-				logger.info("[ReverseFilterQ] The update after drain: {} ", new Object[] { TopoUpds.toString() });
+				// logger.info("[ReverseFilterQ] The update after drain: {} ", new Object[] { TopoUpds.toString() });
 				return TopoUpds;
 			} else {
 				// logger.debug("[ReverseFilterQ] The linked list is empty");
@@ -173,7 +173,7 @@ public class TopoFilterQueue implements IFilterQueue {
 			}
 			return true;
 		} catch (Exception e) {
-			logger.info("[ReverseFilterQ] Exception: enqueueFwd!");
+			// logger.info("[ReverseFilterQ] Exception: enqueueFwd!");
 			e.printStackTrace();
 			return true;
 		}

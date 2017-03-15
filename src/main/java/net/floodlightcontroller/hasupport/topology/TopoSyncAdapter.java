@@ -128,10 +128,6 @@ public class TopoSyncAdapter implements ISyncAdapter {
 			return;
 		}
 
-		/**
-		 * Two cases for when newUpdate cmd5 = oldUpdate cmd5 and when not.
-		 */
-
 		for (String up : newUpdates) {
 			try {
 
@@ -259,7 +255,7 @@ public class TopoSyncAdapter implements ISyncAdapter {
 				for (String cmd5 : cmd5hashes) {
 					String update = TopoSyncAdapter.storeTopo.getValue(cmd5, none);
 					if (!update.equals(none)) {
-						logger.info("[Unpack]: {}", new Object[] { update.toString() });
+						// logger.info("[Unpack]: {}", new Object[] { update.toString() });
 						myTopoFilterQueue.enqueueReverse(update);
 					}
 				}

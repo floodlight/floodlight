@@ -125,11 +125,6 @@ public class LDSyncAdapter implements ISyncAdapter {
 			return;
 		}
 
-		/**
-		 * TODO: Two cases for when newUpdate cmd5 = oldUpdate cmd5 and when
-		 * not.
-		 */
-
 		for (String up : newUpdates) {
 			try {
 

@@ -61,7 +61,6 @@ public class NetworkNode implements NetworkInterface, Runnable {
 	private NioClient clientSock;
 	private final String controllerID;
 	private final String serverPort;
-	private final String clientPort;
 
 	/**
 	 * The server list holds the server port IDs of all present connections. The
@@ -126,13 +125,12 @@ public class NetworkNode implements NetworkInterface, Runnable {
 	 * @param controllerID
 	 */
 
-	public NetworkNode(String serverPort, String clientPort, String controllerID) {
+	public NetworkNode(String serverPort, String controllerID) {
 		/**
 		 * The port variables needed in order to start the back-end and
 		 * front-end of the queue device.
 		 */
 		this.serverPort = serverPort.toString();
-		this.clientPort = clientPort.toString();
 		this.controllerID = controllerID;
 		preStart();
 		totalRounds = new Integer(connectSet.size());
@@ -144,7 +142,7 @@ public class NetworkNode implements NetworkInterface, Runnable {
 			majority = new Integer(1);
 		}
 		logger.debug(
-				"Other Servers: " + connectSet.toString() + "Majority: " + majority + "ClientPort: " + this.clientPort);
+				"Other Servers: " + connectSet.toString() + "Majority: " + majority + "ServerPort: " + this.serverPort);
 
 	}
 

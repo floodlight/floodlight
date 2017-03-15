@@ -122,8 +122,8 @@ public class AsyncElection implements Runnable {
 		heartbeat = "HEARTBEAT " + controllerID;
 	}
 
-	public AsyncElection(String serverPort, String clientPort, String controllerID, IHAWorkerService haw) {
-		AsyncElection.setNetwork(new NetworkNode(serverPort, clientPort, controllerID));
+	public AsyncElection(String serverPort, String controllerID, IHAWorkerService haw) {
+		AsyncElection.setNetwork(new NetworkNode(serverPort, controllerID));
 		this.serverPort = serverPort;
 		this.controllerID = controllerID;
 		setlead = "SETLEAD " + this.controllerID;
@@ -582,9 +582,6 @@ public class AsyncElection implements Runnable {
 		return lead;
 	}
 
-	/**
-	 * Server start: Start the network and ZMQServer Threads.
-	 */
 
 	/**
 	 * Used by the leader election protocol, internal function

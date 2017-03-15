@@ -47,7 +47,7 @@ public class NetworkNodeTest {
 
 	@AfterClass
 	public static void tearDown() throws Exception {
-		NetworkNode znode = new NetworkNode(mockServerPort, mockClientPort, nodeID);
+		NetworkNode znode = new NetworkNode(mockServerPort, nodeID);
 		znode.connectClients();
 		try {
 			aelt.interrupt();
@@ -64,7 +64,7 @@ public class NetworkNodeTest {
 
 	@Test
 	public void testConnectClients() {
-		NetworkNode znode = new NetworkNode(mockServerPort, mockClientPort, nodeID);
+		NetworkNode znode = new NetworkNode(mockServerPort, nodeID);
 		znode.connectClients();
 		assertEquals(true, znode.getSocketDict().containsKey("127.0.0.1:4243"));
 		assertEquals(true, znode.getConnectDict().containsKey("127.0.0.1:4243"));
@@ -74,7 +74,7 @@ public class NetworkNodeTest {
 
 	@Test
 	public void testPreStart() {
-		NetworkNode znode = new NetworkNode(mockServerPort, mockClientPort, nodeID);
+		NetworkNode znode = new NetworkNode(mockServerPort, nodeID);
 		assertEquals(true, znode.getAllServerList().contains("127.0.0.1:4242"));
 		assertEquals(true, znode.getAllServerList().contains("127.0.0.1:4243"));
 		assertEquals(true, znode.getServerList().contains("127.0.0.1:4243"));
@@ -85,7 +85,7 @@ public class NetworkNodeTest {
 
 	@Test
 	public void testSendRecv1() {
-		NetworkNode znode = new NetworkNode(mockServerPort, mockClientPort, nodeID);
+		NetworkNode znode = new NetworkNode(mockServerPort, nodeID);
 		znode.connectClients();
 		assertEquals(true, znode.getSocketDict().containsKey("127.0.0.1:4243"));
 		znode.send("127.0.0.1:4243", "mhi#QREF$$@");
@@ -96,7 +96,7 @@ public class NetworkNodeTest {
 
 	@Test
 	public void testSendRecv2() {
-		NetworkNode znode = new NetworkNode(mockServerPort, mockClientPort, nodeID);
+		NetworkNode znode = new NetworkNode(mockServerPort, nodeID);
 		znode.connectClients();
 		assertEquals(true, znode.getSocketDict().containsKey("127.0.0.1:4243"));
 		znode.send("127.0.0.1:4243", "*$#(&$*#");
@@ -107,7 +107,7 @@ public class NetworkNodeTest {
 
 	@Test
 	public void testSendRecv3() {
-		NetworkNode znode = new NetworkNode(mockServerPort, mockClientPort, nodeID);
+		NetworkNode znode = new NetworkNode(mockServerPort, nodeID);
 		znode.connectClients();
 		assertEquals(true, znode.getSocketDict().containsKey("127.0.0.1:4243"));
 		znode.send("127.0.0.1:4243", "PULSE");

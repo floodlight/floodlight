@@ -248,7 +248,7 @@ public class HAController implements IFloodlightModule, IHAControllerService, IS
 		 * Read config file and start the Election class with the right params.
 		 */
 		ScheduledExecutorService sesController = Executors.newScheduledThreadPool(10);
-		ael = new AsyncElection(config.get("serverPort"), config.get("clientPort"), config.get("nodeid"), haworker);
+		ael = new AsyncElection(config.get("serverPort"), config.get("nodeid"), haworker);
 		ael.setElectionPriorities((ArrayList<Integer>) priorities);
 		cLogic = new ControllerLogic(ael, config.get("nodeid"));
 		try {
