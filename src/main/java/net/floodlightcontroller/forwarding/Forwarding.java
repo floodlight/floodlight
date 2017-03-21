@@ -596,11 +596,15 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                     if (FLOWMOD_DEFAULT_MATCH_TRANSPORT_DST) {
                         mb.setExact(MatchField.TCP_DST, tcp.getDestinationPort());
                     }
-                    if(sw.getOFFactory().getVersion().compareTo(OFVersion.OF_15) >= 0 ||
-		       (sw.getSwitchDescription().getHardwareDescription().toLowerCase().contains("open vswitch") && (
+		    if (sw.getOFFactory().getVersion().compareTo(OFVersion.OF_15) >= 0){
+			 if(FLOWMOD_DEFAULT_MATCH_TCP_FLAG){
+	                        mb.setExact(MatchField.TCP_FLAGS, U16.of(tcp.getFlags()));
+	                 }
+		    }
+                    else if(sw.getSwitchDescription().getHardwareDescription().toLowerCase().contains("open vswitch") && (
                        Integer.parseInt(sw.getSwitchDescription().getSoftwareDescription().toLowerCase().split("\\.")[0]) > 2  || (
                        Integer.parseInt(sw.getSwitchDescription().getSoftwareDescription().toLowerCase().split("\\.")[0]) == 2 &&
-                       Integer.parseInt(sw.getSwitchDescription().getSoftwareDescription().toLowerCase().split("\\.")[1]) >= 1 )))
+                       Integer.parseInt(sw.getSwitchDescription().getSoftwareDescription().toLowerCase().split("\\.")[1]) >= 1 ))
 		      ){
 	                    if(FLOWMOD_DEFAULT_MATCH_TCP_FLAG){
 	                        mb.setExact(MatchField.OVS_TCP_FLAGS, U16.of(tcp.getFlags()));
