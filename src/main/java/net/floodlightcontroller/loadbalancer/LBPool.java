@@ -52,9 +52,9 @@ public class LBPool {
 	protected ArrayList<String> monitors;
 	protected short adminState;
 	protected short status;
-	protected final static short STATISTICS = 2;
 	protected final static short ROUND_ROBIN = 1;
-
+	protected final static short STATISTICS = 2;
+	
 	protected String vipId;
 
 	protected int previousMemberIndex;
@@ -78,35 +78,27 @@ public class LBPool {
 		// Get the members that belong to this pool and the statistics for them
 		if(members.size() > 0){
 			if (lbMethod == STATISTICS && membersbandwidth.values() !=null) {	
-				ArrayList<String> memb = new ArrayList<String>();
+				ArrayList<String> poolMembersId = new ArrayList<String>();
 				for(String memberId: membersbandwidth.keySet()){
 					for(int i=0;i<members.size();i++){
 						if(members.get(i).equals(memberId)){
-							memb.add(memberId);					
-
-							log.info("MEMBER OF THIS POOL: {}", memberId);
-							log.info("RecievedX: {}",membersbandwidth.get(memberId).getBigInteger());
-
+							poolMembersId.add(memberId);
 						}
 					}
 				}
 				// return the member which has the minimum bandwidth usage, out of this pool members
-				if(!memb.isEmpty()){
-					ArrayList<U64> vals = new ArrayList<U64>();
+				if(!poolMembersId.isEmpty()){
+					ArrayList<U64> bandwidthValues = new ArrayList<U64>();
 
-					for(int j=0;j<memb.size();j++){
-						vals.add(membersbandwidth.get(memb.get(j)));
+					for(int j=0;j<poolMembersId.size();j++){
+						bandwidthValues.add(membersbandwidth.get(poolMembersId.get(j)));
 					}
-					log.info("Members {}", memb);
-					log.info("VALS {}", vals);
-					log.info("MEMBER PICKED {}", memb.get(vals.indexOf(Collections.min(vals))));
+					log.debug("Member picked using LB statistics: {}", poolMembersId.get(bandwidthValues.indexOf(Collections.min(bandwidthValues))));
 
-					return memb.get(vals.indexOf(Collections.min(vals)));
+					return poolMembersId.get(bandwidthValues.indexOf(Collections.min(bandwidthValues)));
 				}
 				// simple round robin
-			} else if(lbMethod == ROUND_ROBIN || lbMethod == 0){
-				log.info("ROUND_ROBIN");
-
+			} else if(lbMethod == ROUND_ROBIN || lbMethod == 0){			
 				previousMemberIndex = (previousMemberIndex + 1) % members.size();
 				return members.get(previousMemberIndex);
 			}

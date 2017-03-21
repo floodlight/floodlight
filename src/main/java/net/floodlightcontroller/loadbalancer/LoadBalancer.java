@@ -214,7 +214,7 @@ ILoadBalancerService, IOFMessageListener {
 
 				if (vipIpToId.containsKey(destIpAddress)){
 					
-					// Switch statistics collection for picking a member
+					// Switch statistics collection to pick a member
 					HashMap<String, U64> memberPortBandwidth = collectSwitchStatistics();
 
 					IPClient client = new IPClient();
