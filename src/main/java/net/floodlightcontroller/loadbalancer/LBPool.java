@@ -77,7 +77,7 @@ public class LBPool {
 
 		// Get the members that belong to this pool and the statistics for them
 		if(members.size() > 0){
-			if (lbMethod == STATISTICS && membersbandwidth.values() !=null) {	
+			if (lbMethod == STATISTICS && membersbandwidth != null && membersbandwidth.values() !=null) {	
 				ArrayList<String> poolMembersId = new ArrayList<String>();
 				for(String memberId: membersbandwidth.keySet()){
 					for(int i=0;i<members.size();i++){
@@ -98,7 +98,7 @@ public class LBPool {
 					return poolMembersId.get(bandwidthValues.indexOf(Collections.min(bandwidthValues)));
 				}
 				// simple round robin
-			} else if(lbMethod == ROUND_ROBIN || lbMethod == 0){			
+			} else {			
 				previousMemberIndex = (previousMemberIndex + 1) % members.size();
 				return members.get(previousMemberIndex);
 			}

@@ -16,6 +16,7 @@
 
 package net.floodlightcontroller.loadbalancer;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -24,7 +25,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
 import org.projectfloodlight.openflow.protocol.match.Match;
@@ -65,6 +65,7 @@ import net.floodlightcontroller.devicemanager.IDevice;
 import net.floodlightcontroller.devicemanager.IDeviceService;
 import net.floodlightcontroller.devicemanager.SwitchPort;
 import net.floodlightcontroller.packet.ARP;
+import net.floodlightcontroller.packet.Data;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.ICMP;
 import net.floodlightcontroller.packet.IPacket;
@@ -100,6 +101,9 @@ ILoadBalancerService, IOFMessageListener {
 
 	protected static Logger log = LoggerFactory.getLogger(LoadBalancer.class);
 
+	public static String OFPT_ACTION = "ACTION";
+
+
 	// Our dependencies
 	protected IFloodlightProviderService floodlightProviderService;
 	protected IRestApiService restApiService;
@@ -123,8 +127,6 @@ ILoadBalancerService, IOFMessageListener {
 	protected HashMap<IDevice, String> deviceToMemberId;
 
 	//Copied from Forwarding with message damper routine for pushing proxy Arp 
-	protected static int OFMESSAGE_DAMPER_CAPACITY = 10000; // ms. 
-	protected static int OFMESSAGE_DAMPER_TIMEOUT = 250; // ms 
 	protected static String LB_ETHER_TYPE = "0x800";
 	protected static int LB_PRIORITY = 32768;
 
@@ -188,7 +190,7 @@ ILoadBalancerService, IOFMessageListener {
 	private net.floodlightcontroller.core.IListener.Command processPacketIn(IOFSwitch sw, OFPacketIn pi, FloodlightContext cntx) {
 
 		Ethernet eth = IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
-		IPacket pkt = eth.getPayload(); 
+		IPacket pkt = eth.getPayload(); 	
 
 		if (eth.isBroadcast() || eth.isMulticast()) {
 			// handle ARP for VIP
@@ -212,8 +214,82 @@ ILoadBalancerService, IOFMessageListener {
 				// If match Vip and port, check pool and choose member
 				int destIpAddress = ip_pkt.getDestinationAddress().getInt();
 
+				// HTTP CHECKER AND PARSER 
+				if(pi.getReason().name().equals(OFPT_ACTION)){
+					if (ip_pkt.getPayload() instanceof TCP) {
+						TCP tcppkt = (TCP) ip_pkt.getPayload();
+						if(tcppkt.getDestinationPort().equals(TransportPort.of(80))){
+							Data dte = (Data) tcppkt.getPayload();
+							if(dte.getData().length > 0){
+								if(members != null){
+									// Se o destino e um membro que esteja na pool HTTP !!! MUDAR MAIS TARDE
+									String[] dest_url = null;
+									for(LBMember member:  members.values()){
+										if(IPv4Address.of(destIpAddress).equals(IPv4Address.of(member.address))){
+											dest_url = parseHTTP(dte.getData());
+										}
+									}
+
+									// Only if HTTP request was for VIP that we should pick another member. 
+									if(vipIpToId.containsKey(IPv4.toIPv4Address(dest_url[0]))){
+										log.info("LALALALA UHH");
+										
+										// PARSE URL, IF URL CONTAINS .html , .js , .css to another pool
+										// IF URL CONTAINS .jpg , .png , .xls, .txt , .php, .asp to another pool
+										
+//										IPClient client = new IPClient();
+//										client.ipAddress = ip_pkt.getSourceAddress();
+//										client.nw_proto = ip_pkt.getProtocol();
+//										client.srcPort = tcppkt.getSourcePort();
+//										client.targetPort = tcppkt.getDestinationPort();
+//
+//										LBVip vip = vips.get(vipIpToId.get(destIpAddress));
+//										if (vip == null)			// fix dereference violations           
+//											return Command.CONTINUE;
+//										LBPool pool = pools.get(vip.pickPool(client));
+//										if (pool == null)			// fix dereference violations
+//											return Command.CONTINUE;
+//										LBMember member = members.get(pool.pickMember(client));
+//										if(member == null)			//fix dereference violations
+//											return Command.CONTINUE;
+//										
+//										// for chosen member, check device manager and find and push routes, in both directions                    
+//										pushBidirectionalVipRoutes(sw, pi, cntx, client, member);
+
+										// packet out based on table rule
+//										pushPacket(pkt, sw, pi.getBufferId(), (pi.getVersion().compareTo(OFVersion.OF_12) < 0) ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT), OFPort.TABLE,
+//												cntx, true);
+//
+//										return Command.STOP;
+									}
+								}
+							}
+						}
+					}
+				}
+
+				//				int srcIpAddress = ip_pkt.getSourceAddress().getInt();
+				//
+				//				if (vipIpToId.containsKey(srcIpAddress)){
+				//
+				//					OFPacketInReason reason1 = pi.getReason();
+				//					log.info("REASON SOURCE=VIP: {}",reason1.name().toString());
+				//					if (ip_pkt.getPayload() instanceof TCP) {
+				//						TCP tcp_pkt = (TCP) ip_pkt.getPayload();
+				//						log.info("PACKET FROM VIP {}", tcp_pkt );
+				//						Data dte = (Data) tcp_pkt.getPayload();
+				//
+				//						StringBuilder sb = new StringBuilder();
+				//						for (byte b : dte.getData()) {
+				//							sb.append(String.format("%02X ", b));
+				//						}
+				//						log.info("YEAAH {}", sb);
+				//					}
+				//
+				//				}
+
 				if (vipIpToId.containsKey(destIpAddress)){
-					
+
 					// Switch statistics collection to pick a member
 					HashMap<String, U64> memberPortBandwidth = collectSwitchStatistics();
 
@@ -222,6 +298,10 @@ ILoadBalancerService, IOFMessageListener {
 					client.nw_proto = ip_pkt.getProtocol();
 					if (ip_pkt.getPayload() instanceof TCP) {
 						TCP tcp_pkt = (TCP) ip_pkt.getPayload();
+						log.info("PACKET TO VIP {}", tcp_pkt );
+						Data dte = (Data) tcp_pkt.getPayload();
+						log.info("DAFUQ ! {}", dte.getData());
+
 						client.srcPort = tcp_pkt.getSourcePort();
 						client.targetPort = tcp_pkt.getDestinationPort();
 					}
@@ -235,7 +315,6 @@ ILoadBalancerService, IOFMessageListener {
 						client.targetPort = TransportPort.of(0); 
 					}
 
-
 					LBVip vip = vips.get(vipIpToId.get(destIpAddress));
 					if (vip == null)			// fix dereference violations           
 						return Command.CONTINUE;
@@ -246,12 +325,18 @@ ILoadBalancerService, IOFMessageListener {
 					if(member == null)			//fix dereference violations
 						return Command.CONTINUE;
 
+
+					if(client.targetPort.equals(TransportPort.of(80))){
+						log.info("PERANTE UM HTTP");
+
+					}
 					// for chosen member, check device manager and find and push routes, in both directions                    
 					pushBidirectionalVipRoutes(sw, pi, cntx, client, member);
 
 					// packet out based on table rule
 					pushPacket(pkt, sw, pi.getBufferId(), (pi.getVersion().compareTo(OFVersion.OF_12) < 0) ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT), OFPort.TABLE,
 							cntx, true);
+
 
 					return Command.STOP;
 				}
@@ -260,7 +345,7 @@ ILoadBalancerService, IOFMessageListener {
 		// bypass non-load-balanced traffic for normal processing (forwarding)
 		return Command.CONTINUE;
 	}
-	
+
 	/**
 	 * used to collect statistics from members switch port
 	 * @return HashMap<String, U64> portBandwidth <memberId,bitsPerSecond RX> of port connected to member
@@ -283,11 +368,13 @@ ILoadBalancerService, IOFMessageListener {
 		}
 
 		// collect statistics of the switch ports attached to the members
-		if(deviceToMemberId != null){
+		if(deviceToMemberId !=null){
 			for(IDevice membersDevice: deviceToMemberId.keySet()){
 				String memberId = deviceToMemberId.get(membersDevice);
 				for(SwitchPort dstDap: membersDevice.getAttachmentPoints()){
-					portBandwidth.put(memberId, statisticsService.getBandwidthConsumption(dstDap.getNodeId(), dstDap.getPortId()).getBitsPerSecondRx());
+					SwitchPortBandwidth bandwidthOfPort = statisticsService.getBandwidthConsumption(dstDap.getNodeId(), dstDap.getPortId());
+					if(bandwidthOfPort != null) // needs time for 1st collection, this avoids nullPointerException 
+						portBandwidth.put(memberId, bandwidthOfPort.getBitsPerSecondRx());
 				}
 			}
 		}
@@ -389,8 +476,10 @@ ILoadBalancerService, IOFMessageListener {
 			pob.setData(packetData);
 		}
 
+
 		counterPacketOut.increment();
 		sw.write(pob.build());
+
 	}
 
 	/**
@@ -439,6 +528,7 @@ ILoadBalancerService, IOFMessageListener {
 		// Validate that the source and destination are not on the same switchport
 		boolean on_same_island = false;
 		boolean on_same_if = false;
+		//Switch
 		for (SwitchPort dstDap : dstDevice.getAttachmentPoints()) {
 			DatapathId dstSwDpid = dstDap.getNodeId();
 			DatapathId dstIsland = topologyService.getClusterId(dstSwDpid);
@@ -467,7 +557,7 @@ ILoadBalancerService, IOFMessageListener {
 						sw.toString(), pi.getInPort());
 			}
 			return;
-		}
+		}	
 
 		// Install all the routes where both src and dst have attachment
 		// points.  Since the lists are stored in sorted order we can 
@@ -510,11 +600,11 @@ ILoadBalancerService, IOFMessageListener {
 					// out: match dest client (ip, port), rewrite src from member ip/port to vip ip/port, forward
 
 					if (! routeIn.getPath().isEmpty()) {
-						pushStaticVipRoute(true, routeIn, client, member, sw);
+						pushStaticVipRoute(true, routeIn, client, member, sw, pi, cntx);
 					}
 
 					if (! routeOut.getPath().isEmpty()) {
-						pushStaticVipRoute(false, routeOut, client, member, sw);
+						pushStaticVipRoute(false, routeOut, client, member, sw, pi, cntx);
 					}
 
 				}
@@ -537,7 +627,31 @@ ILoadBalancerService, IOFMessageListener {
 	 * @param LBMember member
 	 * @param long pinSwitch
 	 */
-	public void pushStaticVipRoute(boolean inBound, Path route, IPClient client, LBMember member, IOFSwitch pinSwitch) {
+	public void pushStaticVipRoute(boolean inBound, Path route, IPClient client, LBMember member, IOFSwitch pinSwitch,OFPacketIn pi, FloodlightContext cntx) {
+		//		Match.Builder mb1 = pinSwitch.getOFFactory().buildMatch();
+		//
+		//		mb1.setExact(MatchField.ETH_TYPE, EthType.IPv4)
+		//		.setExact(MatchField.IP_PROTO, client.nw_proto)
+		//		.setExact(MatchField.IPV4_SRC, client.ipAddress);
+		//		if (client.nw_proto.equals(IpProtocol.TCP)) {
+		//			mb1.setExact(MatchField.TCP_SRC, client.srcPort);
+		//		} else if (client.nw_proto.equals(IpProtocol.UDP)) {
+		//			mb1.setExact(MatchField.UDP_SRC, client.srcPort);
+		//		} else if (client.nw_proto.equals(IpProtocol.SCTP)) {
+		//			mb1.setExact(MatchField.SCTP_SRC, client.srcPort);
+		//		} else if (client.nw_proto.equals(IpProtocol.ICMP)) {
+		//			/* no-op */
+		//		} else {
+		//			log.error("Unknown IpProtocol {} detected during inbound static VIP route push.", client.nw_proto);
+		//		}
+		//
+		//		U64 cookie = U64.ZERO;
+		//		boolean b = pushRoute(route, mb1.build(), pi, pinSwitch.getId(), cookie, 
+		//				cntx, false,
+		//				OFFlowModCommand.ADD);
+		//		log.info("pushed? : {}", b);
+
+
 		List<NodePortTuple> path = route.getPath();
 		if (path.size() > 0) {
 			for (int i = 0; i < path.size(); i+=2) {
@@ -548,8 +662,8 @@ ILoadBalancerService, IOFMessageListener {
 
 				OFFlowMod.Builder fmb = pinSwitch.getOFFactory().buildFlowAdd();
 
-				fmb.setIdleTimeout(FlowModUtils.INFINITE_TIMEOUT);
-				fmb.setHardTimeout(FlowModUtils.INFINITE_TIMEOUT);
+				fmb.setIdleTimeout(5);//FlowModUtils.INFINITE_TIMEOUT);
+				fmb.setHardTimeout(0);//FlowModUtils.INFINITE_TIMEOUT);
 				fmb.setBufferId(OFBufferId.NO_BUFFER);
 				fmb.setOutPort(OFPort.ANY);
 				fmb.setCookie(U64.of(0));  
@@ -578,7 +692,7 @@ ILoadBalancerService, IOFMessageListener {
 
 
 					if (sw.equals(pinSwitch.getId())) {
-						if (pinSwitch.getOFFactory().getVersion().compareTo(OFVersion.OF_12) < 0) { 
+						if (pinSwitch.getOFFactory().getVersion().compareTo(OFVersion.OF_12) < 0) {
 							actions.add(pinSwitch.getOFFactory().actions().setDlDst(MacAddress.of(member.macString)));
 							actions.add(pinSwitch.getOFFactory().actions().setNwDst(IPv4Address.of(member.address)));
 							actions.add(pinSwitch.getOFFactory().actions().output(path.get(i+1).getPortId(), Integer.MAX_VALUE));
@@ -586,6 +700,7 @@ ILoadBalancerService, IOFMessageListener {
 							actions.add(pinSwitch.getOFFactory().actions().setField(pinSwitch.getOFFactory().oxms().ethDst(MacAddress.of(member.macString))));
 							actions.add(pinSwitch.getOFFactory().actions().setField(pinSwitch.getOFFactory().oxms().ipv4Dst(IPv4Address.of(member.address))));
 							actions.add(pinSwitch.getOFFactory().actions().output(path.get(i+1).getPortId(), Integer.MAX_VALUE));
+							actions.add(pinSwitch.getOFFactory().actions().output(OFPort.CONTROLLER, Integer.MAX_VALUE));
 						}
 					} else {
 						//fix concurrency errors
@@ -603,6 +718,7 @@ ILoadBalancerService, IOFMessageListener {
 					mb.setExact(MatchField.ETH_TYPE, EthType.IPv4)
 					.setExact(MatchField.IP_PROTO, client.nw_proto)
 					.setExact(MatchField.IPV4_DST, client.ipAddress)
+					//.setExact(MatchField.IPV4_SRC, IPv4Address.of(vips.get(member.vipId).address)) //!!
 					.setExact(MatchField.IN_PORT, path.get(i).getPortId());
 					if (client.nw_proto.equals(IpProtocol.TCP)) {
 						mb.setExact(MatchField.TCP_DST, client.srcPort);
@@ -624,7 +740,9 @@ ILoadBalancerService, IOFMessageListener {
 						} else { // OXM introduced in OF1.2
 							actions.add(pinSwitch.getOFFactory().actions().setField(pinSwitch.getOFFactory().oxms().ethSrc(vips.get(member.vipId).proxyMac)));
 							actions.add(pinSwitch.getOFFactory().actions().setField(pinSwitch.getOFFactory().oxms().ipv4Src(IPv4Address.of(vips.get(member.vipId).address))));
+							//actions.add(pinSwitch.getOFFactory().actions().output(OFPort.CONTROLLER, Integer.MAX_VALUE));
 							actions.add(pinSwitch.getOFFactory().actions().output(path.get(i+1).getPortId(), Integer.MAX_VALUE));
+
 						}
 					} else {
 						//fix concurrency errors
@@ -642,11 +760,168 @@ ILoadBalancerService, IOFMessageListener {
 				fmb.setActions(actions);
 				fmb.setPriority(U16.t(LB_PRIORITY));
 				fmb.setMatch(mb.build());
+				//pinSwitch.write(fmb.build());
+				//messageDamper.write(pinSwitch, fmb.build());
 				sfpService.addFlow(entryName, fmb.build(), sw);
 			}
 		}
+
 		return;
 	}
+
+	//
+	//	private boolean pushRoute(Path route, Match  match, OFPacketIn pi, DatapathId pinSwitch, U64 cookie, FloodlightContext cntx,
+	//			boolean requestFlowRemovedNotification, OFFlowModCommand add) {
+	//
+	//
+	//		boolean packetOutSent = false;
+	//
+	//		List<NodePortTuple> switchPortList = route.getPath();
+	//
+	//		for (int indx = switchPortList.size() - 1; indx > 0; indx -= 2) {
+	//			// indx and indx-1 will always have the same switch DPID.
+	//			DatapathId switchDPID = switchPortList.get(indx).getNodeId();
+	//			IOFSwitch sw = switchService.getSwitch(switchDPID);
+	//
+	//			if (sw == null) {
+	//				if (log.isWarnEnabled()) {
+	//					log.warn("Unable to push route, switch at DPID {} " + "not available", switchDPID);
+	//				}
+	//				return packetOutSent;
+	//			}
+	//			OFFlowMod.Builder fmb;
+	//			fmb = sw.getOFFactory().buildFlowAdd();
+	//
+	//			OFActionOutput.Builder aob = sw.getOFFactory().actions().buildOutput();
+	//			List<OFAction> actions = new ArrayList<OFAction>();	
+	//			Match.Builder mb = MatchUtils.convertToVersion(match, sw.getOFFactory().getVersion());
+	//
+	//			// set input and output ports on the switch
+	//			OFPort outPort = switchPortList.get(indx).getPortId();
+	//			OFPort inPort = switchPortList.get(indx - 1).getPortId();
+	//			if (FLOWMOD_DEFAULT_MATCH_IN_PORT) {
+	//				mb.setExact(MatchField.IN_PORT, inPort);
+	//			}
+	//			aob.setPort(outPort);
+	//			aob.setMaxLen(Integer.MAX_VALUE);
+	//			actions.add(aob.build());
+	//
+	//			if (FLOWMOD_DEFAULT_SET_SEND_FLOW_REM_FLAG || requestFlowRemovedNotification) {
+	//				Set<OFFlowModFlags> flags = new HashSet<>();
+	//				flags.add(OFFlowModFlags.SEND_FLOW_REM);
+	//				fmb.setFlags(flags);
+	//			}
+	//
+	//			fmb.setMatch(mb.build())
+	//			.setIdleTimeout(FLOWMOD_DEFAULT_IDLE_TIMEOUT)
+	//			.setHardTimeout(FLOWMOD_DEFAULT_HARD_TIMEOUT)
+	//			.setBufferId(OFBufferId.NO_BUFFER)
+	//			.setCookie(cookie)
+	//			.setOutPort(outPort)
+	//			.setPriority(FLOWMOD_DEFAULT_PRIORITY);
+	//
+	//			FlowModUtils.setActions(fmb, actions, sw);
+	//
+	//			/* Configure for particular switch pipeline */
+	//			if (sw.getOFFactory().getVersion().compareTo(OFVersion.OF_10) != 0) {
+	//				fmb.setTableId(FLOWMOD_DEFAULT_TABLE_ID);
+	//			}
+	//
+	//			if (log.isTraceEnabled()) {
+	//				log.trace("Pushing Route flowmod routeIndx={} " +
+	//						"sw={} inPort={} outPort={}",
+	//						new Object[] {indx,
+	//								sw,
+	//								fmb.getMatch().get(MatchField.IN_PORT),
+	//								outPort });
+	//			}
+	//
+	//			if (OFDPAUtils.isOFDPASwitch(sw)) {
+	//				OFDPAUtils.addLearningSwitchFlow(sw, cookie, 
+	//						FLOWMOD_DEFAULT_PRIORITY, 
+	//						FLOWMOD_DEFAULT_HARD_TIMEOUT,
+	//						FLOWMOD_DEFAULT_IDLE_TIMEOUT,
+	//						fmb.getMatch(), 
+	//						null, 
+	//						outPort);
+	//			} else {
+	//				messageDamper.write(sw, fmb.build());
+	//			}
+	//
+	//			/* Push the packet out the first hop switch */
+	//			if (sw.getId().equals(pinSwitch) &&
+	//					!fmb.getCommand().equals(OFFlowModCommand.DELETE) &&
+	//					!fmb.getCommand().equals(OFFlowModCommand.DELETE_STRICT)) {
+	//				/* Use the buffered packet at the switch, if there's one stored */
+	//				pushPacket(sw, pi, outPort, true, cntx);
+	//				packetOutSent = true;
+	//			}
+	//		}
+	//
+	//		return packetOutSent;
+	//	}
+	//
+	//	private void pushPacket(IOFSwitch sw, OFPacketIn pi, OFPort outPort, boolean useBufferedPacket, FloodlightContext cntx) {
+	//		if (pi == null) {
+	//            return;
+	//        }
+	//
+	//        // The assumption here is (sw) is the switch that generated the
+	//        // packet-in. If the input port is the same as output port, then
+	//        // the packet-out should be ignored.
+	//        if ((pi.getVersion().compareTo(OFVersion.OF_12) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT)).equals(outPort)) {
+	//            if (log.isDebugEnabled()) {
+	//                log.debug("Attempting to do packet-out to the same " +
+	//                        "interface as packet-in. Dropping packet. " +
+	//                        " SrcSwitch={}, pi={}",
+	//                        new Object[]{sw, pi});
+	//                return;
+	//            }
+	//        }
+	//
+	//        if (log.isTraceEnabled()) {
+	//            log.trace("PacketOut srcSwitch={} pi={}",
+	//                    new Object[] {sw, pi});
+	//        }
+	//
+	//        OFPacketOut.Builder pob = sw.getOFFactory().buildPacketOut();
+	//        List<OFAction> actions = new ArrayList<OFAction>();
+	//        actions.add(sw.getOFFactory().actions().output(outPort, Integer.MAX_VALUE));
+	//        pob.setActions(actions);
+	//
+	//        /* Use packet in buffer if there is a buffer ID set */
+	//        if (useBufferedPacket) {
+	//            pob.setBufferId(pi.getBufferId()); /* will be NO_BUFFER if there isn't one */
+	//        } else {
+	//            pob.setBufferId(OFBufferId.NO_BUFFER);
+	//        }
+	//
+	//        if (pob.getBufferId().equals(OFBufferId.NO_BUFFER)) {
+	//            byte[] packetData = pi.getData();
+	//            pob.setData(packetData);
+	//        }
+	//
+	//        pob.setInPort((pi.getVersion().compareTo(OFVersion.OF_12) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT)));
+	//
+	//        messageDamper.write(sw, pob.build());
+	//		
+	//	}
+
+	public String[] parseHTTP(byte[] data){
+		// TODO THIS IS REQUEST ,WHAT IF A RESPONSE COMES ?!
+		String path;
+		String destination;
+		String http = new String(data);
+
+		String [] http_fields= http.split("\n");
+		path = http_fields[0].substring(http_fields[0].indexOf(" ")+1,http_fields[0].lastIndexOf(" ", http_fields[0].length()));
+
+		destination = http_fields[3].substring(http_fields[3].indexOf(" ")+1,http_fields[3].length()-1);
+		String [] dest_path = {destination, path};
+
+		return dest_path;
+	}
+
 
 
 	@Override
@@ -861,6 +1136,7 @@ ILoadBalancerService, IOFMessageListener {
 		l.add(ITopologyService.class);
 		l.add(IRoutingService.class);
 		l.add(IStaticEntryPusherService.class);
+		l.add(IStatisticsService.class);
 
 		return l;
 	}
@@ -877,7 +1153,6 @@ ILoadBalancerService, IOFMessageListener {
 		sfpService = context.getServiceImpl(IStaticEntryPusherService.class);
 		switchService = context.getServiceImpl(IOFSwitchService.class);
 		statisticsService = context.getServiceImpl(IStatisticsService.class);
-
 
 		vips = new HashMap<String, LBVip>();
 		pools = new HashMap<String, LBPool>();

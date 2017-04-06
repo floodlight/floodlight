@@ -341,7 +341,6 @@ public abstract class ForwardingBase implements IOFMessageListener {
         }
 
         pob.setInPort((pi.getVersion().compareTo(OFVersion.OF_12) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT)));
-
         messageDamper.write(sw, pob.build());
     }
 
