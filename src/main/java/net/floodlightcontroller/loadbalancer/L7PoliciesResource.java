@@ -16,30 +16,29 @@ import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.databind.MappingJsonFactory;
 
-
-public class L7RulesResource extends ServerResource {
-	protected static Logger log = LoggerFactory.getLogger(L7RulesResource.class);
+public class L7PoliciesResource extends ServerResource {
+	protected static Logger log = LoggerFactory.getLogger(L7PoliciesResource.class);
 	
 	@Get("json")
-    public Collection <L7Rule> retrieve() {
+    public Collection <L7Policy> retrieve() {
         ILoadBalancerService lbs =
                 (ILoadBalancerService)getContext().getAttributes().
                     get(ILoadBalancerService.class.getCanonicalName());
         
-        String ruleId = (String) getRequestAttributes().get("rule");
-        if (ruleId!=null)
-            return lbs.listL7Rule(ruleId);
+        String policyId = (String) getRequestAttributes().get("policy");
+        if (policyId!=null)
+            return lbs.listL7Policy(policyId);
         else
-            return lbs.listL7Rules();
+            return lbs.listL7Policies();
     }
     
     @Put
     @Post
-    public L7Rule createL7Rule(String postData) {
+    public L7Policy createL7Policy(String postData) {
 
-        L7Rule l7_rule=null;
+    	L7Policy l7_policy=null;
         try {
-        	l7_rule=jsonToL7Rule(postData);
+        	l7_policy=jsonToL7Policy(postData);
         } catch (IOException e) {
             log.error("Could not parse JSON {}", e.getMessage());
         }
@@ -48,32 +47,32 @@ public class L7RulesResource extends ServerResource {
                 (ILoadBalancerService)getContext().getAttributes().
                     get(ILoadBalancerService.class.getCanonicalName());
         
-        String ruleId = (String) getRequestAttributes().get("rule");
-        if (ruleId != null)
-            return lbs.updateL7Rule(l7_rule);
+        String policyId = (String) getRequestAttributes().get("policy");
+        if (policyId != null)
+            return lbs.updateL7Policy(l7_policy);
         else
-            return lbs.createL7Rule(l7_rule);
+            return lbs.createL7Policy(l7_policy);
     }
     
     @Delete
-    public int removeL7Rule() {
+    public int removeL7Policy() {
         
-        String ruleId = (String) getRequestAttributes().get("rule");
+        String policyId = (String) getRequestAttributes().get("policy");
         
         ILoadBalancerService lbs =
                 (ILoadBalancerService)getContext().getAttributes().
                     get(ILoadBalancerService.class.getCanonicalName());
 
-        return lbs.removeL7Rule(ruleId);
+        return lbs.removeL7Policy(policyId);
     }
 
-    protected L7Rule jsonToL7Rule(String json) throws IOException {
+    protected L7Policy jsonToL7Policy(String json) throws IOException {
         
         if (json==null) return null;
         
         MappingJsonFactory f = new MappingJsonFactory();
         JsonParser jp;
-        L7Rule l7_rule = new L7Rule();
+        L7Policy l7_policy = new L7Policy();
         
         try {
             jp = f.createParser(json);
@@ -97,28 +96,28 @@ public class L7RulesResource extends ServerResource {
                 continue;
  
             if (n.equals("id")) {
-            	l7_rule.id = jp.getText();
+            	l7_policy.id = jp.getText();
                 continue;
             } 
-            if (n.equals("policy_id")) {
-            	l7_rule.policyId = jp.getText();
+            if (n.equals("vip_id")) {
+            	l7_policy.vipId = jp.getText();
                 continue;
             } 
-            if (n.equals("type")) {
-            	l7_rule.type = Short.parseShort(jp.getText());
+            if (n.equals("pool_id")) {
+            	l7_policy.poolId = jp.getText();
                 continue;
             }
             if (n.equals("value")) {
-            	l7_rule.value = jp.getText();
+            	l7_policy.action = Short.parseShort(jp.getText());
                 continue;
             } 
             
             log.warn("Unrecognized field {} in " +
-                    "parsing l7Rules", 
+                    "parsing L7Policies", 
                     jp.getText());
         }
         jp.close();
         
-        return l7_rule;
+        return l7_policy;
     }
 }

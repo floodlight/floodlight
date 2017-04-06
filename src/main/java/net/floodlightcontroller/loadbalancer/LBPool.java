@@ -94,7 +94,6 @@ public class LBPool {
 						bandwidthValues.add(membersbandwidth.get(poolMembersId.get(j)));
 					}
 					log.debug("Member picked using LB statistics: {}", poolMembersId.get(bandwidthValues.indexOf(Collections.min(bandwidthValues))));
-
 					return poolMembersId.get(bandwidthValues.indexOf(Collections.min(bandwidthValues)));
 				}
 				// simple round robin

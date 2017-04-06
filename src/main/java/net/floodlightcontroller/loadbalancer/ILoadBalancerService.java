@@ -154,5 +154,71 @@ public interface ILoadBalancerService extends IFloodlightService {
      * @return int: removal status 
      */
     public int removeMonitor(String monitorId);
+    
+    /**
+     * Create and return a new L7Rule.
+     * @param L7Rule l7_rule: data structure with caller provided L7Rule attributes 
+     * @return L7Rule: Created L7Rule 
+     */
+    public L7Rule createL7Rule(L7Rule l7_rule);
+
+    /**
+     * Update an existing L7Rule.
+     * @param L7Rule l7_rule: data structure with caller provided L7Rule attributes 
+     * @return L7Rule: Created L7Rule 
+     */
+    public L7Rule updateL7Rule(L7Rule l7_rule);
+    
+    /**
+     * List all current L7Rules.
+     */
+    public Collection<L7Rule> listL7Rules();
+
+    /**
+     * List selected L7Rule by its ID.
+     * @param ruleId Id of requested L7Rule
+     */
+    public Collection<L7Rule> listL7Rule(String ruleId);
+    
+    /**
+     * Remove an existing L7Rule.
+     * @param String ruleId 
+     * @return int: removal status 
+     */
+    public int removeL7Rule(String ruleId);
+    
+    /**
+     * Create and return a new L7Policy.
+     * @param L7Policy l7_policy: data structure with caller provided L7Policy attributes 
+     * @return L7Policy: Created L7Policy 
+     */
+    public L7Policy createL7Policy(L7Policy l7_policy);
+
+    /**
+     * Update an existing L7Policy.
+     * @param L7Policy l7_policy: data structure with caller provided L7Policy attributes 
+     * @return L7Policy: Created L7Policy 
+     */
+    public L7Policy updateL7Policy(L7Policy l7_policy);
+    
+    /**
+     * List all current L7Policies.
+     */
+    public Collection<L7Policy> listL7Policies();
+
+    /**
+     * List selected L7Policy by its ID.
+     * @param policyId Id of requested L7Policy
+     */
+    public Collection<L7Policy> listL7Policy(String policyId);
+    
+    /**
+     * Remove an existing L7Policy.
+     * @param String policyId 
+     * @return int: removal status 
+     */
+    public int removeL7Policy(String policyId);
+    
+    
 
 }

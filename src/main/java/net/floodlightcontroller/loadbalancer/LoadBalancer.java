@@ -16,7 +16,7 @@
 
 package net.floodlightcontroller.loadbalancer;
 
-import java.nio.ByteBuffer;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -1077,6 +1077,66 @@ ILoadBalancerService, IOFMessageListener {
 		} else {
 			return -1;
 		}    
+	}
+	
+	@Override
+	public L7Rule createL7Rule(L7Rule l7_rule) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public L7Rule updateL7Rule(L7Rule l7_rule) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+	
+	@Override
+	public Collection<L7Rule> listL7Rules() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public Collection<L7Rule> listL7Rule(String ruleId) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public int removeL7Rule(String ruleId) {
+		// TODO Auto-generated method stub
+		return 0;
+	}
+
+	@Override
+	public L7Policy createL7Policy(L7Policy l7_policy) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public L7Policy updateL7Policy(L7Policy l7_policy) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public Collection<L7Policy> listL7Policies() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public Collection<L7Policy> listL7Policy(String policyId) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public int removeL7Policy(String policyId) {
+		// TODO Auto-generated method stub
+		return 0;
 	}
 
 	@Override
