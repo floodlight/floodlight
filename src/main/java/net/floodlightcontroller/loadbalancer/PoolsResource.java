@@ -133,7 +133,10 @@ public class PoolsResource extends ServerResource {
             		pool.lbMethod = (short) 1;
             	} else if(method.equalsIgnoreCase("STATISTICS")){
             		pool.lbMethod = (short) 2;
+            	} else if(method.equalsIgnoreCase("WRR")){
+            		pool.lbMethod = (short) 3;
             	}
+            		
                 continue;
             }
             if (n.equals("protocol")) {

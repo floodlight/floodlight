@@ -34,13 +34,11 @@ public class LoadBalancerWebRoutable implements RestletRoutable {
         router.attach("/pools/{pool}", PoolsResource.class); // GET, PUT, DELETE
         router.attach("/members/", MembersResource.class); // GET, POST
         router.attach("/members/{member}", MembersResource.class); // GET, PUT, DELETE
+        router.attach("/members/{member}/{weight}", WRRResource.class); // PUT, POST
         router.attach("/pools/{pool}/members", PoolMemberResource.class); //GET
+        router.attach("/pools/{pool}/members/{member}", PoolMemberResource.class); // PUT, POST
         router.attach("/health_monitors/", MonitorsResource.class); //GET, POST
         router.attach("/health_monitors/{monitor}", MonitorsResource.class); //GET, PUT, DELETE
-        router.attach("/l7rules/", L7RulesResource.class); //GET
-        router.attach("/l7rules/{rule}", L7RulesResource.class); //GET, PUT, DELETE
-        router.attach("/l7policies/", L7RulesResource.class); //GET 
-        router.attach("/l7policies/{policy}", L7RulesResource.class); //GET, PUT, DELETE
         router.attachDefault(NoOp.class);
         return router;
      }
