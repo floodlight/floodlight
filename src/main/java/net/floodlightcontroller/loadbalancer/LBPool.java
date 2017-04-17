@@ -111,7 +111,6 @@ public class LBPool {
 						 val += membersWeight.get(memberId);
 						 if(val > rand){
 							 log.debug("Member picked using WRR: {}",memberId);
-							 log.info("ESCOLHEU: {}", memberId);
 							 return memberId;
 						 }
 					 }

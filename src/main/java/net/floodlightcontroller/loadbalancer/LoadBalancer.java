@@ -836,7 +836,7 @@ ILoadBalancerService, IOFMessageListener {
 		return -1;
 	}
 
-	public int setPriorityMember(String poolId ,String memberId){
+	public int setPriorityToMember(String poolId ,String memberId){
 		if(pools.containsKey(poolId)) {
 			ArrayList<String> memberIds = pools.get(poolId).members;
 			if(memberIds !=null && members != null && memberIds.contains(memberId)){

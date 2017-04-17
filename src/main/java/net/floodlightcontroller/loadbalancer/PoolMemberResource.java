@@ -43,7 +43,7 @@ public class PoolMemberResource extends ServerResource {
     
     @Put
 	@Post
-	public int setPriorityMember(){
+	public int setPriorityToMember(){
 
 		String poolId = (String) getRequestAttributes().get("pool");
 		String memberId = (String) getRequestAttributes().get("member");
@@ -52,7 +52,7 @@ public class PoolMemberResource extends ServerResource {
 				(ILoadBalancerService)getContext().getAttributes().
 				get(ILoadBalancerService.class.getCanonicalName());
 
-		return lbs.setPriorityMember(poolId,memberId);
+		return lbs.setPriorityToMember(poolId,memberId);
 
 	}
 }

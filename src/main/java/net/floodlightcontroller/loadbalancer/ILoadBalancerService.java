@@ -163,71 +163,12 @@ public interface ILoadBalancerService extends IFloodlightService {
      */
 	public int setMemberWeight(String memberId, String weight);
 
-	public int setPriorityMember(String poolId, String memberId);
-    
-    /**
-     * Create and return a new L7Rule.
-     * @param L7Rule l7_rule: data structure with caller provided L7Rule attributes 
-     * @return L7Rule: Created L7Rule 
+	 /**
+     * Set member to prioritize for WRR algorithm.
+     * @param String memberId: the Id of the member
+     * @param String poolId: the id of the pool
+     * @return int: operation status
      */
+	public int setPriorityToMember(String poolId, String memberId);
     
-
-    /**
-     * Update an existing L7Rule.
-     * @param L7Rule l7_rule: data structure with caller provided L7Rule attributes 
-     * @return L7Rule: Created L7Rule 
-     */
-    
-    
-    /**
-     * List all current L7Rules.
-     */
-   
-
-    /**
-     * List selected L7Rule by its ID.
-     * @param ruleId Id of requested L7Rule
-     */
-   
-    
-    /**
-     * Remove an existing L7Rule.
-     * @param String ruleId 
-     * @return int: removal status 
-     */
-    
-    /**
-     * Create and return a new L7Policy.
-     * @param L7Policy l7_policy: data structure with caller provided L7Policy attributes 
-     * @return L7Policy: Created L7Policy 
-     */
-
-
-    /**
-     * Update an existing L7Policy.
-     * @param L7Policy l7_policy: data structure with caller provided L7Policy attributes 
-     * @return L7Policy: Created L7Policy 
-     */
-  
-    
-    /**
-     * List all current L7Policies.
-     */
-   
-
-    /**
-     * List selected L7Policy by its ID.
-     * @param policyId Id of requested L7Policy
-     */
-   
-    
-    /**
-     * Remove an existing L7Policy.
-     * @param String policyId 
-     * @return int: removal status 
-     */
-   
-    
-    
-
 }
