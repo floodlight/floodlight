@@ -211,10 +211,7 @@ ILoadBalancerService, IOFMessageListener {
 				int destIpAddress = ip_pkt.getDestinationAddress().getInt();
 
 				if (vipIpToId.containsKey(destIpAddress)){
-
-					// Switch statistics collection to pick a member
-					HashMap<String, U64> memberPortBandwidth = collectSwitchStatistics();
-
+					
 					IPClient client = new IPClient();
 					client.ipAddress = ip_pkt.getSourceAddress();
 					client.nw_proto = ip_pkt.getProtocol();
@@ -242,12 +239,17 @@ ILoadBalancerService, IOFMessageListener {
 						return Command.CONTINUE;
 
 					HashMap<String, Short> memberWeights = new HashMap<String, Short>();
-					if(pool.lbMethod == 3){
+					HashMap<String, U64> memberPortBandwidth = new HashMap<String, U64>();
+					
+					if(pool.lbMethod == LBPool.WEIGHTED_RR){
 						for(String memberId: pool.members){
 							memberWeights.put(memberId,members.get(memberId).weight);
 						}
 					}
-					log.info("WEIGHTS: {}", memberWeights);
+					// Switch statistics collection
+					if(pool.lbMethod == LBPool.STATISTICS && statisticsService != null)
+						memberPortBandwidth = collectSwitchPortBandwidth();
+					
 					LBMember member = members.get(pool.pickMember(client,memberPortBandwidth,memberWeights));
 					if(member == null)			//fix dereference violations
 						return Command.CONTINUE;
@@ -272,8 +274,8 @@ ILoadBalancerService, IOFMessageListener {
 	 * used to collect statistics from members switch port
 	 * @return HashMap<String, U64> portBandwidth <memberId,bitsPerSecond RX> of port connected to member
 	 */
-	public HashMap<String, U64> collectSwitchStatistics(){
-		HashMap<String,U64> portBandwidth = new HashMap<String, U64>();
+	public HashMap<String, U64> collectSwitchPortBandwidth(){
+		HashMap<String,U64> memberPortBandwidth = new HashMap<String, U64>();
 
 		// retrieve all known devices to know which ones are attached to the members
 		Collection<? extends IDevice> allDevices = deviceManagerService.getAllDevices();
@@ -295,11 +297,11 @@ ILoadBalancerService, IOFMessageListener {
 				for(SwitchPort dstDap: membersDevice.getAttachmentPoints()){					
 					SwitchPortBandwidth bandwidthOfPort = statisticsService.getBandwidthConsumption(dstDap.getNodeId(), dstDap.getPortId());
 					if(bandwidthOfPort != null) // needs time for 1st collection, this avoids nullPointerException 
-						portBandwidth.put(memberId, bandwidthOfPort.getBitsPerSecondRx());
+						memberPortBandwidth.put(memberId, bandwidthOfPort.getBitsPerSecondRx());
 				}
 			}
 		}
-		return portBandwidth;
+		return memberPortBandwidth;
 	}
 
 	/**
@@ -829,7 +831,7 @@ ILoadBalancerService, IOFMessageListener {
 			log.error("Invalid value for member weight " + e.getMessage());
 			return -1;
 		}
-		if(member != null && (value <= 10 && value >= 0)){
+		if(member != null && (value <= 10 && value >= 1)){
 			member.weight = value;
 			return 0;
 		}
@@ -941,6 +943,5 @@ ILoadBalancerService, IOFMessageListener {
 		restApiService.addRestletRoutable(new LoadBalancerWebRoutable());
 		debugCounterService.registerModule(this.getName());
 		counterPacketOut = debugCounterService.registerCounter(this.getName(), "packet-outs-written", "Packet outs written by the LoadBalancer", MetaData.WARN);
-		statisticsService.collectStatistics(true);
 	}
 }

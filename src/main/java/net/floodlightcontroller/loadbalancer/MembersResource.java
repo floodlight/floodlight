@@ -139,6 +139,7 @@ public class MembersResource extends ServerResource {
             }
             if(n.equals("weight")){
             	member.weight = Short.parseShort(jp.getText());
+            	continue;
             }
             
             log.warn("Unrecognized field {} in " +

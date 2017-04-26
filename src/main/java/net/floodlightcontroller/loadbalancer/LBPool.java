@@ -96,26 +96,25 @@ public class LBPool {
 					}
 					log.debug("Member picked using LB statistics: {}", poolMembersId.get(bandwidthValues.indexOf(Collections.min(bandwidthValues))));
 					return poolMembersId.get(bandwidthValues.indexOf(Collections.min(bandwidthValues)));
-				}	
-			} else if(lbMethod == WEIGHTED_RR && !membersWeight.isEmpty() && membersWeight.values() != null){
-				 Random randomNumb = new Random();
-				 short totalWeight = 0; 
-				 
-				 for(Short weight: membersWeight.values()){
-					 totalWeight += weight;
-				 }
-				 if(totalWeight > 0){
-					 int rand = randomNumb.nextInt(totalWeight);
-					 short val = 0;
-					 for(String memberId: membersWeight.keySet()){
-						 val += membersWeight.get(memberId);
-						 if(val > rand){
-							 log.debug("Member picked using WRR: {}",memberId);
-							 return memberId;
-						 }
-					 }
-				 }
-				 log.warn("All the members of this pool have weights set to 0");
+				}
+				return null;
+			} else if(lbMethod == WEIGHTED_RR && !membersWeight.isEmpty()){
+				Random randomNumb = new Random();
+				short totalWeight = 0; 
+
+				for(Short weight: membersWeight.values()){
+					totalWeight += weight;
+				}
+				int rand = randomNumb.nextInt(totalWeight);
+				short val = 0;
+				for(String memberId: membersWeight.keySet()){
+					val += membersWeight.get(memberId);
+					if(val > rand){
+						log.debug("Member picked using WRR: {}",memberId);
+						return memberId;
+					}
+				}
+				return null;
 			}else {
 				// simple round robin
 				previousMemberIndex = (previousMemberIndex + 1) % members.size();
