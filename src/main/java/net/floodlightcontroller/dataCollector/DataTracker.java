@@ -1,7 +1,5 @@
-/** 
-By Benamrane Fouad
+// By Benamrane Fouad
 
-*/
 package net.floodlightcontroller.dataCollector;
 
 import java.util.ArrayList;
