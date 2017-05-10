@@ -1,4 +1,3 @@
-// By Benamrane Fouad
 
 package net.floodlightcontroller.dataCollector;
 
