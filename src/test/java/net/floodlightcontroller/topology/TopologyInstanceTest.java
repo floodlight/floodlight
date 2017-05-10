@@ -16,20 +16,13 @@
 
 package net.floodlightcontroller.topology;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Set;
-
-import static net.floodlightcontroller.routing.IRoutingService.PATH_METRIC.HOPCOUNT;
-import static net.floodlightcontroller.routing.IRoutingService.PATH_METRIC.LATENCY;
-import static org.junit.Assert.*;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.test.MockFloodlightProvider;
 import net.floodlightcontroller.core.test.MockSwitchManager;
 import net.floodlightcontroller.core.test.MockThreadPoolService;
+import net.floodlightcontroller.core.types.NodePortTuple;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
 import net.floodlightcontroller.debugcounter.MockDebugCounterService;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscovery;
@@ -38,10 +31,6 @@ import net.floodlightcontroller.routing.IRoutingService;
 import net.floodlightcontroller.routing.Path;
 import net.floodlightcontroller.routing.RoutingManager;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
-import net.floodlightcontroller.core.types.NodePortTuple;
-import net.floodlightcontroller.topology.TopologyInstance;
-import net.floodlightcontroller.topology.TopologyManager;
-
 import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
@@ -50,6 +39,16 @@ import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.U64;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Set;
+
+import static net.floodlightcontroller.routing.IRoutingService.PATH_METRIC.HOPCOUNT;
+import static net.floodlightcontroller.routing.IRoutingService.PATH_METRIC.LATENCY;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class TopologyInstanceTest {
     protected static Logger log = LoggerFactory.getLogger(TopologyInstanceTest.class);
@@ -933,4 +932,5 @@ public class TopologyInstanceTest {
         }
         verifyRoute(r10, r10.size());
     }
+    
 }

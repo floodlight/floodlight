@@ -16,6 +16,7 @@
 
 package net.floodlightcontroller.topology;
 
+import com.google.common.collect.ImmutableSet;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.types.NodePortTuple;
 import net.floodlightcontroller.linkdiscovery.Link;
@@ -24,7 +25,6 @@ import net.floodlightcontroller.routing.Path;
 import net.floodlightcontroller.routing.PathId;
 import net.floodlightcontroller.statistics.SwitchPortBandwidth;
 import net.floodlightcontroller.util.ClusterDFS;
-
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFPort;
@@ -32,8 +32,6 @@ import org.projectfloodlight.openflow.types.U64;
 import org.python.google.common.collect.ImmutableList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.google.common.collect.ImmutableSet;
 
 import java.util.*;
 import java.util.Map.Entry;
@@ -78,7 +76,7 @@ public class TopologyInstance {
     private Map<DatapathId, Cluster>            clusterFromSwitch; /* cluster for each switch */
 
     /* Per-archipelago */
-    private Set<Archipelago>                    archipelagos; /* connected clusters */
+    private List<Archipelago>                   archipelagos; /* connected clusters */
     private Map<Cluster, Archipelago>           archipelagoFromCluster;
     private Map<DatapathId, Set<NodePortTuple>> portsBroadcastPerArchipelago; /* broadcast ports in each archipelago ID */
     private Map<PathId, List<Path>>             pathcache; /* contains computed paths ordered best to worst */
@@ -120,7 +118,7 @@ public class TopologyInstance {
         }
 
         this.linksNonExternalInterCluster = new HashSet<Link>();
-        this.archipelagos = new HashSet<Archipelago>();
+        this.archipelagos = new ArrayList<Archipelago>();
 
         this.portsWithMoreThanTwoLinks = new HashSet<NodePortTuple>(portsWithMoreThanTwoLinks);
         this.portsTunnel = new HashSet<NodePortTuple>(portsTunnel);
@@ -497,7 +495,7 @@ public class TopologyInstance {
         }
     }
 
-    private void identifyArchipelagos() {
+    protected void identifyArchipelagos() {
         // Iterate through each external link and create/merge archipelagos based on the
         // islands that each link is connected to
         Cluster srcCluster = null;
@@ -562,6 +560,7 @@ public class TopologyInstance {
             }
         }
     }
+    
 
     /*
      * Dijkstra that calculates destination rooted trees over the entire topology.
@@ -1428,6 +1427,6 @@ public class TopologyInstance {
     }
     
     public Set<DatapathId> getArchipelagoIds() {
-        return archipelagos.stream().map(a -> a.getId()).collect(Collectors.toSet());
+        return archipelagos.stream().map(Archipelago::getId).collect(Collectors.toSet());
     }
 } 

@@ -16,14 +16,13 @@
 
 package net.floodlightcontroller.topology;
 
+import net.floodlightcontroller.linkdiscovery.Link;
+import org.projectfloodlight.openflow.types.DatapathId;
+
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-
-import org.projectfloodlight.openflow.types.DatapathId;
-
-import net.floodlightcontroller.linkdiscovery.Link;
 
 public class Cluster {
     protected DatapathId id; // the lowest id of the nodes
@@ -65,25 +64,23 @@ public class Cluster {
         add(l.getDst());
         links.get(l.getDst()).add(l);
      }
+    
 
-    @Override 
-    public int hashCode() {
-        return (int) (id.getLong() + id.getLong() >>>32);
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        Cluster cluster = (Cluster) o;
+
+        return id != null ? id.equals(cluster.id) : cluster.id == null;
     }
 
     @Override
-    public boolean equals(Object obj) {
-        if (this == obj)
-            return true;
-        if (obj == null)
-            return false;
-        if (getClass() != obj.getClass())
-            return false;
-
-        Cluster other = (Cluster) obj;
-        return (this.id.equals(other.id));
+    public int hashCode() {
+        return id != null ? id.hashCode() : 0;
     }
-    
+
     public String toString() {
         return "[Cluster id=" + id.toString() + ", " + links.keySet() + "]";
     }
