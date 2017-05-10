@@ -1,25 +1,17 @@
 package net.floodlightcontroller.core.internal;
 
-import java.util.Map.Entry;
-
-import javax.annotation.Nonnull;
-
-import java.util.Date;
-import net.floodlightcontroller.core.HARole;
-import net.floodlightcontroller.core.IHAListener;
-import net.floodlightcontroller.core.IOFSwitch;
-import net.floodlightcontroller.core.IOFSwitchBackend;
-import net.floodlightcontroller.core.IShutdownService;
-import net.floodlightcontroller.core.RoleInfo;
+import com.google.common.base.Preconditions;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import net.floodlightcontroller.core.*;
 import net.floodlightcontroller.core.internal.Controller.IUpdate;
 import org.projectfloodlight.openflow.protocol.OFControllerRole;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.base.Preconditions;
-
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import javax.annotation.Nonnull;
+import java.util.Date;
+import java.util.Map.Entry;
 
 /**
  * A utility class to manage the <i>controller roles</i>.
@@ -101,7 +93,7 @@ public class RoleManager {
      * was changed. For information purposes only.
      * @throws NullPointerException if role or roleChangeDescription is null
      */
-    public synchronized void setRole(@Nonnull HARole role, @Nonnull String roleChangeDescription) {
+    public synchronized void setRole(HARole role, String roleChangeDescription) {
         Preconditions.checkNotNull(role, "role must not be null");
         Preconditions.checkNotNull(roleChangeDescription, "roleChangeDescription must not be null");
 

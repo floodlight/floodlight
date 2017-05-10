@@ -1,25 +1,16 @@
 package net.floodlightcontroller.debugcounter;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
-
-import javax.annotation.Nonnull;
-import javax.annotation.concurrent.GuardedBy;
-
 import net.floodlightcontroller.core.IShutdownListener;
 import net.floodlightcontroller.core.IShutdownService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import javax.annotation.concurrent.GuardedBy;
+import java.util.*;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class DebugCounterServiceImpl implements IFloodlightModule, IDebugCounterService {
     protected static final Logger logger =
@@ -73,10 +64,10 @@ public class DebugCounterServiceImpl implements IFloodlightModule, IDebugCounter
     }
 
     @Override
-    public IDebugCounter registerCounter(@Nonnull String moduleName,
-                                         @Nonnull String counterHierarchy,
-                                         @Nonnull String counterDescription,
-                                         @Nonnull MetaData... metaData) {
+    public IDebugCounter registerCounter(String moduleName,
+                                         String counterHierarchy,
+                                         String counterDescription,
+                                         MetaData... metaData) {
         verifyModuleNameSanity(moduleName);
         verifyStringSanity(counterHierarchy, "counterHierarchy");
         if (counterDescription == null) {
