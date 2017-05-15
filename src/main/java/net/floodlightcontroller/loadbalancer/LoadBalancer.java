@@ -523,11 +523,11 @@ ILoadBalancerService, IOFMessageListener {
 					// out: match dest client (ip, port), rewrite src from member ip/port to vip ip/port, forward
 
 					if (! routeIn.getPath().isEmpty()) {
-						pushStaticVipRoute(true, routeIn, client, member, sw, pi, cntx);
+						pushStaticVipRoute(true, routeIn, client, member, sw);
 					}
 
 					if (! routeOut.getPath().isEmpty()) {
-						pushStaticVipRoute(false, routeOut, client, member, sw, pi, cntx);
+						pushStaticVipRoute(false, routeOut, client, member, sw);
 					}
 
 				}
@@ -550,7 +550,7 @@ ILoadBalancerService, IOFMessageListener {
 	 * @param LBMember member
 	 * @param long pinSwitch
 	 */
-	public void pushStaticVipRoute(boolean inBound, Path route, IPClient client, LBMember member, IOFSwitch pinSwitch,OFPacketIn pi, FloodlightContext cntx) {
+	public void pushStaticVipRoute(boolean inBound, Path route, IPClient client, LBMember member, IOFSwitch pinSwitch) {
 
 		List<NodePortTuple> path = route.getPath();
 		if (path.size() > 0) {
