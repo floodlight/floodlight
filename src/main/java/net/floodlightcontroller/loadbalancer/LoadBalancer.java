@@ -120,7 +120,6 @@ ILoadBalancerService, IOFMessageListener {
 	protected HashMap<Integer, MacAddress> vipIpToMac;
 	protected HashMap<Integer, String> memberIpToId;
 	protected HashMap<IPClient, LBMember> clientToMember;
-	protected HashMap<IDevice, String> deviceToMemberId;
 
 	//Copied from Forwarding with message damper routine for pushing proxy Arp 
 	protected static String LB_ETHER_TYPE = "0x800";
@@ -276,6 +275,7 @@ ILoadBalancerService, IOFMessageListener {
 	 */
 	public HashMap<String, U64> collectSwitchPortBandwidth(){
 		HashMap<String,U64> memberPortBandwidth = new HashMap<String, U64>();
+		HashMap<IDevice,String> deviceToMemberId = new HashMap<IDevice, String>();
 
 		// retrieve all known devices to know which ones are attached to the members
 		Collection<? extends IDevice> allDevices = deviceManagerService.getAllDevices();
@@ -934,7 +934,6 @@ ILoadBalancerService, IOFMessageListener {
 		vipIpToId = new HashMap<Integer, String>();
 		vipIpToMac = new HashMap<Integer, MacAddress>();
 		memberIpToId = new HashMap<Integer, String>();
-		deviceToMemberId = new HashMap<IDevice, String>();
 	}
 
 	@Override
