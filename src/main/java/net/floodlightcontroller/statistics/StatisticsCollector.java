@@ -128,10 +128,10 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
 			IOFSwitch sw = switchService.getSwitch(npt.getNodeId());
 			long speed = 0;
 
-			// Fix Problem starts here
 			if(sw == null) return speed; /* could have disconnected; we'll assume zero-speed then */
 			if(sw.getPort(npt.getPortId()) == null) return speed;
 
+			/* getCurrSpeed() should handle different OpenFlow Version */
 			OFVersion detectedVersion = sw.getOFFactory().getVersion();
 			switch(detectedVersion){
 				case OF_10:
@@ -147,7 +147,7 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
 				case OF_14:
 				case OF_15:
 					for(OFPortDescProp p : sw.getPort(npt.getPortId()).getProperties()){
-						if( p.getType() == 0 ){
+						if( p.getType() == 0 ){ /* OpenFlow 1.4 and OpenFlow 1.5 will return zero */
 							speed = ((OFPortDescPropEthernet) p).getCurrSpeed();
 						}
 					}
