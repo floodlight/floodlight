@@ -34,12 +34,7 @@ public class GetCurrentPortSpeedTest extends FloodlightTestCase {
     private IOFSwitchService switchService;
     private StatisticsCollector statsCollector;
 
-    private static final OFFactory factory11 = OFFactories.getFactory(OFVersion.OF_11);
-    private static final OFFactory factory12 = OFFactories.getFactory(OFVersion.OF_12);
-    private static final OFFactory factory13 = OFFactories.getFactory(OFVersion.OF_13);
-    private static final OFFactory factory14 = OFFactories.getFactory(OFVersion.OF_14);
-    private static final OFFactory factory15 = OFFactories.getFactory(OFVersion.OF_15);
-    private static OFFactory inputFactory;
+    private static OFVersion inputOFVersion;
     private static Long expectedSpeed;
 
     @Override
@@ -65,11 +60,11 @@ public class GetCurrentPortSpeedTest extends FloodlightTestCase {
 
     /**
      * This constructor will be called for each row of test data collection
-     * @param inputFactory
+     * @param inputOFVersion
      * @param expectedSpeed
      */
-    public GetCurrentPortSpeedTest(OFFactory inputFactory, Long expectedSpeed) {
-        this.inputFactory = inputFactory;
+    public GetCurrentPortSpeedTest(OFVersion inputOFVersion, Long expectedSpeed) {
+        this.inputOFVersion = inputOFVersion;
         this.expectedSpeed = expectedSpeed;
     }
 
@@ -80,11 +75,11 @@ public class GetCurrentPortSpeedTest extends FloodlightTestCase {
     @Parameterized.Parameters
     public static Iterable<Object[]> testData() {
         return Arrays.asList(new Object[][] {
-            { factory11, 100L },
-            { factory12, 100L },
-            { factory13, 100L },
-            { factory14, 100L },
-            { factory15, 100L },
+            { OFVersion.OF_11, 100L },
+            { OFVersion.OF_12, 100L },
+            { OFVersion.OF_13, 100L },
+            { OFVersion.OF_14, 100L },
+            { OFVersion.OF_15, 100L },
         });
     }
 
@@ -95,7 +90,7 @@ public class GetCurrentPortSpeedTest extends FloodlightTestCase {
      */
     @Test
     public void testGetCurrentPortSpeed() throws Exception {
-        IOFSwitch sw = getSwitchByOFVersion(inputFactory);
+        IOFSwitch sw = getSwitchByOFVersion(inputOFVersion);
         NodePortTuple npt = new NodePortTuple(DatapathId.of(1), OFPort.of(1));
         Map<DatapathId, IOFSwitch> switchMap = new HashMap<>();
         switchMap.put(sw.getId(), sw);
@@ -108,14 +103,15 @@ public class GetCurrentPortSpeedTest extends FloodlightTestCase {
 
     }
 
-    private IOFSwitch getSwitchByOFVersion(OFFactory inputFactory) {
+    private IOFSwitch getSwitchByOFVersion(OFVersion inputOFVersion) {
         IOFSwitch sw = EasyMock.createMock(IOFSwitch.class);
+        OFFactory inputFactory = OFFactories.getFactory(inputOFVersion);
+
         reset(sw);
         expect(sw.getId()).andReturn(DatapathId.of(1L)).anyTimes();
         expect(sw.getOFFactory()).andReturn(inputFactory).anyTimes();
 
-        OFVersion factoryVersion = inputFactory.getVersion();
-        switch (factoryVersion){
+        switch (inputOFVersion){
             case OF_11:
             case OF_12:
             case OF_13:
