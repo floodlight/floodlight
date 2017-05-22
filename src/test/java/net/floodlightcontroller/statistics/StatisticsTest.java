@@ -26,7 +26,7 @@ import org.junit.runners.Parameterized;
  * Created by qing wang on 5/18/17.
  */
 @RunWith(Parameterized.class)
-public class GetCurrentPortSpeedTest extends FloodlightTestCase {
+public class StatisticsTest extends FloodlightTestCase {
 
     private FloodlightContext cntx;
     private FloodlightModuleContext fmc;
@@ -63,7 +63,7 @@ public class GetCurrentPortSpeedTest extends FloodlightTestCase {
      * @param inputOFVersion
      * @param expectedSpeed
      */
-    public GetCurrentPortSpeedTest(OFVersion inputOFVersion, Long expectedSpeed) {
+    public StatisticsTest(OFVersion inputOFVersion, Long expectedSpeed) {
         this.inputOFVersion = inputOFVersion;
         this.expectedSpeed = expectedSpeed;
     }
