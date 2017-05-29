@@ -178,6 +178,7 @@ public class TCP extends BasePacket {
         byte[] payloadData = null;
         if (payload != null) {
             payload.setParent(this);
+           
             payloadData = payload.serialize();
             length += payloadData.length;
         }
@@ -379,7 +380,7 @@ public class TCP extends BasePacket {
     @Override
     public IPacket deserialize(byte[] data, int offset, int length)
             throws PacketParsingException {
-        ByteBuffer bb = ByteBuffer.wrap(data, offset, length);
+        ByteBuffer bb = ByteBuffer.wrap(data, offset, length);        
         this.sourcePort = TransportPort.of((int) (bb.getShort() & 0xffff)); // short will be signed, pos or neg
         this.destinationPort = TransportPort.of((int) (bb.getShort() & 0xffff)); // convert range 0 to 65534, not -32768 to 32767
         this.sequence = bb.getInt();
@@ -405,11 +406,12 @@ public class TCP extends BasePacket {
                 this.options = null;
             }
         }
-
+                        
         this.payload = new Data();
         int remLength = bb.limit()-bb.position();
         this.payload = payload.deserialize(data, bb.position(), remLength);
+        
         this.payload.setParent(this);
         return this;
-    }
+    }   
 }

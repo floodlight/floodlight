@@ -38,6 +38,7 @@ public class LBMember {
 
     protected String poolId;
     protected String vipId;
+    protected short weight;
     
     public LBMember() {
         id = String.valueOf((int) (Math.random()*10000));
@@ -50,5 +51,6 @@ public class LBMember {
         status = 0;
         poolId = null;
         vipId = null;
+        weight = 1;
     }
 }

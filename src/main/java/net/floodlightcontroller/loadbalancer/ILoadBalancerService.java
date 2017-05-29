@@ -154,5 +154,21 @@ public interface ILoadBalancerService extends IFloodlightService {
      * @return int: removal status 
      */
     public int removeMonitor(String monitorId);
+    
+    /**
+     * Set member weight for WRR algorithm.
+     * @param String memberId: the Id of the member
+     * @param String weight: the weight to use in the WRR
+     * @return int: removal status
+     */
+	public int setMemberWeight(String memberId, String weight);
 
+	 /**
+     * Set member to prioritize for WRR algorithm.
+     * @param String memberId: the Id of the member
+     * @param String poolId: the id of the pool
+     * @return int: operation status
+     */
+	public int setPriorityToMember(String poolId, String memberId);
+    
 }

@@ -128,7 +128,15 @@ public class PoolsResource extends ServerResource {
                 continue;
             }
             if (n.equals("lb_method")) {
-                pool.lbMethod = Short.parseShort(jp.getText());
+            	String method = jp.getText();
+            	if(method.equalsIgnoreCase("RR")){
+            		pool.lbMethod = (short) 1;
+            	} else if(method.equalsIgnoreCase("STATISTICS")){
+            		pool.lbMethod = (short) 2;
+            	} else if(method.equalsIgnoreCase("WRR")){
+            		pool.lbMethod = (short) 3;
+            	}
+            		
                 continue;
             }
             if (n.equals("protocol")) {

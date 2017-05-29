@@ -51,6 +51,7 @@ import org.projectfloodlight.openflow.types.IpProtocol;
 import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFBufferId;
 import org.projectfloodlight.openflow.types.OFPort;
+import org.projectfloodlight.openflow.types.U64;
 import org.projectfloodlight.openflow.types.VlanVid;
 import org.projectfloodlight.openflow.protocol.OFPacketInReason;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
@@ -72,6 +73,7 @@ import net.floodlightcontroller.devicemanager.IDeviceService;
 import net.floodlightcontroller.devicemanager.IEntityClassifierService;
 import net.floodlightcontroller.devicemanager.internal.DefaultEntityClassifier;
 import net.floodlightcontroller.devicemanager.test.MockDeviceManager;
+import net.floodlightcontroller.loadbalancer.LoadBalancer.IPClient;
 import net.floodlightcontroller.packet.ARP;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.ICMP;
@@ -105,12 +107,14 @@ public class LoadBalancerTest extends FloodlightTestCase {
 	protected RestApiServer restApi;
 	protected VipsResource vipsResource;
 	protected PoolsResource poolsResource;
+	protected WRRResource wrrResource;
+	protected PoolMemberResource poolMemberResource;
 	protected MembersResource membersResource;
 	private MockSyncService mockSyncService;
 	protected IDebugCounterService debugCounterService;
 	protected LBVip vip1, vip2;
 	protected LBPool pool1, pool2, pool3;
-	protected LBMember member1, member2, member3, member4;
+	protected LBMember member1, member2, member3, member4, member5, member6;
 	private OFFactory factory;
 
 	@Override
@@ -119,7 +123,7 @@ public class LoadBalancerTest extends FloodlightTestCase {
 		super.setUp();
 
 		factory = OFFactories.getFactory(OFVersion.OF_13);
-		
+
 		lb = new LoadBalancer();
 
 		cntx = new FloodlightContext();
@@ -178,6 +182,8 @@ public class LoadBalancerTest extends FloodlightTestCase {
 		vipsResource = new VipsResource();
 		poolsResource = new PoolsResource();
 		membersResource = new MembersResource();
+		wrrResource = new WRRResource();
+		poolMemberResource = new PoolMemberResource();
 
 		vip1=null;
 		vip2=null;
@@ -190,6 +196,8 @@ public class LoadBalancerTest extends FloodlightTestCase {
 		member2=null;
 		member3=null;
 		member4=null;
+		member5=null;
+		member6=null;
 	}
 
 	@Test
@@ -249,8 +257,8 @@ public class LoadBalancerTest extends FloodlightTestCase {
 
 		testCreateVip();
 
-		postData1 = "{\"id\":\"1\",\"name\":\"pool1\",\"protocol\":\"icmp\",\"vip_id\":\"1\"}";
-		postData2 = "{\"id\":\"2\",\"name\":\"pool2\",\"protocol\":\"tcp\",\"vip_id\":\"2\"}";
+		postData1 = "{\"id\":\"1\",\"name\":\"pool1\",\"protocol\":\"icmp\",\"lb_method\":\"STATISTICS\",\"vip_id\":\"1\"}";
+		postData2 = "{\"id\":\"2\",\"name\":\"pool2\",\"protocol\":\"tcp\",\"lb_method\":\"WRR\",\"vip_id\":\"2\"}";
 		postData3 = "{\"id\":\"3\",\"name\":\"pool3\",\"protocol\":\"udp\",\"vip_id\":\"3\"}";
 
 		try {
@@ -317,16 +325,19 @@ public class LoadBalancerTest extends FloodlightTestCase {
 
 	@Test
 	public void testCreateMember() {
-		String postData1, postData2, postData3, postData4;
+		String postData1, postData2, postData3, postData4,postData5,postData6;
 		IOException error = null;
 
 		testCreateVip();
 		testCreatePool();
 
-		postData1 = "{\"id\":\"1\",\"address\":\"10.0.0.3\",\"port\":\"8\",\"pool_id\":\"1\"}";
-		postData2 = "{\"id\":\"2\",\"address\":\"10.0.0.4\",\"port\":\"8\",\"pool_id\":\"1\"}";
-		postData3 = "{\"id\":\"3\",\"address\":\"10.0.0.5\",\"port\":\"100\",\"pool_id\":\"2\"}";
+		postData1 = "{\"id\":\"1\",\"address\":\"10.0.0.3\",\"port\":\"8\",\"pool_id\":\"1\",\"weight\":\"2\"}";
+		postData2 = "{\"id\":\"2\",\"address\":\"10.0.0.4\",\"port\":\"8\",\"pool_id\":\"1\",\"weight\":\"3\"}";
+		postData3 = "{\"id\":\"3\",\"address\":\"10.0.0.5\",\"port\":\"100\",\"pool_id\":\"2\",\"weight\":\"4\"}";
 		postData4 = "{\"id\":\"4\",\"address\":\"10.0.0.6\",\"port\":\"100\",\"pool_id\":\"2\"}";
+		postData5 = "{\"id\":\"5\",\"address\":\"10.0.0.7\",\"port\":\"100\",\"pool_id\":\"1\",\"weight\":\"5\"}";
+		postData6 = "{\"id\":\"6\",\"address\":\"10.0.0.8\",\"port\":\"100\",\"pool_id\":\"1\",\"weight\":\"5\"}";
+
 
 		try {
 			member1 = membersResource.jsonToMember(postData1);
@@ -348,18 +359,33 @@ public class LoadBalancerTest extends FloodlightTestCase {
 		} catch (IOException e) {
 			error = e;
 		}
+		try {
+			member5= membersResource.jsonToMember(postData5);
+		} catch (IOException e) {
+			error = e;
+		}
+		try {
+			member6= membersResource.jsonToMember(postData6);
+		} catch (IOException e) {
+			error = e;
+		}
+
 
 		// verify correct parsing
 		assertFalse(member1==null);
 		assertFalse(member2==null);
 		assertFalse(member3==null);
 		assertFalse(member4==null);
+		assertFalse(member5==null);
+		assertFalse(member6==null);
 		assertTrue(error==null);
 
 		lb.createMember(member1);
 		lb.createMember(member2);
 		lb.createMember(member3);
 		lb.createMember(member4);
+		lb.createMember(member5);
+		lb.createMember(member6);
 
 		// add the same server a second time
 		lb.createMember(member1);
@@ -369,12 +395,23 @@ public class LoadBalancerTest extends FloodlightTestCase {
 		assertTrue(lb.members.containsKey(member2.id));
 		assertTrue(lb.members.containsKey(member3.id));
 		assertTrue(lb.members.containsKey(member4.id));
+		assertTrue(lb.members.containsKey(member5.id));
+		assertTrue(lb.members.containsKey(member6.id));
 
-		assertTrue(lb.pools.get(member1.poolId).members.size()==2);
+		assertTrue(lb.pools.get(member1.poolId).members.size()==4);
 		assertTrue(lb.pools.get(member3.poolId).members.size()==2);
 
 		// member1 should inherit valid vipId from pool
 		assertTrue(lb.vips.get(member1.vipId)!=null);
+
+		assertTrue(member1.weight==2);
+		assertTrue(member2.weight==3);
+		assertTrue(member3.weight==4);
+		assertTrue(member5.weight==5);
+		assertTrue(member6.weight==5);
+	
+		// default weight value
+		assertTrue(member4.weight==1);
 	}
 
 	@Test
@@ -439,10 +476,10 @@ public class LoadBalancerTest extends FloodlightTestCase {
 		expect(sw1.hasAttribute(IOFSwitch.PROP_SUPPORTS_OFPP_TABLE)).andReturn(true).anyTimes();
 		expect(sw1.getOFFactory()).andReturn(factory).anyTimes();
 		expect(sw1.write(capture(wc1))).andReturn(true).anyTimes();
-		
+
 		replay(sw1);
 		sfp.switchAdded(DatapathId.of(1L));
-		
+
 		verify(sw1);
 
 		/* Test plan:
@@ -469,22 +506,22 @@ public class LoadBalancerTest extends FloodlightTestCase {
 
 		// Build arp packets
 		arpRequest1 = new Ethernet()
-		.setSourceMACAddress("00:00:00:00:00:01")
-		.setDestinationMACAddress("ff:ff:ff:ff:ff:ff")
-		.setEtherType(EthType.ARP)
-		.setVlanID((short) 0)
-		.setPriorityCode((byte) 0)
-		.setPayload(
-				new ARP()
-				.setHardwareType(ARP.HW_TYPE_ETHERNET)
-				.setProtocolType(ARP.PROTO_TYPE_IP)
-				.setHardwareAddressLength((byte) 6)
-				.setProtocolAddressLength((byte) 4)
-				.setOpCode(ARP.OP_REQUEST)
-				.setSenderHardwareAddress(MacAddress.of("00:00:00:00:00:01"))
-				.setSenderProtocolAddress(IPv4Address.of("10.0.0.1"))
-				.setTargetHardwareAddress(MacAddress.of("00:00:00:00:00:00"))
-				.setTargetProtocolAddress(IPv4Address.of("10.0.0.100")));
+				.setSourceMACAddress("00:00:00:00:00:01")
+				.setDestinationMACAddress("ff:ff:ff:ff:ff:ff")
+				.setEtherType(EthType.ARP)
+				.setVlanID((short) 0)
+				.setPriorityCode((byte) 0)
+				.setPayload(
+						new ARP()
+						.setHardwareType(ARP.HW_TYPE_ETHERNET)
+						.setProtocolType(ARP.PROTO_TYPE_IP)
+						.setHardwareAddressLength((byte) 6)
+						.setProtocolAddressLength((byte) 4)
+						.setOpCode(ARP.OP_REQUEST)
+						.setSenderHardwareAddress(MacAddress.of("00:00:00:00:00:01"))
+						.setSenderProtocolAddress(IPv4Address.of("10.0.0.1"))
+						.setTargetHardwareAddress(MacAddress.of("00:00:00:00:00:00"))
+						.setTargetProtocolAddress(IPv4Address.of("10.0.0.100")));
 
 		arpRequest1Serialized = arpRequest1.serialize();
 
@@ -501,22 +538,22 @@ public class LoadBalancerTest extends FloodlightTestCase {
 
 		// Mock proxy arp packet-out
 		arpReply1 = new Ethernet()
-		.setSourceMACAddress(LBVip.LB_PROXY_MAC)
-		.setDestinationMACAddress(MacAddress.of("00:00:00:00:00:01"))
-		.setEtherType(EthType.ARP)
-		.setVlanID((short) 0)
-		.setPriorityCode((byte) 0)
-		.setPayload(
-				new ARP()
-				.setHardwareType(ARP.HW_TYPE_ETHERNET)
-				.setProtocolType(ARP.PROTO_TYPE_IP)
-				.setHardwareAddressLength((byte) 6)
-				.setProtocolAddressLength((byte) 4)
-				.setOpCode(ARP.OP_REPLY)
-				.setSenderHardwareAddress(MacAddress.of(LBVip.LB_PROXY_MAC))
-				.setSenderProtocolAddress(IPv4Address.of("10.0.0.100"))
-				.setTargetHardwareAddress(MacAddress.of("00:00:00:00:00:01"))
-				.setTargetProtocolAddress(IPv4Address.of("10.0.0.1")));
+				.setSourceMACAddress(LBVip.LB_PROXY_MAC)
+				.setDestinationMACAddress(MacAddress.of("00:00:00:00:00:01"))
+				.setEtherType(EthType.ARP)
+				.setVlanID((short) 0)
+				.setPriorityCode((byte) 0)
+				.setPayload(
+						new ARP()
+						.setHardwareType(ARP.HW_TYPE_ETHERNET)
+						.setProtocolType(ARP.PROTO_TYPE_IP)
+						.setHardwareAddressLength((byte) 6)
+						.setProtocolAddressLength((byte) 4)
+						.setOpCode(ARP.OP_REPLY)
+						.setSenderHardwareAddress(MacAddress.of(LBVip.LB_PROXY_MAC))
+						.setSenderProtocolAddress(IPv4Address.of("10.0.0.100"))
+						.setTargetHardwareAddress(MacAddress.of("00:00:00:00:00:01"))
+						.setTargetProtocolAddress(IPv4Address.of("10.0.0.1")));
 
 		arpReply1Serialized = arpReply1.serialize();
 
@@ -530,7 +567,7 @@ public class LoadBalancerTest extends FloodlightTestCase {
 				.setXid(22)
 				.build();
 		sw1.write(arpReplyPacketOut1);
-		
+
 		lb.receive(sw1, arpRequestPacketIn1, cntx);
 		verify(sw1, topology);
 
@@ -540,7 +577,7 @@ public class LoadBalancerTest extends FloodlightTestCase {
 
 		for (OFMessage m: msglist1) {
 			if (m instanceof OFPacketOut)
-                assertEquals(OFMessageUtils.OFMessageIgnoreXid.of(arpReplyPacketOut1), OFMessageUtils.OFMessageIgnoreXid.of(m));
+				assertEquals(OFMessageUtils.OFMessageIgnoreXid.of(arpReplyPacketOut1), OFMessageUtils.OFMessageIgnoreXid.of(m));
 			else
 				assertTrue(false); // unexpected message
 		}
@@ -549,7 +586,7 @@ public class LoadBalancerTest extends FloodlightTestCase {
 		// Skip arpRequest2 test - in reality this will happen, but for unit test the same logic
 		// is already validated with arpRequest1 test above
 		//
-		
+
 		// Keep the StaticFlowEntryPusher happy with a switch in the switch service
 		Map<DatapathId, IOFSwitch> switches = new HashMap<DatapathId, IOFSwitch>(1);
 		switches.put(DatapathId.of(1), sw1);
@@ -558,19 +595,19 @@ public class LoadBalancerTest extends FloodlightTestCase {
 
 		// Build icmp packets
 		icmpPacket1 = new Ethernet()
-		.setSourceMACAddress("00:00:00:00:00:01")
-		.setDestinationMACAddress(LBVip.LB_PROXY_MAC)
-		.setEtherType(EthType.IPv4)
-		.setVlanID((short) 0)
-		.setPriorityCode((byte) 0)
-		.setPayload(
-				new IPv4()
-				.setSourceAddress("10.0.0.1")
-				.setDestinationAddress("10.0.0.100")
-				.setProtocol(IpProtocol.ICMP)
-				.setPayload(new ICMP()
-				.setIcmpCode((byte) 0)
-				.setIcmpType((byte) 0)));
+				.setSourceMACAddress("00:00:00:00:00:01")
+				.setDestinationMACAddress(LBVip.LB_PROXY_MAC)
+				.setEtherType(EthType.IPv4)
+				.setVlanID((short) 0)
+				.setPriorityCode((byte) 0)
+				.setPayload(
+						new IPv4()
+						.setSourceAddress("10.0.0.1")
+						.setDestinationAddress("10.0.0.100")
+						.setProtocol(IpProtocol.ICMP)
+						.setPayload(new ICMP()
+								.setIcmpCode((byte) 0)
+								.setIcmpType((byte) 0)));
 
 		icmpPacket1Serialized = icmpPacket1.serialize();
 
@@ -581,19 +618,19 @@ public class LoadBalancerTest extends FloodlightTestCase {
 				.setReason(OFPacketInReason.NO_MATCH)
 				.build();
 		icmpPacket2 = new Ethernet()
-		.setSourceMACAddress("00:00:00:00:00:02")
-		.setDestinationMACAddress(LBVip.LB_PROXY_MAC)
-		.setEtherType(EthType.IPv4)
-		.setVlanID((short) 0)
-		.setPriorityCode((byte) 0)
-		.setPayload(
-				new IPv4()
-				.setSourceAddress("10.0.0.2")
-				.setDestinationAddress("10.0.0.100")
-				.setProtocol(IpProtocol.ICMP)
-				.setPayload(new ICMP()
-				.setIcmpCode((byte) 0)
-				.setIcmpType((byte) 0)));
+				.setSourceMACAddress("00:00:00:00:00:02")
+				.setDestinationMACAddress(LBVip.LB_PROXY_MAC)
+				.setEtherType(EthType.IPv4)
+				.setVlanID((short) 0)
+				.setPriorityCode((byte) 0)
+				.setPayload(
+						new IPv4()
+						.setSourceAddress("10.0.0.2")
+						.setDestinationAddress("10.0.0.100")
+						.setProtocol(IpProtocol.ICMP)
+						.setPayload(new ICMP()
+								.setIcmpCode((byte) 0)
+								.setIcmpType((byte) 0)));
 
 		icmpPacket2Serialized = icmpPacket2.serialize();
 
@@ -683,5 +720,72 @@ public class LoadBalancerTest extends FloodlightTestCase {
 		assertTrue(map.size()==4);
 	}
 
+	@Test
+	public void testSetMemberWeight() {		
+		testCreateVip();
+		testCreatePool();
+		testCreateMember();	
 
+		lb.setMemberWeight(member1.id, "5");
+		lb.setMemberWeight(member2.id, "2");
+		lb.setMemberWeight(member3.id, "2");
+		lb.setMemberWeight(member4.id, "9");
+
+		assertTrue(member1.weight==5);
+		assertTrue(member2.weight==2);
+		assertTrue(member3.weight==2);
+		assertTrue(member4.weight==9);
+
+		int inf_limit = lb.setMemberWeight(member1.id,"0");
+
+		int sup_limit = lb.setMemberWeight(member1.id,"11");
+
+		assertTrue(inf_limit == -1);
+		assertTrue(sup_limit == -1);
+	}
+
+	@Test
+	public void testSetPriorityMember() {		
+		testCreateVip();
+		testCreatePool();
+		testCreateMember();
+
+		lb.setPriorityToMember(member1.id,member1.poolId);
+
+		assertTrue(member1.weight==3);
+		assertTrue(member2.weight==1);
+		assertTrue(member5.weight==1);
+		assertTrue(member6.weight==1);
+	}
+
+	@Test
+	public void testPoolAlgorithms() {	
+		testCreateVip();
+		testCreatePool();
+		testCreateMember();
+
+		IPClient client = lb.new IPClient();
+
+		HashMap<String, U64> membersBandwidth = new HashMap<String, U64>();
+		membersBandwidth.put(member1.id,U64.of(4999));
+		membersBandwidth.put(member2.id,U64.of(1344));
+		membersBandwidth.put(member3.id,U64.ZERO);
+		membersBandwidth.put(member4.id,U64.of(230));
+		membersBandwidth.put(member5.id,U64.of(2002));
+		membersBandwidth.put(member6.id,U64.of(1345));
+
+		HashMap<String, Short> membersWeight = new HashMap<String, Short>();
+		
+		String memberPickedStats = pool1.pickMember(client, membersBandwidth, membersWeight);
+		
+		String noMembers = pool3.pickMember(client, membersBandwidth, membersWeight);
+
+		membersBandwidth.clear();
+		String memberPickedNoData = pool1.pickMember(client, membersBandwidth, membersWeight);
+		
+		assertTrue(memberPickedStats.equals("2"));
+		assertTrue(memberPickedNoData.equals("1")); // simple round robin
+		
+		assertTrue(noMembers==null);
+	}
 }
