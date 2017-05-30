@@ -25,6 +25,9 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
 import org.projectfloodlight.openflow.protocol.match.Match;
@@ -48,6 +51,7 @@ import org.projectfloodlight.openflow.types.U64;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javafx.util.Pair;
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFMessageListener;
@@ -75,8 +79,10 @@ import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.routing.IRoutingService;
 import net.floodlightcontroller.routing.Path;
 import net.floodlightcontroller.staticentry.IStaticEntryPusherService;
+import net.floodlightcontroller.statistics.FlowRuleStats;
 import net.floodlightcontroller.statistics.IStatisticsService;
 import net.floodlightcontroller.statistics.SwitchPortBandwidth;
+import net.floodlightcontroller.threadpool.IThreadPoolService;
 import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.util.FlowModUtils;
 import net.floodlightcontroller.util.OFMessageUtils;
@@ -112,6 +118,7 @@ ILoadBalancerService, IOFMessageListener {
 	protected IStaticEntryPusherService sfpService;
 	protected IOFSwitchService switchService;
 	protected IStatisticsService statisticsService;
+	protected IThreadPoolService threadService;
 
 	protected HashMap<String, LBVip> vips;
 	protected HashMap<String, LBPool> pools;
@@ -120,6 +127,8 @@ ILoadBalancerService, IOFMessageListener {
 	protected HashMap<Integer, MacAddress> vipIpToMac;
 	protected HashMap<Integer, String> memberIpToId;
 	protected HashMap<IPClient, LBMember> clientToMember;
+	protected HashMap<String, DatapathId> memberIdToDpid;
+	protected HashMap<Pair<Match,DatapathId>,String> flowToVipId;
 
 	//Copied from Forwarding with message damper routine for pushing proxy Arp 
 	protected static String LB_ETHER_TYPE = "0x800";
@@ -210,7 +219,7 @@ ILoadBalancerService, IOFMessageListener {
 				int destIpAddress = ip_pkt.getDestinationAddress().getInt();
 
 				if (vipIpToId.containsKey(destIpAddress)){
-					
+
 					IPClient client = new IPClient();
 					client.ipAddress = ip_pkt.getSourceAddress();
 					client.nw_proto = ip_pkt.getProtocol();
@@ -239,7 +248,7 @@ ILoadBalancerService, IOFMessageListener {
 
 					HashMap<String, Short> memberWeights = new HashMap<String, Short>();
 					HashMap<String, U64> memberPortBandwidth = new HashMap<String, U64>();
-					
+
 					if(pool.lbMethod == LBPool.WEIGHTED_RR){
 						for(String memberId: pool.members){
 							memberWeights.put(memberId,members.get(memberId).weight);
@@ -248,7 +257,7 @@ ILoadBalancerService, IOFMessageListener {
 					// Switch statistics collection
 					if(pool.lbMethod == LBPool.STATISTICS && statisticsService != null)
 						memberPortBandwidth = collectSwitchPortBandwidth();
-					
+
 					LBMember member = members.get(pool.pickMember(client,memberPortBandwidth,memberWeights));
 					if(member == null)			//fix dereference violations
 						return Command.CONTINUE;
@@ -298,9 +307,11 @@ ILoadBalancerService, IOFMessageListener {
 					SwitchPortBandwidth bandwidthOfPort = statisticsService.getBandwidthConsumption(dstDap.getNodeId(), dstDap.getPortId());
 					if(bandwidthOfPort != null) // needs time for 1st collection, this avoids nullPointerException 
 						memberPortBandwidth.put(memberId, bandwidthOfPort.getBitsPerSecondRx());
+					memberIdToDpid.put(memberId, dstDap.getNodeId());
 				}
 			}
 		}
+		log.info("MEMBER TO SWITCH MAC: " + memberIdToDpid);
 		return memberPortBandwidth;
 	}
 
@@ -658,11 +669,53 @@ ILoadBalancerService, IOFMessageListener {
 				fmb.setPriority(U16.t(LB_PRIORITY));
 				fmb.setMatch(mb.build());
 				sfpService.addFlow(entryName, fmb.build(), sw);
+				Pair<Match, DatapathId> pair = new Pair<Match,DatapathId>(mb.build(),sw);
+				log.info("TIMES HERE!");
+				flowToVipId.put(pair, member.vipId);
 			}
 		}
 
 		return;
 	}
+
+	// not working for OF  1.1?, 1.2?, 1.5? 
+		private class SetPoolStats implements Runnable {
+			@Override
+			public void run() {
+				if(!pools.isEmpty()){
+					if(!flowToVipId.isEmpty()){
+						log.info("MATCHES SIZE: {}", flowToVipId.size());
+						if(memberIdToDpid.isEmpty())
+							collectSwitchPortBandwidth(); //
+						for(LBPool pool: pools.values()){
+							FlowRuleStats frs = null;
+							Set<Long> bytesOut = new HashSet<Long>();
+							Set<Long> bytesIn = new HashSet<Long>();
+							for(Pair<Match,DatapathId> pair: flowToVipId.keySet()){
+								if(flowToVipId.get(pair).equals(pool.vipId)){
+									frs = statisticsService.getFlowStats().get(pair);
+									if(frs != null){
+										for(String memberId: pool.members){
+											if(Objects.equals(pair.getValue(), memberIdToDpid.get(memberId))){
+												if(pair.getKey().get(MatchField.IPV4_SRC) != null){
+													log.info("INBOUND TRAFFIC");
+													bytesIn.add(frs.getByteCount().getValue());
+												} else 
+													bytesOut.add(frs.getByteCount().getValue());
+											}				
+										}
+									}
+								}	
+							}				
+							pool.setPoolStatistics(bytesIn,bytesOut,flowToVipId.size()); 
+						}
+					}
+				}
+			}
+		}
+
+
+
 
 	@Override
 	public Collection<LBVip> listVips() {
@@ -853,6 +906,17 @@ ILoadBalancerService, IOFMessageListener {
 		}
 		return -1;
 	}
+
+	@Override
+	public LBStats getPoolStats(String poolId){		
+		if(pools != null && pools.containsKey(poolId)){
+			LBStats pool_stats = pools.get(poolId).poolStats;
+			if(pool_stats != null)
+				return pool_stats.getStats();
+		}
+		return null;
+	}
+
 	@Override
 	public Collection<LBMonitor> listMonitors() {
 		return null;
@@ -927,6 +991,7 @@ ILoadBalancerService, IOFMessageListener {
 		sfpService = context.getServiceImpl(IStaticEntryPusherService.class);
 		switchService = context.getServiceImpl(IOFSwitchService.class);
 		statisticsService = context.getServiceImpl(IStatisticsService.class);
+		threadService = context.getServiceImpl(IThreadPoolService.class);
 
 		vips = new HashMap<String, LBVip>();
 		pools = new HashMap<String, LBPool>();
@@ -934,6 +999,10 @@ ILoadBalancerService, IOFMessageListener {
 		vipIpToId = new HashMap<Integer, String>();
 		vipIpToMac = new HashMap<Integer, MacAddress>();
 		memberIpToId = new HashMap<Integer, String>();
+		memberIdToDpid = new HashMap<String, DatapathId>();
+		flowToVipId = new HashMap<Pair<Match,DatapathId>,String>();
+
+		threadService.getScheduledExecutor().scheduleAtFixedRate(new SetPoolStats(), 15, 15, TimeUnit.SECONDS); // !!
 	}
 
 	@Override

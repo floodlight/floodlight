@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Random;
+import java.util.Set;
 
 import org.projectfloodlight.openflow.types.U64;
 
@@ -59,6 +60,8 @@ public class LBPool {
 	protected String vipId;
 
 	protected int previousMemberIndex;
+	
+	protected LBStats poolStats;
 
 	public LBPool() {
 		id = String.valueOf((int) (Math.random()*10000));
@@ -72,6 +75,28 @@ public class LBPool {
 		adminState = 0;
 		status = 0;
 		previousMemberIndex = -1;
+		
+		poolStats = new LBStats();
+	}
+	
+	
+	public void setPoolStatistics(Set<Long> bytesIn,Set<Long> bytesOut,int activeFlows){
+		if(!bytesIn.isEmpty() && !bytesOut.isEmpty()){
+			long sumIn = 0;
+			long sumOut = 0; 
+			for(Long bytes: bytesIn){
+				sumIn += bytes;
+			}
+			poolStats.bytesIn = sumIn; 
+			
+			for(Long bytes: bytesOut){
+				sumOut += bytes;
+			}
+			poolStats.bytesOut = sumOut;
+
+			poolStats.activeFlows = activeFlows;
+			log.info("IN: " + sumIn + "OUT: " + sumOut);
+		}
 	}
 
 	public String pickMember(IPClient client, HashMap<String,U64> membersBandwidth,HashMap<String,Short> membersWeight) {
