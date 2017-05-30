@@ -279,43 +279,6 @@ ILoadBalancerService, IOFMessageListener {
 	}
 
 	/**
-	 * used to collect statistics from members switch port
-	 * @return HashMap<String, U64> portBandwidth <memberId,bitsPerSecond RX> of port connected to member
-	 */
-	public HashMap<String, U64> collectSwitchPortBandwidth(){
-		HashMap<String,U64> memberPortBandwidth = new HashMap<String, U64>();
-		HashMap<IDevice,String> deviceToMemberId = new HashMap<IDevice, String>();
-
-		// retrieve all known devices to know which ones are attached to the members
-		Collection<? extends IDevice> allDevices = deviceManagerService.getAllDevices();
-
-		for (IDevice d : allDevices) {
-			for (int j = 0; j < d.getIPv4Addresses().length; j++) {
-				if(members != null){
-					for(LBMember member: members.values()){
-						if (member.address == d.getIPv4Addresses()[j].getInt())
-							deviceToMemberId.put(d, member.id);
-					}
-				}
-			}
-		}
-		// collect statistics of the switch ports attached to the members
-		if(deviceToMemberId !=null){
-			for(IDevice membersDevice: deviceToMemberId.keySet()){
-				String memberId = deviceToMemberId.get(membersDevice);
-				for(SwitchPort dstDap: membersDevice.getAttachmentPoints()){					
-					SwitchPortBandwidth bandwidthOfPort = statisticsService.getBandwidthConsumption(dstDap.getNodeId(), dstDap.getPortId());
-					if(bandwidthOfPort != null) // needs time for 1st collection, this avoids nullPointerException 
-						memberPortBandwidth.put(memberId, bandwidthOfPort.getBitsPerSecondRx());
-					memberIdToDpid.put(memberId, dstDap.getNodeId());
-				}
-			}
-		}
-		log.info("MEMBER TO SWITCH MAC: " + memberIdToDpid);
-		return memberPortBandwidth;
-	}
-
-	/**
 	 * used to send proxy Arp for load balanced service requests
 	 * @param IOFSwitch sw
 	 * @param OFPacketIn pi
@@ -670,7 +633,6 @@ ILoadBalancerService, IOFMessageListener {
 				fmb.setMatch(mb.build());
 				sfpService.addFlow(entryName, fmb.build(), sw);
 				Pair<Match, DatapathId> pair = new Pair<Match,DatapathId>(mb.build(),sw);
-				log.info("TIMES HERE!");
 				flowToVipId.put(pair, member.vipId);
 			}
 		}
@@ -678,44 +640,78 @@ ILoadBalancerService, IOFMessageListener {
 		return;
 	}
 
-	// not working for OF  1.1?, 1.2?, 1.5? 
-		private class SetPoolStats implements Runnable {
-			@Override
-			public void run() {
-				if(!pools.isEmpty()){
-					if(!flowToVipId.isEmpty()){
-						log.info("MATCHES SIZE: {}", flowToVipId.size());
-						if(memberIdToDpid.isEmpty())
-							collectSwitchPortBandwidth(); //
-						for(LBPool pool: pools.values()){
-							FlowRuleStats frs = null;
-							Set<Long> bytesOut = new HashSet<Long>();
-							Set<Long> bytesIn = new HashSet<Long>();
-							for(Pair<Match,DatapathId> pair: flowToVipId.keySet()){
-								if(flowToVipId.get(pair).equals(pool.vipId)){
-									frs = statisticsService.getFlowStats().get(pair);
-									if(frs != null){
-										for(String memberId: pool.members){
-											if(Objects.equals(pair.getValue(), memberIdToDpid.get(memberId))){
-												if(pair.getKey().get(MatchField.IPV4_SRC) != null){
-													log.info("INBOUND TRAFFIC");
-													bytesIn.add(frs.getByteCount().getValue());
-												} else 
-													bytesOut.add(frs.getByteCount().getValue());
-											}				
-										}
+	//  working for OF  1.1?, 1.2?, 1.5? 
+	private class SetPoolStats implements Runnable {
+		@Override
+		public void run() {
+			if(!pools.isEmpty()){
+				if(!flowToVipId.isEmpty()){
+					collectSwitchPortBandwidth();
+					for(LBPool pool: pools.values()){
+						FlowRuleStats frs = null;
+						Set<Long> bytesOut = new HashSet<Long>();
+						Set<Long> bytesIn = new HashSet<Long>();
+						for(Pair<Match,DatapathId> pair: flowToVipId.keySet()){
+							if(flowToVipId.get(pair).equals(pool.vipId)){
+								frs = statisticsService.getFlowStats().get(pair);
+								if(frs != null){
+									for(String memberId: pool.members){
+										if(Objects.equals(pair.getValue(), memberIdToDpid.get(memberId))){
+											if(pair.getKey().get(MatchField.IPV4_SRC) != null){
+												bytesIn.add(frs.getByteCount().getValue());
+											} else 
+												bytesOut.add(frs.getByteCount().getValue());
+										}				
 									}
-								}	
-							}				
-							pool.setPoolStatistics(bytesIn,bytesOut,flowToVipId.size()); 
-						}
+								}
+							}	
+						}				
+						pool.setPoolStatistics(bytesIn,bytesOut,flowToVipId.size()); 
 					}
 				}
 			}
 		}
+	}
+	
+	/**
+	 * used to collect SwitchPortBandwidth of the members and map members to dpids
+	 */
+	public HashMap<String, U64> collectSwitchPortBandwidth(){
+		HashMap<String,U64> memberPortBandwidth = new HashMap<String, U64>();
+		HashMap<IDevice,String> deviceToMemberId = new HashMap<IDevice, String>();
 
+		// retrieve all known devices to know which ones are attached to the members
+		Collection<? extends IDevice> allDevices = deviceManagerService.getAllDevices();
 
+		for (IDevice d : allDevices) {
+			for (int j = 0; j < d.getIPv4Addresses().length; j++) {
+				if(!members.isEmpty()){
+					for(LBMember member: members.values()){
+						if (member.address == d.getIPv4Addresses()[j].getInt())
+							deviceToMemberId.put(d, member.id);
+					}
+				}
+			}
+		}
+		// collect statistics of the switch ports attached to the members
+		if(!deviceToMemberId.isEmpty()){
+			for(IDevice membersDevice: deviceToMemberId.keySet()){
+				String memberId = deviceToMemberId.get(membersDevice);
+				for(SwitchPort dstDap: membersDevice.getAttachmentPoints()){					
+					SwitchPortBandwidth bandwidthOfPort = statisticsService.getBandwidthConsumption(dstDap.getNodeId(), dstDap.getPortId());
+					if(bandwidthOfPort != null) // needs time for 1st collection, this avoids nullPointerException 
+						memberPortBandwidth.put(memberId, bandwidthOfPort.getBitsPerSecondRx());
+					memberIdToDpid.put(memberId, dstDap.getNodeId());
+				}
+			}
+		}
+		log.info("MEMBER TO DPID: " + memberIdToDpid);
+		return memberPortBandwidth;
+	}
 
+	/*
+	 * ILoadBalancerService methods
+	 */
 
 	@Override
 	public Collection<LBVip> listVips() {
@@ -941,6 +937,10 @@ ILoadBalancerService, IOFMessageListener {
 	public int removeMonitor(String monitorId) {
 		return 0;
 	}
+	
+	/*
+	 * floodlight module dependencies
+	 */
 
 	@Override
 	public Collection<Class<? extends IFloodlightService>>

@@ -15,6 +15,7 @@ public class FlowRuleStatsSerializer extends JsonSerializer<FlowRuleStats>{
 	public void serialize(FlowRuleStats frs, JsonGenerator jGen, SerializerProvider serializer) throws IOException, JsonProcessingException {
 
 		jGen.writeStartObject();
+		jGen.writeStringField("Dpid", String.valueOf(frs.getDpid()));
 		jGen.writeStringField("Bytes", String.valueOf(frs.getByteCount().getValue()));
 		jGen.writeStringField("Packets", String.valueOf(frs.getPacketCount().getValue()));
 		jGen.writeStringField("Priority", String.valueOf(frs.getPriority()));

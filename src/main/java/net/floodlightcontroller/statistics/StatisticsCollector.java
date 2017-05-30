@@ -18,6 +18,7 @@ import org.projectfloodlight.openflow.protocol.*;
 import org.projectfloodlight.openflow.protocol.match.Match;
 import org.projectfloodlight.openflow.protocol.ver13.OFMeterSerializerVer13;
 import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.OFGroup;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.TableId;
 import org.projectfloodlight.openflow.types.U64;
@@ -40,7 +41,7 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
 	private static boolean isEnabled = false;
 	
 	private static int portStatsInterval = 10; /* could be set by REST API, so not final */
-	private static int flowStatsInterval = 15 ;
+	private static int flowStatsInterval = 15;
 	
 	private static ScheduledFuture<?> portStatsCollector;
 	private static ScheduledFuture<?> flowStatsCollector;
@@ -149,6 +150,7 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
 					for (OFFlowStatsEntry pse : psr.getEntries()) {
 						Pair<Match, DatapathId> pair = new Pair<Match,DatapathId>(pse.getMatch(),e.getKey());
 						flowStats.put(pair,FlowRuleStats.of(
+								e.getKey(),
 								pse.getByteCount(),
 								pse.getPacketCount(),
 								pse.getPriority(),
@@ -270,7 +272,7 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
 
 	@Override
 	public Set<FlowRuleStats> getFlowStats(DatapathId dpid){
-		//!!!
+		//!!! heavy load
 		Set<FlowRuleStats> frs = new HashSet<FlowRuleStats>();
 		for(Pair<Match,DatapathId> pair: flowStats.keySet()){
 			if(pair.getValue().equals(dpid))
@@ -319,8 +321,8 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
 	 * Stop all stats threads.
 	 */
 	private void stopStatisticsCollection() {
-		if (!portStatsCollector.cancel(false) || !flowStatsCollector.cancel(false)) { // !!
-			log.error("Could not cancel port stats thread");
+		if (!portStatsCollector.cancel(false) || !flowStatsCollector.cancel(false)) {
+			log.error("Could not cancel port/flow stats threads");
 		} else {
 			log.warn("Statistics collection thread(s) stopped");
 		}
@@ -397,11 +399,20 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
 			switch (statsType) {
 			case FLOW:
 				match = sw.getOFFactory().buildMatch().build();
-				req = sw.getOFFactory().buildFlowStatsRequest()
-						.setMatch(match)
-						.setOutPort(OFPort.ANY)
-						.setTableId(TableId.ALL)
-						.build();
+				if (sw.getOFFactory().getVersion().compareTo(OFVersion.OF_11) >= 0) {
+					req = sw.getOFFactory().buildFlowStatsRequest()
+							.setMatch(match)
+							.setOutPort(OFPort.ANY)
+							.setOutGroup(OFGroup.ANY)
+							.setTableId(TableId.ALL)
+							.build();
+				} else{
+					req = sw.getOFFactory().buildFlowStatsRequest()
+							.setMatch(match)
+							.setOutPort(OFPort.ANY)
+							.setTableId(TableId.ALL)
+							.build();
+				}
 				break;
 			case AGGREGATE:
 				match = sw.getOFFactory().buildMatch().build();
