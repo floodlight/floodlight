@@ -72,7 +72,7 @@ public class StatisticsTest extends FloodlightTestCase {
      * A Collection of Junit Test with various "inputFactory" and "expectedSpeed"
      * @return
      */
-    @Parameterized.Parameters
+    @Parameterized.Parameters(name = "Test {index}: {0}, Port Speed is {1}")
     public static Iterable<Object[]> testData() {
         return Arrays.asList(new Object[][] {
             { OFVersion.OF_11, 100L },

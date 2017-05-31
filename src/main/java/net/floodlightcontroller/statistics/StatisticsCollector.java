@@ -124,17 +124,6 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
 			}
 		}
 
-		/* This is the original Code with Bugs */
-//		protected  long getSpeed(NodePortTuple npt) {
-//			IOFSwitch sw = switchService.getSwitch(npt.getNodeId());
-//			long speed = 0;
-//			if(sw != null){
-//				speed = sw.getPort(npt.getPortId()).getCurrSpeed();
-//			}
-//			return speed;
-//		}
-
-		/* Fix bug from here */
 		protected long getSpeed(NodePortTuple npt) {
 			IOFSwitch sw = switchService.getSwitch(npt.getNodeId());
 			long speed = 0;
