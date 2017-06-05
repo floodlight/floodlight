@@ -25,8 +25,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
@@ -129,6 +127,8 @@ ILoadBalancerService, IOFMessageListener {
 	protected HashMap<IPClient, LBMember> clientToMember;
 	protected HashMap<String, DatapathId> memberIdToDpid;
 	protected HashMap<Pair<Match,DatapathId>,String> flowToVipId;
+	
+	private static final int flowStatsInterval = 13;
 
 	//Copied from Forwarding with message damper routine for pushing proxy Arp 
 	protected static String LB_ETHER_TYPE = "0x800";
@@ -633,14 +633,16 @@ ILoadBalancerService, IOFMessageListener {
 				fmb.setMatch(mb.build());
 				sfpService.addFlow(entryName, fmb.build(), sw);
 				Pair<Match, DatapathId> pair = new Pair<Match,DatapathId>(mb.build(),sw);
-				flowToVipId.put(pair, member.vipId);
+				flowToVipId.put(pair, member.vipId); // used to set LBPool statistics
 			}
 		}
 
 		return;
 	}
 
-	//  working for OF  1.1?, 1.2?, 1.5? 
+	/**  working for OF  1.1?, 1.2?, 1.5? Periodical function to set LBPool statistics
+	 * Gets the statistics through StatisticsCollector.java and sets it to every LBPool
+	*/
 	private class SetPoolStats implements Runnable {
 		@Override
 		public void run() {
@@ -649,30 +651,28 @@ ILoadBalancerService, IOFMessageListener {
 					collectSwitchPortBandwidth();
 					for(LBPool pool: pools.values()){
 						FlowRuleStats frs = null;
-						Set<Long> bytesOut = new HashSet<Long>();
-						Set<Long> bytesIn = new HashSet<Long>();
-						for(Pair<Match,DatapathId> pair: flowToVipId.keySet()){
-							if(flowToVipId.get(pair).equals(pool.vipId)){
-								frs = statisticsService.getFlowStats().get(pair);
+						ArrayList<Long> bytesOut = new ArrayList<Long>();
+						ArrayList<Long> bytesIn = new ArrayList<Long>();
+						for(Pair<Match,DatapathId> pair: flowToVipId.keySet()){ // from the flows set from the load balancer
+							if(flowToVipId.get(pair).equals(pool.vipId)){ // determine which vip is responsible for the flow
+								frs = statisticsService.getFlowStats().get(pair); // get the statistics of this flow
 								if(frs != null){
-									for(String memberId: pool.members){
-										if(Objects.equals(pair.getValue(), memberIdToDpid.get(memberId))){
-											if(pair.getKey().get(MatchField.IPV4_SRC) != null){
-												bytesIn.add(frs.getByteCount().getValue());
-											} else 
-												bytesOut.add(frs.getByteCount().getValue());
-										}				
+									if(memberIdToDpid.containsValue(pair.getValue())){ // if switch is connected to a member
+										if(pair.getKey().get(MatchField.IPV4_SRC) != null){
+											bytesIn.add(frs.getByteCount().getValue());
+										} else 
+											bytesOut.add(frs.getByteCount().getValue());
 									}
 								}
-							}	
-						}				
+							}
+						}
 						pool.setPoolStatistics(bytesIn,bytesOut,flowToVipId.size()); 
 					}
 				}
 			}
 		}
 	}
-	
+
 	/**
 	 * used to collect SwitchPortBandwidth of the members and map members to dpids
 	 */
@@ -697,15 +697,14 @@ ILoadBalancerService, IOFMessageListener {
 		if(!deviceToMemberId.isEmpty()){
 			for(IDevice membersDevice: deviceToMemberId.keySet()){
 				String memberId = deviceToMemberId.get(membersDevice);
-				for(SwitchPort dstDap: membersDevice.getAttachmentPoints()){					
+				for(SwitchPort dstDap: membersDevice.getAttachmentPoints()){
+					memberIdToDpid.put(memberId, dstDap.getNodeId());
 					SwitchPortBandwidth bandwidthOfPort = statisticsService.getBandwidthConsumption(dstDap.getNodeId(), dstDap.getPortId());
 					if(bandwidthOfPort != null) // needs time for 1st collection, this avoids nullPointerException 
 						memberPortBandwidth.put(memberId, bandwidthOfPort.getBitsPerSecondRx());
-					memberIdToDpid.put(memberId, dstDap.getNodeId());
 				}
 			}
 		}
-		log.info("MEMBER TO DPID: " + memberIdToDpid);
 		return memberPortBandwidth;
 	}
 
@@ -937,7 +936,7 @@ ILoadBalancerService, IOFMessageListener {
 	public int removeMonitor(String monitorId) {
 		return 0;
 	}
-	
+
 	/*
 	 * floodlight module dependencies
 	 */
@@ -1002,7 +1001,7 @@ ILoadBalancerService, IOFMessageListener {
 		memberIdToDpid = new HashMap<String, DatapathId>();
 		flowToVipId = new HashMap<Pair<Match,DatapathId>,String>();
 
-		threadService.getScheduledExecutor().scheduleAtFixedRate(new SetPoolStats(), 15, 15, TimeUnit.SECONDS); // !!
+		threadService.getScheduledExecutor().scheduleAtFixedRate(new SetPoolStats(), flowStatsInterval, flowStatsInterval, TimeUnit.SECONDS);
 	}
 
 	@Override

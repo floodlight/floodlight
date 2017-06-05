@@ -33,6 +33,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+
 import org.easymock.Capture;
 import org.easymock.CaptureType;
 import org.easymock.EasyMock;
@@ -787,5 +788,27 @@ public class LoadBalancerTest extends FloodlightTestCase {
 		assertTrue(memberPickedNoData.equals("1")); // simple round robin
 		
 		assertTrue(noMembers==null);
+	}
+	
+	@Test
+	public void testPoolStats() {	
+		testCreateVip();
+		testCreatePool();
+		testCreateMember();
+		
+		ArrayList<Long> bytesIn = new ArrayList<Long>();
+		bytesIn.add((long) 10);
+
+		ArrayList<Long> bytesOut = new ArrayList<Long>();
+		bytesOut.add((long) 20);
+		
+		int activeFlows = 30;
+		
+		pool1.setPoolStatistics(bytesIn, bytesOut, activeFlows);
+		
+		assertTrue(pool1.poolStats.getBytesIn() == 10);
+		assertTrue(pool1.poolStats.getBytesOut() == 20);
+		assertTrue(pool1.poolStats.getActiveFlows() == 30);
+		
 	}
 }

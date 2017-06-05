@@ -41,7 +41,7 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
 	private static boolean isEnabled = false;
 	
 	private static int portStatsInterval = 10; /* could be set by REST API, so not final */
-	private static int flowStatsInterval = 15;
+	private static int flowStatsInterval = 12;
 	
 	private static ScheduledFuture<?> portStatsCollector;
 	private static ScheduledFuture<?> flowStatsCollector;
@@ -139,6 +139,9 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
 		}
 	}
 	
+	/**
+	 * Run periodically to collect all flow statistics.
+	 */
 	private class FlowStatsCollector implements Runnable {
 		@Override
 		public void run() {
@@ -272,7 +275,6 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
 
 	@Override
 	public Set<FlowRuleStats> getFlowStats(DatapathId dpid){
-		//!!! heavy load
 		Set<FlowRuleStats> frs = new HashSet<FlowRuleStats>();
 		for(Pair<Match,DatapathId> pair: flowStats.keySet()){
 			if(pair.getValue().equals(dpid))

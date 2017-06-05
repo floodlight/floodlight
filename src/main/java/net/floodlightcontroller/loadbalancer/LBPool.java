@@ -21,7 +21,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Random;
-import java.util.Set;
 
 import org.projectfloodlight.openflow.types.U64;
 
@@ -80,7 +79,7 @@ public class LBPool {
 	}
 	
 	
-	public void setPoolStatistics(Set<Long> bytesIn,Set<Long> bytesOut,int activeFlows){
+	public void setPoolStatistics(ArrayList<Long> bytesIn,ArrayList<Long> bytesOut,int activeFlows){
 		if(!bytesIn.isEmpty() && !bytesOut.isEmpty()){
 			long sumIn = 0;
 			long sumOut = 0; 
@@ -95,7 +94,7 @@ public class LBPool {
 			poolStats.bytesOut = sumOut;
 
 			poolStats.activeFlows = activeFlows;
-			log.info("IN: " + sumIn + "OUT: " + sumOut);
+			log.info("IN: " + sumIn + " OUT: " + sumOut); // !!
 		}
 	}
 
