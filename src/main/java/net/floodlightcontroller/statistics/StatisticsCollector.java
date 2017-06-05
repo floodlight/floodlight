@@ -78,7 +78,7 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
 	 * @author Ryan Izard, ryan.izard@bigswitch.com, rizard@g.clemson.edu
 	 *
 	 */
-	private class PortStatsCollector implements Runnable {
+	protected class PortStatsCollector implements Runnable {
 
 		@Override
 		public void run() {
@@ -117,11 +117,7 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
 							} else {
 								txBytesCounted = pse.getTxBytes().subtract(spb.getPriorByteValueTx());
 							}
-							IOFSwitch sw = switchService.getSwitch(npt.getNodeId());
-							long speed = 0;
-							if (sw != null) { /* could have disconnected; we'll assume zero-speed then */
-								speed = sw.getPort(npt.getPortId()).getCurrSpeed();
-							}
+							long speed = getSpeed(npt);
 							long timeDifSec = (System.currentTimeMillis() - spb.getUpdateTime()) / MILLIS_PER_SEC;
 							portStats.put(npt, SwitchPortBandwidth.of(npt.getNodeId(), npt.getPortId(), 
 									U64.ofRaw(speed),
@@ -137,6 +133,44 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
 				}
 			}
 		}
+
+		protected long getSpeed(NodePortTuple npt) {
+			IOFSwitch sw = switchService.getSwitch(npt.getNodeId());
+			long speed = 0;
+
+			if(sw == null) return speed; /* could have disconnected; we'll assume zero-speed then */
+			if(sw.getPort(npt.getPortId()) == null) return speed;
+
+			/* getCurrSpeed() should handle different OpenFlow Version */
+			OFVersion detectedVersion = sw.getOFFactory().getVersion();
+			switch(detectedVersion){
+				case OF_10:
+					log.debug("Port speed statistics not supported in OpenFlow 1.0");
+					break;
+
+				case OF_11:
+				case OF_12:
+				case OF_13:
+					speed = sw.getPort(npt.getPortId()).getCurrSpeed();
+					break;
+
+				case OF_14:
+				case OF_15:
+					for(OFPortDescProp p : sw.getPort(npt.getPortId()).getProperties()){
+						if( p.getType() == 0 ){ /* OpenFlow 1.4 and OpenFlow 1.5 will return zero */
+							speed = ((OFPortDescPropEthernet) p).getCurrSpeed();
+						}
+					}
+					break;
+
+				default:
+					break;
+			}
+
+			return speed;
+
+		}
+
 	}
 	
 	/**
