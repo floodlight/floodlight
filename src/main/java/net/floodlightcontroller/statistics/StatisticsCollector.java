@@ -39,25 +39,25 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
 	private static IRestApiService restApiService;
 
 	private static boolean isEnabled = false;
-	
+
 	private static int portStatsInterval = 10; /* could be set by REST API, so not final */
 	private static int flowStatsInterval = 11;
-	
+
 	private static ScheduledFuture<?> portStatsCollector;
 	private static ScheduledFuture<?> flowStatsCollector;
 
 	private static final long BITS_PER_BYTE = 8;
 	private static final long MILLIS_PER_SEC = 1000;
-	
+
 	private static final String INTERVAL_PORT_STATS_STR = "collectionIntervalPortStatsSeconds";
 	private static final String ENABLED_STR = "enable";
 
 	private static final HashMap<NodePortTuple, SwitchPortBandwidth> portStats = new HashMap<NodePortTuple, SwitchPortBandwidth>();
 	private static final HashMap<NodePortTuple, SwitchPortBandwidth> tentativePortStats = new HashMap<NodePortTuple, SwitchPortBandwidth>();
-	
+
 	private static final HashMap<Pair<Match,DatapathId>, FlowRuleStats> flowStats = new HashMap<Pair<Match,DatapathId>,FlowRuleStats>();
-	
-	
+
+
 
 	/**
 	 * Run periodically to collect all port statistics. This only collects
@@ -125,7 +125,7 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
 									U64.ofRaw((txBytesCounted.getValue() * BITS_PER_BYTE) / timeDifSec), 
 									pse.getRxBytes(), pse.getTxBytes())
 									);
-							
+
 						} else { /* initialize */
 							tentativePortStats.put(npt, SwitchPortBandwidth.of(npt.getNodeId(), npt.getPortId(), U64.ZERO, U64.ZERO, U64.ZERO, pse.getRxBytes(), pse.getTxBytes()));
 						}
@@ -144,27 +144,27 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
 			/* getCurrSpeed() should handle different OpenFlow Version */
 			OFVersion detectedVersion = sw.getOFFactory().getVersion();
 			switch(detectedVersion){
-				case OF_10:
-					log.debug("Port speed statistics not supported in OpenFlow 1.0");
-					break;
+			case OF_10:
+				log.debug("Port speed statistics not supported in OpenFlow 1.0");
+				break;
 
-				case OF_11:
-				case OF_12:
-				case OF_13:
-					speed = sw.getPort(npt.getPortId()).getCurrSpeed();
-					break;
+			case OF_11:
+			case OF_12:
+			case OF_13:
+				speed = sw.getPort(npt.getPortId()).getCurrSpeed();
+				break;
 
-				case OF_14:
-				case OF_15:
-					for(OFPortDescProp p : sw.getPort(npt.getPortId()).getProperties()){
-						if( p.getType() == 0 ){ /* OpenFlow 1.4 and OpenFlow 1.5 will return zero */
-							speed = ((OFPortDescPropEthernet) p).getCurrSpeed();
-						}
+			case OF_14:
+			case OF_15:
+				for(OFPortDescProp p : sw.getPort(npt.getPortId()).getProperties()){
+					if( p.getType() == 0 ){ /* OpenFlow 1.4 and OpenFlow 1.5 will return zero */
+						speed = ((OFPortDescPropEthernet) p).getCurrSpeed();
 					}
-					break;
+				}
+				break;
 
-				default:
-					break;
+			default:
+				break;
 			}
 
 			return speed;
@@ -172,7 +172,7 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
 		}
 
 	}
-	
+
 	/**
 	 * Run periodically to collect all flow statistics from every switch.
 	 */
@@ -182,18 +182,24 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
 			flowStats.clear(); // to clear expired flows
 			Map<DatapathId, List<OFStatsReply>> replies = getSwitchStatistics(switchService.getAllSwitchDpids(), OFStatsType.FLOW);
 			for (Entry<DatapathId, List<OFStatsReply>> e : replies.entrySet()) {
+				IOFSwitch sw = switchService.getSwitch(e.getKey());
 				for (OFStatsReply r : e.getValue()) {
 					OFFlowStatsReply psr = (OFFlowStatsReply) r;
 					for (OFFlowStatsEntry pse : psr.getEntries()) {
-						Pair<Match, DatapathId> pair = new Pair<Match,DatapathId>(pse.getMatch(),e.getKey());
-						flowStats.put(pair,FlowRuleStats.of(
-								e.getKey(),
-								pse.getByteCount(),
-								pse.getPacketCount(),
-								pse.getPriority(),
-								pse.getHardTimeout(),
-								pse.getIdleTimeout(),
-								pse.getDurationSec()));
+						if(sw.getOFFactory().getVersion().compareTo(OFVersion.OF_15) == 0){
+							log.warn("Flow Stats not supported in OpenFlow 1.5.");
+
+						} else {
+							Pair<Match, DatapathId> pair = new Pair<Match,DatapathId>(pse.getMatch(),e.getKey());
+							flowStats.put(pair,FlowRuleStats.of(
+									e.getKey(),
+									pse.getByteCount(),
+									pse.getPacketCount(),
+									pse.getPriority(),
+									pse.getHardTimeout(),
+									pse.getIdleTimeout(),
+									pse.getDurationSec()));
+						}
 					}
 				}
 			}
@@ -231,11 +237,11 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
 			statsReply = getSwitchStatistics(switchId, statType);
 		}
 	}
-	
+
 	/*
 	 * IFloodlightModule implementation
 	 */
-	
+
 	@Override
 	public Collection<Class<? extends IFloodlightService>> getModuleServices() {
 		Collection<Class<? extends IFloodlightService>> l =
@@ -301,7 +307,7 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
 	/*
 	 * IStatisticsService implementation
 	 */
-	
+
 	@Override
 	public Map<Pair<Match, DatapathId>, FlowRuleStats> getFlowStats(){		 
 		return Collections.unmodifiableMap(flowStats);
@@ -316,12 +322,12 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
 		}
 		return frs;
 	}
-	
+
 	@Override
 	public SwitchPortBandwidth getBandwidthConsumption(DatapathId dpid, OFPort p) {
 		return portStats.get(new NodePortTuple(dpid, p));
 	}
-	
+
 	@Override
 	public Map<NodePortTuple, SwitchPortBandwidth> getBandwidthConsumption() {
 		return Collections.unmodifiableMap(portStats);
@@ -338,11 +344,11 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
 		} 
 		/* otherwise, state is not changing; no-op */
 	}
-	
+
 	/*
 	 * Helper functions
 	 */
-	
+
 	/**
 	 * Start all stats threads.
 	 */
@@ -352,7 +358,7 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
 		flowStatsCollector = threadPoolService.getScheduledExecutor().scheduleAtFixedRate(new FlowStatsCollector(), flowStatsInterval, flowStatsInterval, TimeUnit.SECONDS);
 		log.warn("Statistics collection thread(s) started");
 	}
-	
+
 	/**
 	 * Stop all stats threads.
 	 */
@@ -399,7 +405,7 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
 			for (GetStatisticsThread curThread : pendingRemovalThreads) {
 				activeThreads.remove(curThread);
 			}
-			
+
 			/* clear the list so we don't try to double remove them */
 			pendingRemovalThreads.clear();
 
