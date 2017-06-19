@@ -128,7 +128,7 @@ ILoadBalancerService, IOFMessageListener {
 	protected HashMap<String, DatapathId> memberIdToDpid;
 	protected HashMap<Pair<Match,DatapathId>,String> flowToVipId;
 	
-	private static final int flowStatsInterval = 13;
+	private static final int flowStatsInterval = 13; /* (seconds) 2 more than threads in StatisticsCollector */
 
 	//Copied from Forwarding with message damper routine for pushing proxy Arp 
 	protected static String LB_ETHER_TYPE = "0x800";
@@ -627,7 +627,6 @@ ILoadBalancerService, IOFMessageListener {
 
 				}
 
-
 				fmb.setActions(actions);
 				fmb.setPriority(U16.t(LB_PRIORITY));
 				fmb.setMatch(mb.build());
@@ -640,8 +639,8 @@ ILoadBalancerService, IOFMessageListener {
 		return;
 	}
 
-	/**  working for OF  1.1?, 1.2?, 1.5? Periodical function to set LBPool statistics
-	 * Gets the statistics through StatisticsCollector.java and sets it to every LBPool
+	/** Periodical function to set LBPool statistics
+	 * Gets the statistics through StatisticsCollector and sets it to every LBPool
 	*/
 	private class SetPoolStats implements Runnable {
 		@Override

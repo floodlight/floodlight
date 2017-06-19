@@ -41,7 +41,7 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
 	private static boolean isEnabled = false;
 	
 	private static int portStatsInterval = 10; /* could be set by REST API, so not final */
-	private static int flowStatsInterval = 12;
+	private static int flowStatsInterval = 11;
 	
 	private static ScheduledFuture<?> portStatsCollector;
 	private static ScheduledFuture<?> flowStatsCollector;
@@ -174,9 +174,9 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
 	}
 	
 	/**
-	 * Run periodically to collect all flow statistics.
+	 * Run periodically to collect all flow statistics from every switch.
 	 */
-	private class FlowStatsCollector implements Runnable {
+	protected class FlowStatsCollector implements Runnable {
 		@Override
 		public void run() {
 			flowStats.clear(); // to clear expired flows

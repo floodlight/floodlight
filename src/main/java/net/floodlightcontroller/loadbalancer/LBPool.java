@@ -83,6 +83,7 @@ public class LBPool {
 		if(!bytesIn.isEmpty() && !bytesOut.isEmpty()){
 			long sumIn = 0;
 			long sumOut = 0; 
+			
 			for(Long bytes: bytesIn){
 				sumIn += bytes;
 			}
@@ -92,9 +93,7 @@ public class LBPool {
 				sumOut += bytes;
 			}
 			poolStats.bytesOut = sumOut;
-
 			poolStats.activeFlows = activeFlows;
-			log.info("IN: " + sumIn + " OUT: " + sumOut); // !!
 		}
 	}
 
