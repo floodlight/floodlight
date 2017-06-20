@@ -198,8 +198,14 @@ public interface ILoadBalancerService extends IFloodlightService {
 	 /**
      * Get statistics of an existing pool.
      * @param String poolId 
-     * @return int[]: bytesIn, bytesOut, activeConnections , totalConnections 
+     * @return LBStats: bytesIn, bytesOut, activeConnections 
      */
     public LBStats getPoolStats(String poolId);
+    
+    /**
+     * Enable/disable health monitoring
+     * @param monitor
+     */
+    public void healthMonitoring(boolean monitor);
     
 }

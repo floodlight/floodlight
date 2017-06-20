@@ -24,6 +24,8 @@ import net.floodlightcontroller.restserver.RestletRoutable;
 import net.floodlightcontroller.virtualnetwork.NoOp;
 
 public class LoadBalancerWebRoutable implements RestletRoutable {
+	protected static final String ENABLE_STR = "enable";
+	protected static final String DISABLE_STR = "disable";
 
     @Override
     public Restlet getRestlet(Context context) {
@@ -42,6 +44,9 @@ public class LoadBalancerWebRoutable implements RestletRoutable {
         router.attach("/pools/{pool}/stats", PoolStatsResource.class); //GET
         router.attach("/health_monitors/", MonitorsResource.class); //GET, POST
         router.attach("/health_monitors/{monitor}", MonitorsResource.class); //GET, PUT, DELETE
+        router.attach("/health_monitors/{monitor}", MonitorsResource.class); //GET, PUT, DELETE   
+        router.attach("/health_monitors/enable/json", ConfigResource.class); //PUT, POST
+        router.attach("/health_monitors/disable/json", ConfigResource.class); //PUT, POS
         router.attachDefault(NoOp.class);
         return router;
      }

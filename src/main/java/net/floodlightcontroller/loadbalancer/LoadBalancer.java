@@ -26,6 +26,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
@@ -80,6 +81,7 @@ import net.floodlightcontroller.routing.Path;
 import net.floodlightcontroller.staticentry.IStaticEntryPusherService;
 import net.floodlightcontroller.statistics.FlowRuleStats;
 import net.floodlightcontroller.statistics.IStatisticsService;
+import net.floodlightcontroller.statistics.PortDesc;
 import net.floodlightcontroller.statistics.SwitchPortBandwidth;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
 import net.floodlightcontroller.topology.ITopologyService;
@@ -129,7 +131,13 @@ ILoadBalancerService, IOFMessageListener {
 	protected HashMap<IPClient, LBMember> clientToMember;
 	protected HashMap<String, DatapathId> memberIdToDpid;
 	protected HashMap<Pair<Match,DatapathId>,String> flowToVipId;
-	
+	protected HashMap<String, SwitchPort> memberIdToSwitchPort;
+
+
+	private static ScheduledFuture<?> healthMonitoring;
+
+	protected static boolean isMonitoringEnabled = false;
+
 	private static final int flowStatsInterval = 13; /* (seconds) 2 more than threads in StatisticsCollector */
 
 	//Copied from Forwarding with message damper routine for pushing proxy Arp 
@@ -641,9 +649,104 @@ ILoadBalancerService, IOFMessageListener {
 		return;
 	}
 
+
+	/** periodical function for health monitors
+	 * MEMBERSWITCHPORT LISTA DE TODOS OS MEMBROS E OS SP QUE ALGUMA VEZ ESTIVERAM ACTIVOS, PORTDESC = TODOS OS PORTS
+	 *
+	 */
+	private class healthMonitorsCheck implements Runnable {
+		// TODO
+		@Override
+		public void run() {
+			Map<NodePortTuple, PortDesc> portDesc = new HashMap<NodePortTuple, PortDesc>();
+			if(statisticsService != null){
+				statisticsService.collectStatistics(true);
+				collectSwitchPortBandwidth();
+				portDesc = statisticsService.getPortDesc();
+
+				if(vips != null && monitors != null && members != null && pools != null){
+					for(LBMonitor monitor: monitors.values()){
+						if(monitor.poolId != null && pools.get(monitor.poolId) != null){ 
+							LBPool pool = pools.get(monitor.poolId);
+							if(pool.vipId != null && vips.containsKey(pool.vipId) && !memberIdToSwitchPort.isEmpty()){
+								for(NodePortTuple allNpts: portDesc.keySet()){
+									for(String memberId: pool.members){
+										SwitchPort sp = memberIdToSwitchPort.get(memberId);		
+										if(sp !=null){
+											NodePortTuple memberNpt = new NodePortTuple(sp.getNodeId(),sp.getPortId());
+											if(portDesc.get(allNpts).isUp()){
+												if(memberNpt.equals(allNpts)){
+													members.get(memberId).status = 1;
+												}
+											} else {
+												if(memberNpt.equals(allNpts)){
+													members.get(memberId).status = -1;
+													log.warn("Member " + memberId + " has been determined inactive by the health monitor");
+												}
+											}
+										}
+									}
+								}
+
+								//			if(vips != null && monitors != null && members != null && pools != null){
+								//				for(LBMonitor monitor: monitors.values()){
+								//					if(monitor.poolId != null && pools.get(monitor.poolId) != null){ 
+								//						LBPool pool = pools.get(monitor.poolId); // Se calhar so importa se a pool tem UM monitor e se sim, qual o seu type!
+								//						if(pool.vipId != null && vips.containsKey(pool.vipId)){
+								//							for(String memberId: pool.members){
+								//								LBMember member = members.get(memberId);
+								//								if(member.macString !=null)	 // Only start the health monitoring after member has been used by a client							
+								//									vipProxyMembersHealthCheck(member.macString,IPv4Address.of(member.address),monitor.type,pool.vipId);
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	//	private void vipProxyMembersHealthCheck(String destMac, IPv4Address destAddr, byte msgType,String vipId){
+	//		Set<DatapathId> datapaths = switchService.getAllSwitchDpids();
+	//
+	//		DatapathId dpid = datapaths.iterator().next(); // +-!!!
+	//
+	//		IOFSwitch theSW = switchService.getActiveSwitch(dpid); // +-!!!
+	//		//log.info("SWI?" + theSW.getId());
+	//
+	//		if(msgType == IpProtocol.ICMP.getIpProtocolNumber()){
+	//			IPacket icmpRequest = new Ethernet()
+	//					.setSourceMACAddress(vips.get(vipId).proxyMac)
+	//					.setDestinationMACAddress(MacAddress.of(destMac))
+	//					.setEtherType(EthType.IPv4)
+	//					.setVlanID((short) 0)
+	//					.setPriorityCode((byte) 0)
+	//					.setPayload(
+	//							new IPv4()
+	//							.setSourceAddress(IPv4Address.of(vips.get(vipId).address))
+	//							.setDestinationAddress(destAddr)
+	//							.setProtocol(IpProtocol.ICMP)
+	//							.setTtl((byte) 64)
+	//							.setPayload(new ICMP()
+	//									.setIcmpType((byte) 8)
+	//									.setIcmpCode((byte) 0)
+	//									.setIdentifier((short) 0)
+	//									.setSequence((short) 0)
+	//									));
+	//
+	//			FloodlightContext cntx = null;
+	//			pushPacket(icmpRequest, theSW, OFBufferId.NO_BUFFER, OFPort.CONTROLLER, OFPort.FLOOD, cntx, true);
+	//		}
+	//	}
+
+
+
+
+
+
+
+
 	/** Periodical function to set LBPool statistics
 	 * Gets the statistics through StatisticsCollector and sets it to every LBPool
-	*/
+	 */
 	private class SetPoolStats implements Runnable {
 		@Override
 		public void run() {
@@ -944,17 +1047,29 @@ ILoadBalancerService, IOFMessageListener {
 		if (monitor == null)
 			monitor = new LBMonitor();
 
+		for(LBMonitor allMonitors: monitors.values()){
+			if(monitor.poolId.equals(allMonitors.poolId)){
+				log.error("Pool already has monitor associated with");
+				return null;
+			}
+		}
 		monitors.put(monitor.id, monitor);
-
 		return monitor;
 	}
 
 	@Override
 	public LBMonitor updateMonitor(LBMonitor monitor) {
+		for(LBMonitor allMonitors: monitors.values()){
+			if(monitor.poolId.equals(allMonitors.poolId)){
+				log.error("Pool already has monitor associated with");
+				return null;
+			}
+		}
 		monitors.put(monitor.id, monitor);
 		return monitor;
 	}
-	
+
+
 	@Override
 	public Collection<LBMonitor> associateMonitorWithPool(String poolId,LBMonitor monitor) {
 		Collection<LBMonitor> result = new HashSet<LBMonitor>();
@@ -964,20 +1079,26 @@ ILoadBalancerService, IOFMessageListener {
 			monitor = new LBMonitor();
 		}
 
-		monitors.put(monitor.id, monitor);
+		for(LBMonitor allMonitors: monitors.values()){
+			if(poolId.equals(allMonitors.poolId)){
+				log.error("Pool already has monitor associated with");
+				return null;
+			}
+		}
+
+		monitors.put(monitor.id, monitor);;
 
 		LBPool pool;
 		pool = pools.get(poolId);
 
 		if(pool !=null){
 			pool.monitors.add(monitor.id);
-			monitor.setPool(poolId);
+			monitor.poolId = poolId;
 
 			// in case monitor is associated a second time without dissociating first
-			ArrayList<String> monitorsInWrongPool = null;
+			ArrayList<String> monitorsInWrongPool = new ArrayList<String>();
 			for(String monitorId: pool.monitors){
 				if(!Objects.equals(monitors.get(monitorId).poolId, poolId)){
-					monitorsInWrongPool = new ArrayList<String>();
 					monitorsInWrongPool.add(monitorId); 	
 
 				} else{
@@ -1003,7 +1124,7 @@ ILoadBalancerService, IOFMessageListener {
 
 		if(pool !=null && monitor !=null && pool.monitors.contains(monitorId)){
 			pool.monitors.remove(monitorId);
-			monitor.setPool(null);
+			monitor.poolId = null;
 			return 0;
 		}else{
 			return -1;
@@ -1026,6 +1147,21 @@ ILoadBalancerService, IOFMessageListener {
 		}    
 	}
 
+	@Override
+	public void healthMonitoring(boolean monitor) {
+		if(monitor && !isMonitoringEnabled){
+			healthMonitoring = threadService.getScheduledExecutor().scheduleAtFixedRate(new healthMonitorsCheck(), 15, 15, TimeUnit.SECONDS); // !!
+			isMonitoringEnabled = true;
+			log.warn("Health monitoring thread started");
+		} else if(!monitor && isMonitoringEnabled){
+			if (!healthMonitoring.cancel(false)) {
+				log.error("Could not cancel health monitoring thread");
+			} else {
+				log.warn("Health monitoring thread stopped");
+			}
+			isMonitoringEnabled = false;
+		}
+	}
 	/*
 	 * floodlight module dependencies
 	 */
@@ -1090,9 +1226,10 @@ ILoadBalancerService, IOFMessageListener {
 		memberIpToId = new HashMap<Integer, String>();
 		memberIdToDpid = new HashMap<String, DatapathId>();
 		flowToVipId = new HashMap<Pair<Match,DatapathId>,String>();
+		memberIdToSwitchPort= new HashMap<String, SwitchPort>();
 
 		threadService.getScheduledExecutor().scheduleAtFixedRate(new SetPoolStats(), flowStatsInterval, flowStatsInterval, TimeUnit.SECONDS);
-		
+
 	}
 
 	@Override

@@ -60,11 +60,5 @@ public class LBMonitor {
         adminState = 0;
         status = 0;
         
-    }
-    
-    public void setPool(String poolId){
-    	this.poolId= poolId;
-    	
-    }
-    
+    }    
 }

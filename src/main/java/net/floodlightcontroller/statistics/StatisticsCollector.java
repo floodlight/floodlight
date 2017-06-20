@@ -45,6 +45,7 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
 
 	private static ScheduledFuture<?> portStatsCollector;
 	private static ScheduledFuture<?> flowStatsCollector;
+	private static ScheduledFuture<?> portDescCollector;
 
 	private static final long BITS_PER_BYTE = 8;
 	private static final long MILLIS_PER_SEC = 1000;
@@ -56,6 +57,8 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
 	private static final HashMap<NodePortTuple, SwitchPortBandwidth> tentativePortStats = new HashMap<NodePortTuple, SwitchPortBandwidth>();
 
 	private static final HashMap<Pair<Match,DatapathId>, FlowRuleStats> flowStats = new HashMap<Pair<Match,DatapathId>,FlowRuleStats>();
+	
+	private static final HashMap<NodePortTuple, PortDesc> portDesc = new HashMap<NodePortTuple, PortDesc>();
 
 
 
@@ -206,6 +209,38 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
 		}
 	}
 
+	
+	/**
+	 * 
+	 * @author diogo
+	 *
+	 */
+	private class PortDescCollector implements Runnable {
+		@Override
+		public void run() {
+			Map<DatapathId, List<OFStatsReply>> replies = getSwitchStatistics(switchService.getAllSwitchDpids(), OFStatsType.PORT_DESC);
+			for (Entry<DatapathId, List<OFStatsReply>> e : replies.entrySet()) {
+				for (OFStatsReply r : e.getValue()) {
+					OFPortDescStatsReply psr = (OFPortDescStatsReply) r;	
+					for (OFPortDesc pse : psr.getEntries()) {
+						NodePortTuple npt = new NodePortTuple(e.getKey(), pse.getPortNo());
+						portDesc.put(npt,PortDesc.of(e.getKey(),
+								pse.getPortNo(),
+								pse.getName(),
+								pse.getState(),
+								pse.getConfig(),
+								pse.isEnabled()));
+						//log.info("Prop " + pse.getProperties()); //1.3 nao tem prop, 1.4 e 1.5 tem proprieties mas nao supp ou advr ou speeds
+
+						
+					}
+				}
+			}
+		}
+	}
+
+	
+	
 	/**
 	 * Single thread for collecting switch statistics and
 	 * containing the reply.
@@ -309,6 +344,17 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
 	 */
 
 	@Override
+	public Map<NodePortTuple, PortDesc> getPortDesc() {
+		return Collections.unmodifiableMap(portDesc);
+	}
+	
+	@Override
+	public PortDesc getPortDesc(DatapathId dpid, OFPort port) {
+		return portDesc.get(new NodePortTuple(dpid,port));
+	}
+	
+	
+	@Override
 	public Map<Pair<Match, DatapathId>, FlowRuleStats> getFlowStats(){		 
 		return Collections.unmodifiableMap(flowStats);
 	}
@@ -356,6 +402,7 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
 		portStatsCollector = threadPoolService.getScheduledExecutor().scheduleAtFixedRate(new PortStatsCollector(), portStatsInterval, portStatsInterval, TimeUnit.SECONDS);
 		tentativePortStats.clear(); /* must clear out, otherwise might have huge BW result if present and wait a long time before re-enabling stats */
 		flowStatsCollector = threadPoolService.getScheduledExecutor().scheduleAtFixedRate(new FlowStatsCollector(), flowStatsInterval, flowStatsInterval, TimeUnit.SECONDS);
+		portDescCollector = threadPoolService.getScheduledExecutor().scheduleAtFixedRate(new PortDescCollector(), portStatsInterval, portStatsInterval, TimeUnit.SECONDS);
 		log.warn("Statistics collection thread(s) started");
 	}
 
@@ -363,7 +410,7 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
 	 * Stop all stats threads.
 	 */
 	private void stopStatisticsCollection() {
-		if (!portStatsCollector.cancel(false) || !flowStatsCollector.cancel(false)) {
+		if (!portStatsCollector.cancel(false) || !flowStatsCollector.cancel(false) || !portDescCollector.cancel(false)) {
 			log.error("Could not cancel port/flow stats threads");
 		} else {
 			log.warn("Statistics collection thread(s) stopped");
