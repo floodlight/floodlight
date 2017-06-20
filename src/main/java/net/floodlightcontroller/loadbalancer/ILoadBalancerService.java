@@ -133,6 +133,12 @@ public interface ILoadBalancerService extends IFloodlightService {
      * @param monitorId Id of requested monitor
      */
     public Collection<LBMonitor> listMonitor(String monitorId);
+    
+    /**
+     * List all monitors in a selected pool.
+     * @param poolId Id of requested pool.
+     */
+    public Collection<LBMonitor> listMonitorsByPool(String poolId);
 
     /**
      * Create and return a new monitor.
@@ -147,6 +153,24 @@ public interface ILoadBalancerService extends IFloodlightService {
      * @return LBMonitor: Updated monitor 
      */
     public LBMonitor updateMonitor(LBMonitor monitor);
+    
+    /**
+     * Associate an existing monitor to a pool
+     * @param String poolId: the pool id in which the monitor will be added
+     * @param LBMonitor: the monitor to be added
+     * @return Collecton<LBMonitor>: all monitors currently associated to the pool
+     */
+    
+    public Collection<LBMonitor> associateMonitorWithPool(String poolId,LBMonitor monitor);
+    
+    /**
+     * Dissociate a monitor from a pool
+     * @param String poolId: The pool in which the monitor will be dissociated
+     * @param String monitorId: The monitor which will be dissociated from the pool
+     * @return int: removal status
+     */
+    
+    public int dissociateMonitorWithPool(String poolId, String monitorId);
 
     /**
      * Remove an existing monitor.
@@ -156,10 +180,10 @@ public interface ILoadBalancerService extends IFloodlightService {
     public int removeMonitor(String monitorId);
     
     /**
-     * Set member weight for WRR algorithm.
-     * @param String memberId: the Id of the member
-     * @param String weight: the weight to use in the WRR
-     * @return int: removal status
+     * Set a member's weight
+     * @param memberId
+     * @param weight
+     * @return int: operation status
      */
 	public int setMemberWeight(String memberId, String weight);
 

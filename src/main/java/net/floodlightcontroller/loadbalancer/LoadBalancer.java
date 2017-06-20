@@ -25,6 +25,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
@@ -121,6 +122,7 @@ ILoadBalancerService, IOFMessageListener {
 	protected HashMap<String, LBVip> vips;
 	protected HashMap<String, LBPool> pools;
 	protected HashMap<String, LBMember> members;
+	protected HashMap<String, LBMonitor> monitors;
 	protected HashMap<Integer, String> vipIpToId;
 	protected HashMap<Integer, MacAddress> vipIpToMac;
 	protected HashMap<Integer, String> memberIpToId;
@@ -913,27 +915,115 @@ ILoadBalancerService, IOFMessageListener {
 
 	@Override
 	public Collection<LBMonitor> listMonitors() {
-		return null;
+		return monitors.values();
 	}
 
 	@Override
 	public Collection<LBMonitor> listMonitor(String monitorId) {
-		return null;
+		Collection<LBMonitor> result = new HashSet<LBMonitor>();
+		result.add(monitors.get(monitorId));
+		return result;
+	}
+
+	@Override
+	public Collection<LBMonitor> listMonitorsByPool(String poolId){
+		Collection<LBMonitor> result = new HashSet<LBMonitor>();
+
+		if(pools.containsKey(poolId)) {
+			LBPool pool  = pools.get(poolId);
+			if(pool.monitors != null && monitors !=null){
+				for(String monitorId : pool.monitors)
+					result.add(monitors.get(monitorId));
+			}
+		}
+		return result;
 	}
 
 	@Override
 	public LBMonitor createMonitor(LBMonitor monitor) {
-		return null;
+		if (monitor == null)
+			monitor = new LBMonitor();
+
+		monitors.put(monitor.id, monitor);
+
+		return monitor;
 	}
 
 	@Override
 	public LBMonitor updateMonitor(LBMonitor monitor) {
-		return null;
+		monitors.put(monitor.id, monitor);
+		return monitor;
+	}
+	
+	@Override
+	public Collection<LBMonitor> associateMonitorWithPool(String poolId,LBMonitor monitor) {
+		Collection<LBMonitor> result = new HashSet<LBMonitor>();
+
+		// If monitor does not exist, it is created.
+		if (monitor == null){
+			monitor = new LBMonitor();
+		}
+
+		monitors.put(monitor.id, monitor);
+
+		LBPool pool;
+		pool = pools.get(poolId);
+
+		if(pool !=null){
+			pool.monitors.add(monitor.id);
+			monitor.setPool(poolId);
+
+			// in case monitor is associated a second time without dissociating first
+			ArrayList<String> monitorsInWrongPool = null;
+			for(String monitorId: pool.monitors){
+				if(!Objects.equals(monitors.get(monitorId).poolId, poolId)){
+					monitorsInWrongPool = new ArrayList<String>();
+					monitorsInWrongPool.add(monitorId); 	
+
+				} else{
+					result.add(monitors.get(monitorId));	
+				}
+			}
+			if(monitorsInWrongPool !=null){
+				for(String monitorId: monitorsInWrongPool){
+					pool.monitors.remove(monitorId);
+				}
+			}
+		}
+		return result;
 	}
 
 	@Override
+	public int dissociateMonitorWithPool(String poolId,String monitorId) {
+		LBPool pool;
+		LBMonitor monitor;
+
+		pool = pools.get(poolId);
+		monitor = monitors.get(monitorId);
+
+		if(pool !=null && monitor !=null && pool.monitors.contains(monitorId)){
+			pool.monitors.remove(monitorId);
+			monitor.setPool(null);
+			return 0;
+		}else{
+			return -1;
+		}
+	}
+
+
+	@Override
 	public int removeMonitor(String monitorId) {
-		return 0;
+		LBMonitor monitor;
+		monitor = monitors.get(monitorId);
+
+		if(monitor != null){
+			if(monitor.poolId != null && pools.containsKey(monitor.poolId))
+				pools.get(monitor.poolId).monitors.remove(monitorId);
+			monitors.remove(monitorId);
+			return 0;
+		} else {
+			return -1;
+		}    
 	}
 
 	/*
@@ -994,6 +1084,7 @@ ILoadBalancerService, IOFMessageListener {
 		vips = new HashMap<String, LBVip>();
 		pools = new HashMap<String, LBPool>();
 		members = new HashMap<String, LBMember>();
+		monitors = new HashMap<String,LBMonitor>();
 		vipIpToId = new HashMap<Integer, String>();
 		vipIpToMac = new HashMap<Integer, MacAddress>();
 		memberIpToId = new HashMap<Integer, String>();
@@ -1001,6 +1092,7 @@ ILoadBalancerService, IOFMessageListener {
 		flowToVipId = new HashMap<Pair<Match,DatapathId>,String>();
 
 		threadService.getScheduledExecutor().scheduleAtFixedRate(new SetPoolStats(), flowStatsInterval, flowStatsInterval, TimeUnit.SECONDS);
+		
 	}
 
 	@Override

@@ -16,6 +16,8 @@
 
 package net.floodlightcontroller.loadbalancer;
 
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+
 /**
  * Data structure for Load Balancer based on
  * Quantum proposal http://wiki.openstack.org/LBaaS/CoreResourceModel/proposal 
@@ -23,15 +25,17 @@ package net.floodlightcontroller.loadbalancer;
  * @author KC Wang
  */
 
+@JsonSerialize(using=LBMonitorSerializer.class)
 public class LBMonitor {
     protected String id;
     protected String name;
-    protected short type;
+    protected byte type;
     protected short delay;
     protected short timeout;
     protected short attemptsBeforeDeactivation;
     
     protected String netId;
+    protected String poolId;
     protected int address;
     protected byte protocol;
     protected short port;
@@ -42,19 +46,25 @@ public class LBMonitor {
     protected short status;
 
     public LBMonitor() {
-        id = null;
+        id = String.valueOf((int) (Math.random()*10000));
         name = null;
         type = 0;
         delay = 0;
         timeout = 0;
         attemptsBeforeDeactivation = 0;
         netId = null;
+        poolId = null;
         address = 0;
         protocol = 0;
         port = 0;
         adminState = 0;
         status = 0;
         
+    }
+    
+    public void setPool(String poolId){
+    	this.poolId= poolId;
+    	
     }
     
 }
