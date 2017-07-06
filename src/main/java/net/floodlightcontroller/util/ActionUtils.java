@@ -208,6 +208,7 @@ public class ActionUtils {
                 break;
             case SET_QUEUE:
                 sb.append(STR_QUEUE_SET).append("=").append(Long.toString(((OFActionSetQueue)a).getQueueId()));
+                break;
             case SET_DL_SRC:
                 sb.append(STR_DL_SRC_SET).append("=").append( ((OFActionSetDlSrc)a).getDlAddr().toString());
                 break;
