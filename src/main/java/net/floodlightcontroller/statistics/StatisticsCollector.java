@@ -211,9 +211,8 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
 
 	
 	/**
-	 * 
-	 * @author diogo
-	 *
+	 *  Run periodically to collect port description from every switch and port, so it is possible to know its state and configuration.
+	 * Used in Load balancer to determine if a port is enabled.
 	 */
 	private class PortDescCollector implements Runnable {
 		@Override
@@ -229,18 +228,14 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
 								pse.getName(),
 								pse.getState(),
 								pse.getConfig(),
-								pse.isEnabled()));
-						//log.info("Prop " + pse.getProperties()); //1.3 nao tem prop, 1.4 e 1.5 tem proprieties mas nao supp ou advr ou speeds
-
-						
+								pse.isEnabled()));						
 					}
 				}
 			}
 		}
 	}
 
-	
-	
+
 	/**
 	 * Single thread for collecting switch statistics and
 	 * containing the reply.

@@ -24,6 +24,8 @@ import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.databind.MappingJsonFactory;
 
+import net.floodlightcontroller.packet.IPv4;
+
 import org.projectfloodlight.openflow.types.IpProtocol;
 import org.restlet.resource.Delete;
 import org.restlet.resource.Get;
@@ -153,7 +155,7 @@ public class MonitorsResource extends ServerResource {
 				continue;
 			}
 			if (n.equals("address")) {
-				monitor.address = Integer.parseInt(jp.getText());
+				monitor.address = IPv4.toIPv4Address(jp.getText());
 				continue;
 			}
 			if (n.equals("protocol")) {

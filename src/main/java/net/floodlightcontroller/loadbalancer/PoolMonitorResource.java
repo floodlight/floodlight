@@ -33,6 +33,8 @@ import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.databind.MappingJsonFactory;
 
+import net.floodlightcontroller.packet.IPv4;
+
 public class PoolMonitorResource extends ServerResource {
 	protected static Logger log = LoggerFactory.getLogger(PoolMonitorResource.class);
 	
@@ -151,7 +153,7 @@ public class PoolMonitorResource extends ServerResource {
 				continue;
 			}
 			if (n.equals("address")) {
-				monitor.address = Integer.parseInt(jp.getText());
+				 monitor.address = IPv4.toIPv4Address(jp.getText());
 				continue;
 			}
 			if (n.equals("protocol")) {

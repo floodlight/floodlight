@@ -17,6 +17,9 @@
 package net.floodlightcontroller.loadbalancer;
 
 import java.io.IOException;
+
+import org.projectfloodlight.openflow.types.IPv4Address;
+
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonSerializer;
@@ -32,7 +35,7 @@ public class LBVipSerializer extends JsonSerializer<LBVip>{
         
         jGen.writeStringField("name", vip.name);
         jGen.writeStringField("id", vip.id);
-        jGen.writeStringField("address", String.valueOf(vip.address));
+        jGen.writeStringField("address", String.valueOf(IPv4Address.of(vip.address)));
         jGen.writeStringField("protocol", Byte.toString(vip.protocol));
         jGen.writeStringField("port", Short.toString(vip.port));
 

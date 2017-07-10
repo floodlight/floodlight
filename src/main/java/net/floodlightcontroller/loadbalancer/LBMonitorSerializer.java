@@ -18,6 +18,8 @@ package net.floodlightcontroller.loadbalancer;
 
 import java.io.IOException;
 
+import org.projectfloodlight.openflow.types.IPv4Address;
+
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonSerializer;
@@ -31,6 +33,7 @@ public class LBMonitorSerializer extends JsonSerializer<LBMonitor>{
 		jGen.writeStartObject();
 
 		jGen.writeStringField("id", monitor.id);
+		jGen.writeStringField("address", String.valueOf(IPv4Address.of(monitor.address)));
 		jGen.writeStringField("name", monitor.name);
 		jGen.writeStringField("type", Short.toString(monitor.type));
 		jGen.writeStringField("poolId", monitor.poolId);
