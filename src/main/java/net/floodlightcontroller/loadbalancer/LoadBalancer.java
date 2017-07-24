@@ -677,7 +677,8 @@ ILoadBalancerService, IOFMessageListener {
 	 */
 	public HashMap<String, U64> collectSwitchPortBandwidth(){
 		HashMap<String,U64> memberPortBandwidth = new HashMap<String, U64>();
-		HashMap<IDevice,String> deviceToMemberId = new HashMap<IDevice, String>();
+		HashMap<Pair<IDevice,String>,String> deviceToMemberId = new HashMap<Pair<IDevice,String>, String>();
+
 
 		// retrieve all known devices to know which ones are attached to the members
 		Collection<? extends IDevice> allDevices = deviceManagerService.getAllDevices();
@@ -686,17 +687,19 @@ ILoadBalancerService, IOFMessageListener {
 			for (int j = 0; j < d.getIPv4Addresses().length; j++) {
 				if(!members.isEmpty()){
 					for(LBMember member: members.values()){
-						if (member.address == d.getIPv4Addresses()[j].getInt())
-							deviceToMemberId.put(d, member.id);
+						if (member.address == d.getIPv4Addresses()[j].getInt()){
+							Pair<IDevice,String> pair1 = new Pair<IDevice,String>(d,member.poolId);
+							deviceToMemberId.put(pair1, member.id);
+						}
 					}
 				}
 			}
 		}
 		// collect statistics of the switch ports attached to the members
 		if(!deviceToMemberId.isEmpty()){
-			for(IDevice membersDevice: deviceToMemberId.keySet()){
+			for(Pair<IDevice, String> membersDevice: deviceToMemberId.keySet()){
 				String memberId = deviceToMemberId.get(membersDevice);
-				for(SwitchPort dstDap: membersDevice.getAttachmentPoints()){
+				for(SwitchPort dstDap: membersDevice.getKey().getAttachmentPoints()){
 					memberIdToDpid.put(memberId, dstDap.getNodeId());
 					SwitchPortBandwidth bandwidthOfPort = statisticsService.getBandwidthConsumption(dstDap.getNodeId(), dstDap.getPortId());
 					if(bandwidthOfPort != null) // needs time for 1st collection, this avoids nullPointerException 
