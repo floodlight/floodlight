@@ -20,8 +20,8 @@ package net.floodlightcontroller.loadbalancer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Random;
-
 
 import org.projectfloodlight.openflow.types.U64;
 
@@ -51,6 +51,10 @@ public class LBPool {
 	protected byte protocol;
 	protected ArrayList<String> members;
 	protected ArrayList<String> monitors;
+	protected ArrayList<String> test_WRR; // !!!
+	protected ArrayList<String> test_STATS; // !!!
+	protected ArrayList<Long> test_BW; // !!!
+	protected ArrayList<String> prevPicked;
 	protected short adminState;
 	protected short status;
 	protected final static short ROUND_ROBIN = 1;
@@ -71,7 +75,11 @@ public class LBPool {
 		lbMethod = 0;
 		protocol = 0;
 		members = new ArrayList<String>();
+		prevPicked = new ArrayList<String>();
 		monitors = new ArrayList<String>();
+		test_WRR = new ArrayList<String>(); // !!
+		test_STATS = new ArrayList<String>(); // !!
+		test_BW = new ArrayList<Long>(); // !!
 		adminState = 0;
 		status = 0;
 		previousMemberIndex = -1;
@@ -101,8 +109,7 @@ public class LBPool {
 	public String pickMember(IPClient client, HashMap<String,U64> membersBandwidth,HashMap<String,Short> membersWeight,HashMap<String, Short>  memberStatus) {
 		if(members.size() > 0){
 			if (lbMethod == STATISTICS && !membersBandwidth.isEmpty() && membersBandwidth.values() !=null) {
-				ArrayList<String> poolMembersId = new ArrayList<String>();
-				
+				ArrayList<String> poolMembersId = new ArrayList<String>();				
 				// Get the members that belong to this pool and the statistics for them
 				for(String memberId: membersBandwidth.keySet()){
 					for(int i=0;i<members.size();i++){
@@ -119,13 +126,64 @@ public class LBPool {
 				}
 				// return the member which has the minimum bandwidth usage, out of this pool members
 				if(!poolMembersId.isEmpty()){
-					ArrayList<U64> bandwidthValues = new ArrayList<U64>();
+					ArrayList<U64> bandwidthValues = new ArrayList<U64>();	
+					ArrayList<String> membersWithMin = new ArrayList<String>();
+					Collections.sort(poolMembersId);
 
 					for(int j=0;j<poolMembersId.size();j++){
 						bandwidthValues.add(membersBandwidth.get(poolMembersId.get(j)));
 					}
-					log.debug("Member picked using LB statistics: {}", poolMembersId.get(bandwidthValues.indexOf(Collections.min(bandwidthValues))));
-					return poolMembersId.get(bandwidthValues.indexOf(Collections.min(bandwidthValues)));
+					U64 minBW = Collections.min(bandwidthValues);
+					String memberToPick = poolMembersId.get(bandwidthValues.indexOf(minBW));
+
+					for(Integer i=0;i<bandwidthValues.size();i++){
+						if(bandwidthValues.get(i).equals(minBW)){
+							membersWithMin.add(poolMembersId.get(i));
+						}
+					}
+					log.info("LIST OF Members: " + members);
+					log.info("LIST OF IDS: " + poolMembersId);
+					log.info("LIST OF MINS: " + membersWithMin);
+
+					// size of the prev list is half of the number of available members
+					int sizeOfPrevPicked = bandwidthValues.size()/2;
+					
+					log.info("PREV PICKED B4: " + prevPicked);
+
+					// Remove previously picked members from being eligible for being picked now
+					for (Iterator<String> it = membersWithMin.iterator(); it.hasNext();){
+						String memberMin = it.next();
+						if(prevPicked.contains(memberMin)){
+							it.remove();
+						}
+					}
+					// Keep the previously picked list to a size based on the members of the pool
+					if(prevPicked.size() > sizeOfPrevPicked){					    
+						prevPicked.remove(prevPicked.size()-1);
+					}
+					
+					// If there is only one member with min BW value and membersWithMin is empty
+					if(membersWithMin.isEmpty()){
+						memberToPick = prevPicked.get(prevPicked.size()-1); // means that the min member has been prevs picked
+					}else{
+						//Collections.shuffle(membersWithMin); !!
+						memberToPick = membersWithMin.get(0);
+					}
+
+					prevPicked.add(0, memberToPick); //set the first memberId of prevPicked to be the last member picked
+					log.info("PREV PICKED AFTER: " + prevPicked);
+
+					test_STATS.add(memberToPick);
+					test_BW.add((Collections.min(bandwidthValues)).getValue());
+					log.info("STAAT: " + test_STATS);
+					log.info("MIN_BW: " + test_BW);
+					ArrayList<Long> lg = new ArrayList<Long>();
+					for(U64 uu: bandwidthValues){
+						lg.add(uu.getValue());
+					}
+					log.info("CURRENT BWS: " + lg);
+
+					return memberToPick;
 				}
 				return null;
 			} else if(lbMethod == WEIGHTED_RR && !membersWeight.isEmpty()){
@@ -139,7 +197,7 @@ public class LBPool {
 						}
 					}
 					return weightsToMember(activeMembers); // only members with status = 1
-					
+
 				} else
 					return weightsToMember(membersWeight); // all members in membersWeight are considered	
 			}else {
@@ -172,13 +230,22 @@ public class LBPool {
 		for(Short weight: weights.values()){
 			totalWeight += weight;
 		}
-		
+
 		int rand = randomNumb.nextInt(totalWeight);
 		short val = 0;
 		for(String memberId: weights.keySet()){
 			val += weights.get(memberId);
 			if(val > rand){
-				log.debug("Member picked using WRR: {}",memberId);
+				log.debug("Member {} picked using WRR",memberId);
+				//				test_WRR.add(memberId);
+				//				log.info("1: "+Collections.frequency(test_WRR, "1"));
+				//				log.info("2: "+Collections.frequency(test_WRR, "2"));
+				//				log.info("3: "+Collections.frequency(test_WRR, "3"));
+				//				log.info("4: "+Collections.frequency(test_WRR, "4"));
+				//				log.info("5: "+Collections.frequency(test_WRR, "5"));
+				//				log.info("6: "+Collections.frequency(test_WRR, "6"));
+				//				log.info("7: "+Collections.frequency(test_WRR, "7"));
+				//				log.info("8: "+Collections.frequency(test_WRR, "8"));
 				return memberId;
 			}
 		}

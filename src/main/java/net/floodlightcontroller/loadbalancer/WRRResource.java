@@ -12,7 +12,7 @@ public class WRRResource extends ServerResource{
 		
 	@Put
 	@Post
-	public int setMemberWeight(){
+	public String setMemberWeight(){
 
 		String memberId = (String) getRequestAttributes().get("member");
 		String weight = (String) getRequestAttributes().get("weight");
@@ -21,7 +21,7 @@ public class WRRResource extends ServerResource{
 				(ILoadBalancerService)getContext().getAttributes().
 				get(ILoadBalancerService.class.getCanonicalName());
 
-		return lbs.setMemberWeight(memberId,weight);
+		return "{\"status\" : \"" + lbs.setMemberWeight(memberId,weight) + "\"}";
 
 	}	
 }

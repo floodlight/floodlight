@@ -127,12 +127,11 @@ ILoadBalancerService, IOFMessageListener {
 	protected HashMap<String, LBMember> members;
 	protected HashMap<String, LBMonitor> monitors;
 	protected HashMap<Integer, String> vipIpToId;
-	protected HashMap<Integer, MacAddress> vipIpToMac;
+	protected HashMap<IPv4Address, MacAddress> vipIpToMac;
 	protected HashMap<Integer, String> memberIpToId;
 	protected HashMap<IPClient, LBMember> clientToMember;
 	protected HashMap<Pair<Match,DatapathId>,String> flowToVipId;
 	protected HashMap<String, SwitchPort> memberIdToSwitchPort;
-
 
 	private static ScheduledFuture<?> healthMonitoring;
 	private static final int healthMonitorsInterval = 15;
@@ -140,6 +139,18 @@ ILoadBalancerService, IOFMessageListener {
 	protected static boolean isMonitoringEnabled = false;
 
 	private static final int flowStatsInterval = 13; /* (seconds) 2 more than threads in StatisticsCollector */
+
+	protected enum TLS {
+		HTTPS(TransportPort.of(443)),
+		IMAP(TransportPort.of(993)),
+		POP(TransportPort.of(995)),
+		SMTP(TransportPort.of(465));
+
+		private final TransportPort port;
+		TLS(TransportPort port){
+			this.port = port;
+		}
+	}
 
 	//Copied from Forwarding with message damper routine for pushing proxy Arp 
 	protected static String LB_ETHER_TYPE = "0x800";
@@ -250,13 +261,30 @@ ILoadBalancerService, IOFMessageListener {
 						client.targetPort = TransportPort.of(0); 
 					}
 
-					LBVip vip = vips.get(vipIpToId.get(destIpAddress));
-					if (vip == null)			// fix dereference violations           
-						return Command.CONTINUE;
-					LBPool pool = pools.get(vip.pickPool(client));
-					if (pool == null)			// fix dereference violations
-						return Command.CONTINUE;
+					// TLS check
+					LBPool pool = null;
+					for(TLS protocol: TLS.values()){
+						if(client.targetPort.equals(protocol.port)){ // TLS request
+							for(LBVip vip: vips.values()){
+								if(IpProtocol.of(vip.protocol).equals(IpProtocol.TLSP)){
+									pool = pools.get(vip.pickPool(client));
+									if(pool == null)
+										return Command.CONTINUE;
+									break;
+								}
+							}
+						}
+						break;
+					}
+					if(pool == null){
+						LBVip vip = vips.get(vipIpToId.get(destIpAddress));
+						if (vip == null)			// fix dereference violations           
+							return Command.CONTINUE;
 
+						pool = pools.get(vip.pickPool(client));
+						if(pool == null)
+							return Command.CONTINUE;
+					}
 					HashMap<String, Short> memberWeights = new HashMap<String, Short>();
 					HashMap<String, U64> memberPortBandwidth = new HashMap<String, U64>();
 					HashMap<String, Short> memberStatus = new HashMap<String, Short>();
@@ -272,6 +300,7 @@ ILoadBalancerService, IOFMessageListener {
 					}
 					// Switch statistics collection
 					if(pool.lbMethod == LBPool.STATISTICS && statisticsService != null)
+						statisticsService.collectStatistics(true);
 						memberPortBandwidth = collectSwitchPortBandwidth();
 
 					LBMember member = members.get(pool.pickMember(client,memberPortBandwidth,memberWeights,memberStatus));
@@ -284,7 +313,6 @@ ILoadBalancerService, IOFMessageListener {
 					// packet out based on table rule
 					pushPacket(pkt, sw, pi.getBufferId(), (pi.getVersion().compareTo(OFVersion.OF_12) < 0) ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT), OFPort.TABLE,
 							cntx, true);
-
 
 					return Command.STOP;
 				}
@@ -470,7 +498,12 @@ ILoadBalancerService, IOFMessageListener {
 						sw.toString(), pi.getInPort());
 			}
 			return;
-		}	
+		}
+
+		// Destination address of client's request to set in the outbound actions
+		Ethernet eth = IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
+		IPacket pkt = eth.getPayload(); 
+		IPv4 ip_pkt = (IPv4) pkt;
 
 		// Install all the routes where both src and dst have attachment
 		// points.  Since the lists are stored in sorted order we can 
@@ -513,11 +546,11 @@ ILoadBalancerService, IOFMessageListener {
 					// out: match dest client (ip, port), rewrite src from member ip/port to vip ip/port, forward
 
 					if (! routeIn.getPath().isEmpty()) {
-						pushStaticVipRoute(true, routeIn, client, member, sw);
+						pushStaticVipRoute(true, routeIn, client, member, sw, ip_pkt.getDestinationAddress());
 					}
 
 					if (! routeOut.getPath().isEmpty()) {
-						pushStaticVipRoute(false, routeOut, client, member, sw);
+						pushStaticVipRoute(false, routeOut, client, member, sw, ip_pkt.getDestinationAddress());
 					}
 
 				}
@@ -540,7 +573,7 @@ ILoadBalancerService, IOFMessageListener {
 	 * @param LBMember member
 	 * @param long pinSwitch
 	 */
-	public void pushStaticVipRoute(boolean inBound, Path route, IPClient client, LBMember member, IOFSwitch pinSwitch) {
+	public void pushStaticVipRoute(boolean inBound, Path route, IPClient client, LBMember member, IOFSwitch pinSwitch, IPv4Address destAddress) {
 
 		List<NodePortTuple> path = route.getPath();
 		if (path.size() > 0) {
@@ -621,13 +654,13 @@ ILoadBalancerService, IOFMessageListener {
 					}
 
 					if (sw.equals(pinSwitch.getId())) {
-						if (pinSwitch.getOFFactory().getVersion().compareTo(OFVersion.OF_12) < 0) { 
+						if (pinSwitch.getOFFactory().getVersion().compareTo(OFVersion.OF_12) < 0) {
 							actions.add(pinSwitch.getOFFactory().actions().setDlSrc(vips.get(member.vipId).proxyMac));
-							actions.add(pinSwitch.getOFFactory().actions().setNwSrc(IPv4Address.of(vips.get(member.vipId).address)));
+							actions.add(pinSwitch.getOFFactory().actions().setNwSrc(destAddress));
 							actions.add(pinSwitch.getOFFactory().actions().output(path.get(i+1).getPortId(), Integer.MAX_VALUE));
-						} else { // OXM introduced in OF1.2
+						} else { // OXM introduced in OF1.2								
 							actions.add(pinSwitch.getOFFactory().actions().setField(pinSwitch.getOFFactory().oxms().ethSrc(vips.get(member.vipId).proxyMac)));
-							actions.add(pinSwitch.getOFFactory().actions().setField(pinSwitch.getOFFactory().oxms().ipv4Src(IPv4Address.of(vips.get(member.vipId).address))));
+							actions.add(pinSwitch.getOFFactory().actions().setField(pinSwitch.getOFFactory().oxms().ipv4Src(destAddress)));
 							actions.add(pinSwitch.getOFFactory().actions().output(path.get(i+1).getPortId(), Integer.MAX_VALUE));
 
 						}
@@ -741,7 +774,7 @@ ILoadBalancerService, IOFMessageListener {
 	 */
 	public HashMap<String, U64> collectSwitchPortBandwidth(){
 		HashMap<String,U64> memberPortBandwidth = new HashMap<String, U64>();
-		HashMap<IDevice,String> deviceToMemberId = new HashMap<IDevice, String>();
+		HashMap<Pair<IDevice,String>,String> deviceToMemberId = new HashMap<Pair<IDevice,String>, String>();
 
 		// retrieve all known devices to know which ones are attached to the members
 		Collection<? extends IDevice> allDevices = deviceManagerService.getAllDevices();
@@ -750,17 +783,19 @@ ILoadBalancerService, IOFMessageListener {
 			for (int j = 0; j < d.getIPv4Addresses().length; j++) {
 				if(!members.isEmpty()){
 					for(LBMember member: members.values()){
-						if (member.address == d.getIPv4Addresses()[j].getInt())
-							deviceToMemberId.put(d, member.id);
+						if (member.address == d.getIPv4Addresses()[j].getInt()){
+							Pair<IDevice,String> pair = new Pair<IDevice,String>(d,member.poolId);
+							deviceToMemberId.put(pair, member.id);
+						}
 					}
 				}
 			}
 		}
 		// collect statistics of the switch ports attached to the members
-		if(!deviceToMemberId.isEmpty()){
-			for(IDevice membersDevice: deviceToMemberId.keySet()){
+		if(!deviceToMemberId.isEmpty() && statisticsService != null){
+			for(Pair<IDevice, String> membersDevice: deviceToMemberId.keySet()){
 				String memberId = deviceToMemberId.get(membersDevice);
-				for(SwitchPort dstDap: membersDevice.getAttachmentPoints()){
+				for(SwitchPort dstDap: membersDevice.getKey().getAttachmentPoints()){
 					SwitchPortBandwidth bandwidthOfPort = statisticsService.getBandwidthConsumption(dstDap.getNodeId(), dstDap.getPortId());
 					if(bandwidthOfPort != null) // needs time for 1st collection, this avoids nullPointerException 
 						memberPortBandwidth.put(memberId, bandwidthOfPort.getBitsPerSecondRx());
@@ -794,7 +829,7 @@ ILoadBalancerService, IOFMessageListener {
 
 		vips.put(vip.id, vip);
 		vipIpToId.put(vip.address, vip.id);
-		vipIpToMac.put(vip.address, vip.proxyMac);
+		vipIpToMac.put(IPv4Address.of(vip.address), vip.proxyMac);
 
 		return vip;
 	}
@@ -1177,7 +1212,7 @@ ILoadBalancerService, IOFMessageListener {
 		members = new HashMap<String, LBMember>();
 		monitors = new HashMap<String,LBMonitor>();
 		vipIpToId = new HashMap<Integer, String>();
-		vipIpToMac = new HashMap<Integer, MacAddress>();
+		vipIpToMac = new HashMap<IPv4Address, MacAddress>();
 		memberIpToId = new HashMap<Integer, String>();
 		flowToVipId = new HashMap<Pair<Match,DatapathId>,String>();
 		memberIdToSwitchPort= new HashMap<String, SwitchPort>();

@@ -147,7 +147,9 @@ public class PoolsResource extends ServerResource {
                     pool.protocol = (byte) IpProtocol.UDP.getIpProtocolNumber();
                 } else if (tmp.equalsIgnoreCase("ICMP")) {
                     pool.protocol = (byte) IpProtocol.ICMP.getIpProtocolNumber();
-                } 
+	            } else if (tmp.equalsIgnoreCase("TLS")) {
+	                pool.protocol = (byte) IpProtocol.TLSP.getIpProtocolNumber();
+	            } 
                 continue;
             }                    
             if (n.equals("vip_id")) {

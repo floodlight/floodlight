@@ -138,7 +138,9 @@ public class VipsResource extends ServerResource {
                     vip.protocol = (byte) IpProtocol.UDP.getIpProtocolNumber();
                 } else if (tmp.equalsIgnoreCase("ICMP")) {
                     vip.protocol = (byte) IpProtocol.ICMP.getIpProtocolNumber();
-                } 
+	            } else if (tmp.equalsIgnoreCase("TLS")) {
+	                vip.protocol = (byte) IpProtocol.TLSP.getIpProtocolNumber();
+	            } 
                 continue;
             }
             if (n.equals("address")) {
