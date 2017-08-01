@@ -7,6 +7,7 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.RejectedExecutionException;
+import java.util.stream.StreamSupport;
 
 import javax.annotation.Nonnull;
 
@@ -19,6 +20,8 @@ import io.netty.handler.timeout.ReadTimeoutException;
 import io.netty.util.AttributeKey;
 import io.netty.util.Timer;
 import net.floodlightcontroller.core.IOFConnectionBackend;
+import net.floodlightcontroller.core.internal.OFChannelHandler.InitState;
+import net.floodlightcontroller.core.internal.OFChannelHandler.WaitFeaturesReplyState;
 import net.floodlightcontroller.core.internal.OFChannelInitializer.PipelineHandler;
 import net.floodlightcontroller.core.internal.OFChannelInitializer.PipelineHandshakeTimeout;
 import net.floodlightcontroller.core.internal.OFChannelInitializer.PipelineIdleReadTimeout;
@@ -690,6 +693,24 @@ class OFChannelHandler extends SimpleChannelInboundHandler<Iterable<OFMessage>> 
 
 	@Override
 	public void channelRead0(ChannelHandlerContext ctx, Iterable<OFMessage> msgList) throws Exception {
+		// long size = msgList.spliterator().getExactSizeIfKnown();
+		// log.info("Size of msgList ="+size);
+		if (state instanceof WaitFeaturesReplyState || state instanceof InitState) {
+			oldChannelRead0(ctx, msgList);
+		} else {
+			StreamSupport.stream(msgList.spliterator(), true).forEach((ofm) -> {
+				try {
+					state.processOFMessage(ofm);
+				} catch (IOException ex) {
+					// TODO Auto-generated catch block
+					ex.printStackTrace();
+					ctx.fireExceptionCaught(ex);
+				}
+			});
+		}
+	}
+	
+	public void oldChannelRead0(ChannelHandlerContext ctx, Iterable<OFMessage> msgList) throws Exception {
 		for (OFMessage ofm : msgList) {
 			try {
 				// Do the actual packet processing
