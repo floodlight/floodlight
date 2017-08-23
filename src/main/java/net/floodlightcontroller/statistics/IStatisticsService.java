@@ -14,6 +14,10 @@ import java.util.Set;
 
 public interface IStatisticsService extends IFloodlightService {
 	
+	public String setFlowStatsPeriod(int period);
+	
+	public String setPortStatsPeriod(int period);
+	
 	public Map<NodePortTuple, PortDesc> getPortDesc();
 	
 	public PortDesc getPortDesc(DatapathId dpid, OFPort p);

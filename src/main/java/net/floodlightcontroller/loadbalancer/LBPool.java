@@ -165,10 +165,8 @@ public class LBPool {
 					// If there is only one member with min BW value and membersWithMin is empty
 					if(membersWithMin.isEmpty()){
 						memberToPick = prevPicked.get(prevPicked.size()-1); // means that the min member has been prevs picked
-					}else{
-						//Collections.shuffle(membersWithMin); !!
+					}else
 						memberToPick = membersWithMin.get(0);
-					}
 
 					prevPicked.add(0, memberToPick); //set the first memberId of prevPicked to be the last member picked
 					log.info("PREV PICKED AFTER: " + prevPicked);

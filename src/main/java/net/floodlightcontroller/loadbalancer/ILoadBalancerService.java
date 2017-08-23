@@ -208,4 +208,10 @@ public interface ILoadBalancerService extends IFloodlightService {
      */
     public void healthMonitoring(boolean monitor);
     
+    /**
+     * Set health monitor thread period
+     * @param period in seconds
+     */
+    public String setMonitorsPeriod(int monitor);
+    
 }

@@ -23,7 +23,7 @@ import org.restlet.resource.Put;
 import org.restlet.resource.ServerResource;
 
 public class ConfigResource extends ServerResource{
-	
+
 	@Post
 	@Put
 	public Object config() {
@@ -33,12 +33,22 @@ public class ConfigResource extends ServerResource{
 			lbs.healthMonitoring(true);
 			return Collections.singletonMap("health monitors", "enabled");
 		}
-		
+
 		if (getReference().getPath().contains(LoadBalancerWebRoutable.DISABLE_STR)) {
 			lbs.healthMonitoring(false);
 			return Collections.singletonMap("health monitors", "disabled");
 		}
-	
+
+		if (getReference().getPath().contains(LoadBalancerWebRoutable.MONITORS_STR)) {
+			String period = (String) getRequestAttributes().get("period");
+			try{
+				int val = Integer.valueOf(period);
+				return lbs.setMonitorsPeriod(val);
+			}catch(Exception e) {
+				return "{\"status\" : \"Failed! " + e.getMessage() + "\"}";
+
+			}	
+		}
 		return Collections.singletonMap("ERROR", "Unimplemented configuration option");
 	}
 }

@@ -339,6 +339,19 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
 	 */
 
 	@Override
+	public String setPortStatsPeriod(int period) {
+		portStatsInterval = period;
+		return "{\"status\" : \"Port period changed to " + period + "\"}";
+	}
+	
+	@Override
+	public String setFlowStatsPeriod(int period) {
+		flowStatsInterval = period;
+		return "{\"status\" : \"Flow period changed to " + period + "\"}";
+	}
+	
+	
+	@Override
 	public Map<NodePortTuple, PortDesc> getPortDesc() {
 		return Collections.unmodifiableMap(portDesc);
 	}

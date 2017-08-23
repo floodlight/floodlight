@@ -17,6 +17,8 @@
 package net.floodlightcontroller.loadbalancer;
 
 
+import java.io.UnsupportedEncodingException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -70,6 +72,7 @@ import net.floodlightcontroller.devicemanager.IDevice;
 import net.floodlightcontroller.devicemanager.IDeviceService;
 import net.floodlightcontroller.devicemanager.SwitchPort;
 import net.floodlightcontroller.packet.ARP;
+import net.floodlightcontroller.packet.Data;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.ICMP;
 import net.floodlightcontroller.packet.IPacket;
@@ -128,17 +131,20 @@ ILoadBalancerService, IOFMessageListener {
 	protected HashMap<String, LBMonitor> monitors;
 	protected HashMap<Integer, String> vipIpToId;
 	protected HashMap<IPv4Address, MacAddress> vipIpToMac;
-	protected HashMap<Integer, String> memberIpToId;
+	protected HashMap<String, Short> memberStatus;
+	protected HashMap<String, Integer> memberIdToIp;
 	protected HashMap<IPClient, LBMember> clientToMember;
 	protected HashMap<Pair<Match,DatapathId>,String> flowToVipId;
 	protected HashMap<String, SwitchPort> memberIdToSwitchPort;
 
 	private static ScheduledFuture<?> healthMonitoring;
-	private static final int healthMonitorsInterval = 15;
+	private static int healthMonitorsInterval = 10; /* can be changed through NBI */
+
+	private static int ICMP_PAYLOAD_LENGTH = 4;
 
 	protected static boolean isMonitoringEnabled = false;
 
-	private static final int flowStatsInterval = 13; /* (seconds) 2 more than threads in StatisticsCollector */
+	private static final int flowStatsInterval = 13;
 
 	protected enum TLS {
 		HTTPS(TransportPort.of(443)),
@@ -258,10 +264,38 @@ ILoadBalancerService, IOFMessageListener {
 					}
 					if (ip_pkt.getPayload() instanceof ICMP) {
 						client.srcPort = TransportPort.of(8); 
-						client.targetPort = TransportPort.of(0); 
+						client.targetPort = TransportPort.of(0);
+
+
+						if(isMonitoringEnabled){
+							int srcIpAddress = ip_pkt.getSourceAddress().getInt();
+							ICMP icmp_pkt = (ICMP) ip_pkt.getPayload();
+							Data d = (Data) icmp_pkt.getPayload();
+							byte[] bit =  d.getData();
+
+							String str;
+							try {
+								str = new String (bit, "UTF-8");
+								str = str.replaceAll("\\D+",""); // only numbers VIP ID
+
+								if(icmp_pkt.getIcmpType() == ICMP.ECHO_REPLY){
+									for(LBMember member: members.values()){
+										if(member.vipId.equals(str) && member.address == srcIpAddress){
+											member.status = 1;
+											log.info("Member " + member.id + " active"); // !!
+										}
+										memberStatus.put(member.id, member.status);
+									}
+								}								
+								return Command.STOP; // switches will not have a flow rule, so members ICMP reply will come as packet-in
+							} catch (UnsupportedEncodingException e) {
+								log.error("ICMP reply payload not convertable to string" + e.getMessage());
+								return Command.STOP;
+							}
+						}
 					}
 
-					// TLS check
+					// TLS traffic is redirect to any VIP with TLS as protocol
 					LBPool pool = null;
 					for(TLS protocol: TLS.values()){
 						if(client.targetPort.equals(protocol.port)){ // TLS request
@@ -287,21 +321,19 @@ ILoadBalancerService, IOFMessageListener {
 					}
 					HashMap<String, Short> memberWeights = new HashMap<String, Short>();
 					HashMap<String, U64> memberPortBandwidth = new HashMap<String, U64>();
-					HashMap<String, Short> memberStatus = new HashMap<String, Short>();
 
-					for(LBMember member: members.values()){
-						memberStatus.put(member.id, member.status);	
-					}
 
 					if(pool.lbMethod == LBPool.WEIGHTED_RR){
 						for(String memberId: pool.members){
 							memberWeights.put(memberId,members.get(memberId).weight);
 						}
 					}
+
 					// Switch statistics collection
-					if(pool.lbMethod == LBPool.STATISTICS && statisticsService != null)
+					if(pool.lbMethod == LBPool.STATISTICS && statisticsService != null){
 						statisticsService.collectStatistics(true);
-						memberPortBandwidth = collectSwitchPortBandwidth();
+						memberPortBandwidth = collectSwitchPortBandwidth(pool);
+					}
 
 					LBMember member = members.get(pool.pickMember(client,memberPortBandwidth,memberWeights,memberStatus));
 					if(member == null)			//fix dereference violations
@@ -689,10 +721,12 @@ ILoadBalancerService, IOFMessageListener {
 	}
 
 
+
 	/** periodical function for health monitors
-	 * Get Port desc message from statistics collection, according to isEnabled? parameter
+	 * Get Port Desc message from statistics collection, according to isEnabled? parameter
 	 * check if the port connected to the LBMember is up or down
 	 * if it is down, then change the status of the LBMember to down.
+	 * if it is up, then send ICMP request to further investigate member connectivity.
 	 */
 	private class healthMonitorsCheck implements Runnable {
 		@Override
@@ -700,13 +734,13 @@ ILoadBalancerService, IOFMessageListener {
 			Map<NodePortTuple, PortDesc> portDesc = new HashMap<NodePortTuple, PortDesc>();
 			if(statisticsService != null){
 				statisticsService.collectStatistics(true);
-				collectSwitchPortBandwidth();
 				portDesc = statisticsService.getPortDesc();
 
 				if(vips != null && monitors != null && members != null && pools != null){
 					for(LBMonitor monitor: monitors.values()){
 						if(monitor.poolId != null && pools.get(monitor.poolId) != null){ 
 							LBPool pool = pools.get(monitor.poolId);
+							collectSwitchPortBandwidth(pool);
 							if(pool.vipId != null && vips.containsKey(pool.vipId) && !memberIdToSwitchPort.isEmpty()){
 								for(NodePortTuple allNpts: portDesc.keySet()){
 									for(String memberId: pool.members){
@@ -715,7 +749,8 @@ ILoadBalancerService, IOFMessageListener {
 											NodePortTuple memberNpt = new NodePortTuple(sp.getNodeId(),sp.getPortId());
 											if(portDesc.get(allNpts).isUp()){
 												if(memberNpt.equals(allNpts)){
-													members.get(memberId).status = 1;
+													vipMembersHealthCheck(memberNpt,members.get(memberId).macString,
+															IPv4Address.of(members.get(memberId).address) ,monitor.type,pool.vipId);
 												}
 											} else {
 												if(memberNpt.equals(allNpts)){
@@ -734,6 +769,47 @@ ILoadBalancerService, IOFMessageListener {
 		}
 	}
 
+	/** Send ICMP requests to the switches connected to the members.
+	 * Response will come as packet in, if they are available.
+	 */
+	private void vipMembersHealthCheck(NodePortTuple npt, String destMac, IPv4Address destAddr, byte msgType,String vipId){
+		IOFSwitch theSW = switchService.getSwitch(npt.getNodeId());
+
+		if(msgType == IpProtocol.ICMP.getIpProtocolNumber()){
+			/* The VIP ID is passed in the ICMP payload, because when the ICMP packet in reaches the controller from the member
+			 the controller knows which member sent the ICMP through its IP and VIP ID */
+			String icmp_data = vipId;
+
+			// 4 bytes is the minimum payload for ICMP packet
+			while(icmp_data.length() < ICMP_PAYLOAD_LENGTH){
+				icmp_data += "a";
+			}
+			byte[] icmp_data_byte = icmp_data.getBytes(StandardCharsets.UTF_8);
+
+			IPacket icmpRequest = new Ethernet()
+					.setSourceMACAddress(vips.get(vipId).proxyMac)
+					.setDestinationMACAddress(destMac)
+					.setEtherType(EthType.IPv4)
+					.setVlanID((short) 0)
+					.setPriorityCode((byte) 0)
+					.setPayload(
+							new IPv4()
+							.setSourceAddress(IPv4Address.of(vips.get(vipId).address))
+							.setDestinationAddress(destAddr)
+							.setProtocol(IpProtocol.ICMP)
+							.setTtl((byte) 64)
+							.setPayload(new ICMP()
+									.setIcmpCode((byte) 0)
+									.setIcmpType((byte) 8)
+									.setPayload(new Data()
+											.setData(icmp_data_byte)								
+											)));
+
+			FloodlightContext cntx = null;
+			pushPacket(icmpRequest, theSW, OFBufferId.NO_BUFFER, OFPort.CONTROLLER, npt.getPortId(), cntx, true);
+		}
+	}
+
 	/** Periodical function to set LBPool statistics
 	 * Gets the statistics through StatisticsCollector and sets it in LBPool
 	 */
@@ -742,8 +818,8 @@ ILoadBalancerService, IOFMessageListener {
 		public void run() {
 			if(!pools.isEmpty()){
 				if(!flowToVipId.isEmpty()){
-					collectSwitchPortBandwidth();
 					for(LBPool pool: pools.values()){
+						collectSwitchPortBandwidth(pool);
 						FlowRuleStats frs = null;
 						ArrayList<Long> bytesOut = new ArrayList<Long>();
 						ArrayList<Long> bytesIn = new ArrayList<Long>();
@@ -770,9 +846,10 @@ ILoadBalancerService, IOFMessageListener {
 	}
 
 	/**
-	 * used to collect SwitchPortBandwidth of the members and map members to dpids
+	 * used to collect SwitchPortBandwidth of the members and map members to DPIDs
+	 * LBPool pool is used to iterate over its members, to avoid iterating over all the members in the network.
 	 */
-	public HashMap<String, U64> collectSwitchPortBandwidth(){
+	public HashMap<String, U64> collectSwitchPortBandwidth(LBPool pool){
 		HashMap<String,U64> memberPortBandwidth = new HashMap<String, U64>();
 		HashMap<Pair<IDevice,String>,String> deviceToMemberId = new HashMap<Pair<IDevice,String>, String>();
 
@@ -781,11 +858,12 @@ ILoadBalancerService, IOFMessageListener {
 
 		for (IDevice d : allDevices) {
 			for (int j = 0; j < d.getIPv4Addresses().length; j++) {
-				if(!members.isEmpty()){
-					for(LBMember member: members.values()){
-						if (member.address == d.getIPv4Addresses()[j].getInt()){
-							Pair<IDevice,String> pair = new Pair<IDevice,String>(d,member.poolId);
-							deviceToMemberId.put(pair, member.id);
+				if(pool != null){
+					for(String memberId: pool.members){
+						if (members.get(memberId).address == d.getIPv4Addresses()[j].getInt()){
+							Pair<IDevice,String> pair = new Pair<IDevice,String>(d,pool.id);
+							members.get(memberId).macString = d.getMACAddressString(); // because health monitors have to know members MAC
+							deviceToMemberId.put(pair, memberId);
 						}
 					}
 				}
@@ -940,7 +1018,7 @@ ILoadBalancerService, IOFMessageListener {
 			return null;
 		}
 		members.put(member.id, member);
-		memberIpToId.put(member.address, member.id);
+		memberIdToIp.put(member.id, member.address);
 
 		return member;
 	}
@@ -960,6 +1038,7 @@ ILoadBalancerService, IOFMessageListener {
 			if (member.poolId != null && pools.containsKey(member.poolId))
 				pools.get(member.poolId).members.remove(memberId);
 			members.remove(memberId);
+			memberIdToIp.remove(memberId);
 			return 0;
 		} else {
 			return -1;
@@ -1152,8 +1231,15 @@ ILoadBalancerService, IOFMessageListener {
 			isMonitoringEnabled = false;
 		}
 	}
+
+	@Override
+	public String setMonitorsPeriod(int period) {
+		healthMonitorsInterval = period;
+		return "{\"status\" : \"Monitors period changed to " + period + "\"}";
+	}
+
 	/*
-	 * floodlight module dependencies
+	 * Floodlight module dependencies
 	 */
 
 	@Override
@@ -1212,8 +1298,9 @@ ILoadBalancerService, IOFMessageListener {
 		members = new HashMap<String, LBMember>();
 		monitors = new HashMap<String,LBMonitor>();
 		vipIpToId = new HashMap<Integer, String>();
+		memberStatus = new HashMap<String, Short>();
 		vipIpToMac = new HashMap<IPv4Address, MacAddress>();
-		memberIpToId = new HashMap<Integer, String>();
+		memberIdToIp= new HashMap<String, Integer>();
 		flowToVipId = new HashMap<Pair<Match,DatapathId>,String>();
 		memberIdToSwitchPort= new HashMap<String, SwitchPort>();
 
