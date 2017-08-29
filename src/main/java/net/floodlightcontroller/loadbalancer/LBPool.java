@@ -53,7 +53,8 @@ public class LBPool {
 	protected ArrayList<String> monitors;
 	protected ArrayList<String> test_WRR; // !!!
 	protected ArrayList<String> test_STATS; // !!!
-	protected ArrayList<Long> test_BW; // !!!
+	protected ArrayList<Long> test_Min_BW; // !!!
+	protected ArrayList<Long> test_Max_BW; // !!!
 	protected ArrayList<String> prevPicked;
 	protected short adminState;
 	protected short status;
@@ -79,7 +80,8 @@ public class LBPool {
 		monitors = new ArrayList<String>();
 		test_WRR = new ArrayList<String>(); // !!
 		test_STATS = new ArrayList<String>(); // !!
-		test_BW = new ArrayList<Long>(); // !!
+		test_Min_BW = new ArrayList<Long>(); // !!
+		test_Max_BW = new ArrayList<Long>(); // !!
 		adminState = 0;
 		status = 0;
 		previousMemberIndex = -1;
@@ -141,14 +143,14 @@ public class LBPool {
 							membersWithMin.add(poolMembersId.get(i));
 						}
 					}
-					log.info("LIST OF Members: " + members);
+					//log.info("LIST OF Members: " + members);
 					log.info("LIST OF IDS: " + poolMembersId);
 					log.info("LIST OF MINS: " + membersWithMin);
 
 					// size of the prev list is half of the number of available members
 					int sizeOfPrevPicked = bandwidthValues.size()/2;
 					
-					log.info("PREV PICKED B4: " + prevPicked);
+					//log.info("PREV PICKED B4: " + prevPicked);
 
 					// Remove previously picked members from being eligible for being picked now
 					for (Iterator<String> it = membersWithMin.iterator(); it.hasNext();){
@@ -169,17 +171,14 @@ public class LBPool {
 						memberToPick = membersWithMin.get(0);
 
 					prevPicked.add(0, memberToPick); //set the first memberId of prevPicked to be the last member picked
-					log.info("PREV PICKED AFTER: " + prevPicked);
+					//log.info("PREV PICKED AFTER: " + prevPicked);
 
 					test_STATS.add(memberToPick);
-					test_BW.add((Collections.min(bandwidthValues)).getValue());
+					test_Min_BW.add((Collections.min(bandwidthValues)).getValue());
+					test_Max_BW.add((Collections.max(bandwidthValues)).getValue());
 					log.info("STAAT: " + test_STATS);
-					log.info("MIN_BW: " + test_BW);
-					ArrayList<Long> lg = new ArrayList<Long>();
-					for(U64 uu: bandwidthValues){
-						lg.add(uu.getValue());
-					}
-					log.info("CURRENT BWS: " + lg);
+					log.info("MIN: " + test_Min_BW);
+					log.info("MAX: " + test_Max_BW);
 
 					return memberToPick;
 				}

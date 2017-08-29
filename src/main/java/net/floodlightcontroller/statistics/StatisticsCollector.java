@@ -11,6 +11,9 @@ import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.core.types.NodePortTuple;
+import net.floodlightcontroller.debugcounter.IDebugCounter;
+import net.floodlightcontroller.debugcounter.IDebugCounterService;
+import net.floodlightcontroller.debugcounter.IDebugCounterService.MetaData;
 import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.statistics.web.SwitchStatisticsWebRoutable;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
@@ -37,6 +40,8 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
 	private static IOFSwitchService switchService;
 	private static IThreadPoolService threadPoolService;
 	private static IRestApiService restApiService;
+	protected IDebugCounterService debugCounterService;
+	private IDebugCounter counterPacketOut;
 
 	private static boolean isEnabled = false;
 
@@ -295,6 +300,7 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
 		l.add(IOFSwitchService.class);
 		l.add(IThreadPoolService.class);
 		l.add(IRestApiService.class);
+		l.add(IDebugCounterService.class);
 		return l;
 	}
 
@@ -304,6 +310,7 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
 		switchService = context.getServiceImpl(IOFSwitchService.class);
 		threadPoolService = context.getServiceImpl(IThreadPoolService.class);
 		restApiService = context.getServiceImpl(IRestApiService.class);
+		debugCounterService = context.getServiceImpl(IDebugCounterService.class);
 
 		Map<String, String> config = context.getConfigParams(this);
 		if (config.containsKey(ENABLED_STR)) {
@@ -329,9 +336,12 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
 	public void startUp(FloodlightModuleContext context)
 			throws FloodlightModuleException {
 		restApiService.addRestletRoutable(new SwitchStatisticsWebRoutable());
+		debugCounterService.registerModule("statistics");
 		if (isEnabled) {
 			startStatisticsCollection();
 		}
+		
+		counterPacketOut = debugCounterService.registerCounter("statistics", "packet-outs-written", "Packet outs written by the StatisticsCollector", MetaData.WARN);
 	}
 
 	/*
@@ -606,6 +616,7 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
 				if (req != null) {
 					future = sw.writeStatsRequest(req); 
 					values = (List<OFStatsReply>) future.get(portStatsInterval / 2, TimeUnit.SECONDS);
+					counterPacketOut.increment();
 				}
 			} catch (Exception e) {
 				log.error("Failure retrieving statistics from switch {}. {}", sw, e);

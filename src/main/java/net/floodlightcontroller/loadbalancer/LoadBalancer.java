@@ -65,6 +65,7 @@ import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.core.types.NodePortTuple;
+import net.floodlightcontroller.debugcounter.DebugCounterResource;
 import net.floodlightcontroller.debugcounter.IDebugCounter;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
 import net.floodlightcontroller.debugcounter.IDebugCounterService.MetaData;
@@ -286,8 +287,8 @@ ILoadBalancerService, IOFMessageListener {
 										}
 										memberStatus.put(member.id, member.status);
 									}
+									return Command.STOP; // switches will not have a flow rule, so members ICMP reply will come as packet-in
 								}								
-								return Command.STOP; // switches will not have a flow rule, so members ICMP reply will come as packet-in
 							} catch (UnsupportedEncodingException e) {
 								log.error("ICMP reply payload not convertable to string" + e.getMessage());
 								return Command.STOP;
@@ -816,6 +817,12 @@ ILoadBalancerService, IOFMessageListener {
 	private class SetPoolStats implements Runnable {
 		@Override
 		public void run() {
+			// TODO !!
+			List<DebugCounterResource> lst = debugCounterService.getAllCounterValues();
+			for(DebugCounterResource dcr: lst){				
+				log.info("DESCR: " + dcr.getCounterDesc() + " VALUE: " +dcr.getCounterValue() + " MODULE: " + dcr.getModuleName());
+			}
+			
 			if(!pools.isEmpty()){
 				if(!flowToVipId.isEmpty()){
 					for(LBPool pool: pools.values()){
