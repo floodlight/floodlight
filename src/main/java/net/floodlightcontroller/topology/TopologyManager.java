@@ -934,8 +934,9 @@ public class TopologyManager implements IFloodlightModule, ITopologyService, IRo
 			if (log.isTraceEnabled()) {
 				log.trace("Ignoring packet because of topology " +
 						"restriction on switch={}, port={}", sw.getLong(), inPort.getPortNumber());
-				result = Command.STOP;
+				
 			}
+			result = Command.STOP;
 		}
 		return result;
 	}
