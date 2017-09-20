@@ -64,9 +64,6 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
 	private static final HashMap<Pair<Match,DatapathId>, FlowRuleStats> flowStats = new HashMap<Pair<Match,DatapathId>,FlowRuleStats>();
 	
 	private static final HashMap<NodePortTuple, PortDesc> portDesc = new HashMap<NodePortTuple, PortDesc>();
-	
-
-	private long timer= 0; //!!!
 
 
 
