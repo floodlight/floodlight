@@ -110,6 +110,8 @@ ITopologyManagerBackend, ILinkDiscoveryListener, IOFMessageListener {
     protected static IRestApiService restApiService;
     protected static IDebugCounterService debugCounterService;
     protected static IStatisticsService statisticsService;
+    
+    
 
     // Modules that listen to our updates
     protected ArrayList<ITopologyListener> topologyAware;
@@ -761,6 +763,7 @@ ITopologyManagerBackend, ILinkDiscoveryListener, IOFMessageListener {
                     "interaces={} packet-data={} packet-out={}",
                     new Object[] {sw.getId(), ports, packetData, pob.build()});
         }
+        
         sw.write(pob.build(), LogicalOFMessageCategory.MAIN);
     }
 

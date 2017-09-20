@@ -65,7 +65,6 @@ import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.core.types.NodePortTuple;
-import net.floodlightcontroller.debugcounter.DebugCounterResource;
 import net.floodlightcontroller.debugcounter.IDebugCounter;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
 import net.floodlightcontroller.debugcounter.IDebugCounterService.MetaData;
@@ -118,6 +117,7 @@ ILoadBalancerService, IOFMessageListener {
 
 	protected IDebugCounterService debugCounterService;
 	private IDebugCounter counterPacketOut;
+	private IDebugCounter counterPacketIn;
 	protected IDeviceService deviceManagerService;
 	protected IRoutingService routingEngineService;
 	protected ITopologyService topologyService;
@@ -139,13 +139,13 @@ ILoadBalancerService, IOFMessageListener {
 	protected HashMap<String, SwitchPort> memberIdToSwitchPort;
 
 	private static ScheduledFuture<?> healthMonitoring;
-	private static int healthMonitorsInterval = 10; /* can be changed through NBI */
+	private static int healthMonitorsInterval = 10; /* (s) can be changed through NBI */
 
 	private static int ICMP_PAYLOAD_LENGTH = 4;
 
 	protected static boolean isMonitoringEnabled = false;
 
-	private static final int flowStatsInterval = 13;
+	private static final int flowStatsInterval = 15;
 
 	protected enum TLS {
 		HTTPS(TransportPort.of(443)),
@@ -267,31 +267,31 @@ ILoadBalancerService, IOFMessageListener {
 						client.srcPort = TransportPort.of(8); 
 						client.targetPort = TransportPort.of(0);
 
-
 						if(isMonitoringEnabled){
 							int srcIpAddress = ip_pkt.getSourceAddress().getInt();
 							ICMP icmp_pkt = (ICMP) ip_pkt.getPayload();
-							Data d = (Data) icmp_pkt.getPayload();
-							byte[] bit =  d.getData();
 
-							String str;
-							try {
-								str = new String (bit, "UTF-8");
-								str = str.replaceAll("\\D+",""); // only numbers VIP ID
+							if(icmp_pkt.getIcmpType() == ICMP.ECHO_REPLY){
+								Data d = (Data) icmp_pkt.getPayload();
+								byte[] bit =  d.getData();
 
-								if(icmp_pkt.getIcmpType() == ICMP.ECHO_REPLY){
+								String str;
+								try {
+									str = new String (bit, "UTF-8");
+									str = str.replaceAll("\\D+",""); // only numbers VIP ID
+
 									for(LBMember member: members.values()){
 										if(member.vipId.equals(str) && member.address == srcIpAddress){
 											member.status = 1;
-											log.info("Member " + member.id + " active"); // !!
 										}
 										memberStatus.put(member.id, member.status);
 									}
 									return Command.STOP; // switches will not have a flow rule, so members ICMP reply will come as packet-in
-								}								
-							} catch (UnsupportedEncodingException e) {
-								log.error("ICMP reply payload not convertable to string" + e.getMessage());
-								return Command.STOP;
+								
+								}catch (UnsupportedEncodingException e) {
+									log.error("ICMP reply payload not convertable to string" + e.getMessage());
+									return Command.STOP;
+								} 
 							}
 						}
 					}
@@ -347,6 +347,7 @@ ILoadBalancerService, IOFMessageListener {
 					pushPacket(pkt, sw, pi.getBufferId(), (pi.getVersion().compareTo(OFVersion.OF_12) < 0) ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT), OFPort.TABLE,
 							cntx, true);
 
+					counterPacketIn.increment();
 					return Command.STOP;
 				}
 			}
@@ -450,10 +451,7 @@ ILoadBalancerService, IOFMessageListener {
 			pob.setData(packetData);
 		}
 
-
-		counterPacketOut.increment();
 		sw.write(pob.build());
-
 	}
 
 	/**
@@ -712,6 +710,7 @@ ILoadBalancerService, IOFMessageListener {
 				fmb.setActions(actions);
 				fmb.setPriority(U16.t(LB_PRIORITY));
 				fmb.setMatch(mb.build());
+				counterPacketOut.increment();
 				sfpService.addFlow(entryName, fmb.build(), sw);
 				Pair<Match, DatapathId> pair = new Pair<Match,DatapathId>(mb.build(),sw);
 				flowToVipId.put(pair, member.vipId); // used to set LBPool statistics
@@ -817,12 +816,6 @@ ILoadBalancerService, IOFMessageListener {
 	private class SetPoolStats implements Runnable {
 		@Override
 		public void run() {
-			// TODO !!
-			List<DebugCounterResource> lst = debugCounterService.getAllCounterValues();
-			for(DebugCounterResource dcr: lst){				
-				log.info("DESCR: " + dcr.getCounterDesc() + " VALUE: " +dcr.getCounterValue() + " MODULE: " + dcr.getModuleName());
-			}
-			
 			if(!pools.isEmpty()){
 				if(!flowToVipId.isEmpty()){
 					for(LBPool pool: pools.values()){
@@ -853,8 +846,9 @@ ILoadBalancerService, IOFMessageListener {
 	}
 
 	/**
-	 * used to collect SwitchPortBandwidth of the members and map members to DPIDs
+	 * used to collect SwitchPortBandwidth of the members and map members to DPIDs and helper function health monitors and pool stats.
 	 * LBPool pool is used to iterate over its members, to avoid iterating over all the members in the network.
+	 * as some pools might not have monitors associated with.
 	 */
 	public HashMap<String, U64> collectSwitchPortBandwidth(LBPool pool){
 		HashMap<String,U64> memberPortBandwidth = new HashMap<String, U64>();
@@ -1026,7 +1020,6 @@ ILoadBalancerService, IOFMessageListener {
 		}
 		members.put(member.id, member);
 		memberIdToIp.put(member.id, member.address);
-
 		return member;
 	}
 
@@ -1321,5 +1314,6 @@ ILoadBalancerService, IOFMessageListener {
 		restApiService.addRestletRoutable(new LoadBalancerWebRoutable());
 		debugCounterService.registerModule(this.getName());
 		counterPacketOut = debugCounterService.registerCounter(this.getName(), "packet-outs-written", "Packet outs written by the LoadBalancer", MetaData.WARN);
+		counterPacketIn = debugCounterService.registerCounter(this.getName(), "packet-ins-received", "Packet ins received by the LoadBalancer", MetaData.WARN);
 	}
 }
