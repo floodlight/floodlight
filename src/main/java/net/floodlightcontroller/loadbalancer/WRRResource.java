@@ -21,7 +21,7 @@ public class WRRResource extends ServerResource{
 				(ILoadBalancerService)getContext().getAttributes().
 				get(ILoadBalancerService.class.getCanonicalName());
 
-		return "{\"status\" : \"" + lbs.setMemberWeight(memberId,weight) + "\"}";
+		return "{\"status\" : \"" + lbs.setMemberWeight(memberId,weight) + "\"}"; // Used by GUI TODO HTTP codes
 
 	}	
 }

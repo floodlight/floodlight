@@ -886,7 +886,7 @@ ILoadBalancerService, IOFMessageListener {
 	}
 
 	/*
-	 * ILoadBalancerService methods
+	 * ILoadBalancerService methods TODO
 	 */
 
 	@Override
@@ -960,7 +960,7 @@ ILoadBalancerService, IOFMessageListener {
 	@Override
 	public LBPool updatePool(LBPool pool) {
 		pools.put(pool.id, pool);
-		return null;
+		return pool;
 	}
 
 	@Override

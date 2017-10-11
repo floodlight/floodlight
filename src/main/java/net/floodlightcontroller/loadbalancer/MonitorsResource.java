@@ -31,12 +31,16 @@ import org.restlet.resource.Delete;
 import org.restlet.resource.Get;
 import org.restlet.resource.Post;
 import org.restlet.resource.Put;
+import org.restlet.resource.ResourceException;
 import org.restlet.resource.ServerResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class MonitorsResource extends ServerResource {
 	protected static Logger log = LoggerFactory.getLogger(MonitorsResource.class);
+	private static final int NOT_FOUND = 404;
+	private static final int BAD_REQUEST = 400;
+	private static final int SUCCESS = 200;
 
 	@Get("json")
 	public Collection <LBMonitor> retrieve() {
@@ -60,6 +64,7 @@ public class MonitorsResource extends ServerResource {
 			monitor=jsonToMonitor(postData);
 		} catch (IOException e) {
 			log.error("Could not parse JSON {}", e.getMessage());
+			throw new ResourceException(BAD_REQUEST); // Sends HTTP error message with code 400 (Bad Request).
 		}
 
 		ILoadBalancerService lbs =
@@ -71,7 +76,7 @@ public class MonitorsResource extends ServerResource {
 			return lbs.updateMonitor(monitor);
 		else
 
-		return lbs.createMonitor(monitor);
+			return lbs.createMonitor(monitor);
 	}
 
 
@@ -84,7 +89,12 @@ public class MonitorsResource extends ServerResource {
 				(ILoadBalancerService)getContext().getAttributes().
 				get(ILoadBalancerService.class.getCanonicalName());
 
-		return lbs.removeMonitor(monitorId);
+		int status = lbs.removeMonitor(monitorId);
+		if(status == -1){
+			throw new ResourceException(NOT_FOUND);
+		} else
+			throw new ResourceException(SUCCESS);
+
 	}
 
 

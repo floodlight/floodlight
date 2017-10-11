@@ -31,12 +31,17 @@ import org.restlet.resource.Delete;
 import org.restlet.resource.Get;
 import org.restlet.resource.Post;
 import org.restlet.resource.Put;
+import org.restlet.resource.ResourceException;
 import org.restlet.resource.ServerResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class VipsResource extends ServerResource {
     protected static Logger log = LoggerFactory.getLogger(VipsResource.class);
+    
+    private static final int NOT_FOUND = 404;
+    private static final int BAD_REQUEST = 400;
+    private static final int SUCCESS = 200;
     
     @Get("json")
     public Collection <LBVip> retrieve() {
@@ -59,7 +64,8 @@ public class VipsResource extends ServerResource {
         try {
             vip=jsonToVip(postData);
         } catch (IOException e) {
-            log.error("Could not parse JSON {}", e.getMessage());
+        	log.error("Could not parse JSON {}", e.getMessage());
+        	throw new ResourceException(BAD_REQUEST); // Sends HTTP error message with code 400.
         }
         
         ILoadBalancerService lbs =
@@ -82,7 +88,11 @@ public class VipsResource extends ServerResource {
                 (ILoadBalancerService)getContext().getAttributes().
                     get(ILoadBalancerService.class.getCanonicalName());
 
-        return lbs.removeVip(vipId);
+        int status = lbs.removeVip(vipId);
+        if(status == -1){
+        	throw new ResourceException(NOT_FOUND);
+        } else
+        	throw new ResourceException(SUCCESS);
     }
 
     protected LBVip jsonToVip(String json) throws IOException {

@@ -24,6 +24,7 @@ import org.restlet.resource.Delete;
 import org.restlet.resource.Get;
 import org.restlet.resource.Post;
 import org.restlet.resource.Put;
+import org.restlet.resource.ResourceException;
 import org.restlet.resource.ServerResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -61,6 +62,7 @@ public class PoolMonitorResource extends ServerResource {
 			monitor=jsonToMonitor(postData);
 		} catch (IOException e) {
 			log.error("Could not parse JSON {}", e.getMessage());
+			throw new ResourceException(400); // Sends HTTP error message with code 400 (Bad Request).
 		}
 
 		ILoadBalancerService lbs =
