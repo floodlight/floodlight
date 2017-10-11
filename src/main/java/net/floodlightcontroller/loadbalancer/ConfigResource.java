@@ -20,6 +20,7 @@ import java.util.Collections;
 
 import org.restlet.resource.Post;
 import org.restlet.resource.Put;
+import org.restlet.resource.ResourceException;
 import org.restlet.resource.ServerResource;
 
 public class ConfigResource extends ServerResource{
@@ -30,13 +31,19 @@ public class ConfigResource extends ServerResource{
 		ILoadBalancerService lbs = (ILoadBalancerService) getContext().getAttributes().get(ILoadBalancerService.class.getCanonicalName());
 
 		if (getReference().getPath().contains(LoadBalancerWebRoutable.ENABLE_STR)) {
-			lbs.healthMonitoring(true);
-			return Collections.singletonMap("health monitors", "enabled");
+			int status = lbs.healthMonitoring(true);
+			if(status == -1){
+				throw new ResourceException(409);
+			} else
+				return Collections.singletonMap("health monitors", "enabled");
 		}
 
 		if (getReference().getPath().contains(LoadBalancerWebRoutable.DISABLE_STR)) {
-			lbs.healthMonitoring(false);
-			return Collections.singletonMap("health monitors", "disabled");
+			int status = lbs.healthMonitoring(false);
+			if(status == -1){
+				throw new ResourceException(409);
+			} else
+				return Collections.singletonMap("health monitors", "disabled");
 		}
 
 		if (getReference().getPath().contains(LoadBalancerWebRoutable.MONITORS_STR)) {
@@ -45,7 +52,7 @@ public class ConfigResource extends ServerResource{
 				int val = Integer.valueOf(period);
 				return lbs.setMonitorsPeriod(val);
 			}catch(Exception e) {
-				return "{\"status\" : \"Failed! " + e.getMessage() + "\"}";
+				throw new ResourceException(400);
 
 			}	
 		}

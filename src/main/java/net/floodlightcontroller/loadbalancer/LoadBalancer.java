@@ -1217,19 +1217,23 @@ ILoadBalancerService, IOFMessageListener {
 	}
 
 	@Override
-	public void healthMonitoring(boolean monitor) {
+	public int healthMonitoring(boolean monitor) {
 		if(monitor && !isMonitoringEnabled){
 			healthMonitoring = threadService.getScheduledExecutor().scheduleAtFixedRate(new healthMonitorsCheck(), healthMonitorsInterval, healthMonitorsInterval, TimeUnit.SECONDS);
 			isMonitoringEnabled = true;
 			log.warn("Health monitoring thread started");
+			return 0;
 		} else if(!monitor && isMonitoringEnabled){
 			if (!healthMonitoring.cancel(false)) {
 				log.error("Could not cancel health monitoring thread");
+				return -1;
 			} else {
 				log.warn("Health monitoring thread stopped");
+				isMonitoringEnabled = false;
+				return 0;
 			}
-			isMonitoringEnabled = false;
 		}
+		return 0;
 	}
 
 	@Override

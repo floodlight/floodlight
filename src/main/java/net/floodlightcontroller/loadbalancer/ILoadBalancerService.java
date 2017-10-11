@@ -206,7 +206,7 @@ public interface ILoadBalancerService extends IFloodlightService {
      * Enable/disable health monitoring
      * @param monitor
      */
-    public void healthMonitoring(boolean monitor);
+    public int healthMonitoring(boolean monitor);
     
     /**
      * Set health monitor thread period
