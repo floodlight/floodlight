@@ -3262,7 +3262,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 				diter.hasNext());
 
 		// Wait for consolidate
-		Thread.sleep(initialSyncStoreConsolidateIntervalMs + 5);
+		Thread.sleep(initialSyncStoreConsolidateIntervalMs + 80);
 		// make sure it's in NOT the store
 		entries = getEntriesFromStore();
 		found = false;
