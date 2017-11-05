@@ -483,7 +483,7 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
 			try {
 				if (req != null) {
 					future = sw.writeStatsRequest(req); 
-					values = (List<OFStatsReply>) future.get(portStatsInterval / 2, TimeUnit.SECONDS);
+					values = (List<OFStatsReply>) future.get(portStatsInterval*1000 / 2, TimeUnit.MILLISECONDS);
 				}
 			} catch (Exception e) {
 				log.error("Failure retrieving statistics from switch {}. {}", sw, e);
