@@ -26,8 +26,7 @@ import org.projectfloodlight.openflow.types.VlanVid;
 
 
 /**
- * Represents an independent device on the network.  A device consists of a 
- * set of entities, and all the information known about a given device comes
+ * Represents an independent device on the network.  a, and all the information known about a given device comes
  * only from merging all associated entities for that device.
  * @author readams
  */
