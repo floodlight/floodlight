@@ -74,7 +74,7 @@
         <include name="concurrentlinkedhashmap-lru-1.2.jar"/>
         <include name="jython-2.5.2.jar"/>
         <include name="libthrift-0.9.0.jar"/>
-        <include name="guava-13.0.1.jar" />
+        <include name="guava-20.0.jar" />
         <include name="findbugs-annotations-2.0.1.jar" />
         <include name="findbugs-jsr305-2.0.1.jar" />
         <include name="derby-10.9.1.0.jar"/>
