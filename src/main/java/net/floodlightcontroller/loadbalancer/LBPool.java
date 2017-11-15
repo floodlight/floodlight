@@ -108,7 +108,7 @@ public class LBPool {
 				for(String memberId: membersBandwidth.keySet()){
 					for(int i=0;i<members.size();i++){
 						if(LoadBalancer.isMonitoringEnabled && !monitors.isEmpty() && !memberStatus.isEmpty()){  // if health monitors active
-							if(members.get(i).equals(memberId) && memberStatus.get(memberId) == 1){
+							if(members.get(i).equals(memberId) && memberStatus.get(memberId) != -1){
 								poolMembersId.add(memberId);
 							}
 						} else { // no health monitors active
@@ -170,11 +170,11 @@ public class LBPool {
 
 				if(LoadBalancer.isMonitoringEnabled && !monitors.isEmpty() && !memberStatus.isEmpty()){  // if health monitors active
 					for(String memberId: membersWeight.keySet()){
-						if(memberStatus.get(memberId) == 1){
+						if(memberStatus.get(memberId) != -1){
 							activeMembers.put(memberId, membersWeight.get(memberId)); 
 						}
 					}
-					return weightsToMember(activeMembers); // only members with status = 1
+					return weightsToMember(activeMembers); // only members with status != -1
 
 				} else
 					return weightsToMember(membersWeight); // all members in membersWeight are considered	
@@ -182,7 +182,7 @@ public class LBPool {
 				if(LoadBalancer.isMonitoringEnabled && !monitors.isEmpty() && !memberStatus.isEmpty()){  // if health monitors active
 					for(int i=0;i<members.size();){
 						previousMemberIndex = (previousMemberIndex + 1) % members.size();	
-						if(memberStatus.get(members.get(previousMemberIndex)) == 1)
+						if(memberStatus.get(members.get(previousMemberIndex)) != -1)
 							return members.get((previousMemberIndex));     		
 					}
 					return null;

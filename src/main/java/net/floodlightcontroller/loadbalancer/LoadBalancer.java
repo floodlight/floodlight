@@ -284,7 +284,12 @@ ILoadBalancerService, IOFMessageListener {
 										if(member.vipId.equals(str) && member.address == srcIpAddress){
 											member.status = 1;
 										}
+										
+										if(member.status == 0)
+											member.status =-1;
+										
 										memberStatus.put(member.id, member.status);
+										log.info("Member: " + member.id + " status: " + member.status);
 									}
 									return Command.STOP; // switches will not have a flow rule, so members ICMP reply will come as packet-in
 								
@@ -749,6 +754,7 @@ ILoadBalancerService, IOFMessageListener {
 											NodePortTuple memberNpt = new NodePortTuple(sp.getNodeId(),sp.getPortId());
 											if(portDesc.get(allNpts).isUp()){
 												if(memberNpt.equals(allNpts)){
+													members.get(memberId).status=0;
 													vipMembersHealthCheck(memberNpt,members.get(memberId).macString,
 															IPv4Address.of(members.get(memberId).address) ,monitor.type,pool.vipId);
 												}
