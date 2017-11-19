@@ -365,7 +365,7 @@ public abstract class ForwardingBase implements IOFMessageListener {
         pob.setActions(actions);
 
         pob.setBufferId(OFBufferId.NO_BUFFER);
-        pob.setInPort(inPort);
+        OFMessageUtils.setInPort(pob, inPort);
 
         pob.setData(packetData);
 
