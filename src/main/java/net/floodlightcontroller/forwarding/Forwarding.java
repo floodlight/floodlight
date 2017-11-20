@@ -495,6 +495,8 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 
         Match m = createMatchFromPacket(sw, srcPort, pi, cntx);
 
+        log.info("Trying to get path ... path is: {}", path.toString());
+
         if (! path.getPath().isEmpty()) {
             if (log.isDebugEnabled()) {
 //                log.debug("pushRoute inPort={} route={} " +
