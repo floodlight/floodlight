@@ -154,6 +154,8 @@ public abstract class ForwardingBase implements IOFMessageListener {
                 decision = RoutingDecision.rtStore.get(cntx, IRoutingDecision.CONTEXT_DECISION);
             }
 
+
+            log.info("FowardingBase Received Packet-in Message!");
             return this.processPacketInMessage(sw, (OFPacketIn) msg, decision, cntx);
         default:
             break;
