@@ -154,10 +154,6 @@ public abstract class ForwardingBase implements IOFMessageListener {
                 decision = RoutingDecision.rtStore.get(cntx, IRoutingDecision.CONTEXT_DECISION);
             }
 
-
-            log.info("FowardingBase Received Packet-in Message!");
-
-
             return this.processPacketInMessage(sw, (OFPacketIn) msg, decision, cntx);
         default:
             break;
@@ -285,8 +281,6 @@ public abstract class ForwardingBase implements IOFMessageListener {
                 pushPacket(sw, pi, outPort, true, cntx);
                 packetOutSent = true;
             }
-
-            log.info("Trying to insert flow... Flow is: P{}", fmb.toString());
 
         }
 

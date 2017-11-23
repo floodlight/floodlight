@@ -428,11 +428,6 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
             return;
         }
 
-        log.info("Trying to push forwarding flow.... Dst Device is: {}", dstDevice.toString());
-        log.info("Trying to push forwarding flow.... Src Device is: {}", srcDevice.toString());
-        log.info("All device is:{}", deviceManagerService.getAllDevices().toString());
-
-
         /* Some physical switches partially support or do not support ARP flows */
         if (FLOOD_ALL_ARP_PACKETS && 
                 IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD).getEtherType() 
@@ -495,21 +490,14 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 
         Match m = createMatchFromPacket(sw, srcPort, pi, cntx);
 
-        log.info("Trying to get path ... path is: {}", path.toString());
-
         if (! path.getPath().isEmpty()) {
             if (log.isDebugEnabled()) {
-//                log.debug("pushRoute inPort={} route={} " +
-//                        "destination={}:{}",
-//                        new Object[] { srcPort, path,
-//                                dstAp.getNodeId(),
-//                                dstAp.getPortId()});
-                log.info("pushRoute inPort={} route={} " +
-                                "destination={}:{}",
+                log.debug("pushRoute inPort={} route={} " +
+                        "destination={}:{}",
                         new Object[] { srcPort, path,
                                 dstAp.getNodeId(),
                                 dstAp.getPortId()});
-//                log.debug("Creating flow rules on the route, match rule: {}", m);
+                log.debug("Creating flow rules on the route, match rule: {}", m);
                 log.info("Creating flow rules on the route, match rule: {}", m);
             }
 
