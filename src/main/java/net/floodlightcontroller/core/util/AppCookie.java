@@ -23,7 +23,7 @@ import java.util.concurrent.ConcurrentMap;
 import org.projectfloodlight.openflow.types.U64;
 
 /***
- * A static utility class to register flow cookiue AppIds and generating
+ * A static utility class to register flow cookie AppIds and generating
  * flow cookies for a particular App`
  *
  * An "app" is a module or piece of code that can install flows in a switch.

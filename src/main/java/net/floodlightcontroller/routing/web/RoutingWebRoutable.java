@@ -38,6 +38,8 @@ public class RoutingWebRoutable implements RestletRoutable {
         router.attach("/metric/json", PathMetricsResource.class);
         router.attach("/paths/force-recompute/json", ForceRecomputeResource.class);
         router.attach("/paths/max-fast-paths/json", MaxFastPathsResource.class);
+
+//        router.attach("")
         return router;
     }
 

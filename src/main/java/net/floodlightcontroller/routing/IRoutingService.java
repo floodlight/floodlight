@@ -19,10 +19,9 @@ package net.floodlightcontroller.routing;
 
 import java.util.List;
 
-import org.projectfloodlight.openflow.types.DatapathId;
-import org.projectfloodlight.openflow.types.Masked;
-import org.projectfloodlight.openflow.types.OFPort;
-import org.projectfloodlight.openflow.types.U64;
+import net.floodlightcontroller.core.internal.OFSwitch;
+import net.floodlightcontroller.core.types.NodePortTuple;
+import org.projectfloodlight.openflow.types.*;
 
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.routing.Path;
@@ -51,6 +50,19 @@ public interface IRoutingService extends IFloodlightService {
             return name;
         }
     };
+
+    /**
+     * L3 Routing Service below
+     */
+//    public Map<String, ArrayList>
+
+    public boolean isSameSubnet(IPv4AddressWithMask ip1, IPv4AddressWithMask ip2);
+
+    public boolean isSameSubnet(OFSwitch sw1, OFSwitch sw2);
+
+    public boolean isSameSubnet(NodePortTuple npt1, NodePortTuple npt2);
+
+
 
     /**
      * Set the metric used when computing paths
