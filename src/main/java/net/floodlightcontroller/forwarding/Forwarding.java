@@ -358,22 +358,12 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                 } else {
                     ImmutableList.Builder<OFMessage> msgsBuilder = ImmutableList.builder();
                     for (Masked<U64> masked_cookie : masked_cookies) {
-                        if (ver.compareTo(OFVersion.OF_10) == 0) {
-                            msgsBuilder.add(
-                                    sw.getOFFactory().buildFlowDelete()
-                                            .setCookie(masked_cookie.getValue())
-                                            // cookie mask not supported in OpenFlow 1.0
-                                            .build()
-                            );
-                        }
-                        else {
-                            msgsBuilder.add(
-                                    sw.getOFFactory().buildFlowDelete()
-                                            .setCookie(masked_cookie.getValue())
-                                            .setCookieMask(masked_cookie.getMask())
-                                            .build()
-                            );
-                        }
+                        msgsBuilder.add(
+                                sw.getOFFactory().buildFlowDelete()
+                                .setCookie(masked_cookie.getValue())
+                                .setCookieMask(masked_cookie.getMask())
+                                .build()
+                                );
                     }
 
                     List<OFMessage> msgs = msgsBuilder.build();
@@ -970,6 +960,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                                 U64 id = i.next();
                                 U64 cookie = id.or(DEFAULT_FORWARDING_COOKIE);
                                 U64 cookieMask = U64.of(FLOWSET_MASK).or(AppCookie.getAppFieldMask());
+
                                 /* Delete flows matching on src port and outputting to src port */
                                 msgs = buildDeleteFlows(u.getSrcPort(), msgs, srcSw, cookie, cookieMask);
                                 messageDamper.write(srcSw, msgs);
@@ -986,6 +977,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                                         msgs.clear();
                                         IOFSwitch sw = switchService.getSwitch(npt.getNodeId());
                                         if (sw != null) {
+
                                             /* Delete flows matching on npt port and outputting to npt port*/
                                             msgs = buildDeleteFlows(npt.getPortId(), msgs, sw, cookie, cookieMask);
                                             messageDamper.write(sw, msgs);
