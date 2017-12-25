@@ -358,12 +358,23 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                 } else {
                     ImmutableList.Builder<OFMessage> msgsBuilder = ImmutableList.builder();
                     for (Masked<U64> masked_cookie : masked_cookies) {
-                        msgsBuilder.add(
-                                sw.getOFFactory().buildFlowDelete()
-                                .setCookie(masked_cookie.getValue())
-                                .setCookieMask(masked_cookie.getMask())
-                                .build()
-                                );
+                        if (ver.compareTo(OFVersion.OF_10) == 0) {
+                            msgsBuilder.add(
+                                    sw.getOFFactory().buildFlowDelete()
+                                            .setCookie(masked_cookie.getValue())
+                                            // maskCookie not support in OpenFlow 1.0
+                                            .build()
+                            );
+                        }
+                        else {
+                            msgsBuilder.add(
+                                    sw.getOFFactory().buildFlowDelete()
+                                            .setCookie(masked_cookie.getValue())
+                                            .setCookieMask(masked_cookie.getMask())
+                                            .build()
+                            );
+                        }
+
                     }
 
                     List<OFMessage> msgs = msgsBuilder.build();
