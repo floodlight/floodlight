@@ -88,7 +88,6 @@ public class StaticWebRoutable implements RestletRoutable, IFloodlightModule {
 		ChallengeAuthenticator guard = new ChallengeAuthenticator(context, ChallengeScheme.HTTP_BASIC, "Enter login");
 		guard.setVerifier(verifier);
 
-		// Create a Directory able to return a deep hierarchy of files
 		guard.setNext(dir);
 		return guard;
 
