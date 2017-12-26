@@ -23,9 +23,12 @@ import java.util.Map;
 import org.restlet.Client;
 import org.restlet.Context;
 import org.restlet.Restlet;
+import org.restlet.data.ChallengeScheme;
 import org.restlet.data.Protocol;
 import org.restlet.resource.Directory;
 import org.restlet.routing.Router;
+import org.restlet.security.ChallengeAuthenticator;
+import org.restlet.security.MapVerifier;
 
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
@@ -37,6 +40,8 @@ import net.floodlightcontroller.restserver.RestletRoutable;
 public class StaticWebRoutable implements RestletRoutable, IFloodlightModule {
 
 	private IRestApiService restApi;
+	private Map<String,String> config;
+
 	
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleDependencies() {
@@ -67,6 +72,8 @@ public class StaticWebRoutable implements RestletRoutable, IFloodlightModule {
     public void startUp(FloodlightModuleContext context) {
         // Add our REST API
         restApi.addRestletRoutable(this);
+        // Get the specfied password and username
+        config = context.getConfigParams(this);
     }
 
 	@Override
@@ -76,8 +83,23 @@ public class StaticWebRoutable implements RestletRoutable, IFloodlightModule {
         dir.setIndexName("index.html"); /* redirect from <ip>:<port>/ui/ --> /ui/index.html */
         router.attach("", dir);
         context.setClientDispatcher(new Client(context, Protocol.CLAP));
-        return router;
-	}
+    
+        // Create a simple password verifier
+        MapVerifier verifier = new MapVerifier();
+        
+        verifier.getLocalSecrets().put(this.config.get("username"), this.config.get("password").toCharArray());
+        
+        // Create a Guard
+        ChallengeAuthenticator guard = new ChallengeAuthenticator(
+        		context, ChallengeScheme.HTTP_BASIC, "Enter login");
+        guard.setVerifier(verifier);
+        
+        // Create a Directory able to return a deep hierarchy of files
+        //dir.setListingAllowed(true);
+        guard.setNext(dir);
+        return guard;
+
+        }
 
 	@Override
 	public String basePath() {
