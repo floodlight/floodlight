@@ -40,66 +40,59 @@ import net.floodlightcontroller.restserver.RestletRoutable;
 public class StaticWebRoutable implements RestletRoutable, IFloodlightModule {
 
 	private IRestApiService restApi;
-	private Map<String,String> config;
+	private Map<String, String> config;
 
-	
-    @Override
-    public Collection<Class<? extends IFloodlightService>> getModuleDependencies() {
-        Collection<Class<? extends IFloodlightService>> l = 
-                new ArrayList<Class<? extends IFloodlightService>>();
-        l.add(IRestApiService.class);
-        return l;
-    }
-    
-    @Override
-    public Collection<Class<? extends IFloodlightService>> getModuleServices() {
-        return null;
-    }
-    
-    @Override
-    public Map<Class<? extends IFloodlightService>, IFloodlightService>
-            getServiceImpls() {
-        return null;
-    }
+	@Override
+	public Collection<Class<? extends IFloodlightService>> getModuleDependencies() {
+		Collection<Class<? extends IFloodlightService>> l = new ArrayList<Class<? extends IFloodlightService>>();
+		l.add(IRestApiService.class);
+		return l;
+	}
 
-    @Override
-    public void init(FloodlightModuleContext context)
-                                             throws FloodlightModuleException {
-        restApi = context.getServiceImpl(IRestApiService.class);
-    }
-    
-    @Override
-    public void startUp(FloodlightModuleContext context) {
-        // Add our REST API
-        restApi.addRestletRoutable(this);
-        // Get the specfied password and username
-        config = context.getConfigParams(this);
-    }
+	@Override
+	public Collection<Class<? extends IFloodlightService>> getModuleServices() {
+		return null;
+	}
+
+	@Override
+	public Map<Class<? extends IFloodlightService>, IFloodlightService> getServiceImpls() {
+		return null;
+	}
+
+	@Override
+	public void init(FloodlightModuleContext context) throws FloodlightModuleException {
+		restApi = context.getServiceImpl(IRestApiService.class);
+	}
+
+	@Override
+	public void startUp(FloodlightModuleContext context) {
+		// Add our REST API
+		restApi.addRestletRoutable(this);
+		// Get the specfied password and username
+		config = context.getConfigParams(this);
+	}
 
 	@Override
 	public Restlet getRestlet(Context context) {
-        Router router = new Router(context);
-        Directory dir = new Directory(context, "clap://classloader/web/");
-        dir.setIndexName("index.html"); /* redirect from <ip>:<port>/ui/ --> /ui/index.html */
-        router.attach("", dir);
-        context.setClientDispatcher(new Client(context, Protocol.CLAP));
-    
-        // Create a simple password verifier
-        MapVerifier verifier = new MapVerifier();
-        
-        verifier.getLocalSecrets().put(this.config.get("username"), this.config.get("password").toCharArray());
-        
-        // Create a Guard
-        ChallengeAuthenticator guard = new ChallengeAuthenticator(
-        		context, ChallengeScheme.HTTP_BASIC, "Enter login");
-        guard.setVerifier(verifier);
-        
-        // Create a Directory able to return a deep hierarchy of files
-        //dir.setListingAllowed(true);
-        guard.setNext(dir);
-        return guard;
+		Router router = new Router(context);
+		Directory dir = new Directory(context, "clap://classloader/web/");
+		dir.setIndexName("index.html"); /* redirect from <ip>:<port>/ui/ --> /ui/index.html */
+		router.attach("", dir);
+		context.setClientDispatcher(new Client(context, Protocol.CLAP));
 
-        }
+		// Create a simple password verifier
+		MapVerifier verifier = new MapVerifier();
+		verifier.getLocalSecrets().put(this.config.get("username"), this.config.get("password").toCharArray());
+
+		// Create a Guard
+		ChallengeAuthenticator guard = new ChallengeAuthenticator(context, ChallengeScheme.HTTP_BASIC, "Enter login");
+		guard.setVerifier(verifier);
+
+		// Create a Directory able to return a deep hierarchy of files
+		guard.setNext(dir);
+		return guard;
+
+	}
 
 	@Override
 	public String basePath() {
