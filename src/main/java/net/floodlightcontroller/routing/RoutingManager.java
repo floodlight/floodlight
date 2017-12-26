@@ -44,6 +44,7 @@ public class RoutingManager implements IFloodlightModule, IRoutingService {
     private Logger log = LoggerFactory.getLogger(RoutingManager.class);
     
     private static ITopologyManagerBackend tm;
+    private static L3RoutingManager l3manager;
     
     private List<IRoutingDecisionChangedListener> decisionChangedListeners;
     
@@ -71,6 +72,10 @@ public class RoutingManager implements IFloodlightModule, IRoutingService {
 
     @Override
     public void startUp(FloodlightModuleContext context) throws FloodlightModuleException { }
+
+    // L3 Routing APIs
+    @Override
+    public List<VirtualGateway> getVirtualGateways() { return l3manager.getVirtualGateways(); }
 
     @Override
     public void setPathMetric(PATH_METRIC metric) {

@@ -11,7 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * @author Qing Wang at 12/20/17
+ * @author Qing Wang (qw@g.clemson.edu) at 12/20/17
  */
 public class VirtualGateway {
     private volatile String name;
