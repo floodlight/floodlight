@@ -1,9 +1,6 @@
 package net.floodlightcontroller.routing;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.Masked;
@@ -76,6 +73,12 @@ public class RoutingManager implements IFloodlightModule, IRoutingService {
     // L3 Routing APIs
     @Override
     public List<VirtualGateway> getVirtualGateways() { return l3manager.getVirtualGateways(); }
+
+    @Override
+    public Optional<VirtualGateway> getVirtualGateway(String name) { return l3manager.getVirtualGateway(name); }
+
+    @Override
+    public void addVirtualGateway(VirtualGateway gateway) { l3manager.addVirtualGateway(gateway); }
 
     @Override
     public void setPathMetric(PATH_METRIC metric) {

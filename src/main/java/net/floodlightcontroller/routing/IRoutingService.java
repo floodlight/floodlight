@@ -19,6 +19,7 @@ package net.floodlightcontroller.routing;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import net.floodlightcontroller.core.internal.OFSwitch;
 import net.floodlightcontroller.core.types.NodePortTuple;
@@ -56,6 +57,11 @@ public interface IRoutingService extends IFloodlightService {
      * L3 Routing Service below
      */
     List<VirtualGateway> getVirtualGateways();
+
+    Optional<VirtualGateway> getVirtualGateway(String name);
+
+    void addVirtualGateway(VirtualGateway gateway);
+
 
 //    boolean isSameSubnet(IPv4AddressWithMask ip1, IPv4AddressWithMask ip2);
 //
