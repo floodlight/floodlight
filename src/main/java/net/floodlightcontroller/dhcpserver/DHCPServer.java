@@ -862,7 +862,7 @@ public class DHCPServer implements IOFMessageListener, IFloodlightModule, IDHCPS
 			return Command.CONTINUE;
 		}
 
-		if (!instance.getPool().hasAvailableAddresses()) {
+		if (!instance.getPool().hasAvailableLease()) {
 			log.info("DHCP Pool is full! Consider increasing the pool size.");
 			return Command.CONTINUE;
 		}
@@ -940,22 +940,22 @@ public class DHCPServer implements IOFMessageListener, IFloodlightModule, IDHCPS
 							// A HOLD lease should be a small amount of time sufficient for the client to respond
 							// with a REQUEST, at which point the ACK will set the least time to the DEFAULT
 							synchronized (instance.getPool()) {
-								if (!instance.getPool().hasAvailableAddresses()) {
+								if (!instance.getPool().hasAvailableLease()) {
 									log.info("DHCP Pool is full! Consider increasing the pool size.");
 									log.info("Device with MAC " + chaddr.toString() + " was not granted an IP lease");
 									return Command.CONTINUE;
 								}
-								DHCPBinding lease = instance.getPool().getSpecificAvailableLease(desiredIPAddr, chaddr);
+								DHCPBinding lease = instance.getPool().getLeaseForClientWithDesiredIP(desiredIPAddr, chaddr);
 
 								if (lease != null) {
 									log.debug("Checking new lease with specific IP");
-									instance.getPool().setDHCPbinding(lease, chaddr, instance.getHoldTimeSec());
+									instance.getPool().setNormalLease(lease, chaddr, instance.getHoldTimeSec());
 									yiaddr = lease.getIPv4Address();
 									log.debug("Got new lease for " + yiaddr.toString());
 								} else {
 									log.debug("Checking new lease for any IP");
-									lease = instance.getPool().getAnyAvailableLease(chaddr);
-									instance.getPool().setDHCPbinding(lease, chaddr, instance.getHoldTimeSec());
+									lease = instance.getPool().getLeaseForClient(chaddr);
+									instance.getPool().setNormalLease(lease, chaddr, instance.getHoldTimeSec());
 									yiaddr = lease.getIPv4Address();
 									log.debug("Got new lease for " + yiaddr.toString());
 								}
@@ -1012,7 +1012,7 @@ public class DHCPServer implements IOFMessageListener, IFloodlightModule, IDHCPS
 							// This extends the hold lease time to that of a normal lease
 							boolean sendACK = true;
 							synchronized (instance.getPool()) {
-								if (!instance.getPool().hasAvailableAddresses()) {
+								if (!instance.getPool().hasAvailableLease()) {
 									log.info("DHCP Pool is full! Consider increasing the pool size.");
 									log.info("Device with MAC " + chaddr.toString() + " was not granted an IP lease");
 									return Command.CONTINUE;
@@ -1022,7 +1022,7 @@ public class DHCPServer implements IOFMessageListener, IFloodlightModule, IDHCPS
 								if (desiredIPAddr != null) {
 									lease = instance.getPool().getDHCPbindingFromIPv4(desiredIPAddr);
 								} else {
-									lease = instance.getPool().getAnyAvailableLease(chaddr);
+									lease = instance.getPool().getLeaseForClient(chaddr);
 								}
 								// This IP is not in our allocation range
 								if (lease == null) {
@@ -1031,20 +1031,20 @@ public class DHCPServer implements IOFMessageListener, IFloodlightModule, IDHCPS
 									log.info("Device with MAC " + chaddr.toString() + " was not granted an IP lease");
 									sendACK = false;
 									// Determine if the IP in the binding we just retrieved is okay to allocate to the MAC requesting it
-								} else if (!lease.getMACAddress().equals(chaddr) && lease.isActiveLease()) {
+								} else if (!lease.getMACAddress().equals(chaddr) && lease.getCurrLeaseState() != LeasingState.AVAILABLE) {
 									log.debug("Tried to REQUEST an IP that is currently assigned to another MAC");
 									log.debug("Device with MAC " + chaddr.toString() + " was not granted an IP lease");
 									sendACK = false;
 									// Check if we want to renew the MAC's current lease
-								} else if (lease.getMACAddress().equals(chaddr) && lease.isActiveLease()) {
+								} else if (lease.getMACAddress().equals(chaddr) && lease.getCurrLeaseState() != LeasingState.AVAILABLE) {
 									log.debug("Renewing lease for MAC " + chaddr.toString());
-									instance.getPool().renewLease(lease.getIPv4Address(), instance.getLeaseTimeSec());
+									instance.getPool().renewLeaseOfIP(lease.getIPv4Address(), instance.getLeaseTimeSec());
 									yiaddr = lease.getIPv4Address();
 									log.debug("Finalized renewed lease for " + yiaddr.toString());
 									// Check if we want to create a new lease for the MAC
-								} else if (!lease.isActiveLease()){
+								} else if (lease.getCurrLeaseState() == LeasingState.AVAILABLE) {
 									log.debug("Assigning new lease for MAC " + chaddr.toString());
-									instance.getPool().setDHCPbinding(lease, chaddr, instance.getLeaseTimeSec());
+									instance.getPool().setNormalLease(lease, chaddr, instance.getLeaseTimeSec());
 									yiaddr = lease.getIPv4Address();
 									log.debug("Finalized new lease for " + yiaddr.toString());
 								} else {
@@ -1140,7 +1140,7 @@ public class DHCPServer implements IOFMessageListener, IFloodlightModule, IDHCPS
 		@Override
 		public void run() {
 			log.info("Cleaning any expired DHCP leases...");
-			ArrayList<DHCPBinding> newAvailableBindings;
+			List<DHCPBinding> newAvailableBindings;
 			for (DHCPInstance instance : instances.values()) {
 				synchronized(instance.getPool()) {
 					// Loop through lease pool and check all leases to see if they are expired

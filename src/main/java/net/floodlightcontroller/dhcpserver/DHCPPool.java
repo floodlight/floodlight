@@ -1,26 +1,31 @@
 package net.floodlightcontroller.dhcpserver;
 
 import java.util.ArrayList;
+import java.util.List;
 
 import org.projectfloodlight.openflow.types.IPv4Address;
 import org.projectfloodlight.openflow.types.MacAddress;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.Nonnull;
+
 /**
  * The class representing a DHCP Pool.
  * This class is essentially a list of DHCPBinding objects containing IP, MAC, and lease status information.
  *
  * @author Ryan Izard (rizard@g.clemson.edu)
+ * @edited Qing Wang (qw@g.clemson.edu)
  */
+
 public class DHCPPool {
 	protected static final Logger log = LoggerFactory.getLogger(DHCPPool.class);
-	private volatile static ArrayList<DHCPBinding> DHCP_POOL = new ArrayList<DHCPBinding>();
-	private volatile int POOL_SIZE;
-	private volatile int POOL_AVAILABILITY;
+	private volatile ArrayList<DHCPBinding> dhcpPool = new ArrayList<>();
+	private volatile int size;
+	private volatile int availability;
 	private volatile boolean POOL_FULL;
-	private volatile IPv4Address STARTING_ADDRESS;
-	private final MacAddress UNASSIGNED_MAC = MacAddress.NONE;
+	private volatile IPv4Address startingAddress;
+	private static final MacAddress unassignedMacAddress = MacAddress.NONE;
 
 	// Need to write this to handle subnets later...
 	// This assumes startingIPv4Address can handle size addresses
@@ -32,18 +37,18 @@ public class DHCPPool {
 	 * @return none
 	 */
 	public DHCPPool(IPv4Address startingIPv4Address, int size) {
-		int IPv4AsInt = startingIPv4Address.getInt();
+		int ipv4AsInt = startingIPv4Address.getInt();
 		this.setPoolSize(size);
 		this.setPoolAvailability(size);
-		STARTING_ADDRESS = startingIPv4Address;
+		startingAddress = startingIPv4Address;
 		for (int i = 0; i < size; i++) { 
-			DHCP_POOL.add(new DHCPBinding(IPv4Address.of(IPv4AsInt + i), UNASSIGNED_MAC));
+			dhcpPool.add(new DHCPBinding(IPv4Address.of(ipv4AsInt + i), unassignedMacAddress));
 		}
 
 	}
 	
 	public IPv4Address getStartIp() {
-		return STARTING_ADDRESS;
+		return startingAddress;
 	}
 
 	private void setPoolFull(boolean full) {
@@ -55,19 +60,19 @@ public class DHCPPool {
 	}
 
 	private void setPoolSize(int size) {
-		POOL_SIZE = size;
+		this.size = size;
 	}
 
 	private int getPoolSize() {
-		return POOL_SIZE;
+		return size;
 	}
 
 	private int getPoolAvailability() {
-		return POOL_AVAILABILITY;
+		return availability;
 	}
 
 	private void setPoolAvailability(int size) {
-		POOL_AVAILABILITY = size;
+		availability = size;
 	}
 
 	/**
@@ -78,7 +83,7 @@ public class DHCPPool {
 	public DHCPBinding getDHCPbindingFromIPv4(IPv4Address ip) {
 		if (ip == null) return null;
 
-		for (DHCPBinding binding : DHCP_POOL) {
+		for (DHCPBinding binding : dhcpPool) {
 			if (binding.getIPv4Address().equals(ip)) {
 				return binding;
 			}
@@ -93,7 +98,7 @@ public class DHCPPool {
 	public DHCPBinding getDHCPbindingFromMAC(MacAddress mac) {
 		if (mac == null) return null;
 
-		for (DHCPBinding binding : DHCP_POOL) {
+		for (DHCPBinding binding : dhcpPool) {
 			if (binding.getMACAddress().equals(mac)) {
 				return binding;
 			}
@@ -101,54 +106,37 @@ public class DHCPPool {
 		return null;
 	}
 	/**
-	 * Gets the lease status of a particular IPv4 address, {@code byte[]} ip
+	 * Check if a particular IPv4 address associate with an existing dhcp lease
+	 *
 	 * @param {@code byte[]} ip: The IPv4 address of which to check the lease status 
-	 * @return {@code boolean}: true if lease is active, false if lease is inactive/expired
+	 * @return {@code boolean}: true if lease is leased, false if lease is available or expired
 	 */
-	public boolean isIPv4Leased(IPv4Address ip) {
-		if (ip == null) return false;
+	public boolean isIPLeased(IPv4Address ip) {
+		if (ip == null || this.getDHCPbindingFromIPv4(ip) == null) return false;
 
-		if(this.getDHCPbindingFromIPv4(ip) != null) {
-			return this.getDHCPbindingFromIPv4(ip).isLeaseAvailable();
+		LeasingState currentState = this.getDHCPbindingFromIPv4(ip).getCurrLeaseState();
+		if (currentState == LeasingState.LEASED || currentState == LeasingState.PERMANENT_LEASED) {
+			return true;
 		}
 		else {
 			return false;
 		}
-	}
 
+	}
 	/**
 	 * Check if a IPv4 address belongs to a DHCP pool
 	 * @param {@code byte[]} ip
 	 * @return {@code boolean} : true or false
 	 */
-	public boolean isIPv4BelongsPool(IPv4Address ip) {
+	public boolean isIPBelongsPool(IPv4Address ip) {
 		if (ip == null) return false;
 
-		for (DHCPBinding binding : DHCP_POOL) {
+		for (DHCPBinding binding : dhcpPool) {
 			if (binding.getIPv4Address().equals(ip)) {
 				return true;
 			}
 		}
 		return false;
-	}
-	/**
-	 * Assigns a MAC address to the IP address of the DHCPBinding object in the DHCPPool object.
-	 * This method also sets the lease to active (i.e. true) when the assignment is made.
-	 * @param {@code DHCPBinding} binding: The DHCPBinding object in which to set the MAC
-	 * @param {@code byte[]} mac: The MAC address to set in the DHCPBinding object
-	 * @param {@code long}: The time in seconds for which the lease will be valid
-	 * @return none
-	 */
-	//TODO: Do we still need this method?
-	public void setDHCPbinding(DHCPBinding binding, MacAddress mac, int time) {
-		int index = DHCP_POOL.indexOf(binding);
-		binding.setMACAddress(mac);
-		binding.setLeaseStatus(true);
-		this.setPoolAvailability(this.getPoolAvailability() - 1);
-		DHCP_POOL.set(index, binding);
-		if (this.getPoolAvailability() == 0) setPoolFull(true);
-		binding.setLeaseStartTimeSeconds();
-		binding.setLeaseDurationSeconds(time);
 	}
 	/**
 	 * This method sets attributes for an available DHCP binding as a normal lease.
@@ -159,26 +147,18 @@ public class DHCPPool {
 	 * @param {@code byte[]} mac
 	 * @param {@code long} time
 	 */
-	public void setLeaseBinding(DHCPBinding binding, MacAddress mac, long time) {
-		if (mac == null) {
-			log.warn("Attempt to set a DHCP binding with a non-exist MAC address");
+	public void setNormalLease(DHCPBinding binding, @Nonnull MacAddress mac, long time) {
+		if (binding.getCurrLeaseState() == LeasingState.PERMANENT_LEASED) {
+			log.warn("Attempt to set a dhcp binding which is a permanent lease");
 			return;
 		}
 
-		if (binding.isPermanentIPLease()) {
-			log.warn("Attempt to set a DHCP binding which is a permanent lease");
-			return;
-		}
-
-		binding.setMACAddress(mac);
-		binding.setLeaseStartTimeSeconds();
-		binding.setLeaseDurationSeconds(time);
-		binding.setLeaseStatus(true);
+		binding.configureNormalLease(mac, time);
 
 		this.setPoolAvailability(this.getPoolAvailability()-1);
 		if (this.getPoolAvailability() == 0) {
 			setPoolFull(true);
-			log.info("DHCP pool is full!");
+			log.info("dhcp pool is full!");
 		}
 
 	}
@@ -195,58 +175,47 @@ public class DHCPPool {
 	 * an address is requested from the MAC mac
 	 * @return {@code boolean}: True upon success; false upon failure (e.g. no IP found)
 	 */
-	//TODO: Do we still need this method?
-	public boolean configureFixedIPLease(IPv4Address ip, MacAddress mac) {
-		DHCPBinding binding = this.getDHCPbindingFromIPv4(ip);
-		if (binding != null) {
-			binding.setMACAddress(mac);
-			binding.setPermanentLeaseStatus(true);
-			binding.setLeaseStatus(false);
-			return true;
-		} else {
-			return false;
-		}
-	}
-	public void setPermanentLeaseBinding(DHCPBinding binding, MacAddress mac) {
-		if (mac == null || mac == MacAddress.NONE) {
+	public void setPermanentLease(DHCPBinding binding, @Nonnull MacAddress mac) {
+		if (mac == MacAddress.NONE) {
 			log.warn("Attempt to use an incorrect MAC address to setup the permanent lease");
 			return;
 		}
 
-		if (!binding.isPermanentIPLease()) {
+		if (binding.getCurrLeaseState() != LeasingState.PERMANENT_LEASED) {
 			log.warn("Attempt to set an lease binding that is not permanent");
 			return;
 		}
 
-		binding.setMACAddress(mac);
-		binding.setLeaseStatus(true);
+		binding.configurePermanentLease(mac);
 
 		this.setPoolAvailability(this.getPoolAvailability() - 1);
 		if (this.getPoolAvailability() == 0) {
 			setPoolFull(true);
-			log.info("DHCP pool is full right now");
+			log.info("dhcp pool is full right now");
 		}
 
 	}
 	/**
 	 * Completely removes the DHCPBinding object with IP address {@code byte[]} ip from the DHCPPool
+	 *
 	 * @param {@code byte[]} ip: The IP address to remove from the pool. This address will not be available
 	 * for lease after removal. Also pool size = pool size -1
 	 * @return none
 	 */
-	public void removeIPv4FromDHCPPool(IPv4Address ip) {
-		if (ip == null || getDHCPbindingFromIPv4(ip) == null) {
+	public void removeIPfromPool(@Nonnull IPv4Address ip) {
+		if (getDHCPbindingFromIPv4(ip) == null) {
 			log.warn("Attempt to remove an incorrect IPv4 address from DHCP pool");
 			return;
 		}
 
-		if (ip.equals(STARTING_ADDRESS)) {
+		// Consider edge case of removing 1st IP address in DHCPPool(ArrayList)
+		if (ip.equals(startingAddress)) {
 			DHCPBinding lowest = null;
 
-			for (DHCPBinding binding : DHCP_POOL) {
+			for (DHCPBinding binding : dhcpPool) {
 				if (lowest == null) {
 					lowest = binding;
-				} else if (binding.getIPv4Address().equals(STARTING_ADDRESS)) {
+				} else if (binding.getIPv4Address().equals(startingAddress)) {
 					continue;
 				}
 				else if (binding.getIPv4Address().compareTo(lowest.getIPv4Address()) > 0) {
@@ -255,10 +224,10 @@ public class DHCPPool {
 			}
 
 			// lowest is new starting address
-			STARTING_ADDRESS = lowest.getIPv4Address();
+			startingAddress = lowest.getIPv4Address();
 		}
 
-		DHCP_POOL.remove(this.getDHCPbindingFromIPv4(ip));
+		dhcpPool.remove(this.getDHCPbindingFromIPv4(ip));
 		this.setPoolSize(this.getPoolSize() - 1);
 		this.setPoolAvailability(this.getPoolAvailability() - 1);
 
@@ -271,20 +240,14 @@ public class DHCPPool {
 	 * @param {@code byte[]} ip: The IP address to attempt to add to the DHCPPool
 	 * @return {@code DHCPBinding}: Reference to the DHCPBinding object if successful, null if unsuccessful
 	 */
-	public DHCPBinding addIPv4ToDHCPPool(IPv4Address ip) {
+	public DHCPBinding addIPtoPool(@Nonnull IPv4Address ip) {
 		DHCPBinding binding = null;
-
-		if (ip == null) {
-			log.warn("Attempt to add an incorrect IPv4 address(possibly null) to DHCP pool");
-			return binding;
-		}
-
 		if (this.getDHCPbindingFromIPv4(ip) == null) {
-			if (ip.getInt() < STARTING_ADDRESS.getInt()) {
-				STARTING_ADDRESS = ip;
+			if (ip.getInt() < startingAddress.getInt()) {
+				startingAddress = ip;
 			}
-			binding = new DHCPBinding(ip, UNASSIGNED_MAC);
-			DHCP_POOL.add(binding);
+			binding = new DHCPBinding(ip, unassignedMacAddress);
+			dhcpPool.add(binding);
 			this.setPoolSize(this.getPoolSize() + 1);
 			this.setPoolAvailability(this.getPoolAvailability() + 1);
 			this.setPoolFull(false);
@@ -297,19 +260,19 @@ public class DHCPPool {
 	 * @return {@code boolean}: true if there are addresses available, false if the DHCPPool is full
 	 */
 	public boolean hasAvailableLease() {
-		return (isPoolFull() == false && getPoolAvailability() > 0);
+		return (!isPoolFull() && getPoolAvailability() > 0);
 	}
 	/**
 	 * Display each DHCP binding in the pool
 	 */
 	public void displayDHCPPool() {
 		if (getPoolSize() > 0) {
-			for(DHCPBinding binding : DHCP_POOL) {
-				System.out.println(binding.toString());
+			for(DHCPBinding binding : dhcpPool) {
+				log.debug("Current DHCP pool is {}", binding.toString());
 			}
 		}
 		else {
-			log.error("DHCP Pool size isn't allocate correctly");
+			log.error("DHCP pool size isn't allocate correctly");
 		}
 	}
 	/**
@@ -322,31 +285,27 @@ public class DHCPPool {
 	 * @param {@code byte[]): MAC address of the device requesting the lease
 	 * @return {@code DHCPBinding}: Reference to the chosen lease bhcp binding  if successful, null if unsuccessful
 	 */
-	public DHCPBinding findLeaseBinding(MacAddress mac) {
-		if (mac == null) {
-			throw new IllegalArgumentException("Failed to get dhcp lease : Mac address can not be null");
-		}
-
+	public DHCPBinding getLeaseForClient(@Nonnull MacAddress mac) {
 		if (!this.hasAvailableLease()) return null;
 
 		DHCPBinding leaseBinding = this.getDHCPbindingFromMAC(mac);
 
 		/* Client Mac registered already */
 		if (leaseBinding != null) {
-			log.debug("Found MAC {} registered in DHCP pool, returning that DHCP binding for lease.", mac);
+			log.debug("Found MAC {} registered in dhcp pool -- return that lease to client.", mac);
 			return leaseBinding;
 		}
 
 		/* New Client Mac that never registered */
-		for (DHCPBinding binding : DHCP_POOL) {
-			if (binding.isLeaseAvailable() && binding.getMACAddress().equals(UNASSIGNED_MAC)) {
+		for (DHCPBinding binding : dhcpPool) {
+			if (binding.getCurrLeaseState() == LeasingState.AVAILABLE && binding.getMACAddress().equals(unassignedMacAddress)) {
 				leaseBinding = binding;
+				log.debug("Registered Mac {} in dhcp pool -- returning an available lease to client with IP {}", mac, leaseBinding.getIPv4Address());
 				break;
 			}
 		}
-
-		log.debug("Register Mac {} in DHCP pool, returning an available DHCP binding to lease with IP {}", mac, leaseBinding.getIPv4Address());
 		return leaseBinding;
+
 	}
 	/**
 	 * Find and returns a specific lease binding based on request desired IP address and client Mac address
@@ -368,41 +327,32 @@ public class DHCPPool {
 	 * @param {@code byte[]}: The Client MAC address
 	 * @return {@code DHCPBinding}: Reference to the chosen lease bhcp binding if successful, null if unsuccessful
 	 */
-	public DHCPBinding getLeaseOfDesiredIP(IPv4Address desiredIp, MacAddress mac) {
-		if (desiredIp == null) {
-			log.debug("Attempt to get a dhcp lease using a incorrect IP address");
-			return null;
-		}
-		if (mac == null) {
-			log.debug("Attempt to get a dhcp lease using a incorrect MAC address");
-			return null;
-		}
-
+	// TODO: don't like logic here
+	public DHCPBinding getLeaseForClientWithDesiredIP(@Nonnull IPv4Address desiredIp, @Nonnull MacAddress mac) {
 		if (!this.hasAvailableLease()) return null;
 
 		DHCPBinding binding1 = this.getDHCPbindingFromIPv4(desiredIp);
 		DHCPBinding binding2 = this.getDHCPbindingFromMAC(mac);
 
-		// If configured, we must return a reserved fixed binding for a MAC address even if it's requesting another IP
-		if (binding2 != null && binding2.isLeaseAvailable() && binding2.isPermanentIPLease() && binding1 != binding2) {
-			log.info("Reserved Fixed DHCP entry for MAC trumps requested IP {}. Returning binding for MAC {}", desiredIp, mac);
+		// Found client registered as a permanent release -- must return that permanent binding even if requesting another IP
+		if (binding2 != null && binding2.getCurrLeaseState() == LeasingState.PERMANENT_LEASED) {
+			log.info("Reserved Fixed dhcp entry for MAC trumps requested IP {}. Returning binding for MAC {}", desiredIp, mac);
 			return binding2;
-
-			// If configured, we must return a fixed binding for an IP if the binding is fixed to the provided MAC (ideal static request case)
-		} else if (binding1 != null && binding1.isLeaseAvailable() && binding1.isPermanentIPLease() && mac.equals(binding1.getMACAddress())) {
-			log.info("Found matching fixed DHCP entry for IP with MAC. Returning binding for IP {} with MAC {}", desiredIp, mac);
+		}
+		// Found desired IP already assigned as a permanent lease associated with client MAC -- return this permanent binding
+		else if (binding1 != null && binding1.getCurrLeaseState() == LeasingState.PERMANENT_LEASED && mac.equals(binding1.getMACAddress())) {
+			log.info("Found matching fixed dhcp entry for IP with MAC. Returning binding for IP {} with MAC {}", desiredIp, mac);
 			return binding1;
-
-			// The IP and MAC are not a part of a reserved fixed binding, so return the binding of the requested IP.
-		} else if (binding1 != null && binding1.isLeaseAvailable() && !binding1.isPermanentIPLease()) {
-			log.info("No fixed DHCP entry for IP or MAC found. Returning dynamic binding for IP {}.", desiredIp);
+		}
+		// Client desired IP and it MAC not associated with any permanent lease -- return binding of request desired IP
+		else if (binding1 != null && binding1.getCurrLeaseState() == LeasingState.AVAILABLE) {
+			log.info("No fixed dhcp entry for IP or MAC found. Returning dynamic binding for IP {}.", desiredIp);
 			return binding1;
-
-			// Otherwise, the binding is fixed for both MAC and IP and this MAC does not match either, so we can't return it as available
-		} else {
+		}
+		// O.W. the binding is fixed for both MAC and IP and this MAC does not match either, so we can't return it as available
+		else {
 			log.debug("Invalid IP address request or IP is actively leased...check for any available lease to resolve");
 			return null;
-
 		}
 
 	}
@@ -413,23 +363,20 @@ public class DHCPPool {
 	 * @param {@code long}: The time in seconds for which the lease will be valid
 	 * @return {@code DHCPBinding}: True on success, false if unknown IP address
 	 */
-	public boolean renewLease(IPv4Address ip, int time) {
-		if (ip == null || ip == IPv4Address.NONE) {
+	public boolean renewLeaseOfIP(@Nonnull IPv4Address ip, int time) {
+		if (ip == IPv4Address.NONE) {
 			log.warn("Attempt to renew a lease using incorrect IPv4 address");
 			return false;
 		}
 
 		DHCPBinding binding = this.getDHCPbindingFromIPv4(ip);
 		if (binding != null) {
-			if (binding.isPermanentIPLease()) {
+			if (binding.getCurrLeaseState() == LeasingState.PERMANENT_LEASED) {
 				log.debug("Failed to renew lease : IP address {} is configured as a permanent dhcp lease", ip);
 				return false;
 			}
 
-			binding.setLeaseStartTimeSeconds();
-			binding.setLeaseDurationSeconds(time);
-			binding.setLeaseStatus(true);
-
+			binding.renewLease(time);
 			log.info("IP address {} has successfully renewed", ip);
 			return true;
 		}
@@ -441,25 +388,23 @@ public class DHCPPool {
 	 * @param {@code byte[]}: The IP address on which to try and cancel a lease
 	 * @return {@code boolean}: True on success, false if unknown IP address
 	 */
-	public boolean cancelLeaseOfIPv4(IPv4Address ip) {
-		if (ip == null || ip == IPv4Address.NONE) {
+	public boolean cancelLeaseOfIPv4(@Nonnull IPv4Address ip) {
+		if (ip == IPv4Address.NONE) {
 			log.warn("Attempt to renew a lease using incorrect IPv4 address");
 			return false;
 		}
 
 		DHCPBinding binding = this.getDHCPbindingFromIPv4(ip);
 		if (binding != null) {
-			if (binding.isPermanentIPLease()) {
+			if (binding.getCurrLeaseState() == LeasingState.PERMANENT_LEASED) {
 				log.debug("Failed to renew lease : IP address {} is configured as a permanent dhcp lease", ip);
 				return false;
 			}
 
 			binding.cancelLease();
-			binding.setLeaseStatus(false);
 			this.setPoolAvailability(this.getPoolAvailability() + 1);
 			this.setPoolFull(false);
-
-			log.info("DHCP lease of Mac address {} with IP {} is successfully canceled", binding.getMACAddress(), ip);
+			log.info("dhcp lease of Mac address {} with IP {} is successfully canceled", binding.getMACAddress(), ip);
 			return true;
 		}
 		return false;
@@ -470,25 +415,23 @@ public class DHCPPool {
 	 * @param {@code byte[]}: The MAC address on which to try and cancel a lease
 	 * @return {@code boolean}: True on success, false if unknown IP address
 	 */
-	public boolean cancelLeaseOfMAC(MacAddress mac) {
-		if (mac == null || mac == MacAddress.NONE) {
+	public boolean cancelLeaseOfMAC(@Nonnull MacAddress mac) {
+		if (mac == MacAddress.NONE) {
 			log.warn("Attempt to use an incorrect MAC address to setup the permanent lease");
 			return false;
 		}
 
 		DHCPBinding binding = getDHCPbindingFromMAC(mac);
 		if (binding != null) {
-			if (binding.isPermanentIPLease()) {
-				log.debug("Failed to renew lease : MAC address {} is configured as a permanent DHCP lease", mac);
+			if (binding.getCurrLeaseState() == LeasingState.PERMANENT_LEASED) {
+				log.debug("Failed to renew lease : MAC address {} is configured as a permanent dhcp lease", mac);
 				return false;
 			}
 
 			binding.cancelLease();
-			binding.setLeaseStatus(false);
 			this.setPoolAvailability(this.getPoolAvailability() + 1);
 			this.setPoolFull(false);
-
-			log.info("DHCP lease of Mac address {} with IP {} is successfully canceled", mac, binding.getIPv4Address());
+			log.info("dhcp lease of Mac address {} with IP {} is successfully canceled", mac, binding.getIPv4Address());
 			return true;
 		}
 		return false;
@@ -498,11 +441,11 @@ public class DHCPPool {
 	 *
 	 * @return {@code ArrayList<DHCPBinding>}: A list of the bindings that are now available
 	 */
-	public ArrayList<DHCPBinding> cleanExpiredLeases() {
-		ArrayList<DHCPBinding> newAvailableLeases = new ArrayList<DHCPBinding>();
-		for (DHCPBinding binding : DHCP_POOL) {
+	public List<DHCPBinding> cleanExpiredLeases() {
+		List<DHCPBinding> newAvailableLeases = new ArrayList<>();
+		for (DHCPBinding binding : dhcpPool) {
 			// isLeaseExpired() automatically excludes configured static leases
-			if (binding.isLeaseExpired() && binding.isActiveLease()) {
+			if (binding.getCurrLeaseState() == LeasingState.EXPIRED) {
 				this.cancelLeaseOfIPv4(binding.getIPv4Address());
 				this.setPoolAvailability(this.getPoolAvailability() + 1);
 				this.setPoolFull(false);
@@ -517,24 +460,33 @@ public class DHCPPool {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
 
-		DHCPPool dhcpPool = (DHCPPool) o;
+		DHCPPool dhcpPool1 = (DHCPPool) o;
 
-		if (POOL_SIZE != dhcpPool.POOL_SIZE) return false;
-		if (POOL_AVAILABILITY != dhcpPool.POOL_AVAILABILITY) return false;
-		if (POOL_FULL != dhcpPool.POOL_FULL) return false;
-		if (STARTING_ADDRESS != null ? !STARTING_ADDRESS.equals(dhcpPool.STARTING_ADDRESS) : dhcpPool.STARTING_ADDRESS != null)
-			return false;
-		return UNASSIGNED_MAC != null ? UNASSIGNED_MAC.equals(dhcpPool.UNASSIGNED_MAC) : dhcpPool.UNASSIGNED_MAC == null;
+		if (size != dhcpPool1.size) return false;
+		if (availability != dhcpPool1.availability) return false;
+		if (POOL_FULL != dhcpPool1.POOL_FULL) return false;
+		if (dhcpPool != null ? !dhcpPool.equals(dhcpPool1.dhcpPool) : dhcpPool1.dhcpPool != null) return false;
+		return startingAddress != null ? startingAddress.equals(dhcpPool1.startingAddress) : dhcpPool1.startingAddress == null;
 	}
 
 	@Override
 	public int hashCode() {
-		int result = POOL_SIZE;
-		result = 31 * result + POOL_AVAILABILITY;
+		int result = dhcpPool != null ? dhcpPool.hashCode() : 0;
+		result = 31 * result + size;
+		result = 31 * result + availability;
 		result = 31 * result + (POOL_FULL ? 1 : 0);
-		result = 31 * result + (STARTING_ADDRESS != null ? STARTING_ADDRESS.hashCode() : 0);
-		result = 31 * result + (UNASSIGNED_MAC != null ? UNASSIGNED_MAC.hashCode() : 0);
+		result = 31 * result + (startingAddress != null ? startingAddress.hashCode() : 0);
 		return result;
 	}
-	
+
+	@Override
+	public String toString() {
+		return "DHCPPool{" +
+				"dhcpPool=" + dhcpPool +
+				", size=" + size +
+				", availability=" + availability +
+				", POOL_FULL=" + POOL_FULL +
+				", startingAddress=" + startingAddress +
+				'}';
+	}
 }

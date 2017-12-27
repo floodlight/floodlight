@@ -111,7 +111,7 @@ public class DHCPInstance {
 		
 		private DHCPInstanceBuilder() {
 			tempInstance = new DHCPInstance();
-			tempStaticAddresses = new HashMap<MacAddress, IPv4Address>();
+			tempStaticAddresses = new HashMap<>();
 		}
 		
 		public DHCPInstanceBuilder setName(String name) {
@@ -226,7 +226,7 @@ public class DHCPInstance {
 			}
 			instanceToReturn.pool = new DHCPPool(tempStart, tempStop.getInt() - tempStart.getInt() + 1);
 			for (Entry<MacAddress, IPv4Address> entry : tempStaticAddresses.entrySet()) {
-				instanceToReturn.pool.configureFixedIPLease(entry.getValue(), entry.getKey());
+				instanceToReturn.pool.setPermanentLease(instanceToReturn.pool.getDHCPbindingFromIPv4(entry.getValue()), entry.getKey());
 			}
 			
 			if (tempInstance.leaseTimeSec <= 0) {
@@ -246,24 +246,24 @@ public class DHCPInstance {
 			instanceToReturn.domainName = tempInstance.domainName;
 			
 			if (tempInstance.dnsIps == null) {
-				instanceToReturn.dnsIps = new ArrayList<IPv4Address>();
+				instanceToReturn.dnsIps = new ArrayList<>();
 			} else {
-				instanceToReturn.dnsIps = new ArrayList<IPv4Address>(tempInstance.dnsIps);
+				instanceToReturn.dnsIps = new ArrayList<>(tempInstance.dnsIps);
 			}
 			if (tempInstance.ntpIps == null) {
-				instanceToReturn.ntpIps = new ArrayList<IPv4Address>();
+				instanceToReturn.ntpIps = new ArrayList<>();
 			} else {
-				instanceToReturn.ntpIps = new ArrayList<IPv4Address>(tempInstance.ntpIps);
+				instanceToReturn.ntpIps = new ArrayList<>(tempInstance.ntpIps);
 			}
 			if (tempInstance.memberPorts == null) {
-				instanceToReturn.memberPorts = new HashSet<NodePortTuple>();
+				instanceToReturn.memberPorts = new HashSet<>();
 			} else {
-				instanceToReturn.memberPorts = new HashSet<NodePortTuple>(tempInstance.memberPorts);
+				instanceToReturn.memberPorts = new HashSet<>(tempInstance.memberPorts);
 			}
 			if (tempInstance.memberVlans == null) {
-				instanceToReturn.memberVlans = new HashSet<VlanVid>();
+				instanceToReturn.memberVlans = new HashSet<>();
 			} else {
-				instanceToReturn.memberVlans = new HashSet<VlanVid>(tempInstance.memberVlans);
+				instanceToReturn.memberVlans = new HashSet<>(tempInstance.memberVlans);
 			}
 			
 			instanceToReturn.ipForwarding = tempInstance.ipForwarding;
