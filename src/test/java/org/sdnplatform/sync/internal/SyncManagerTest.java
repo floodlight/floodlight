@@ -391,7 +391,7 @@ public class SyncManagerTest {
                                                String.class, String.class);
 
         client0.put("key0", "value0");
-        waitForValue(client2, "key0", "value0", 1000, "client0");
+        waitForValue(client2, "key0", "value0", 2*1000, "client0");
 
         logger.info("Shutting down server ID 1");
         syncManagers[0].shutdown();
