@@ -320,7 +320,7 @@ implements IFloodlightModule, ILearningSwitchService, IOFMessageListener, IContr
 			pob.setBufferId(pi.getBufferId());
 		}
 
-		pob.setInPort(inPort);
+		OFMessageUtils.setInPort(pob, inPort);
 
 		// If the buffer id is none or the switch doesn's support buffering
 		// we send the data with the packet out
