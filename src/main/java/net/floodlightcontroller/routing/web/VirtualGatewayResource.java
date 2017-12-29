@@ -9,9 +9,7 @@ import org.restlet.resource.Put;
 import org.restlet.resource.ServerResource;
 
 import java.io.IOException;
-import java.util.Collections;
-import java.util.Optional;
-import java.util.stream.Collector;
+import java.util.*;
 
 /**
  * @author Qing Wang (qw@g.clemson.edu) at 12/20/17
@@ -23,24 +21,22 @@ public class VirtualGatewayResource extends ServerResource {
         IRoutingService routingService =
                 (IRoutingService) getContext().getAttributes().
                         get(IRoutingService.class.getCanonicalName());
-        return routingService.getVirtualGateways();
+
+        Optional<Collection<VirtualGateway>> virtualGateways = routingService.getVirtualGateways();
+        return virtualGateways.isPresent() ? virtualGateways.get() : Collections.singletonMap("INFO: ", "No virtual gateway exists yet");
     }
 
-    @Get
-    public Object getVirtualGateway() {
-        IRoutingService routingService =
-                (IRoutingService) getContext().getAttributes().
-                        get(IRoutingService.class.getCanonicalName());
-
-        String name = getRequestAttributes().get("gateway-name").toString();
-        Optional<VirtualGateway> virtualGateway = routingService.getVirtualGateway(name);
-
-        if (!virtualGateway.isPresent()) {
-            return Collections.singletonMap("Error: ", "Gateway" + name + " not found");
-        }
-
-        return virtualGateway;
-    }
+//    @Get
+//    public Object getVirtualGateway() {
+//        IRoutingService routingService =
+//                (IRoutingService) getContext().getAttributes().
+//                        get(IRoutingService.class.getCanonicalName());
+//
+//        String name = getRequestAttributes().get("gateway-name").toString();
+//        Optional<VirtualGateway> virtualGateway = routingService.getVirtualGateway(name);
+//
+//        return virtualGateway.isPresent() ? virtualGateway : Collections.singletonMap("INFO: ", "Gateway" + name + " not found");
+//    }
 
     @Put
     @Post
@@ -60,6 +56,7 @@ public class VirtualGatewayResource extends ServerResource {
         }
 
     }
+
 
 
 }

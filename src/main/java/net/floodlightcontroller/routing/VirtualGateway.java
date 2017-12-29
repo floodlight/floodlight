@@ -1,6 +1,5 @@
 package net.floodlightcontroller.routing;
 
-import net.floodlightcontroller.packet.IPv4;
 import org.projectfloodlight.openflow.types.IPv4Address;
 import org.projectfloodlight.openflow.types.MacAddress;
 import org.slf4j.LoggerFactory;
@@ -23,7 +22,7 @@ public class VirtualGateway {
     public VirtualGateway(String name, MacAddress gatewayMac) {
         this.name = name;
         this.gatewayMac = gatewayMac;
-        this.interfaces = new ConcurrentHashMap<String, GatewayInterface>();
+        this.interfaces = new ConcurrentHashMap<>();
     }
 
     public String getName() {

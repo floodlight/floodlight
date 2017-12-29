@@ -64,6 +64,7 @@ public class RoutingManager implements IFloodlightModule, IRoutingService {
     public void init(FloodlightModuleContext context) throws FloodlightModuleException {
         log.debug("RoutingManager starting up");
         tm = (ITopologyManagerBackend) context.getServiceImpl(ITopologyService.class);
+        l3manager = new L3RoutingManager();
         decisionChangedListeners = new ArrayList<IRoutingDecisionChangedListener>();
     }
 
@@ -72,7 +73,7 @@ public class RoutingManager implements IFloodlightModule, IRoutingService {
 
     // L3 Routing APIs
     @Override
-    public List<VirtualGateway> getVirtualGateways() { return l3manager.getVirtualGateways(); }
+    public Optional<Collection<VirtualGateway>> getVirtualGateways() { return l3manager.getVirtualGateways(); }
 
     @Override
     public Optional<VirtualGateway> getVirtualGateway(String name) { return l3manager.getVirtualGateway(name); }
