@@ -631,8 +631,9 @@ public class SyncManagerTest {
 
     @Test
     public void testChangeNode() throws Exception {
+
         waitForFullMesh(4000);
-        IStoreClient<String, String> client0 =
+	IStoreClient<String, String> client0 =
                 syncManagers[0].getStoreClient("global", 
                                                String.class, String.class);
         IStoreClient<String, String> client2 =
