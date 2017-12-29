@@ -38,7 +38,6 @@ import net.floodlightcontroller.routing.web.RoutingWebRoutable;
 import net.floodlightcontroller.statistics.IStatisticsService;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
 import net.floodlightcontroller.topology.web.TopologyWebRoutable;
-import net.floodlightcontroller.util.OFMessageUtils;
 import org.projectfloodlight.openflow.protocol.*;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
@@ -746,7 +745,7 @@ ITopologyManagerBackend, ILinkDiscoveryListener, IOFMessageListener {
         // set buffer-id to BUFFER_ID_NONE
         pob.setBufferId(OFBufferId.NO_BUFFER);
         // set in-port to OFPP_NONE
-        OFMessageUtils.setInPort(pob, OFPort.ZERO);
+        pob.setInPort(OFPort.ZERO);
 
         // set packet data
         pob.setData(packetData);

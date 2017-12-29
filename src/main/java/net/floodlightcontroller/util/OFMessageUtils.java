@@ -163,7 +163,9 @@ public class OFMessageUtils {
 
 		// Set buffer_id, in_port, actions_len
 		pob.setBufferId(packetInMessage.getBufferId());
-		setInPort(pob, getInPort(packetInMessage));
+		pob.setInPort(packetInMessage.getVersion().compareTo(OFVersion.OF_12) < 0 ? packetInMessage
+				.getInPort() : packetInMessage.getMatch().get(
+						MatchField.IN_PORT));
 
 		// set actions
 		List<OFAction> actions = new ArrayList<OFAction>(1);

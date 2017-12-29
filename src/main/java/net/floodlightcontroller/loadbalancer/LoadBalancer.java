@@ -384,7 +384,7 @@ ILoadBalancerService, IOFMessageListener {
 
 		// set buffer_id, in_port
 		pob.setBufferId(bufferId);
-		OFMessageUtils.setInPort(pob, inPort);
+		pob.setInPort(inPort);
 
 		// set data - only if buffer_id == -1
 		if (pob.getBufferId() == OFBufferId.NO_BUFFER) {

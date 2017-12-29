@@ -40,7 +40,10 @@ import net.floodlightcontroller.routing.IRoutingService;
 import net.floodlightcontroller.routing.IRoutingDecision;
 import net.floodlightcontroller.routing.Path;
 import net.floodlightcontroller.topology.ITopologyService;
-import net.floodlightcontroller.util.*;
+import net.floodlightcontroller.util.FlowModUtils;
+import net.floodlightcontroller.util.MatchUtils;
+import net.floodlightcontroller.util.OFDPAUtils;
+import net.floodlightcontroller.util.OFMessageDamper;
 
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
 import org.projectfloodlight.openflow.protocol.match.Match;
@@ -337,7 +340,7 @@ public abstract class ForwardingBase implements IOFMessageListener {
             pob.setData(packetData);
         }
 
-        OFMessageUtils.setInPort(pob, OFMessageUtils.getInPort(pi));
+        pob.setInPort((pi.getVersion().compareTo(OFVersion.OF_12) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT)));
         messageDamper.write(sw, pob.build());
     }
 
@@ -365,7 +368,7 @@ public abstract class ForwardingBase implements IOFMessageListener {
         pob.setActions(actions);
 
         pob.setBufferId(OFBufferId.NO_BUFFER);
-        OFMessageUtils.setInPort(pob, inPort);
+        pob.setInPort(inPort);
 
         pob.setData(packetData);
 
