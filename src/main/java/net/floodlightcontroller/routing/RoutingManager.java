@@ -73,13 +73,21 @@ public class RoutingManager implements IFloodlightModule, IRoutingService {
 
     // L3 Routing APIs
     @Override
-    public Optional<Collection<VirtualGateway>> getVirtualGateways() { return l3manager.getVirtualGateways(); }
+    public Optional<Collection<VirtualGateway>> getAllVirtualGateways() { return l3manager.getAllVirtualGateways(); }
+
+    @Override
+    public Optional<Collection<VirtualGateway>> removeAllVirtualGateways() {  return l3manager.removeAllVirtualGateways(); }
+
+    @Override
+    public void addVirtualGateway(VirtualGateway gateway) { l3manager.addVirtualGateway(gateway); }
+
+
 
     @Override
     public Optional<VirtualGateway> getVirtualGateway(String name) { return l3manager.getVirtualGateway(name); }
 
-    @Override
-    public void addVirtualGateway(VirtualGateway gateway) { l3manager.addVirtualGateway(gateway); }
+
+    // Ends here
 
     @Override
     public void setPathMetric(PATH_METRIC metric) {

@@ -3,10 +3,8 @@ package net.floodlightcontroller.routing.web;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import net.floodlightcontroller.routing.IRoutingService;
 import net.floodlightcontroller.routing.VirtualGateway;
-import org.restlet.resource.Get;
-import org.restlet.resource.Post;
-import org.restlet.resource.Put;
-import org.restlet.resource.ServerResource;
+import net.floodlightcontroller.routing.VirtualGatewayInterface;
+import org.restlet.resource.*;
 
 import java.io.IOException;
 import java.util.*;
@@ -17,45 +15,47 @@ import java.util.*;
 public class VirtualGatewayResource extends ServerResource {
 
     @Get
-    public Object getVirtualGateways () {
+    public Object getVirtualGateway() {
         IRoutingService routingService =
                 (IRoutingService) getContext().getAttributes().
                         get(IRoutingService.class.getCanonicalName());
 
-        Optional<Collection<VirtualGateway>> virtualGateways = routingService.getVirtualGateways();
-        return virtualGateways.isPresent() ? virtualGateways.get() : Collections.singletonMap("INFO: ", "No virtual gateway exists yet");
+        String name = (String) getRequestAttributes().get("gateway-name");
+
+        if (name != null) {
+            // List virtual gateway
+            Optional<VirtualGateway> virtualGateway = routingService.getVirtualGateway(name);
+            return virtualGateway.isPresent() ? virtualGateway : Collections.singletonMap("INFO: ", "Gateway" + name + " not found");
+        } else {
+            // List all virtual gateways
+            Optional<Collection<VirtualGateway>> virtualGateways = routingService.getAllVirtualGateways();
+            return virtualGateways.isPresent() ? virtualGateways.get() : Collections.singletonMap("INFO: ", "No virtual gateway exists yet");
+        }
+
     }
 
-//    @Get
-//    public Object getVirtualGateway() {
+
+//    @Put
+//    @Post
+    // This includes overwriting an existing gateway
+//    public void addVirtualGateway(String jsonData) throws IOException {
 //        IRoutingService routingService =
 //                (IRoutingService) getContext().getAttributes().
 //                        get(IRoutingService.class.getCanonicalName());
 //
-//        String name = getRequestAttributes().get("gateway-name").toString();
-//        Optional<VirtualGateway> virtualGateway = routingService.getVirtualGateway(name);
+//        String gatewayName = (String) getRequestAttributes().get("gateway-name");
+//        String interfaceName = (String) getRequestAttributes().get("interface");
 //
-//        return virtualGateway.isPresent() ? virtualGateway : Collections.singletonMap("INFO: ", "Gateway" + name + " not found");
+//        try {
+//            VirtualGateway vGateway = new ObjectMapper()
+//                    .reader(VirtualGateway.class)
+//                    .readValue(jsonData);
+//            routingService.addVirtualGateway(vGateway);
+//        }
+//        catch (IOException e) {
+//            throw new IOException(e);
+//        }
 //    }
-
-    @Put
-    @Post
-    public void addVirtualGateway(String jsonData) throws IOException {
-        IRoutingService routingService =
-                (IRoutingService) getContext().getAttributes().
-                        get(IRoutingService.class.getCanonicalName());
-
-        try {
-            VirtualGateway gateway = new ObjectMapper()
-                    .reader(VirtualGateway.class)
-                    .readValue(jsonData);
-            routingService.addVirtualGateway(gateway);
-        }
-        catch (IOException e) {
-            throw new IOException(e);
-        }
-
-    }
 
 
 

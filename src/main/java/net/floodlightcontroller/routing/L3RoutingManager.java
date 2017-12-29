@@ -13,8 +13,19 @@ public class L3RoutingManager {
         // Do nothing
     }
 
-    public Optional<Collection<VirtualGateway>> getVirtualGateways() {
+    public Optional<Collection<VirtualGateway>> getAllVirtualGateways() {
         return Optional.of(virtualGateways.values());
+    }
+
+    public Optional<Collection<VirtualGateway>> removeAllVirtualGateways() {
+        virtualGateways.clear();
+        return Optional.of(virtualGateways.values());
+    }
+
+
+
+    public void addVirtualGateway(VirtualGateway gateway) {
+        virtualGateways.put(gateway.getName(), gateway);
     }
 
     public Optional<VirtualGateway> getVirtualGateway(String name) {
@@ -22,11 +33,5 @@ public class L3RoutingManager {
                 .filter(gateways -> gateways.getName().equals(name))
                 .findAny();
     }
-
-    public void addVirtualGateway(VirtualGateway gateway) {
-        virtualGateways.put(gateway.getName(), gateway);
-    }
-
-
 
 }

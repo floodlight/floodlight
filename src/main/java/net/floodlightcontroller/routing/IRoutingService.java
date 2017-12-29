@@ -57,11 +57,15 @@ public interface IRoutingService extends IFloodlightService {
     /**
      * L3 Routing Service below
      */
-    Optional<Collection<VirtualGateway>> getVirtualGateways();
+    Optional<Collection<VirtualGateway>> getAllVirtualGateways();
+
+    Optional<Collection<VirtualGateway>> removeAllVirtualGateways();
+
+    void addVirtualGateway(VirtualGateway gateway);
 
     Optional<VirtualGateway> getVirtualGateway(String name);
 
-    void addVirtualGateway(VirtualGateway gateway);
+
 
 
 
