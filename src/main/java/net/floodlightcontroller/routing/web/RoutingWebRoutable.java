@@ -16,14 +16,10 @@
 
 package net.floodlightcontroller.routing.web;
 
-import net.floodlightcontroller.routing.VirtualGateway;
 import org.restlet.Context;
 import org.restlet.routing.Router;
 
 import net.floodlightcontroller.restserver.RestletRoutable;
-import net.floodlightcontroller.routing.web.PathMetricsResource;
-import net.floodlightcontroller.routing.web.PathResource;
-import net.floodlightcontroller.routing.web.PathsResource;
 
 public class RoutingWebRoutable implements RestletRoutable {
     /**
@@ -40,10 +36,14 @@ public class RoutingWebRoutable implements RestletRoutable {
         router.attach("/paths/force-recompute/json", ForceRecomputeResource.class);
         router.attach("/paths/max-fast-paths/json", MaxFastPathsResource.class);
 
-        router.attach("/L3/gateways/json", VirtualGatewayResource.class); // Get
-        router.attach("L3/gateway/json", VirtualGatewayResource.class);   // Put/POST
-        router.attach("L3/gateway/clear/all/json", VirtualGatewayResource.class);
-        router.attach("L3/gateway/{gateway-name}/json", VirtualGatewayResource.class);
+//        router.attach("/gateway/all/json", VirtualGatewaysResource.class);  // Get, Delete
+        router.attach("/gateways/{gateway-name}/json", VirtualGatewayResource.class);      // Post,Put { "gateway-name" : "gw_1" }
+//        router.attach("/gateway/")
+
+
+//        router.attach("/gateway/{gateway-name}/json", VirtualGatewayResource.class); // Get,Post,Put,Delete
+
+
         return router;
     }
 
