@@ -19,7 +19,6 @@ package net.floodlightcontroller.routing;
 
 import java.util.Collection;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 import net.floodlightcontroller.core.internal.OFSwitch;
@@ -52,21 +51,28 @@ public interface IRoutingService extends IFloodlightService {
         public String getMetricName() {
             return name;
         }
-    };
+    }
 
     /**
      * L3 Routing Service below
      */
     Optional<Collection<VirtualGateway>> getAllVirtualGateways();
-
-    Optional<Collection<VirtualGateway>> removeAllVirtualGateways();
-
-    void addVirtualGateway(VirtualGateway gateway);
-
     Optional<VirtualGateway> getVirtualGateway(String name);
 
+    void removeAllVirtualGateways();
+    boolean removeVirtualGateway(String name);
 
+    void createVirtualGateway(VirtualGateway gateway);
+    void updateVirtualGateway(String name, MacAddress newMac);
 
+    Optional<Collection<VirtualGatewayInterface>> getGatewayInterfaces(VirtualGateway gateway);
+    Optional<VirtualGatewayInterface> getGatewayInterface(String name, VirtualGateway gateway);
+
+    void removeAllVirtualInterfaces(VirtualGateway gateway);
+    boolean removeVirtualInterface(String interfaceName, VirtualGateway gateway);
+
+    void createVirtualInterface(VirtualGateway gateway, VirtualGatewayInterface intf);
+    void updateVirtualInterface(VirtualGateway gateway, VirtualGatewayInterface intf);
 
 
 //    boolean isSameSubnet(IPv4AddressWithMask ip1, IPv4AddressWithMask ip2);

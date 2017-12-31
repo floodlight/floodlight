@@ -2,10 +2,7 @@ package net.floodlightcontroller.routing;
 
 import java.util.*;
 
-import org.projectfloodlight.openflow.types.DatapathId;
-import org.projectfloodlight.openflow.types.Masked;
-import org.projectfloodlight.openflow.types.OFPort;
-import org.projectfloodlight.openflow.types.U64;
+import org.projectfloodlight.openflow.types.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -76,16 +73,49 @@ public class RoutingManager implements IFloodlightModule, IRoutingService {
     public Optional<Collection<VirtualGateway>> getAllVirtualGateways() { return l3manager.getAllVirtualGateways(); }
 
     @Override
-    public Optional<Collection<VirtualGateway>> removeAllVirtualGateways() {  return l3manager.removeAllVirtualGateways(); }
-
-    @Override
-    public void addVirtualGateway(VirtualGateway gateway) { l3manager.addVirtualGateway(gateway); }
-
-
-
-    @Override
     public Optional<VirtualGateway> getVirtualGateway(String name) { return l3manager.getVirtualGateway(name); }
 
+    @Override
+    public void removeAllVirtualGateways() { l3manager.removeAllVirtualGateways(); }
+
+    @Override
+    public boolean removeVirtualGateway(String name) { return l3manager.removeVirtualGateway(name); }
+
+    @Override
+    public void createVirtualGateway(VirtualGateway gateway) { l3manager.createVirtualGateway(gateway); }
+
+    @Override
+    public void updateVirtualGateway(String name, MacAddress newMac) { l3manager.updateVirtualGateway(name, newMac); }
+
+    @Override
+    public Optional<Collection<VirtualGatewayInterface>> getGatewayInterfaces(VirtualGateway gateway) {
+        return l3manager.getGatewayInterfaces(gateway);
+    }
+
+    @Override
+    public Optional<VirtualGatewayInterface> getGatewayInterface(String name, VirtualGateway gateway) {
+        return l3manager.getGatewayInterface(name, gateway);
+    }
+
+    @Override
+    public void removeAllVirtualInterfaces(VirtualGateway gateway) {
+        l3manager.removeAllVirtualInterfaces(gateway);
+    }
+
+    @Override
+    public boolean removeVirtualInterface(String interfaceName, VirtualGateway gateway) {
+        return l3manager.removeVirtualInterface(interfaceName, gateway);
+    }
+
+    @Override
+    public void createVirtualInterface(VirtualGateway gateway, VirtualGatewayInterface intf) {
+        l3manager.createVirtualInterface(gateway, intf);
+    }
+
+    @Override
+    public void updateVirtualInterface(VirtualGateway gateway, VirtualGatewayInterface intf) {
+        l3manager.updateVirtualInterface(gateway, intf);
+    }
 
     // Ends here
 

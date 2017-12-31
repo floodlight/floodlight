@@ -1,5 +1,6 @@
 package net.floodlightcontroller.routing.web;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import net.floodlightcontroller.routing.IRoutingService;
 import net.floodlightcontroller.routing.VirtualGateway;
@@ -26,19 +27,21 @@ public class VirtualInterfaceResource extends ServerResource {
 
         Optional<VirtualGateway> gateway = routingService.getVirtualGateway(gatewayName);
         if (!gateway.isPresent()) {
-            return Collections.singletonMap("INFO: ", "Virtual gateway " + gatewayName + " not found");
+            return Collections.singletonMap("INFO: ", "Virtual gateway '" + gatewayName + "' not found");
         }
         if (routingService.getGatewayInterfaces(gateway.get()).get().isEmpty()) {
-            return Collections.singletonMap("INFO: ", "No virtual interface exists on " + gatewayName + " yet");
+            return Collections.singletonMap("INFO: ", "No virtual interface exists on '" + gatewayName + "' yet");
         }
 
         if (interfaceName.equals("all")) {
             return routingService.getGatewayInterfaces(gateway.get()).get();
         }
         else {
-            return routingService.getGatewayInterface(interfaceName, gateway.get());
+            Optional<VirtualGatewayInterface> vInterface = routingService.getGatewayInterface(interfaceName, gateway.get());
+            return vInterface.isPresent() ?
+                    routingService.getGatewayInterface(interfaceName, gateway.get()) :
+                    Collections.singletonMap("INFO: ", "Virtual interface '" + interfaceName + "' not found");
         }
-
 
     }
 
@@ -53,24 +56,24 @@ public class VirtualInterfaceResource extends ServerResource {
 
         Optional<VirtualGateway> gateway = routingService.getVirtualGateway(gatewayName);
         if (!gateway.isPresent()) {
-            return Collections.singletonMap("INFO: ", "Virtual gateway " + gatewayName + " not found");
+            return Collections.singletonMap("INFO: ", "Virtual gateway '" + gatewayName + "' not found");
         }
         if (routingService.getGatewayInterfaces(gateway.get()).get().isEmpty()) {
-            return Collections.singletonMap("INFO: ", "No virtual interface exists on " + gatewayName + " yet");
+            return Collections.singletonMap("INFO: ", "No virtual interface exists on '" + gatewayName + "' yet");
         }
 
         if (interfaceName.equals("all")) {
             routingService.removeAllVirtualInterfaces(gateway.get());
-            return Collections.singletonMap("INFO: ", "All virtual interface from" + gatewayName + " removed");
+            return Collections.singletonMap("INFO: ", "All virtual interface from '" + gatewayName + "' removed");
         }
         else {
             if (routingService.removeVirtualInterface(interfaceName, gateway.get())) {
-                return Collections.singletonMap("INFO: ", "Virtual interface" + interfaceName +
-                        " from gateway " + gatewayName + " removed");
+                return Collections.singletonMap("INFO: ", "Virtual interface '" + interfaceName +
+                        "' from gateway '" + gatewayName + "' removed");
             }
             else {
-                return Collections.singletonMap("INFO: ", "Virtual interface" + interfaceName +
-                        " from gateway " + gatewayName + "not found");
+                return Collections.singletonMap("INFO: ", "Virtual interface '" + interfaceName +
+                        "' from gateway '" + gatewayName + "' not found");
             }
         }
 
@@ -84,20 +87,38 @@ public class VirtualInterfaceResource extends ServerResource {
                         .get(IRoutingService.class.getCanonicalName());
 
         String gatewayName = (String) getRequestAttributes().get("gateway-name");
-        String interfaceName = (String) getRequestAttributes().get("interface-name");
 
         Optional<VirtualGateway> gateway = routingService.getVirtualGateway(gatewayName);
         if (!gateway.isPresent()) {
-            return Collections.singletonMap("INFO: ", "Virtual gateway" + gatewayName + " not found");
+            return Collections.singletonMap("INFO: ", "Virtual gateway '" + gatewayName + "' not found");
         }
 
         try{
+            ObjectMapper mapper = new ObjectMapper();
+            JsonNode interfaceNameNode = mapper.readTree(jsonData).get("interface-name");
+            JsonNode interfaceIPNode = mapper.readTree(jsonData).get("interface-ip");
+            JsonNode interfaceMacNode = mapper.readTree(jsonData).get("interface-mac");
+
+            if (interfaceNameNode == null || interfaceIPNode == null || interfaceMacNode == null) {
+                return Collections.singletonMap("INFO: ", "some fields missing");
+            }
+
             VirtualGatewayInterface vInterface = new ObjectMapper()
                     .reader(VirtualGatewayInterface.class)
                     .readValue(jsonData);
 
-            routingService.createVirtualInterface(gateway.get(), vInterface);
-            return Collections.singletonMap("INFO: ", "Virtual interface " + interfaceName + " created on" + gatewayName );
+            if (!routingService.getVirtualGateway(gateway.get().getName()).get()
+                    .getInterface(interfaceNameNode.asText()).isPresent()) {
+                // Create new virtual interface
+                routingService.createVirtualInterface(gateway.get(), vInterface);
+                return Collections.singletonMap("INFO: ", "Virtual interface '" + interfaceNameNode.asText() + "' created on '" + gatewayName + "'" );
+            }
+            else {
+                // Update existing virtual interface
+                routingService.updateVirtualInterface(gateway.get(), vInterface);
+                return Collections.singletonMap("INFO: ", "Virtual interface '" + interfaceNameNode.asText() + "' updated");
+            }
+
         }
         catch (IOException e) {
             throw new IOException(e);

@@ -36,13 +36,13 @@ public class RoutingWebRoutable implements RestletRoutable {
         router.attach("/paths/force-recompute/json", ForceRecomputeResource.class);
         router.attach("/paths/max-fast-paths/json", MaxFastPathsResource.class);
 
-//        router.attach("/gateway/all/json", VirtualGatewaysResource.class);  // Get, Delete
-        router.attach("/gateways/{gateway-name}/json", VirtualGatewayResource.class);      // Post,Put { "gateway-name" : "gw_1" }
-//        router.attach("/gateway/")
+        router.attach("/gateway/list/{gateway-name}/json", VirtualGatewayInfoResource.class);
+        router.attach("/gateway/clear/{gateway-name}/json", VirtualGatewayResource.class);
+        router.attach("/gateway/json", VirtualGatewayResource.class);
 
-
-//        router.attach("/gateway/{gateway-name}/json", VirtualGatewayResource.class); // Get,Post,Put,Delete
-
+        router.attach("/gateway/{gateway-name}/list/{interface-name}/json", VirtualInterfaceResource.class);
+        router.attach("/gateway/{gateway-name}/clear/{interface-name}/json", VirtualInterfaceResource.class);
+        router.attach("/gateway/{gateway-name}/interface/json", VirtualInterfaceResource.class);
 
         return router;
     }
