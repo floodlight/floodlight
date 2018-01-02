@@ -29,12 +29,12 @@ public class VirtualInterfaceResource extends ServerResource {
         if (!gateway.isPresent()) {
             return Collections.singletonMap("INFO: ", "Virtual gateway '" + gatewayName + "' not found");
         }
-        if (routingService.getGatewayInterfaces(gateway.get()).get().isEmpty()) {
+        if (routingService.getAllGatewayInterfaces(gateway.get()).get().isEmpty()) {
             return Collections.singletonMap("INFO: ", "No virtual interface exists on '" + gatewayName + "' yet");
         }
 
         if (interfaceName.equals("all")) {
-            return routingService.getGatewayInterfaces(gateway.get()).get();
+            return routingService.getAllGatewayInterfaces(gateway.get()).get();
         }
         else {
             Optional<VirtualGatewayInterface> vInterface = routingService.getGatewayInterface(interfaceName, gateway.get());
@@ -58,7 +58,7 @@ public class VirtualInterfaceResource extends ServerResource {
         if (!gateway.isPresent()) {
             return Collections.singletonMap("INFO: ", "Virtual gateway '" + gatewayName + "' not found");
         }
-        if (routingService.getGatewayInterfaces(gateway.get()).get().isEmpty()) {
+        if (routingService.getAllGatewayInterfaces(gateway.get()).get().isEmpty()) {
             return Collections.singletonMap("INFO: ", "No virtual interface exists on '" + gatewayName + "' yet");
         }
 

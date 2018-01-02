@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import net.floodlightcontroller.routing.IRoutingService;
 import net.floodlightcontroller.routing.SubnetBuildMode;
+import net.floodlightcontroller.routing.VirtualSubnet;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.IPv4Address;
 import org.restlet.resource.Delete;
@@ -13,7 +14,7 @@ import org.restlet.resource.ServerResource;
 
 import java.io.IOException;
 import java.util.Collections;
-
+import java.util.Optional;
 
 
 /**
@@ -44,7 +45,7 @@ public class VirtualSubnetSwitchResource extends ServerResource {
                     return Collections.singletonMap("INFO: ", "Subnet currently not define as group of switches. " +
                             "List created subnet and double check");
                 }
-                // Check if desired DPID existing already
+                // Check if desired DPID existed already
                 if (!routingService.checkDPIDExist(DatapathId.of(switchNode.asText()))) {
                     routingService.createVirtualSubnet(nameNode.asText(), IPv4Address.of(gatewayIPNode.asText()),
                             DatapathId.of(switchNode.asText()));
@@ -56,7 +57,7 @@ public class VirtualSubnetSwitchResource extends ServerResource {
                 }
             }
             else {
-                // This is an existing subnet, will try to update it or add new DPID into it
+                // This is an existing subnet, will try to update it or add new DPID into it //TODO: better comments
                 if (routingService.getCurrentSubnetBuildMode() != SubnetBuildMode.SWITCH &&
                         !routingService.getAllVirtualSubnets().get().isEmpty()) {
                     return Collections.singletonMap("INFO: ", "Subnet currently not define as group of switches. " +
@@ -72,13 +73,5 @@ public class VirtualSubnetSwitchResource extends ServerResource {
         }
 
     }
-
-//    @Delete
-//    public Object removeVirtualSubnet() throws IOException {
-//        IRoutingService routingService =
-//                (IRoutingService) getContext().getAttributes()
-//                        .get(IRoutingService.class.getCanonicalName());
-//
-//    }
 
 }

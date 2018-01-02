@@ -23,8 +23,8 @@ public class VirtualGatewayResource extends ServerResource {
 
         String name = (String) getRequestAttributes().get("gateway-name");
 
-        Optional<VirtualGateway> virtualGateway = routingService.getVirtualGateway(name);
-        if (!virtualGateway.isPresent()) {
+        Optional<Collection<VirtualGateway>> virtualGateways = routingService.getAllVirtualGateways();
+        if (!virtualGateways.isPresent()) {
             return Collections.singletonMap("INFO: ", "No virtual gateway exists yet");
         }
 

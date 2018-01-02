@@ -24,11 +24,6 @@ public class VirtualSubnetNPTResource extends ServerResource {
                 (IRoutingService) getContext().getAttributes().
                         get(IRoutingService.class.getCanonicalName());
 
-        if (routingService.getCurrentSubnetBuildMode() != SubnetBuildMode.NodePortTuple) {
-            return Collections.singletonMap("INFO: ", "Subnet currently not define as group of node-port-tuples. " +
-                    "List created subnet and double check");
-        }
-
         try {
             ObjectMapper mapper = new ObjectMapper();
             JsonNode nameNode = mapper.readTree(jsonData).get("subnet-name");
@@ -41,14 +36,32 @@ public class VirtualSubnetNPTResource extends ServerResource {
             }
 
             if (!routingService.getVirtualSubnet(nameNode.asText()).isPresent()) {
-                // Create a new virtual subnet
-                routingService.createVirtualSubnet(nameNode.asText(), IPv4Address.of(gatewayIPNode.asText()),
-                        new NodePortTuple(DatapathId.of(switchNode.asText()), OFPort.of(portNode.asInt())));
-                return Collections.singletonMap("INFO: ", "Virtual subnet '" + nameNode.asText() + "' created");
+                // This is a new subnet, will try to create it
+                if (routingService.getCurrentSubnetBuildMode() != SubnetBuildMode.NodePortTuple &&
+                        !routingService.getAllVirtualSubnets().get().isEmpty()) {
+                    return Collections.singletonMap("INFO: ", "Subnet currently not define as group of node-port-tuples. " +
+                            "List created subnet and double check");
+                }
+                // Check if desired Node-Port-Tuple existed already
+                if (!routingService.checkNPTExist(new NodePortTuple(DatapathId.of(switchNode.asText()), OFPort.of(portNode.asInt())))) {
+                    routingService.createVirtualSubnet(nameNode.asText(), IPv4Address.of(gatewayIPNode.asText()),
+                            new NodePortTuple(DatapathId.of(switchNode.asText()), OFPort.of(portNode.asInt())));
+                    return Collections.singletonMap("INFO: ", "Virtual subnet '" + nameNode.asText() + "' created");
+                }
+                else {
+                    return Collections.singletonMap("INFO: ", "Node-port-tuple 'DPID: " + switchNode.asText() + " PORT: " + portNode.asText() +
+                            "' already existed, change to another Node-port-tuple and try again");
+                }
             }
             else {
-                // Updating existing virtual subnet
-//                routingService.updateVirtualSubnet();
+                // This is an existing subnet, try to update it or add new NPT
+                if (routingService.getCurrentSubnetBuildMode() != SubnetBuildMode.NodePortTuple &&
+                        !routingService.getAllVirtualSubnets().get().isEmpty()) {
+                    return Collections.singletonMap("INFO: ", "Subnet currently not define as group of node-port-tuples. " +
+                            "List created subnet and double check");
+                }
+                routingService.updateVirtualSubnet(nameNode.asText(), IPv4Address.of(gatewayIPNode.asText()),
+                        new NodePortTuple(DatapathId.of(switchNode.asText()), OFPort.of(portNode.asInt())));
                 return Collections.singletonMap("INFO: ", "Virtual subnet '" + nameNode.asText() + "' updated");
             }
         }

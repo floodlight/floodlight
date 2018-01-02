@@ -47,6 +47,8 @@ public class VirtualSubnet {
         return subnetDPIDs.stream().anyMatch(DPID -> DPID.equals(dpid));
     }
 
+    public boolean checkNPTExist(NodePortTuple npt) { return subnetNPTs.stream().anyMatch(NPT -> NPT.equals(npt)); }
+
     public void setGatewayIP(IPv4Address gatewayIP) { this.gatewayIP = gatewayIP; }
 
     public void addDPID(DatapathId dpid) {
@@ -73,7 +75,7 @@ public class VirtualSubnet {
     private VirtualSubnet(NptSubnetBuilder builder) {
         this.name = builder.name;
         this.gatewayIP = builder.gatewayIP;
-        this.subnetNPTs = builder.subnetNPTs;
+        this.subnetNPTs.add(builder.subnetNPT);
         currentBuildMode = SubnetBuildMode.NodePortTuple;
     }
 
@@ -109,7 +111,7 @@ public class VirtualSubnet {
     public static class NptSubnetBuilder {
         private String name;
         private IPv4Address gatewayIP;
-        private ArrayList<NodePortTuple> subnetNPTs;
+        private NodePortTuple subnetNPT;
 
         public NptSubnetBuilder setName(@Nonnull String name) {
             this.name = name;
@@ -122,7 +124,7 @@ public class VirtualSubnet {
         }
 
         public NptSubnetBuilder setSubnetByNPT(@Nonnull NodePortTuple npt) {
-            this.subnetNPTs.add(npt);
+            this.subnetNPT = npt;
             return this;
         }
 
@@ -132,8 +134,43 @@ public class VirtualSubnet {
             }
             return new VirtualSubnet(this);
         }
-
     }
 
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
 
+        VirtualSubnet that = (VirtualSubnet) o;
+
+        if (name != null ? !name.equals(that.name) : that.name != null) return false;
+        if (gatewayIP != null ? !gatewayIP.equals(that.gatewayIP) : that.gatewayIP != null) return false;
+        if (SubnetMask != null ? !SubnetMask.equals(that.SubnetMask) : that.SubnetMask != null) return false;
+        if (subnetDPIDs != null ? !subnetDPIDs.equals(that.subnetDPIDs) : that.subnetDPIDs != null) return false;
+        if (subnetNPTs != null ? !subnetNPTs.equals(that.subnetNPTs) : that.subnetNPTs != null) return false;
+        return currentBuildMode == that.currentBuildMode;
+    }
+
+    @Override
+    public int hashCode() {
+        int result = name != null ? name.hashCode() : 0;
+        result = 31 * result + (gatewayIP != null ? gatewayIP.hashCode() : 0);
+        result = 31 * result + (SubnetMask != null ? SubnetMask.hashCode() : 0);
+        result = 31 * result + (subnetDPIDs != null ? subnetDPIDs.hashCode() : 0);
+        result = 31 * result + (subnetNPTs != null ? subnetNPTs.hashCode() : 0);
+        result = 31 * result + (currentBuildMode != null ? currentBuildMode.hashCode() : 0);
+        return result;
+    }
+
+    @Override
+    public String toString() {
+        return "VirtualSubnet{" +
+                "name='" + name + '\'' +
+                ", gatewayIP=" + gatewayIP +
+                ", SubnetMask=" + SubnetMask +
+                ", subnetDPIDs=" + subnetDPIDs +
+                ", subnetNPTs=" + subnetNPTs +
+                ", currentBuildMode=" + currentBuildMode +
+                '}';
+    }
 }

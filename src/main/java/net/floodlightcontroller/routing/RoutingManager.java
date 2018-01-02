@@ -89,7 +89,7 @@ public class RoutingManager implements IFloodlightModule, IRoutingService {
     public void updateVirtualGateway(String name, MacAddress newMac) { l3manager.updateVirtualGateway(name, newMac); }
 
     @Override
-    public Optional<Collection<VirtualGatewayInterface>> getGatewayInterfaces(VirtualGateway gateway) {
+    public Optional<Collection<VirtualGatewayInterface>> getAllGatewayInterfaces(VirtualGateway gateway) {
         return l3manager.getGatewayInterfaces(gateway);
     }
 
@@ -134,9 +134,10 @@ public class RoutingManager implements IFloodlightModule, IRoutingService {
     }
 
     @Override
-    public boolean checkDPIDExist(DatapathId dpid) {
-        return l3manager.checkDPIDExist(dpid);
-    }
+    public boolean checkDPIDExist(DatapathId dpid) { return l3manager.checkDPIDExist(dpid); }
+
+    @Override
+    public boolean checkNPTExist(NodePortTuple nodePortTuple) { return l3manager.checkNPTExist(nodePortTuple); }
 
     @Override
     public void createVirtualSubnet(String name, IPv4Address gatewayIP, DatapathId dpid) {
@@ -145,12 +146,23 @@ public class RoutingManager implements IFloodlightModule, IRoutingService {
 
     @Override
     public void createVirtualSubnet(String name, IPv4Address gatewayIP, NodePortTuple npt) {
-
+        l3manager.createVirtualSubnet(name, gatewayIP, npt);
     }
+
+    @Override
+    public void removeAllVirtualSubnets() { l3manager.removeAllVirtualSubnets(); }
+
+    @Override
+    public boolean removeVirtualSubnet(String name) { return l3manager.removeVirtualSubnet(name); }
 
     @Override
     public void updateVirtualSubnet(String name, IPv4Address gatewayIP, DatapathId dpid) {
         l3manager.updateVirtualSubnet(name, gatewayIP, dpid);
+    }
+
+    @Override
+    public void updateVirtualSubnet(String name, IPv4Address gatewayIP, NodePortTuple npt) {
+        l3manager.updateVirtualSubnet(name, gatewayIP, npt);
     }
 
     // Ends here

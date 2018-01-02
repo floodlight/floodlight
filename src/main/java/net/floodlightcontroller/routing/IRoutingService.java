@@ -65,7 +65,7 @@ public interface IRoutingService extends IFloodlightService {
     void createVirtualGateway(VirtualGateway gateway);
     void updateVirtualGateway(String name, MacAddress newMac);
 
-    Optional<Collection<VirtualGatewayInterface>> getGatewayInterfaces(VirtualGateway gateway);
+    Optional<Collection<VirtualGatewayInterface>> getAllGatewayInterfaces(VirtualGateway gateway);
     Optional<VirtualGatewayInterface> getGatewayInterface(String name, VirtualGateway gateway);
 
     void removeAllVirtualInterfaces(VirtualGateway gateway);
@@ -83,8 +83,13 @@ public interface IRoutingService extends IFloodlightService {
     void createVirtualSubnet(String name, IPv4Address gatewayIP, NodePortTuple npt);
 
     boolean checkDPIDExist(DatapathId dpid);
+    boolean checkNPTExist(NodePortTuple nodePortTuple);
 
     void updateVirtualSubnet(String name, IPv4Address gatewayIP, DatapathId dpid);
+    void updateVirtualSubnet(String name, IPv4Address gatewayIP, NodePortTuple npt);
+
+    void removeAllVirtualSubnets();
+    boolean removeVirtualSubnet(String name);
 
 //    boolean isSameSubnet(IPv4AddressWithMask ip1, IPv4AddressWithMask ip2);
 //

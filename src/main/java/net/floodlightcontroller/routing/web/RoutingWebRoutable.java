@@ -47,9 +47,9 @@ public class RoutingWebRoutable implements RestletRoutable {
 
         router.attach("/subnet/list/{subnet-name}/json", VirtualSubnetInfoResource.class);
         router.attach("/subnet/switches/json", VirtualSubnetSwitchResource.class);
-        router.attach("/subnet/switches/clear/{subnet-name}/json", VirtualSubnetSwitchResource.class);
+        router.attach("/subnet/switches/clear/{subnet-name}/json", RemoveVirtualSubnetResource.class);
         router.attach("/subnet/node-port-tuples/json", VirtualSubnetNPTResource.class);
-        router.attach("/subnet/node-port-tuples/clear/{subnet-name}/json", VirtualSubnetNPTResource.class);
+        router.attach("/subnet/node-port-tuples/clear/{subnet-name}/json", RemoveVirtualSubnetResource.class);
 
         return router;
     }

@@ -98,6 +98,11 @@ public class L3RoutingManager {
                 .anyMatch(subnet -> subnet.checkDPIDExist(dpid));
     }
 
+    public boolean checkNPTExist(NodePortTuple npt) {
+        return virtualSubnets.values().stream()
+                .anyMatch(subnet -> subnet.checkNPTExist(npt));
+    }
+
     public void createVirtualSubnet(String name, IPv4Address gatewayIP, DatapathId dpid) {
         SwitchSubnetBuilder switchSubnetBuilder = VirtualSubnet.createSwitchSubnetBuilder();
         switchSubnetBuilder.setName(name);
@@ -128,14 +133,35 @@ public class L3RoutingManager {
         }
     }
 
+    public void updateVirtualSubnet(String name, IPv4Address gatewayIP, NodePortTuple npt) {
+        if (!checkNPTExist(npt)) {
+            virtualSubnets.get(name).setGatewayIP(gatewayIP);
+            virtualSubnets.get(name).addNPT(npt);
+        }
+        else {
+            virtualSubnets.get(name).setGatewayIP(gatewayIP);
+        }
+    }
+
     public Optional<Collection<VirtualSubnet>> getAllVirtualSubnets(){ return Optional.of(virtualSubnets.values()); }
 
     public Optional<VirtualSubnet> getVirtualSubnet(String name) {
         return virtualSubnets.values().stream()
-                .filter(gateways -> gateways.getName().equals(name))
+                .filter(subnets -> subnets.getName().equals(name))
                 .findAny();
     }
 
+    public void removeAllVirtualSubnets() { virtualSubnets.clear(); }
+
+    public boolean removeVirtualSubnet(String name) {
+        if (getVirtualSubnet(name).isPresent()) {
+            virtualSubnets.remove(name);
+            return true;
+        }
+        else {
+            return false;
+        }
+    }
 
 
 }
