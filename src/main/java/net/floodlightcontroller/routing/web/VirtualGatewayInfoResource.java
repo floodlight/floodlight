@@ -14,7 +14,7 @@ import java.util.Optional;
 public class VirtualGatewayInfoResource extends ServerResource {
 
     @Get
-    public Object getAllVirtualGateways () {
+    public Object getAllVirtualGateways() {
         IRoutingService routingService =
                 (IRoutingService) getContext().getAttributes().
                         get(IRoutingService.class.getCanonicalName());

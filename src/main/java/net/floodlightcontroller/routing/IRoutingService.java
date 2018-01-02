@@ -74,6 +74,17 @@ public interface IRoutingService extends IFloodlightService {
     void createVirtualInterface(VirtualGateway gateway, VirtualGatewayInterface intf);
     void updateVirtualInterface(VirtualGateway gateway, VirtualGatewayInterface intf);
 
+    Optional<Collection<VirtualSubnet>> getAllVirtualSubnets();
+    Optional<VirtualSubnet> getVirtualSubnet(String name);
+
+    SubnetBuildMode getCurrentSubnetBuildMode();
+
+    void createVirtualSubnet(String name, IPv4Address gatewayIP, DatapathId dpid);
+    void createVirtualSubnet(String name, IPv4Address gatewayIP, NodePortTuple npt);
+
+    boolean checkDPIDExist(DatapathId dpid);
+
+    void updateVirtualSubnet(String name, IPv4Address gatewayIP, DatapathId dpid);
 
 //    boolean isSameSubnet(IPv4AddressWithMask ip1, IPv4AddressWithMask ip2);
 //

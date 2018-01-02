@@ -2,6 +2,7 @@ package net.floodlightcontroller.routing;
 
 import java.util.*;
 
+import net.floodlightcontroller.core.types.NodePortTuple;
 import org.projectfloodlight.openflow.types.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -115,6 +116,41 @@ public class RoutingManager implements IFloodlightModule, IRoutingService {
     @Override
     public void updateVirtualInterface(VirtualGateway gateway, VirtualGatewayInterface intf) {
         l3manager.updateVirtualInterface(gateway, intf);
+    }
+
+    @Override
+    public Optional<Collection<VirtualSubnet>> getAllVirtualSubnets() {
+        return l3manager.getAllVirtualSubnets();
+    }
+
+    @Override
+    public Optional<VirtualSubnet> getVirtualSubnet(String name) {
+        return l3manager.getVirtualSubnet(name);
+    }
+
+    @Override
+    public SubnetBuildMode getCurrentSubnetBuildMode() {
+        return l3manager.getCurrentSubnetMode();
+    }
+
+    @Override
+    public boolean checkDPIDExist(DatapathId dpid) {
+        return l3manager.checkDPIDExist(dpid);
+    }
+
+    @Override
+    public void createVirtualSubnet(String name, IPv4Address gatewayIP, DatapathId dpid) {
+        l3manager.createVirtualSubnet(name, gatewayIP, dpid);
+    }
+
+    @Override
+    public void createVirtualSubnet(String name, IPv4Address gatewayIP, NodePortTuple npt) {
+
+    }
+
+    @Override
+    public void updateVirtualSubnet(String name, IPv4Address gatewayIP, DatapathId dpid) {
+        l3manager.updateVirtualSubnet(name, gatewayIP, dpid);
     }
 
     // Ends here

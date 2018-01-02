@@ -1,7 +1,11 @@
 package net.floodlightcontroller.routing;
 
+import net.floodlightcontroller.core.types.NodePortTuple;
+import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.IPv4Address;
 import org.projectfloodlight.openflow.types.MacAddress;
-
+import net.floodlightcontroller.routing.VirtualSubnet.SwitchSubnetBuilder;
+import net.floodlightcontroller.routing.VirtualSubnet.NptSubnetBuilder;
 import java.util.*;
 
 /**
@@ -10,6 +14,10 @@ import java.util.*;
 public class L3RoutingManager {
 
     private static Map<String, VirtualGateway> virtualGateways = new HashMap<>();
+
+    private static Map<String, VirtualSubnet> virtualSubnets = new HashMap<>();
+
+    private static SubnetBuildMode currentSubnetMode;
 
     public L3RoutingManager() {
         // Do nothing
@@ -77,6 +85,55 @@ public class L3RoutingManager {
 
     public void updateVirtualInterface(VirtualGateway gateway, VirtualGatewayInterface intf) {
         gateway.updateInterface(intf);
+    }
+
+    public SubnetBuildMode getCurrentSubnetMode() {
+        return currentSubnetMode;
+    }
+
+    public static void updateSubnetBuildMode(SubnetBuildMode buildMode) { currentSubnetMode = buildMode; }
+
+    public boolean checkDPIDExist(DatapathId dpid) {
+        return virtualSubnets.values().stream()
+                .anyMatch(subnet -> subnet.checkDPIDExist(dpid));
+    }
+
+    public void createVirtualSubnet(String name, IPv4Address gatewayIP, DatapathId dpid) {
+        SwitchSubnetBuilder switchSubnetBuilder = VirtualSubnet.createSwitchSubnetBuilder();
+        switchSubnetBuilder.setName(name);
+        switchSubnetBuilder.setGatewayIP(gatewayIP);
+        switchSubnetBuilder.setSubnetBySwitch(dpid);
+        VirtualSubnet subnet = switchSubnetBuilder.build();
+        virtualSubnets.put(subnet.getName(), subnet);
+        updateSubnetBuildMode(subnet.getCurrentBuildMode());
+    }
+
+    public void createVirtualSubnet(String name, IPv4Address gatewayIP, NodePortTuple npt) {
+        NptSubnetBuilder nptSubnetBuilder = VirtualSubnet.createNptSubnetBuilder();
+        nptSubnetBuilder.setName(name);
+        nptSubnetBuilder.setGatewayIP(gatewayIP);
+        nptSubnetBuilder.setSubnetByNPT(npt);
+        VirtualSubnet subnet = nptSubnetBuilder.build();
+        virtualSubnets.put(subnet.getName(), subnet);
+        updateSubnetBuildMode(subnet.getCurrentBuildMode());
+    }
+
+    public void updateVirtualSubnet(String name, IPv4Address gatewayIP, DatapathId dpid) {
+        if (!checkDPIDExist(dpid)) {
+            virtualSubnets.get(name).setGatewayIP(gatewayIP);
+            virtualSubnets.get(name).addDPID(dpid);
+        }
+        else {
+            virtualSubnets.get(name).setGatewayIP(gatewayIP);
+        }
+    }
+
+    public Optional<Collection<VirtualSubnet>> getAllVirtualSubnets(){ return Optional.of(virtualSubnets.values()); }
+
+    public Optional<VirtualSubnet> getVirtualSubnet(String name) {
+        return virtualSubnets.values().stream()
+                .filter(gateways -> gateways.getName().equals(name))
+                .findAny();
     }
 
 
