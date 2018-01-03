@@ -87,6 +87,7 @@ public class DHCPBinding {
 	public void cancelLease() {
 		startTimeSec = 0;
 		durationTimeSec = 0;
+		setMACAddress(MacAddress.NONE);
 		currentState = LeasingState.AVAILABLE;
 	}
 
