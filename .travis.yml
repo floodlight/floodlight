@@ -6,7 +6,7 @@ jdk:
  - oraclejdk8
 # - openjdk8 does not appear to be an option as of 04/29/16
 
-group: deprecated-2017Q4  # Use the previous image version before the update on 12/12/17.
+group: deprecated-2017Q4  # Use the previous image version before the update(12/12/17) to avoid build issues on pull request tests.
 
 notifications:
   email:
