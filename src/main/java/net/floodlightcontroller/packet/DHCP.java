@@ -55,7 +55,7 @@ public class DHCP extends BasePacket {
      * ------------------------------------------
      * |            options (312)               |
      * ------------------------------------------
-     * 
+     *
      */
     // Header + magic without options
     public static int MIN_HEADER_LENGTH = 240;
@@ -63,10 +63,47 @@ public class DHCP extends BasePacket {
     public static byte OPCODE_REPLY = 0x2;
 
     public static byte HWTYPE_ETHERNET = 0x1;
-    
+
+    // Qing Wang Modify Here
+    /**
+     * DHCP messages contain options requested by the client and
+     * provided by the server. The options requested by the client are
+     * provided in a list (option 0x37 below) and the server elects to
+     * answer some or all of these options and may provide additional
+     * options as necessary for the DHCP client to obtain a lease.
+     *		OPTION NAME			HEX		DEC
+     * 		Subnet Mask			0x01	1
+     * 		Router IP			0x03	3
+     * 		DNS Server IP		0x06	6
+     * 		Domain Name			0x0F	15
+     * 		IP Forwarding		0x13	19
+     * 		Broadcast IP		0x1C	28
+     * 		NTP Server IP		0x2A	42
+     * 		NetBios Name IP		0x2C	44
+     * 		NetBios DDS IP		0x2D	45
+     * 		NetBios Node Type	0x2E	46
+     * 		NetBios Scope ID	0x2F	47
+     * 		Requested IP		0x32	50
+     * 		Lease Time (s)		0x33	51
+     * 		Msg Type (above)	0x35	53
+     * 		DHCP Server IP		0x36	54
+     * 		Option List (this)	0x37	55
+     * 		Renewal Time (s)	0x3A	58
+     * 		Rebind Time (s)		0x3B	59
+     * 		End Option List		0xFF	255
+     *
+     * NetBios options are not currently implemented in this server but can be added
+     * via the configuration file.
+     **/
     public enum DHCPOptionCode {
         OptionCode_SubnetMask           ((byte)1),
+        OptionCode_Router               ((byte)3),
+        OptionCode_DNS                  ((byte)6),
         OptionCode_Hostname             ((byte)12),
+        OptionCode_DomainName           ((byte)15),
+        OptionCode_IPForwarding         ((byte)19),
+        OptionCode_Broadcast_IP         ((byte)28),
+        OptionCode_NTP_IP               ((byte)42),
         OptionCode_RequestedIP          ((byte)50),
         OptionCode_LeaseTime            ((byte)51),
         OptionCode_MessageType          ((byte)53),
@@ -76,18 +113,38 @@ public class DHCP extends BasePacket {
         OPtionCode_RebindingTime        ((byte)59),
         OptionCode_ClientID             ((byte)61),
         OptionCode_END                  ((byte)255);
-    
+
         protected byte value;
-        
+
         private DHCPOptionCode(byte value) {
             this.value = value;
         }
-        
-        public byte getValue() {
+
+        public byte getCode() {
             return value;
         }
     }
-    
+
+    /**
+     * DHCP messages are either:
+     *		REQUEST  (client --0x01--> server)
+     *		or REPLY (server --0x02--> client)
+     */
+    public enum DHCPOpCode {
+        OpCode_Request		((byte)1),
+        OpCode_Reply		((byte)2);
+
+        protected byte value;
+
+        private DHCPOpCode(byte value) {
+            this.value = value;
+        }
+
+        public byte getCode(){
+            return value;
+        }
+    }
+
     protected byte opCode;
     protected byte hardwareType;
     protected byte hardwareAddressLength;
@@ -283,10 +340,10 @@ public class DHCP extends BasePacket {
         this.clientHardwareAddress = clientHardwareAddress;
         return this;
     }
-    
+
     /**
      * Gets a specific DHCP option parameter
-     * @param opetionCode The option code to get
+     * @param optionCode The option code to get
      * @return The value of the option if it exists, null otherwise
      */
     public DHCPOption getOption(DHCPOptionCode optionCode) {
@@ -326,7 +383,7 @@ public class DHCP extends BasePacket {
         }
         return null;
     }
-    
+
     /**
      * @return the serverName
      */
@@ -421,7 +478,7 @@ public class DHCP extends BasePacket {
         } else {
             byte[] bytes = null;
             try {
-                 bytes = string.getBytes("ascii");
+                bytes = string.getBytes("ascii");
             } catch (UnsupportedEncodingException e) {
                 throw new RuntimeException("Failure encoding server name", e);
             }
@@ -442,7 +499,7 @@ public class DHCP extends BasePacket {
         if (bb.remaining() < MIN_HEADER_LENGTH) {
             return this;
         }
-        
+
         this.opCode = bb.get();
         this.hardwareType = bb.get();
         this.hardwareAddressLength = bb.get();
@@ -517,5 +574,28 @@ public class DHCP extends BasePacket {
             throw new RuntimeException("Failure decoding string", e);
         }
         return result;
+    }
+
+
+    @Override
+    public String toString() {
+        return "DHCP{" +
+                "opCode=" + opCode +
+                ", hardwareType=" + hardwareType +
+                ", hardwareAddressLength=" + hardwareAddressLength +
+                ", hops=" + hops +
+                ", transactionId=" + transactionId +
+                ", seconds=" + seconds +
+                ", flags=" + flags +
+                ", clientIPAddress=" + clientIPAddress +
+                ", yourIPAddress=" + yourIPAddress +
+                ", serverIPAddress=" + serverIPAddress +
+                ", gatewayIPAddress=" + gatewayIPAddress +
+                ", clientHardwareAddress=" + clientHardwareAddress +
+                ", serverName='" + serverName + '\'' +
+                ", bootFileName='" + bootFileName + '\'' +
+                ", options=" + options +
+                '}';
+
     }
 }
