@@ -358,12 +358,24 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                 } else {
                     ImmutableList.Builder<OFMessage> msgsBuilder = ImmutableList.builder();
                     for (Masked<U64> masked_cookie : masked_cookies) {
-                        msgsBuilder.add(
-                                sw.getOFFactory().buildFlowDelete()
-                                .setCookie(masked_cookie.getValue())
-                                .setCookieMask(masked_cookie.getMask())
-                                .build()
-                                );
+                        // Consider OpenFlow version when using cookieMask property
+                        if (ver.compareTo(OFVersion.OF_10) == 0) {
+                            msgsBuilder.add(
+                                    sw.getOFFactory().buildFlowDelete()
+                                            .setCookie(masked_cookie.getValue())
+                                            // maskCookie not support in OpenFlow 1.0
+                                            .build()
+                            );
+                        }
+                        else {
+                            msgsBuilder.add(
+                                    sw.getOFFactory().buildFlowDelete()
+                                            .setCookie(masked_cookie.getValue())
+                                            .setCookieMask(masked_cookie.getMask())
+                                            .build()
+                            );
+                        }
+
                     }
 
                     List<OFMessage> msgs = msgsBuilder.build();
@@ -960,24 +972,13 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                                 U64 id = i.next();
                                 U64 cookie = id.or(DEFAULT_FORWARDING_COOKIE);
                                 U64 cookieMask = U64.of(FLOWSET_MASK).or(AppCookie.getAppFieldMask());
-                                /* flows matching on src port */
-                                msgs.add(srcSw.getOFFactory().buildFlowDelete()
-                                        .setCookie(cookie)
-                                        .setCookieMask(cookieMask)
-                                        .setMatch(srcSw.getOFFactory().buildMatch()
-                                                .setExact(MatchField.IN_PORT, u.getSrcPort())
-                                                .build())
-                                        .build());
-                                /* flows outputting to src port */
-                                msgs.add(srcSw.getOFFactory().buildFlowDelete()
-                                        .setCookie(cookie)
-                                        .setCookieMask(cookieMask)
-                                        .setOutPort(u.getSrcPort())
-                                        .build());
+
+                                /* Delete flows matching on src port and outputting to src port */
+                                msgs = buildDeleteFlows(u.getSrcPort(), msgs, srcSw, cookie, cookieMask);
                                 messageDamper.write(srcSw, msgs);
                                 log.debug("src: Removing flows to/from DPID={}, port={}", u.getSrc(), u.getSrcPort());
                                 log.debug("src: Cookie/mask {}/{}", cookie, cookieMask);
-                                
+
                                 /* 
                                  * Now, for each ID on this particular failed link, remove
                                  * all other flows in the network using this ID.
@@ -988,19 +989,9 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                                         msgs.clear();
                                         IOFSwitch sw = switchService.getSwitch(npt.getNodeId());
                                         if (sw != null) {
-                                            msgs.add(sw.getOFFactory().buildFlowDelete()
-                                                    .setCookie(cookie)
-                                                    .setCookieMask(cookieMask)
-                                                    .setMatch(sw.getOFFactory().buildMatch()
-                                                            .setExact(MatchField.IN_PORT, npt.getPortId())
-                                                            .build())
-                                                    .build());
-                                            /* flows outputting to port */
-                                            msgs.add(sw.getOFFactory().buildFlowDelete()
-                                                    .setCookie(cookie)
-                                                    .setCookieMask(cookieMask)
-                                                    .setOutPort(npt.getPortId())
-                                                    .build());
+
+                                            /* Delete flows matching on npt port and outputting to npt port*/
+                                            msgs = buildDeleteFlows(npt.getPortId(), msgs, sw, cookie, cookieMask);
                                             messageDamper.write(sw, msgs);
                                             log.debug("src: Removing same-cookie flows to/from DPID={}, port={}", npt.getNodeId(), npt.getPortId());
                                             log.debug("src: Cookie/mask {}/{}", cookie, cookieMask);
@@ -1027,21 +1018,8 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                                 U64 id = i.next();
                                 U64 cookie = id.or(DEFAULT_FORWARDING_COOKIE);
                                 U64 cookieMask = U64.of(FLOWSET_MASK).or(AppCookie.getAppFieldMask());
-                                /* flows matching on dst port */
-                                msgs.clear();
-                                msgs.add(dstSw.getOFFactory().buildFlowDelete()
-                                        .setCookie(cookie)
-                                        .setCookieMask(cookieMask)
-                                        .setMatch(dstSw.getOFFactory().buildMatch()
-                                                .setExact(MatchField.IN_PORT, u.getDstPort())
-                                                .build())
-                                        .build());
-                                /* flows outputting to dst port */
-                                msgs.add(dstSw.getOFFactory().buildFlowDelete()
-                                        .setCookie(cookie)
-                                        .setCookieMask(cookieMask)
-                                        .setOutPort(u.getDstPort())
-                                        .build());
+                                /* Delete flows matching on dst port and outputting to dst port */
+                                msgs = buildDeleteFlows(u.getDstPort(), msgs, dstSw, cookie, cookieMask);
                                 messageDamper.write(dstSw, msgs);
                                 log.debug("dst: Removing flows to/from DPID={}, port={}", u.getDst(), u.getDstPort());
                                 log.debug("dst: Cookie/mask {}/{}", cookie, cookieMask);
@@ -1056,19 +1034,8 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                                         msgs.clear();
                                         IOFSwitch sw = switchService.getSwitch(npt.getNodeId());
                                         if (sw != null) {
-                                            msgs.add(sw.getOFFactory().buildFlowDelete()
-                                                    .setCookie(cookie)
-                                                    .setCookieMask(cookieMask)
-                                                    .setMatch(sw.getOFFactory().buildMatch()
-                                                            .setExact(MatchField.IN_PORT, npt.getPortId())
-                                                            .build())
-                                                    .build());
-                                            /* flows outputting to port */
-                                            msgs.add(sw.getOFFactory().buildFlowDelete()
-                                                    .setCookie(cookie)
-                                                    .setCookieMask(cookieMask)
-                                                    .setOutPort(npt.getPortId())
-                                                    .build());
+                                            /* Delete flows matching on npt port and outputting on npt port */
+                                            msgs = buildDeleteFlows(npt.getPortId(), msgs, sw, cookie, cookieMask);
                                             messageDamper.write(sw, msgs);
                                             log.debug("dst: Removing same-cookie flows to/from DPID={}, port={}", npt.getNodeId(), npt.getPortId());
                                             log.debug("dst: Cookie/mask {}/{}", cookie, cookieMask);
@@ -1084,4 +1051,41 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
             }
         }
     }
+
+    private Set<OFMessage> buildDeleteFlows(OFPort port, Set<OFMessage> msgs, IOFSwitch sw, U64 cookie, U64 cookieMask) {
+        if(sw.getOFFactory().getVersion().compareTo(OFVersion.OF_10) == 0) {
+            msgs.add(sw.getOFFactory().buildFlowDelete()
+                    .setCookie(cookie)
+                    // cookie mask not supported in OpenFlow 1.0
+                    .setMatch(sw.getOFFactory().buildMatch()
+                            .setExact(MatchField.IN_PORT, port)
+                            .build())
+                    .build());
+
+            msgs.add(sw.getOFFactory().buildFlowDelete()
+                    .setCookie(cookie)
+                    // cookie mask not supported in OpenFlow 1.0
+                    .setOutPort(port)
+                    .build());
+        }
+        else {
+            msgs.add(sw.getOFFactory().buildFlowDelete()
+                    .setCookie(cookie)
+                    .setCookieMask(cookieMask)
+                    .setMatch(sw.getOFFactory().buildMatch()
+                            .setExact(MatchField.IN_PORT, port)
+                            .build())
+                    .build());
+
+            msgs.add(sw.getOFFactory().buildFlowDelete()
+                    .setCookie(cookie)
+                    .setCookieMask(cookieMask)
+                    .setOutPort(port)
+                    .build());
+        }
+
+        return msgs;
+
+    }
+
 }
