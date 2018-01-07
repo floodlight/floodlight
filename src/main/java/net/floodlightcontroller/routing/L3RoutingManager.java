@@ -1,5 +1,6 @@
 package net.floodlightcontroller.routing;
 
+import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.types.NodePortTuple;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.IPv4Address;
@@ -162,6 +163,37 @@ public class L3RoutingManager {
             return false;
         }
     }
+
+    public boolean isSameSubnet(IOFSwitch sw1, IOFSwitch sw2) {
+        if (currentSubnetMode != SubnetBuildMode.SWITCH) {
+            return false;
+        }
+
+        boolean foundSameSubnet = false;
+        for (Map.Entry<String, VirtualSubnet> entry : virtualSubnets.entrySet()) {
+            if (entry.getValue().checkDPIDExist(sw1.getId()) && entry.getValue().checkDPIDExist(sw2.getId())) {
+                foundSameSubnet = true;
+                break;
+            }
+        }
+        return foundSameSubnet;
+    }
+
+    public boolean isSameSubnet(NodePortTuple npt1, NodePortTuple npt2) {
+        if (currentSubnetMode != SubnetBuildMode.NodePortTuple) {
+            return false;
+        }
+
+        boolean foundSameSubnet = false;
+        for (Map.Entry<String, VirtualSubnet> entry : virtualSubnets.entrySet()) {
+            if (entry.getValue().checkNPTExist(npt1) && entry.getValue().checkNPTExist(npt2)) {
+                foundSameSubnet = true;
+                break;
+            }
+        }
+        return foundSameSubnet;
+    }
+
 
 
 }

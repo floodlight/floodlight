@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -37,9 +38,9 @@ public class VirtualSubnet {
 
     public IPv4Address getGatewayIP() { return gatewayIP; }
 
-    public ArrayList<DatapathId> getSubnetDPIDs() { return subnetDPIDs; }
+    public List<DatapathId> getSubnetDPIDs() { return subnetDPIDs; }
 
-    public ArrayList<NodePortTuple> getSubnetNPTs() { return subnetNPTs; }
+    public List<NodePortTuple> getSubnetNPTs() { return subnetNPTs; }
 
     public SubnetBuildMode getCurrentBuildMode() { return currentBuildMode; }
 

@@ -51,30 +51,17 @@ import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.packet.IPv6;
 import net.floodlightcontroller.packet.TCP;
 import net.floodlightcontroller.packet.UDP;
-import net.floodlightcontroller.routing.ForwardingBase;
-import net.floodlightcontroller.routing.IRoutingDecision;
-import net.floodlightcontroller.routing.IRoutingDecisionChangedListener;
-import net.floodlightcontroller.routing.IRoutingService;
-import net.floodlightcontroller.routing.Path;
+import net.floodlightcontroller.routing.*;
 import net.floodlightcontroller.topology.ITopologyService;
-import net.floodlightcontroller.util.FlowModUtils;
-import net.floodlightcontroller.util.OFDPAUtils;
-import net.floodlightcontroller.util.OFMessageUtils;
-import net.floodlightcontroller.util.OFPortMode;
-import net.floodlightcontroller.util.OFPortModeTuple;
-import net.floodlightcontroller.util.ParseUtils;
+import net.floodlightcontroller.util.*;
 
-import org.projectfloodlight.openflow.protocol.OFFlowMod;
-import org.projectfloodlight.openflow.protocol.OFFlowModCommand;
-import org.projectfloodlight.openflow.protocol.OFGroupType;
-import org.projectfloodlight.openflow.protocol.OFMessage;
-import org.projectfloodlight.openflow.protocol.OFPacketIn;
-import org.projectfloodlight.openflow.protocol.OFPacketOut;
-import org.projectfloodlight.openflow.protocol.OFPortDesc;
-import org.projectfloodlight.openflow.protocol.OFVersion;
+import org.projectfloodlight.openflow.protocol.*;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
+import org.projectfloodlight.openflow.protocol.action.OFActionOutput;
 import org.projectfloodlight.openflow.protocol.match.Match;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
+import org.projectfloodlight.openflow.protocol.oxm.OFOxm;
+import org.projectfloodlight.openflow.protocol.oxm.OFOxms;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.EthType;
 import org.projectfloodlight.openflow.types.IPv4Address;
@@ -481,6 +468,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
             return;
         }			
 
+        // All edge cases excluded, consider adding L3 logic below
         U64 flowSetId = flowSetIdRegistry.generateFlowSetId();
         U64 cookie = makeForwardingCookie(decision, flowSetId);
         Path path = routingEngineService.getPath(srcSw, 
@@ -488,32 +476,60 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                 dstAp.getNodeId(),
                 dstAp.getPortId());
 
-        Match m = createMatchFromPacket(sw, srcPort, pi, cntx);
+        if (routingEngineService.isSameSubnet(switchService.getSwitch(srcSw),
+                switchService.getSwitch(dstAp.getNodeId()))) {
+            Match m = createMatchFromPacket(sw, srcPort, pi, cntx);
 
-        if (! path.getPath().isEmpty()) {
-            if (log.isDebugEnabled()) {
-                log.debug("pushRoute inPort={} route={} " +
-                        "destination={}:{}",
-                        new Object[] { srcPort, path,
-                                dstAp.getNodeId(),
-                                dstAp.getPortId()});
-                log.debug("Creating flow rules on the route, match rule: {}", m);
-                log.info("Creating flow rules on the route, match rule: {}", m);
-            }
+            if (! path.getPath().isEmpty()) {
+                if (log.isDebugEnabled()) {
+                    log.debug("pushRoute inPort={} route={} " +
+                                    "destination={}:{}",
+                            new Object[] { srcPort, path,
+                                    dstAp.getNodeId(),
+                                    dstAp.getPortId()});
+                    log.debug("Creating flow rules on the route, match rule: {}", m);
+                    log.info("Creating flow rules on the route, match rule: {}", m);
+                }
 
-            pushRoute(path, m, pi, sw.getId(), cookie, 
-                    cntx, requestFlowRemovedNotifn,
-                    OFFlowModCommand.ADD);	
-            
-            /* 
-             * Register this flowset with ingress and egress ports for link down
-             * flow removal. This is done after we push the path as it is blocking.
-             */
-            for (NodePortTuple npt : path.getPath()) {
-                flowSetIdRegistry.registerFlowSetId(npt, flowSetId);
-            }
-        } /* else no path was found */
+                pushRoute(path, m, pi, sw.getId(), cookie,
+                        cntx, requestFlowRemovedNotifn,
+                        OFFlowModCommand.ADD);
+
+                /*
+                 * Register this flowset with ingress and egress ports for link down
+                 * flow removal. This is done after we push the path as it is blocking.
+                 */
+                for (NodePortTuple npt : path.getPath()) {
+                    flowSetIdRegistry.registerFlowSetId(npt, flowSetId);
+                }
+
+            } /* else no path was found */
+        }
+        else { // Not on the same subnet, L3 routing
+            // TODO : this should be in routing part, not forwarding module
+            VirtualGateway vGateway = routingEngineService.getVirtualGateway("gateway-1").get();
+            MacAddress gatewayMac_1 = vGateway.getInterface("interface-1").get().getMac();
+            MacAddress gatewayMac_2 = vGateway.getInterface("interface-2").get().getMac();
+            IOFSwitch firstHop = switchService.getSwitch(srcSw);
+            IOFSwitch lastHop = switchService.getSwitch(dstAp.getNodeId());
+
+
+            // Insert rewrite flows on first hop and last hop switch
+            // Already checked firstHop is on the edge
+            Match m = createMatchFromPacket(firstHop, srcPort, pi, cntx);
+            OFPort outPort = path.getPath().get(path.getPath().size()-2).getPortId();
+            OFFlowAdd flowAdd = buildRewriteFlows(m, srcSw, outPort,
+                        cookie, gatewayMac_1, dstDevice.getMACAddress() ,requestFlowRemovedNotifn);
+
+
+            // Create Match based on rewritten MAC instead
+
+
+        }
     }
+
+
+
 
     /**
      * Instead of using the Firewall's routing decision Match, which might be as general

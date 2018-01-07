@@ -42,18 +42,13 @@ import net.floodlightcontroller.routing.Path;
 import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.util.*;
 
-import org.projectfloodlight.openflow.protocol.OFFlowMod;
+import org.projectfloodlight.openflow.protocol.*;
 import org.projectfloodlight.openflow.protocol.match.Match;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
-import org.projectfloodlight.openflow.protocol.OFFlowModCommand;
-import org.projectfloodlight.openflow.protocol.OFFlowModFlags;
-import org.projectfloodlight.openflow.protocol.OFMessage;
-import org.projectfloodlight.openflow.protocol.OFPacketIn;
-import org.projectfloodlight.openflow.protocol.OFPacketOut;
-import org.projectfloodlight.openflow.protocol.OFType;
-import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.action.OFActionOutput;
+import org.projectfloodlight.openflow.protocol.oxm.OFOxm;
+import org.projectfloodlight.openflow.protocol.oxm.OFOxms;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFBufferId;
@@ -62,6 +57,8 @@ import org.projectfloodlight.openflow.types.TableId;
 import org.projectfloodlight.openflow.types.U64;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import javax.annotation.Nonnull;
 
 /**
  * Abstract base class for implementing a forwarding module.  Forwarding is
@@ -160,6 +157,42 @@ public abstract class ForwardingBase implements IOFMessageListener {
         }
         return Command.CONTINUE;
     }
+
+    // L3 Rewrite Flows
+    protected OFFlowAdd buildRewriteFlows(@Nonnull Match match, @Nonnull DatapathId sw, @Nonnull OFPort outPort,
+                                          @Nonnull U64 cookie, @Nonnull MacAddress gatewayMac, @Nonnull MacAddress hostMac,
+                                          boolean requestFlowRemovedNotification) {
+        OFFactory factory = switchService.getSwitch(sw).getOFFactory();
+        OFOxms oxms = factory.oxms();
+        List<OFAction> actions = new ArrayList<>();
+        OFFlowAdd.Builder flowAdd = factory.buildFlowAdd();
+
+        flowAdd.setBufferId(OFBufferId.NO_BUFFER)
+                .setIdleTimeout(FLOWMOD_DEFAULT_IDLE_TIMEOUT)
+                .setHardTimeout(FLOWMOD_DEFAULT_HARD_TIMEOUT)
+                .setBufferId(OFBufferId.NO_BUFFER)
+                .setCookie(cookie)
+                .setOutPort(outPort)
+                .setPriority(FLOWMOD_DEFAULT_PRIORITY)
+                .setMatch(match);
+
+        if (FLOWMOD_DEFAULT_SET_SEND_FLOW_REM_FLAG || requestFlowRemovedNotification) {
+            Set<OFFlowModFlags> flags = new HashSet<>();
+            flags.add(OFFlowModFlags.SEND_FLOW_REM);
+            flowAdd.setFlags(flags);
+        }
+
+        actions.add(factory.actions().buildOutput()
+                .setPort(outPort).setMaxLen(Integer.MAX_VALUE).build());
+
+        actions.add(factory.actions().buildSetField().setField(oxms.arpSha(gatewayMac)).build());
+        actions.add(factory.actions().buildSetField().setField(oxms.arpTha(hostMac)).build());
+
+        FlowModUtils.setActions(flowAdd, actions, switchService.getSwitch(sw));
+
+        return flowAdd.build();
+    }
+
 
     /**
      * Push routes from back to front

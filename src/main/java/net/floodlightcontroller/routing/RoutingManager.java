@@ -2,6 +2,8 @@ package net.floodlightcontroller.routing;
 
 import java.util.*;
 
+import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.core.internal.OFSwitch;
 import net.floodlightcontroller.core.types.NodePortTuple;
 import org.projectfloodlight.openflow.types.*;
 import org.slf4j.Logger;
@@ -163,6 +165,16 @@ public class RoutingManager implements IFloodlightModule, IRoutingService {
     @Override
     public void updateVirtualSubnet(String name, IPv4Address gatewayIP, NodePortTuple npt) {
         l3manager.updateVirtualSubnet(name, gatewayIP, npt);
+    }
+
+    @Override
+    public boolean isSameSubnet(IOFSwitch sw1, IOFSwitch sw2) {
+        return l3manager.isSameSubnet(sw1, sw2);
+    }
+
+    @Override
+    public boolean isSameSubnet(NodePortTuple npt1, NodePortTuple npt2) {
+        return l3manager.isSameSubnet(npt1, npt2);
     }
 
     // Ends here

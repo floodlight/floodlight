@@ -21,6 +21,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
+import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.internal.OFSwitch;
 import net.floodlightcontroller.core.types.NodePortTuple;
 import org.projectfloodlight.openflow.types.*;
@@ -92,10 +93,10 @@ public interface IRoutingService extends IFloodlightService {
     boolean removeVirtualSubnet(String name);
 
 //    boolean isSameSubnet(IPv4AddressWithMask ip1, IPv4AddressWithMask ip2);
-//
-//    boolean isSameSubnet(OFSwitch sw1, OFSwitch sw2);
-//
-//    boolean isSameSubnet(NodePortTuple npt1, NodePortTuple npt2);
+
+    boolean isSameSubnet(IOFSwitch sw1, IOFSwitch sw2);
+
+    boolean isSameSubnet(NodePortTuple npt1, NodePortTuple npt2);
 
 
 
