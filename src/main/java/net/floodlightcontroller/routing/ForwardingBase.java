@@ -17,12 +17,7 @@
 
 package net.floodlightcontroller.routing;
 
-import java.util.EnumSet;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
@@ -36,6 +31,7 @@ import net.floodlightcontroller.devicemanager.IDeviceService;
 import net.floodlightcontroller.devicemanager.SwitchPort;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryService;
 import net.floodlightcontroller.packet.IPacket;
+import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.routing.IRoutingService;
 import net.floodlightcontroller.routing.IRoutingDecision;
 import net.floodlightcontroller.routing.Path;
@@ -101,6 +97,7 @@ public abstract class ForwardingBase implements IOFMessageListener {
     protected ITopologyService topologyService;
     protected IDebugCounterService debugCounterService;
     protected ILinkDiscoveryService linkService;
+    protected IRestApiService restApiService;
 
     // flow-mod - for use in the cookie
     public static final int FORWARDING_APP_ID = 2;
@@ -158,10 +155,48 @@ public abstract class ForwardingBase implements IOFMessageListener {
         return Command.CONTINUE;
     }
 
+    // L3 Arp Handling
+    protected void doFloodSubnet(IOFSwitch sw, OFPacketIn pi,
+                             FloodlightContext cntx, MacAddress gatewayMac) {
+        OFFactory factory = sw.getOFFactory();
+        OFPort inPort = OFMessageUtils.getInPort(pi);
+        OFPacketOut.Builder packetOut = factory.buildPacketOut();
+        List<OFAction> actions = new ArrayList<>();
+        Set<OFPort> broadcastPorts = this.topologyService.getSwitchBroadcastPorts(sw.getId());
+
+        if (broadcastPorts.isEmpty()) {
+            log.debug("No broadcast ports found. Using FLOOD output action");
+            broadcastPorts = Collections.singleton(OFPort.FLOOD);
+        }
+
+        for (OFPort p : broadcastPorts) {
+            if (p.equals(inPort)) continue;
+            actions.add(factory.actions().output(p, Integer.MAX_VALUE));
+        }
+        actions.add(factory.actions().buildSetField().setField(factory.oxms().arpSha(gatewayMac)).build());
+        packetOut.setActions(actions);
+
+        packetOut.setBufferId(OFBufferId.NO_BUFFER);
+        OFMessageUtils.setInPort(packetOut, inPort);
+        packetOut.setData(pi.getData());
+
+        // Debug Purpose
+        log.info("Writing flood PacketOut switch={} packet-in={} packet-out={}",
+                new Object[] {sw, pi, packetOut.build()});
+
+        if (log.isTraceEnabled()) {
+            log.trace("Writing flood PacketOut switch={} packet-in={} packet-out={}",
+                    new Object[] {sw, pi, packetOut.build()});
+        }
+        messageDamper.write(sw, packetOut.build());
+
+        return;
+    }
+
     // L3 Rewrite Flows
-    protected OFFlowAdd buildRewriteFlows(@Nonnull Match match, @Nonnull DatapathId sw, @Nonnull OFPort outPort,
-                                          @Nonnull U64 cookie, @Nonnull MacAddress gatewayMac, @Nonnull MacAddress hostMac,
-                                          boolean requestFlowRemovedNotification) {
+    protected void buildRewriteFlows(@Nonnull Match match, @Nonnull DatapathId sw, @Nonnull OFPort outPort,
+                                          @Nonnull U64 cookie, @Nonnull MacAddress gatewayMac,
+                                          @Nonnull MacAddress hostMac, boolean requestFlowRemovedNotification) {
         OFFactory factory = switchService.getSwitch(sw).getOFFactory();
         OFOxms oxms = factory.oxms();
         List<OFAction> actions = new ArrayList<>();
@@ -190,7 +225,24 @@ public abstract class ForwardingBase implements IOFMessageListener {
 
         FlowModUtils.setActions(flowAdd, actions, switchService.getSwitch(sw));
 
-        return flowAdd.build();
+        // Only for debug purpose now
+        log.info("Pushing flowmod with srcMac={} dstMac={} " +
+                        "sw={} inPort={} outPort={}",
+                new Object[] { gatewayMac, hostMac,
+                        sw,
+                        flowAdd.getMatch().get(MatchField.IN_PORT),
+                        outPort });
+
+        if (log.isTraceEnabled()) {
+            log.trace("Pushing flowmod with srcMac={} dstMac={} " +
+                            "sw={} inPort={} outPort={}",
+                    new Object[] { gatewayMac, hostMac,
+                            sw,
+                            flowAdd.getMatch().get(MatchField.IN_PORT),
+                            outPort });
+        }
+        messageDamper.write(switchService.getSwitch(sw), flowAdd.build());
+        return;
     }
 
 

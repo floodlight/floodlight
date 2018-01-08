@@ -51,7 +51,9 @@ import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.packet.IPv6;
 import net.floodlightcontroller.packet.TCP;
 import net.floodlightcontroller.packet.UDP;
+import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.routing.*;
+import net.floodlightcontroller.routing.web.RoutingWebRoutable;
 import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.util.*;
 
@@ -116,6 +118,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
     private static final long FLOWSET_MASK = ((1L << FLOWSET_BITS) - 1) << FLOWSET_SHIFT;
     private static final long FLOWSET_MAX = (long) (Math.pow(2, FLOWSET_BITS) - 1);
     protected static FlowSetIdRegistry flowSetIdRegistry;
+    private static RewriteField rewriteField = RewriteField.REQUEST;
 
     protected static class FlowSetIdRegistry {
         private volatile Map<NodePortTuple, Set<U64>> nptToFlowSetIds;
@@ -243,6 +246,14 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         } else { // No routing decision was found. Forward to destination or flood if bcast or mcast.
             if (log.isTraceEnabled()) {
                 log.trace("No decision was made for PacketIn={}, forwarding", pi);
+            }
+
+            // L3 Arp handling
+            VirtualGateway vGateway = routingEngineService.getVirtualGateway("gateway-1").get();
+            MacAddress gatewayMac_1 = vGateway.getInterface("interface-1").get().getMac();
+            MacAddress gatewayMac_2 = vGateway.getInterface("interface-2").get().getMac();
+            if (eth.getDestinationMACAddress() == gatewayMac_1) {
+                doFloodSubnet(sw, pi, cntx, gatewayMac_1);
             }
 
             if (eth.isBroadcast() || eth.isMulticast()) {
@@ -478,6 +489,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 
         if (routingEngineService.isSameSubnet(switchService.getSwitch(srcSw),
                 switchService.getSwitch(dstAp.getNodeId()))) {
+            // Same subnet, normal L2 forwarding
             Match m = createMatchFromPacket(sw, srcPort, pi, cntx);
 
             if (! path.getPath().isEmpty()) {
@@ -510,25 +522,44 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
             VirtualGateway vGateway = routingEngineService.getVirtualGateway("gateway-1").get();
             MacAddress gatewayMac_1 = vGateway.getInterface("interface-1").get().getMac();
             MacAddress gatewayMac_2 = vGateway.getInterface("interface-2").get().getMac();
+
+            // In both request/reply case, rewrite on first hop switch
             IOFSwitch firstHop = switchService.getSwitch(srcSw);
-            IOFSwitch lastHop = switchService.getSwitch(dstAp.getNodeId());
-
-
-            // Insert rewrite flows on first hop and last hop switch
-            // Already checked firstHop is on the edge
-            Match m = createMatchFromPacket(firstHop, srcPort, pi, cntx);
+            Match match = createMatchFromPacket(firstHop, srcPort, pi, cntx);
             OFPort outPort = path.getPath().get(path.getPath().size()-2).getPortId();
-            OFFlowAdd flowAdd = buildRewriteFlows(m, srcSw, outPort,
-                        cookie, gatewayMac_1, dstDevice.getMACAddress() ,requestFlowRemovedNotifn);
+
+            if (rewriteField.equals(RewriteField.REQUEST)) {
+                buildRewriteFlows(match, srcSw, outPort,
+                        cookie, gatewayMac_1, dstDevice.getMACAddress(),
+                        requestFlowRemovedNotifn);
+                rewriteField = RewriteField.REPLY;
+            } else if (rewriteField.equals(RewriteField.REPLY)) {
+                buildRewriteFlows(match, srcSw, outPort,
+                        cookie, gatewayMac_2, dstDevice.getMACAddress(),
+                        requestFlowRemovedNotifn);
+                rewriteField = RewriteField.REQUEST;
+            }
+            //flowSetIdRegistry.registerFlowSetId();
 
 
-            // Create Match based on rewritten MAC instead
+            // Push routes as normal in the middle
+            Path newPath = createNewPath(path);
+            pushRoute(newPath, match, pi, sw.getId(), cookie,
+                    cntx, requestFlowRemovedNotifn,
+                    OFFlowModCommand.ADD);
 
+            for (NodePortTuple npt : path.getPath()) {
+                flowSetIdRegistry.registerFlowSetId(npt, flowSetId);
+            }
 
         }
     }
 
-
+    private Path createNewPath(Path oldPath) {
+        oldPath.getPath().remove(oldPath.getPath().get(oldPath.getPath().size()-1));
+        oldPath.getPath().remove(oldPath.getPath().get(oldPath.getPath().size()-1));
+        return oldPath;
+    }
 
 
     /**
@@ -767,6 +798,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         l.add(ITopologyService.class);
         l.add(IDebugCounterService.class);
         l.add(ILinkDiscoveryService.class);
+        l.add(IRestApiService.class);
         return l;
     }
 
@@ -780,6 +812,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         this.debugCounterService = context.getServiceImpl(IDebugCounterService.class);
         this.switchService = context.getServiceImpl(IOFSwitchService.class);
         this.linkService = context.getServiceImpl(ILinkDiscoveryService.class);
+        this.restApiService = context.getServiceImpl(IRestApiService.class);
 
         flowSetIdRegistry = FlowSetIdRegistry.getInstance();
 
@@ -893,6 +926,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         super.startUp();
         switchService.addOFSwitchListener(this);
         routingEngineService.addRoutingDecisionChangedListener(this);
+        restApiService.addRestletRoutable(new RoutingWebRoutable());
 
         /* Register only if we want to remove stale flows */
         if (REMOVE_FLOWS_ON_LINK_OR_PORT_DOWN) {
