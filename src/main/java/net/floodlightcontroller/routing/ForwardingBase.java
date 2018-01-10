@@ -24,17 +24,25 @@ import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
+import net.floodlightcontroller.core.module.FloodlightModuleContext;
+import net.floodlightcontroller.core.module.FloodlightModuleException;
+import net.floodlightcontroller.core.module.IFloodlightModule;
+import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.core.types.NodePortTuple;
 import net.floodlightcontroller.core.util.AppCookie;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
+import net.floodlightcontroller.devicemanager.IDevice;
 import net.floodlightcontroller.devicemanager.IDeviceService;
 import net.floodlightcontroller.devicemanager.SwitchPort;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryService;
+import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPacket;
+import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.routing.IRoutingService;
 import net.floodlightcontroller.routing.IRoutingDecision;
 import net.floodlightcontroller.routing.Path;
+import net.floodlightcontroller.routing.web.RoutingWebRoutable;
 import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.util.*;
 
@@ -45,12 +53,7 @@ import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.action.OFActionOutput;
 import org.projectfloodlight.openflow.protocol.oxm.OFOxm;
 import org.projectfloodlight.openflow.protocol.oxm.OFOxms;
-import org.projectfloodlight.openflow.types.DatapathId;
-import org.projectfloodlight.openflow.types.MacAddress;
-import org.projectfloodlight.openflow.types.OFBufferId;
-import org.projectfloodlight.openflow.types.OFPort;
-import org.projectfloodlight.openflow.types.TableId;
-import org.projectfloodlight.openflow.types.U64;
+import org.projectfloodlight.openflow.types.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -61,7 +64,7 @@ import javax.annotation.Nonnull;
  * responsible for programming flows to a switch in response to a policy
  * decision.
  */
-public abstract class ForwardingBase implements IOFMessageListener {
+public abstract class ForwardingBase implements IOFMessageListener, IFloodlightModule {
     protected static Logger log = LoggerFactory.getLogger(ForwardingBase.class);
 
     public static int FLOWMOD_DEFAULT_IDLE_TIMEOUT = 5; // in seconds
@@ -98,6 +101,9 @@ public abstract class ForwardingBase implements IOFMessageListener {
     protected IDebugCounterService debugCounterService;
     protected ILinkDiscoveryService linkService;
     protected IRestApiService restApiService;
+
+    protected static Collection<VirtualGateway> virtualGateways;
+    protected static Collection<VirtualSubnet> virtualSubnets;
 
     // flow-mod - for use in the cookie
     public static final int FORWARDING_APP_ID = 2;
@@ -141,6 +147,28 @@ public abstract class ForwardingBase implements IOFMessageListener {
 
     @Override
     public Command receive(IOFSwitch sw, OFMessage msg, FloodlightContext cntx) {
+        virtualGateways = routingEngineService.getAllVirtualGateways().get();
+        virtualSubnets = routingEngineService.getAllVirtualSubnets().get();
+
+        // Maybe use srcDevice and dstDevice(probably not making sense here..) or IP info to
+        // check subnet and L3 routing, Then retrieve the virtual gateway and virtual subnet
+        // in routing module, those definition might should be in DHCP module latter
+        Ethernet eth = IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
+        IPv4Address srcIP = ((IPv4) eth.getPayload()).getSourceAddress();
+        IPv4Address dstIP = ((IPv4) eth.getPayload()).getDestinationAddress();
+
+        if () {
+
+        }
+
+
+//        IDevice dstDevice = IDeviceService.fcStore.get(cntx, IDeviceService.CONTEXT_DST_DEVICE);
+//        IDevice srcDevice = IDeviceService.fcStore.get(cntx, IDeviceService.CONTEXT_SRC_DEVICE);
+//
+//        if (dstDevice != null && srcDevice != null) {
+//
+//        }
+
         switch (msg.getType()) {
         case PACKET_IN:
             IRoutingDecision decision = null;
@@ -538,5 +566,38 @@ public abstract class ForwardingBase implements IOFMessageListener {
     @Override
     public boolean isCallbackOrderingPostreq(OFType type, String name) {
         return false;
+    }
+
+    @Override
+    public Collection<Class<? extends IFloodlightService>> getModuleServices() {
+        // We don't export any services
+        return null;
+    }
+
+    @Override
+    public Map<Class<? extends IFloodlightService>, IFloodlightService> getServiceImpls() {
+        // We don't have any services
+        return null;
+    }
+
+    @Override
+    public Collection<Class<? extends IFloodlightService>> getModuleDependencies() {
+        Collection<Class< ? extends IFloodlightService>> l = new ArrayList<>();
+        l.add(IRoutingService.class);
+        l.add(IRestApiService.class);
+        l.add(IDeviceService.class);
+        return l;
+    }
+
+    @Override
+    public void init(FloodlightModuleContext context) throws FloodlightModuleException {
+        this.routingEngineService = context.getServiceImpl(IRoutingService.class);
+        this.deviceManagerService = context.getServiceImpl(IDeviceService.class);
+        this.restApiService = context.getServiceImpl(IRestApiService.class);
+    }
+
+    @Override
+    public void startUp(FloodlightModuleContext context) throws FloodlightModuleException {
+        restApiService.addRestletRoutable(new RoutingWebRoutable());
     }
 }

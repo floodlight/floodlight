@@ -793,12 +793,9 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         Collection<Class<? extends IFloodlightService>> l =
                 new ArrayList<Class<? extends IFloodlightService>>();
         l.add(IFloodlightProviderService.class);
-        l.add(IDeviceService.class);
-        l.add(IRoutingService.class);
         l.add(ITopologyService.class);
         l.add(IDebugCounterService.class);
         l.add(ILinkDiscoveryService.class);
-        l.add(IRestApiService.class);
         return l;
     }
 
@@ -806,13 +803,10 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
     public void init(FloodlightModuleContext context) throws FloodlightModuleException {
         super.init();
         this.floodlightProviderService = context.getServiceImpl(IFloodlightProviderService.class);
-        this.deviceManagerService = context.getServiceImpl(IDeviceService.class);
-        this.routingEngineService = context.getServiceImpl(IRoutingService.class);
         this.topologyService = context.getServiceImpl(ITopologyService.class);
         this.debugCounterService = context.getServiceImpl(IDebugCounterService.class);
         this.switchService = context.getServiceImpl(IOFSwitchService.class);
         this.linkService = context.getServiceImpl(ILinkDiscoveryService.class);
-        this.restApiService = context.getServiceImpl(IRestApiService.class);
 
         flowSetIdRegistry = FlowSetIdRegistry.getInstance();
 
@@ -926,7 +920,6 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         super.startUp();
         switchService.addOFSwitchListener(this);
         routingEngineService.addRoutingDecisionChangedListener(this);
-        restApiService.addRestletRoutable(new RoutingWebRoutable());
 
         /* Register only if we want to remove stale flows */
         if (REMOVE_FLOWS_ON_LINK_OR_PORT_DOWN) {
