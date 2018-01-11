@@ -131,11 +131,17 @@ public class RestApiServer implements IFloodlightModule, IRestApiService {
 						responseHeaders.set(
 								"Access-Control-Expose-Headers",
 								"Authorization, Link");
-						responseHeaders.set("Access-Control-Allow-Credentials", "true");
-						responseHeaders.set("Access-Control-Allow-Methods",
-								"GET,POST,PUT,DELETE");
-						responseHeaders.set("Access-Control-Allow-Origin", requestOrigin);
-						responseHeaders.set("Access-Control-Allow-Headers", rh);
+						
+						response.setAccessControlAllowOrigin(requestOrigin);
+						response.setAccessControlAllowCredentials(true);
+						response.setAccessControlAllowOrigin(rh);
+
+						Set<Method> methodHashSet = new HashSet<>();
+						methodHashSet.add(Method.GET);
+						methodHashSet.add(Method.POST);
+						methodHashSet.add(Method.PUT);
+						methodHashSet.add(Method.DELETE);
+						response.setAccessControlAllowMethods(methodHashSet);
 
 						// Set response headers
 						response.getAttributes().put(HeaderConstants.ATTRIBUTE_HEADERS,
