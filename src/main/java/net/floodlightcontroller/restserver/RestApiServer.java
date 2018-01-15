@@ -21,6 +21,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.HashSet;
 
 import org.restlet.Application;
 import org.restlet.Component;
@@ -34,6 +35,7 @@ import org.restlet.data.Parameter;
 import org.restlet.data.Protocol;
 import org.restlet.data.Reference;
 import org.restlet.data.Status;
+import org.restlet.data.Method;
 import org.restlet.engine.header.HeaderConstants;
 import org.restlet.ext.jackson.JacksonRepresentation;
 import org.restlet.representation.Representation;
@@ -131,11 +133,17 @@ public class RestApiServer implements IFloodlightModule, IRestApiService {
 						responseHeaders.set(
 								"Access-Control-Expose-Headers",
 								"Authorization, Link");
-						responseHeaders.set("Access-Control-Allow-Credentials", "true");
-						responseHeaders.set("Access-Control-Allow-Methods",
-								"GET,POST,PUT,DELETE");
-						responseHeaders.set("Access-Control-Allow-Origin", requestOrigin);
-						responseHeaders.set("Access-Control-Allow-Headers", rh);
+						
+						response.setAccessControlAllowOrigin(requestOrigin);
+						response.setAccessControlAllowCredentials(true);
+						response.setAccessControlAllowOrigin(rh);
+
+						HashSet<Method> methods = new HashSet<>();
+						methods.add(Method.GET);
+						methods.add(Method.POST);
+						methods.add(Method.PUT);
+						methods.add(Method.DELETE);
+						response.setAccessControlAllowMethods(methods);
 
 						// Set response headers
 						response.getAttributes().put(HeaderConstants.ATTRIBUTE_HEADERS,
