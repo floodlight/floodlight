@@ -147,28 +147,6 @@ public abstract class ForwardingBase implements IOFMessageListener, IFloodlightM
 
     @Override
     public Command receive(IOFSwitch sw, OFMessage msg, FloodlightContext cntx) {
-        virtualGateways = routingEngineService.getAllVirtualGateways().get();
-        virtualSubnets = routingEngineService.getAllVirtualSubnets().get();
-
-        // Maybe use srcDevice and dstDevice(probably not making sense here..) or IP info to
-        // check subnet and L3 routing, Then retrieve the virtual gateway and virtual subnet
-        // in routing module, those definition might should be in DHCP module latter
-        Ethernet eth = IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
-        IPv4Address srcIP = ((IPv4) eth.getPayload()).getSourceAddress();
-        IPv4Address dstIP = ((IPv4) eth.getPayload()).getDestinationAddress();
-
-        if () {
-
-        }
-
-
-//        IDevice dstDevice = IDeviceService.fcStore.get(cntx, IDeviceService.CONTEXT_DST_DEVICE);
-//        IDevice srcDevice = IDeviceService.fcStore.get(cntx, IDeviceService.CONTEXT_SRC_DEVICE);
-//
-//        if (dstDevice != null && srcDevice != null) {
-//
-//        }
-
         switch (msg.getType()) {
         case PACKET_IN:
             IRoutingDecision decision = null;

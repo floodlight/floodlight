@@ -218,6 +218,11 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
     @Override
     public Command processPacketInMessage(IOFSwitch sw, OFPacketIn pi, IRoutingDecision decision, FloodlightContext cntx) {
         Ethernet eth = IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
+
+        // Assume single gateway case now, will consider multiple virtual gateway case latter
+        VirtualGateway vGateway = routingEngineService.getVirtualGateway("gateway-1").get();
+        MacAddress gatewayMac = vGateway.getGatewayMac();
+
         // We found a routing decision (i.e. Firewall is enabled... it's the only thing that makes RoutingDecisions)
         if (decision != null) {
             if (log.isTraceEnabled()) {
@@ -230,7 +235,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                 return Command.CONTINUE;
             case FORWARD_OR_FLOOD:
             case FORWARD:
-                doForwardFlow(sw, pi, decision, cntx, false);
+                doForwardFlow(sw, pi, decision, cntx, gatewayMac, false);
                 return Command.CONTINUE;
             case MULTICAST:
                 // treat as broadcast
@@ -243,23 +248,20 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                 log.error("Unexpected decision made for this packet-in={}", pi, decision.getRoutingAction());
                 return Command.CONTINUE;
             }
-        } else { // No routing decision was found. Forward to destination or flood if bcast or mcast.
+        }
+        else { // No routing decision was found. Forward to destination or flood if bcast or mcast.
             if (log.isTraceEnabled()) {
                 log.trace("No decision was made for PacketIn={}, forwarding", pi);
             }
 
-            // L3 Arp handling
-            VirtualGateway vGateway = routingEngineService.getVirtualGateway("gateway-1").get();
-            MacAddress gatewayMac_1 = vGateway.getInterface("interface-1").get().getMac();
-            MacAddress gatewayMac_2 = vGateway.getInterface("interface-2").get().getMac();
-            if (eth.getDestinationMACAddress() == gatewayMac_1) {
-                doFloodSubnet(sw, pi, cntx, gatewayMac_1);
+            if ((eth.isBroadcast() || eth.isMulticast()) && eth.getDestinationMACAddress() == gatewayMac) {
+                doFloodSubnet(sw, pi, cntx, gatewayMac);
             }
-
-            if (eth.isBroadcast() || eth.isMulticast()) {
+            else if (eth.isBroadcast() || eth.isMulticast()) {
                 doFlood(sw, pi, decision, cntx);
-            } else {
-                doForwardFlow(sw, pi, decision, cntx, false);
+            }
+            else {
+                doForwardFlow(sw, pi, decision, cntx, gatewayMac, false);
             }
         }
 
@@ -409,7 +411,8 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         log.debug("OFMessage dampened: {}", dampened);
     }
 
-    protected void doForwardFlow(IOFSwitch sw, OFPacketIn pi, IRoutingDecision decision, FloodlightContext cntx, boolean requestFlowRemovedNotifn) {
+    protected void doForwardFlow(IOFSwitch sw, OFPacketIn pi, IRoutingDecision decision, FloodlightContext cntx,
+                                 MacAddress virtualGatewayMac, boolean requestFlowRemovedNotifn) {
         OFPort srcPort = OFMessageUtils.getInPort(pi);
         DatapathId srcSw = sw.getId();
         IDevice dstDevice = IDeviceService.fcStore.get(cntx, IDeviceService.CONTEXT_DST_DEVICE);
@@ -518,29 +521,23 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
             } /* else no path was found */
         }
         else { // Not on the same subnet, L3 routing
-            // TODO : this should be in routing part, not forwarding module
-            VirtualGateway vGateway = routingEngineService.getVirtualGateway("gateway-1").get();
-            MacAddress gatewayMac_1 = vGateway.getInterface("interface-1").get().getMac();
-            MacAddress gatewayMac_2 = vGateway.getInterface("interface-2").get().getMac();
-
-            // In both request/reply case, rewrite on first hop switch
+            // Rewrite on first/last hop switch
             IOFSwitch firstHop = switchService.getSwitch(srcSw);
             Match match = createMatchFromPacket(firstHop, srcPort, pi, cntx);
             OFPort outPort = path.getPath().get(path.getPath().size()-2).getPortId();
 
             if (rewriteField.equals(RewriteField.REQUEST)) {
                 buildRewriteFlows(match, srcSw, outPort,
-                        cookie, gatewayMac_1, dstDevice.getMACAddress(),
+                        cookie, virtualGatewayMac, dstDevice.getMACAddress(),
                         requestFlowRemovedNotifn);
                 rewriteField = RewriteField.REPLY;
             } else if (rewriteField.equals(RewriteField.REPLY)) {
                 buildRewriteFlows(match, srcSw, outPort,
-                        cookie, gatewayMac_2, dstDevice.getMACAddress(),
+                        cookie, virtualGatewayMac, dstDevice.getMACAddress(),
                         requestFlowRemovedNotifn);
                 rewriteField = RewriteField.REQUEST;
             }
             //flowSetIdRegistry.registerFlowSetId();
-
 
             // Push routes as normal in the middle
             Path newPath = createNewPath(path);
