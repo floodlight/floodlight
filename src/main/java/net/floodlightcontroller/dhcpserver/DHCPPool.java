@@ -34,6 +34,7 @@ public class DHCPPool {
 			dhcpRepository.add(new DHCPBinding(IPv4Address.of(ipv4AsInt + i), unassignedMacAddress));
 		}
 
+		setPoolSize(size);
 	}
 
 	public int getPoolSize() { return poolSize; }
@@ -47,6 +48,11 @@ public class DHCPPool {
 	private boolean checkIPInLease(IPv4Address ip) {
 		return dhcpLeasingPool.values().stream()
 				.anyMatch(binding -> binding.getIPv4Address().equals(ip));
+	}
+
+	public boolean checkIPBelongsToPool(IPv4Address ip) {
+		return (ip.getInt() >= startingAddress.getInt() &&
+				ip.getInt() < startingAddress.getInt() + poolSize -1);
 	}
 
 	public boolean checkPoolAvailable() { return !dhcpRepository.isEmpty(); }
