@@ -90,12 +90,12 @@ public interface IOFSwitch extends IOFMessageWriter {
         this.visible = visible;
        }
 
-       /** wether this switch is currently visible for normal operation */
+       /** whether this switch is currently visible for normal operation */
        public boolean isVisible() {
             return visible;
        }
 
-       /** wether this switch is currently ready to be controlled by this controller */
+       /** whether this switch is currently ready to be controlled by this controller */
        public boolean isControllable() {
             return this == MASTER;
        }
