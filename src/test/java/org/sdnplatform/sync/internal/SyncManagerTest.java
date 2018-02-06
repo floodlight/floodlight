@@ -548,7 +548,7 @@ public class SyncManagerTest {
     
     @Test
     public void testAddNode() throws Exception {
-        waitForFullMesh(2000);
+        waitForFullMesh(4000);
         IStoreClient<String, String> client0 =
                 syncManagers[0].getStoreClient("global", 
                                                String.class, String.class);
@@ -591,7 +591,7 @@ public class SyncManagerTest {
     
     @Test
     public void testRemoveNode() throws Exception {
-        waitForFullMesh(2000);
+        waitForFullMesh(4000);
         IStoreClient<String, String> client0 =
                 syncManagers[0].getStoreClient("global", 
                                                String.class, String.class);
@@ -631,8 +631,9 @@ public class SyncManagerTest {
 
     @Test
     public void testChangeNode() throws Exception {
-        waitForFullMesh(2000);
-        IStoreClient<String, String> client0 =
+
+        waitForFullMesh(4000);
+	IStoreClient<String, String> client0 =
                 syncManagers[0].getStoreClient("global", 
                                                String.class, String.class);
         IStoreClient<String, String> client2 =
