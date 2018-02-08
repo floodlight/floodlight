@@ -3,7 +3,6 @@ package net.floodlightcontroller.routing;
 import java.util.*;
 
 import net.floodlightcontroller.core.IOFSwitch;
-import net.floodlightcontroller.core.internal.OFSwitch;
 import net.floodlightcontroller.core.types.NodePortTuple;
 import org.projectfloodlight.openflow.types.*;
 import org.slf4j.Logger;
@@ -131,7 +130,7 @@ public class RoutingManager implements IFloodlightModule, IRoutingService {
     }
 
     @Override
-    public SubnetBuildMode getCurrentSubnetBuildMode() {
+    public SubnetMode getCurrentSubnetMode() {
         return l3manager.getCurrentSubnetMode();
     }
 

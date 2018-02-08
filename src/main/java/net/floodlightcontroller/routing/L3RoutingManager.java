@@ -18,7 +18,7 @@ public class L3RoutingManager {
 
     private static Map<String, VirtualSubnet> virtualSubnets = new HashMap<>();
 
-    private static SubnetBuildMode currentSubnetMode;
+    private static SubnetMode currentSubnetMode;
 
     public L3RoutingManager() {
         // Do nothing
@@ -88,11 +88,11 @@ public class L3RoutingManager {
         gateway.updateInterface(intf);
     }
 
-    public SubnetBuildMode getCurrentSubnetMode() {
+    public SubnetMode getCurrentSubnetMode() {
         return currentSubnetMode;
     }
 
-    public static void updateSubnetBuildMode(SubnetBuildMode buildMode) { currentSubnetMode = buildMode; }
+    public static void updateSubnetBuildMode(SubnetMode buildMode) { currentSubnetMode = buildMode; }
 
     public boolean checkDPIDExist(DatapathId dpid) {
         return virtualSubnets.values().stream()
@@ -165,7 +165,7 @@ public class L3RoutingManager {
     }
 
     public boolean isSameSubnet(IOFSwitch sw1, IOFSwitch sw2) {
-        if (currentSubnetMode != SubnetBuildMode.SWITCH) {
+        if (currentSubnetMode != SubnetMode.SWITCH) {
             return false;
         }
 
@@ -180,7 +180,7 @@ public class L3RoutingManager {
     }
 
     public boolean isSameSubnet(NodePortTuple npt1, NodePortTuple npt2) {
-        if (currentSubnetMode != SubnetBuildMode.NodePortTuple) {
+        if (currentSubnetMode != SubnetMode.NodePortTuple) {
             return false;
         }
 

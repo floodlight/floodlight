@@ -22,12 +22,10 @@ import java.util.List;
 import java.util.Optional;
 
 import net.floodlightcontroller.core.IOFSwitch;
-import net.floodlightcontroller.core.internal.OFSwitch;
 import net.floodlightcontroller.core.types.NodePortTuple;
 import org.projectfloodlight.openflow.types.*;
 
 import net.floodlightcontroller.core.module.IFloodlightService;
-import net.floodlightcontroller.routing.Path;
 
 public interface IRoutingService extends IFloodlightService {
 
@@ -78,7 +76,7 @@ public interface IRoutingService extends IFloodlightService {
     Optional<Collection<VirtualSubnet>> getAllVirtualSubnets();
     Optional<VirtualSubnet> getVirtualSubnet(String name);
 
-    SubnetBuildMode getCurrentSubnetBuildMode();
+    SubnetMode getCurrentSubnetMode();
 
     void createVirtualSubnet(String name, IPv4Address gatewayIP, DatapathId dpid);
     void createVirtualSubnet(String name, IPv4Address gatewayIP, NodePortTuple npt);

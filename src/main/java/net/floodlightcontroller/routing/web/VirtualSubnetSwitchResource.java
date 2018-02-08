@@ -3,18 +3,15 @@ package net.floodlightcontroller.routing.web;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import net.floodlightcontroller.routing.IRoutingService;
-import net.floodlightcontroller.routing.SubnetBuildMode;
-import net.floodlightcontroller.routing.VirtualSubnet;
+import net.floodlightcontroller.routing.SubnetMode;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.IPv4Address;
-import org.restlet.resource.Delete;
 import org.restlet.resource.Post;
 import org.restlet.resource.Put;
 import org.restlet.resource.ServerResource;
 
 import java.io.IOException;
 import java.util.Collections;
-import java.util.Optional;
 
 
 /**
@@ -40,7 +37,7 @@ public class VirtualSubnetSwitchResource extends ServerResource {
 
             if (!routingService.getVirtualSubnet(nameNode.asText()).isPresent()) {
                 // This is a new subnet, will try to create it
-                if (routingService.getCurrentSubnetBuildMode() != SubnetBuildMode.SWITCH &&
+                if (routingService.getCurrentSubnetMode() != SubnetMode.SWITCH &&
                         !routingService.getAllVirtualSubnets().get().isEmpty()) {
                     return Collections.singletonMap("INFO: ", "Subnet currently not define as group of switches. " +
                             "List created subnet and double check");
@@ -58,7 +55,7 @@ public class VirtualSubnetSwitchResource extends ServerResource {
             }
             else {
                 // This is an existing subnet, will try to update it or add new DPID into it //TODO: better comments
-                if (routingService.getCurrentSubnetBuildMode() != SubnetBuildMode.SWITCH &&
+                if (routingService.getCurrentSubnetMode() != SubnetMode.SWITCH &&
                         !routingService.getAllVirtualSubnets().get().isEmpty()) {
                     return Collections.singletonMap("INFO: ", "Subnet currently not define as group of switches. " +
                             "List created subnet and double check");

@@ -37,7 +37,7 @@ public class VirtualSubnetNPTResource extends ServerResource {
 
             if (!routingService.getVirtualSubnet(nameNode.asText()).isPresent()) {
                 // This is a new subnet, will try to create it
-                if (routingService.getCurrentSubnetBuildMode() != SubnetBuildMode.NodePortTuple &&
+                if (routingService.getCurrentSubnetMode() != SubnetMode.NodePortTuple &&
                         !routingService.getAllVirtualSubnets().get().isEmpty()) {
                     return Collections.singletonMap("INFO: ", "Subnet currently not define as group of node-port-tuples. " +
                             "List created subnet and double check");
@@ -55,7 +55,7 @@ public class VirtualSubnetNPTResource extends ServerResource {
             }
             else {
                 // This is an existing subnet, try to update it or add new NPT
-                if (routingService.getCurrentSubnetBuildMode() != SubnetBuildMode.NodePortTuple &&
+                if (routingService.getCurrentSubnetMode() != SubnetMode.NodePortTuple &&
                         !routingService.getAllVirtualSubnets().get().isEmpty()) {
                     return Collections.singletonMap("INFO: ", "Subnet currently not define as group of node-port-tuples. " +
                             "List created subnet and double check");

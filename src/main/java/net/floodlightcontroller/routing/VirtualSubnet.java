@@ -5,14 +5,12 @@ import net.floodlightcontroller.core.types.NodePortTuple;
 import net.floodlightcontroller.routing.web.serializers.VirtualSubnetSerializer;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.IPv4Address;
-import org.projectfloodlight.openflow.types.MacAddress;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
 /**
  * @author Qing Wang (qw@g.clemson.edu) at 12/31/17
@@ -26,7 +24,7 @@ public class VirtualSubnet {
     private volatile IPv4Address SubnetMask = IPv4Address.NONE;
     private volatile ArrayList<DatapathId> subnetDPIDs = new ArrayList<>();
     private volatile ArrayList<NodePortTuple> subnetNPTs = new ArrayList<>();
-    private SubnetBuildMode currentBuildMode;
+    private SubnetMode currentBuildMode;
 
     public String getName() {
         return name;
@@ -42,7 +40,7 @@ public class VirtualSubnet {
 
     public List<NodePortTuple> getSubnetNPTs() { return subnetNPTs; }
 
-    public SubnetBuildMode getCurrentBuildMode() { return currentBuildMode; }
+    public SubnetMode getCurrentBuildMode() { return currentBuildMode; }
 
     public boolean checkDPIDExist(DatapathId dpid) {
         return subnetDPIDs.stream().anyMatch(DPID -> DPID.equals(dpid));
@@ -70,14 +68,14 @@ public class VirtualSubnet {
         this.name = builder.name;
         this.gatewayIP = builder.gatewayIP;
         this.subnetDPIDs.add(builder.subnetDPID);
-        currentBuildMode = SubnetBuildMode.SWITCH;
+        currentBuildMode = SubnetMode.SWITCH;
     }
 
     private VirtualSubnet(NptSubnetBuilder builder) {
         this.name = builder.name;
         this.gatewayIP = builder.gatewayIP;
         this.subnetNPTs.add(builder.subnetNPT);
-        currentBuildMode = SubnetBuildMode.NodePortTuple;
+        currentBuildMode = SubnetMode.NodePortTuple;
     }
 
     public static class SwitchSubnetBuilder {
