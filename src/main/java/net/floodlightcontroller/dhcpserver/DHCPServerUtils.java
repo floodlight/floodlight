@@ -94,7 +94,7 @@ public class DHCPServerUtils {
         return (DHCP) eth.getPayload().getPayload();
     }
 
-    /* Determine DHCP Opcode Type */
+    /* Determine DHCP Message Type: REQUEST or REPLY */
     public static IDHCPService.OpcodeType getOpcodeType(DHCP payload) {
         IDHCPService.OpcodeType opcodeType = null;
         if (payload.getOpCode() == DHCP.DHCPOpCode.OpCode_Request.getCode()) {
@@ -107,34 +107,40 @@ public class DHCPServerUtils {
         return opcodeType;
     }
 
-    /* Determine DHCP message type */
+    /* Determine specific DHCP message type */
     public static IDHCPService.MessageType getMessageType(DHCP payload) {
-        byte[] dhcpDiscover = DHCPServerUtils.intToBytesSizeOne(1);
-        byte[] dhcpOffer = DHCPServerUtils.intToBytesSizeOne(2);
-        byte[] dhcpRequest = DHCPServerUtils.intToBytesSizeOne(3);
-        byte[] dhcpDecline = DHCPServerUtils.intToBytesSizeOne(4);
-        byte[] dhcpAck = DHCPServerUtils.intToBytesSizeOne(5);
-        byte[] dhcpNAck = DHCPServerUtils.intToBytesSizeOne(6);
-        byte[] dhcpRelease = DHCPServerUtils.intToBytesSizeOne(7);
-        byte[] dhcpInform = DHCPServerUtils.intToBytesSizeOne(8);
-
         IDHCPService.MessageType messageType = null;
-        if (Arrays.equals(payload.getOption(DHCP.DHCPOptionCode.OptionCode_MessageType).getData(), dhcpDiscover)) {
+        if (Arrays.equals(payload.getOption(DHCP.DHCPOptionCode.OptionCode_MessageType).getData(),
+                new byte[]{DHCP.DHCPMessageType.DISCOVER.getCode()})) {
             messageType = IDHCPService.MessageType.DISCOVER;
-        } else if (Arrays.equals(payload.getOption(DHCP.DHCPOptionCode.OptionCode_MessageType).getData(), dhcpRequest)) {
-            messageType = IDHCPService.MessageType.REQUEST;
-        } else if (Arrays.equals(payload.getOption(DHCP.DHCPOptionCode.OptionCode_MessageType).getData(), dhcpRelease)) {
-            messageType = IDHCPService.MessageType.RELEASE;
-        } else if (Arrays.equals(payload.getOption(DHCP.DHCPOptionCode.OptionCode_MessageType).getData(), dhcpDecline)) {
-            messageType = IDHCPService.MessageType.DECLINE;
-        } else if (Arrays.equals(payload.getOption(DHCP.DHCPOptionCode.OptionCode_MessageType).getData(), dhcpInform)) {
-            messageType = IDHCPService.MessageType.INFORM;
-        } else if (Arrays.equals(payload.getOption(DHCP.DHCPOptionCode.OptionCode_MessageType).getData(), dhcpOffer)) {
+        }
+        else if (Arrays.equals(payload.getOption(DHCP.DHCPOptionCode.OptionCode_MessageType).getData(),
+                new byte[]{DHCP.DHCPMessageType.OFFER.getCode()})) {
             messageType = IDHCPService.MessageType.OFFER;
-        } else if (Arrays.equals(payload.getOption(DHCP.DHCPOptionCode.OptionCode_MessageType).getData(), dhcpAck)) {
+        }
+        else if (Arrays.equals(payload.getOption(DHCP.DHCPOptionCode.OptionCode_MessageType).getData(),
+                new byte[]{DHCP.DHCPMessageType.REQUEST.getCode()})) {
+            messageType = IDHCPService.MessageType.REQUEST;
+        }
+        else if (Arrays.equals(payload.getOption(DHCP.DHCPOptionCode.OptionCode_MessageType).getData(),
+                new byte[]{DHCP.DHCPMessageType.DECLINE.getCode()})) {
+            messageType = IDHCPService.MessageType.DECLINE;
+        }
+        else if (Arrays.equals(payload.getOption(DHCP.DHCPOptionCode.OptionCode_MessageType).getData(),
+                new byte[]{DHCP.DHCPMessageType.ACK.getCode()})) {
             messageType = IDHCPService.MessageType.ACK;
-        } else if (Arrays.equals(payload.getOption(DHCP.DHCPOptionCode.OptionCode_MessageType).getData(), dhcpNAck)) {
-            messageType = IDHCPService.MessageType.NACK;
+        }
+        else if (Arrays.equals(payload.getOption(DHCP.DHCPOptionCode.OptionCode_MessageType).getData(),
+                new byte[]{DHCP.DHCPMessageType.NAK.getCode()})) {
+            messageType = IDHCPService.MessageType.NAK;
+        }
+        else if (Arrays.equals(payload.getOption(DHCP.DHCPOptionCode.OptionCode_MessageType).getData(),
+                new byte[]{DHCP.DHCPMessageType.RELEASE.getCode()})) {
+            messageType = IDHCPService.MessageType.RELEASE;
+        }
+        else if (Arrays.equals(payload.getOption(DHCP.DHCPOptionCode.OptionCode_MessageType).getData(),
+                new byte[]{DHCP.DHCPMessageType.INFORM.getCode()})) {
+            messageType = IDHCPService.MessageType.INFORM;
         }
 
         return messageType;

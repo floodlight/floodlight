@@ -107,7 +107,7 @@ public class DHCP extends BasePacket {
         OptionCode_RequestedIP          ((byte)50),
         OptionCode_LeaseTime            ((byte)51),
         OptionCode_MessageType          ((byte)53),
-        OptionCode_DHCPServerIp         ((byte)54),
+        OptionCode_DHCPServerID         ((byte)54),
         OptionCode_RequestedParameters  ((byte)55),
         OptionCode_RenewalTime          ((byte)58),
         OPtionCode_RebindingTime        ((byte)59),
@@ -144,6 +144,37 @@ public class DHCP extends BasePacket {
             return value;
         }
     }
+
+    /**
+     * DHCP REQUEST messages are either of type:
+     *		DISCOVER (0x01)
+     *		REQUEST (0x03)
+     * 		DECLINE (0x04)
+     *		RELEASE (0x07)
+     *		or INFORM (0x08)
+     * DHCP REPLY messages are either of type:
+     *		OFFER (0x02)
+     *		ACK (0x05)
+     *		or NAK (0x06)
+     **/
+    public enum DHCPMessageType {
+        DISCOVER    ((byte)1),
+        OFFER       ((byte)2),
+        REQUEST     ((byte)3),
+        DECLINE     ((byte)4),
+        ACK         ((byte)5),
+        NAK         ((byte)6),
+        RELEASE     ((byte)7),
+        INFORM      ((byte)8);
+
+        protected byte value;
+        private DHCPMessageType(byte value) { this.value = value; }
+
+        public byte getCode(){
+            return value;
+        }
+    }
+
 
     protected byte opCode;
     protected byte hardwareType;

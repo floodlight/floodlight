@@ -14,7 +14,7 @@ public interface IDHCPService extends IFloodlightService {
 		/**
 		 * DHCP messages are either:
 		 *		REQUEST  (client -- 0x01 --> server)
-		 *		or REPLY (server -- 0x02 --> client)
+		 *		REPLY 	 (server -- 0x02 --> client)
 		 */
 		REQUEST, REPLY
 	}
@@ -23,18 +23,24 @@ public interface IDHCPService extends IFloodlightService {
 		/**
 		 * DHCP REQUEST messages are either of type:
 		 *		DISCOVER (0x01)
-		 *		REQUEST (0x03)
-		 * 		DECLINE (0x04)
-		 *		RELEASE (0x07)
-		 *		or INFORM (0x08)
+		 *		REQUEST  (0x03)
+		 * 		DECLINE  (0x04)
+		 *		RELEASE  (0x07)
+		 *		INFORM   (0x08)
+		 *
 		 * DHCP REPLY messages are either of type:
-		 *		OFFER (0x02)
-		 *		ACK (0x05)
-		 *		or NACK (0x06)
+		 *		OFFER    (0x02)
+		 *		ACK    	 (0x05)
+		 *		NAK   	 (0x06)
 		 **/
-		DISCOVER, REQUEST, RELEASE, DECLINE, INFORM, OFFER, ACK, NACK
+		DISCOVER, REQUEST, RELEASE, DECLINE, INFORM, OFFER, ACK, NAK
 	}
 
+
+	public enum ClientState {
+
+		INIT_REBOOT, SELECTING, RENEWING, REBINDING, UNKNOWN
+	}
 
 	public void enableDHCP();
 	public void disableDHCP();

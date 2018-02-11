@@ -88,27 +88,35 @@ public class DHCPServer implements IOFMessageListener, IFloodlightModule, IDHCPS
         NodePortTuple npt = DHCPServerUtils.getNodePortTuple(sw, inPort);
         VlanVid vid = DHCPServerUtils.getVlanVid((OFPacketIn) msg, eth);
 
-        // TODO: Can we do that?
-        DHCPInstance instance = getInstance(npt).orElse(getInstance(vid).get());
-        if (instance == null) {
+        if (!getInstance(npt).isPresent() && !getInstance(vid).isPresent()) {
             log.error("Could not locate DHCP instance for DPID {}, port {}, VLAN {}", new Object[] {sw.getId(), inPort, vid});
             return Command.CONTINUE;
         }
 
-        if (!instance.getDHCPPool().checkPoolAvailable()) {
-            log.info("DHCP Pool is full, trying to allocate more space");
-            return Command.CONTINUE;
+        DHCPInstance instance = null;
+        if (getInstance(npt).isPresent()) {
+            instance = getInstance(npt).get();
+        }
+        else {
+            instance = getInstance(vid).get();
         }
 
-        DHCP DhcpPayload = DHCPServerUtils.getDHCPayload(eth);
-        IPv4Address srcAddr = ((IPv4) eth.getPayload()).getSourceAddress();
+        // TODO: double-check sychronized usage here
+        // Check DHCP pool availability
+        synchronized (instance.getDHCPPool()) {
+            if (!instance.getDHCPPool().checkPoolAvailable()) {
+                log.info("DHCP Pool is full, trying to allocate more space");
+                return Command.CONTINUE;
+            }
+        }
 
-        switch (DHCPServerUtils.getOpcodeType(DhcpPayload)) {
+        DHCP dhcPayload = DHCPServerUtils.getDHCPayload(eth);
+        IPv4Address srcAddr = ((IPv4) eth.getPayload()).getSourceAddress();
+        IPv4Address dstAddr = ((IPv4) eth.getPayload()).getDestinationAddress();
+
+        switch (DHCPServerUtils.getOpcodeType(dhcPayload)) {
             case REQUEST:
-                processDhcpRequest(DhcpPayload, sw, inPort, instance, srcAddr);
-                break;
-            case REPLY:
-                processDhcpReply(DhcpPayload);
+                processDhcpRequest(dhcPayload, sw, inPort, instance, srcAddr);
                 break;
             default:
                 break;
@@ -118,42 +126,40 @@ public class DHCPServer implements IOFMessageListener, IFloodlightModule, IDHCPS
     }
 
     private void processDhcpRequest(DHCP DhcpPayload, IOFSwitch sw, OFPort inPort, DHCPInstance instance,
-                                    IPv4Address srcAddr) {
-
-        int xid = 0;
-        IPv4Address yiaddr = IPv4Address.NONE, giaddr = IPv4Address.NONE, desiredIPAddr = null;
-        MacAddress chaddr = null;
-        ArrayList<Byte> requestOrder;
-
+                                    IPv4Address srcAddr, IPv4Address dstAddr) {
+        // TODO: This might be a "factory" that generates different DHCP PacketOut
         DHCPMessageHandler handler = new DHCPMessageHandler();
         switch (DHCPServerUtils.getMessageType(DhcpPayload)) {
             case DISCOVER:
                 log.debug("DHCP DISCOVER message received, start handling... ");
-                OFPacketOut dhcpOffer = handler.handleDHCPDiscover(sw, inPort, instance, srcAddr, desiredIPAddr, DhcpPayload);
-                sw.write(dhcpOffer);
+                OFPacketOut dhcpOffer = handler.handleDHCPDiscover(sw, inPort, instance, srcAddr, DhcpPayload);
+                if (dhcpOffer != null) {
+                    sw.write(dhcpOffer);
+                }
                 break;
 
             case REQUEST:
+                OFPacketOut dhcpConfirm = handler.handleDHCPRequest(sw, inPort, instance, srcAddr, dstAddr, DhcpPayload);
+                if (dhcpConfirm != null) {
+                    sw.write(dhcpConfirm);    // either ACK or NAK
+                }
+                break;
+
+            case RELEASE:   // clear client IP (e.g. client shut down, etc)
 
                 break;
 
-            case RELEASE:
+            case DECLINE:   // client found assigned IP invalid
 
                 break;
 
-            case DECLINE:
+            case INFORM:    // client request some information
 
                 break;
 
             default:
                 break;
         }
-
-    }
-
-
-
-    private void processDhcpReply(DHCP DhcpPayload) {
 
     }
 
