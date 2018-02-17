@@ -116,7 +116,7 @@ public class DHCPServer implements IOFMessageListener, IFloodlightModule, IDHCPS
 
         switch (DHCPServerUtils.getOpcodeType(dhcPayload)) {
             case REQUEST:
-                processDhcpRequest(dhcPayload, sw, inPort, instance, srcAddr);
+                processDhcpRequest(dhcPayload, sw, inPort, instance, srcAddr, dstAddr);
                 break;
             default:
                 break;
@@ -127,7 +127,6 @@ public class DHCPServer implements IOFMessageListener, IFloodlightModule, IDHCPS
 
     private void processDhcpRequest(DHCP DhcpPayload, IOFSwitch sw, OFPort inPort, DHCPInstance instance,
                                     IPv4Address srcAddr, IPv4Address dstAddr) {
-        // TODO: This might be a "factory" that generates different DHCP PacketOut
         DHCPMessageHandler handler = new DHCPMessageHandler();
         switch (DHCPServerUtils.getMessageType(DhcpPayload)) {
             case DISCOVER:
@@ -211,7 +210,7 @@ public class DHCPServer implements IOFMessageListener, IFloodlightModule, IDHCPS
                     .setLeaseTimeSec(Integer.parseInt(configOptions.get("default-lease-time")))
                     .setIPforwarding(Boolean.parseBoolean(configOptions.get("ip-forwarding")))
                     .setServerMac(MacAddress.of(configOptions.get("controller-mac")))
-                    .setServerIP(IPv4Address.of(configOptions.get("controller-ip")));
+                    .setServerID(IPv4Address.of(configOptions.get("controller-ip")));
 
 
         } catch (Exception e) {

@@ -26,7 +26,7 @@ public class DHCPInstance {
 	private String name = null;
 	private volatile DHCPPool dhcpPool = null;
 
-	private IPv4Address serverIP = IPv4Address.NONE;
+	private IPv4Address serverID = IPv4Address.NONE;
 	private MacAddress serverMac = MacAddress.NONE;
 	private IPv4Address broadcastIP = IPv4Address.NONE;
 	private IPv4Address routerIP = IPv4Address.NONE;
@@ -49,7 +49,7 @@ public class DHCPInstance {
 
 	public String getName() { return name; }
 	public DHCPPool getDHCPPool() { return dhcpPool; }
-	public IPv4Address getServerIP() { return serverIP; }
+	public IPv4Address getServerID() { return serverID; }
 	public MacAddress getServerMac() { return serverMac; }
 	public IPv4Address getBroadcastIP() { return broadcastIP; }
 	public IPv4Address getRouterIP() { return routerIP; }
@@ -74,7 +74,7 @@ public class DHCPInstance {
 	private DHCPInstance(DHCPInstanceBuilder builder) {
 		this.name = builder.name;
 		this.dhcpPool = builder.dhcpPool;
-		this.serverIP = builder.serverIP;
+		this.serverID = builder.serverID;
 		this.serverMac = builder.serverMac;
 		this.broadcastIP = builder.broadcastIP;
 		this.routerIP = builder.routerIP;
@@ -103,7 +103,7 @@ public class DHCPInstance {
 	public static class DHCPInstanceBuilder {
 		private String name;
 		private DHCPPool dhcpPool;
-		private IPv4Address serverIP;
+		private IPv4Address serverID;
 		private MacAddress serverMac;
 		private IPv4Address broadcastIP;
 		private IPv4Address routerIP;
@@ -132,11 +132,11 @@ public class DHCPInstance {
 			return this;
 		}
 
-		public DHCPInstanceBuilder setServerIP(@Nonnull IPv4Address serverIP) {
-			if(serverIP == IPv4Address.NONE){
+		public DHCPInstanceBuilder setServerID(@Nonnull IPv4Address serverID) {
+			if(serverID == IPv4Address.NONE){
 				throw new IllegalArgumentException("Build DHCP instance failed : DHCP server IP address can not be empty");
 			}
-			this.serverIP = serverIP;
+			this.serverID = serverID;
 			return this;
 		}
 
@@ -288,38 +288,41 @@ public class DHCPInstance {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
 
-		DHCPInstance that = (DHCPInstance) o;
+		DHCPInstance instance = (DHCPInstance) o;
 
-		if (leaseTimeSec != that.leaseTimeSec) return false;
-		if (rebindTimeSec != that.rebindTimeSec) return false;
-		if (renewalTimeSec != that.renewalTimeSec) return false;
-		if (ipforwarding != that.ipforwarding) return false;
-		if (name != null ? !name.equals(that.name) : that.name != null) return false;
-		if (dhcpPool != null ? !dhcpPool.equals(that.dhcpPool) : that.dhcpPool != null) return false;
-		if (serverIP != null ? !serverIP.equals(that.serverIP) : that.serverIP != null) return false;
-		if (serverMac != null ? !serverMac.equals(that.serverMac) : that.serverMac != null) return false;
-		if (broadcastIP != null ? !broadcastIP.equals(that.broadcastIP) : that.broadcastIP != null) return false;
-		if (routerIP != null ? !routerIP.equals(that.routerIP) : that.routerIP != null) return false;
-		if (subnetMask != null ? !subnetMask.equals(that.subnetMask) : that.subnetMask != null) return false;
-		if (startIPAddress != null ? !startIPAddress.equals(that.startIPAddress) : that.startIPAddress != null)
+		if (leaseTimeSec != instance.leaseTimeSec) return false;
+		if (rebindTimeSec != instance.rebindTimeSec) return false;
+		if (renewalTimeSec != instance.renewalTimeSec) return false;
+		if (ipforwarding != instance.ipforwarding) return false;
+		if (name != null ? !name.equals(instance.name) : instance.name != null) return false;
+		if (dhcpPool != null ? !dhcpPool.equals(instance.dhcpPool) : instance.dhcpPool != null) return false;
+		if (serverID != null ? !serverID.equals(instance.serverID) : instance.serverID != null) return false;
+		if (serverMac != null ? !serverMac.equals(instance.serverMac) : instance.serverMac != null) return false;
+		if (broadcastIP != null ? !broadcastIP.equals(instance.broadcastIP) : instance.broadcastIP != null)
 			return false;
-		if (endIPAddress != null ? !endIPAddress.equals(that.endIPAddress) : that.endIPAddress != null) return false;
-		if (dnsServers != null ? !dnsServers.equals(that.dnsServers) : that.dnsServers != null) return false;
-		if (ntpServers != null ? !ntpServers.equals(that.ntpServers) : that.ntpServers != null) return false;
-		if (domainName != null ? !domainName.equals(that.domainName) : that.domainName != null) return false;
-		if (staticAddresseses != null ? !staticAddresseses.equals(that.staticAddresseses) : that.staticAddresseses != null)
+		if (routerIP != null ? !routerIP.equals(instance.routerIP) : instance.routerIP != null) return false;
+		if (subnetMask != null ? !subnetMask.equals(instance.subnetMask) : instance.subnetMask != null) return false;
+		if (startIPAddress != null ? !startIPAddress.equals(instance.startIPAddress) : instance.startIPAddress != null)
 			return false;
-		if (clientMembers != null ? !clientMembers.equals(that.clientMembers) : that.clientMembers != null)
+		if (endIPAddress != null ? !endIPAddress.equals(instance.endIPAddress) : instance.endIPAddress != null)
 			return false;
-		if (vlanMembers != null ? !vlanMembers.equals(that.vlanMembers) : that.vlanMembers != null) return false;
-		return nptMembers != null ? nptMembers.equals(that.nptMembers) : that.nptMembers == null;
+		if (dnsServers != null ? !dnsServers.equals(instance.dnsServers) : instance.dnsServers != null) return false;
+		if (ntpServers != null ? !ntpServers.equals(instance.ntpServers) : instance.ntpServers != null) return false;
+		if (domainName != null ? !domainName.equals(instance.domainName) : instance.domainName != null) return false;
+		if (staticAddresseses != null ? !staticAddresseses.equals(instance.staticAddresseses) : instance.staticAddresseses != null)
+			return false;
+		if (clientMembers != null ? !clientMembers.equals(instance.clientMembers) : instance.clientMembers != null)
+			return false;
+		if (vlanMembers != null ? !vlanMembers.equals(instance.vlanMembers) : instance.vlanMembers != null)
+			return false;
+		return nptMembers != null ? nptMembers.equals(instance.nptMembers) : instance.nptMembers == null;
 	}
 
 	@Override
 	public int hashCode() {
 		int result = name != null ? name.hashCode() : 0;
 		result = 31 * result + (dhcpPool != null ? dhcpPool.hashCode() : 0);
-		result = 31 * result + (serverIP != null ? serverIP.hashCode() : 0);
+		result = 31 * result + (serverID != null ? serverID.hashCode() : 0);
 		result = 31 * result + (serverMac != null ? serverMac.hashCode() : 0);
 		result = 31 * result + (broadcastIP != null ? broadcastIP.hashCode() : 0);
 		result = 31 * result + (routerIP != null ? routerIP.hashCode() : 0);
@@ -345,7 +348,7 @@ public class DHCPInstance {
 		return "DHCPInstance{" +
 				"name='" + name + '\'' +
 				", dhcpPool=" + dhcpPool +
-				", serverIP=" + serverIP +
+				", serverID=" + serverID +
 				", serverMac=" + serverMac +
 				", broadcastIP=" + broadcastIP +
 				", routerIP=" + routerIP +
