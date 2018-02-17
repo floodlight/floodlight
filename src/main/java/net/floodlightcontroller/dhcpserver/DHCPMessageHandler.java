@@ -5,7 +5,6 @@ import net.floodlightcontroller.packet.*;
 import org.projectfloodlight.openflow.protocol.OFPacketOut;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.types.*;
-import org.python.antlr.op.In;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import net.floodlightcontroller.packet.DHCP.DHCPOptionCode;
@@ -94,7 +93,7 @@ public class DHCPMessageHandler {
 
     }
 
-    public List<Byte> getRequestedParameters(DHCP dhcpPayload, boolean isInform) {
+    public List<Byte> getRequestedParameters(@Nonnull DHCP dhcpPayload, boolean isInform) {
         ArrayList<Byte> requestOrder = new ArrayList<>();
         byte[] requests = dhcpPayload.getOption(DHCPOptionCode.OptionCode_RequestedParameters).getData();
         boolean requestedLeaseTime = false;
@@ -266,7 +265,8 @@ public class DHCPMessageHandler {
     }
 
 
-    public OFPacketOut buildDHCPOfferPacketOut(DHCPInstance instance, IOFSwitch sw, OFPort inPort, IPv4Address clientIPAddress, DHCP dhcpOfferPacket) {
+    public OFPacketOut buildDHCPOfferPacketOut(@Nonnull DHCPInstance instance, @Nonnull IOFSwitch sw, @Nonnull OFPort inPort,
+                                               @Nonnull IPv4Address clientIPAddress, @Nonnull DHCP dhcpOfferPacket) {
         /**
          * DHCP Offer Message
          * -- UDP src port = 67
@@ -409,9 +409,62 @@ public class DHCPMessageHandler {
 
     }
 
+    /**
+     * This function handles the DHCP Decline message
+     *
+     * If client sends DHCP Decline message, it has discovered some other means that suggested network address is already
+     * in use. For example, when client received DHCP ACK, it will try to detect if there is other machine in network using
+     * same IP address. If client detects the conflict, it then will send a DHCP Decline message to server to decline
+     * that IP lease, client will then re-send DHCP Discover message.
+     *
+     * @param instance
+     * @param chaddr
+     * @return
+     */
+    public boolean handleDHCPDecline(@Nonnull DHCPInstance instance, @Nonnull MacAddress chaddr) {
+        return instance.getDHCPPool().cancelLeaseOfMac(chaddr);
+    }
+
+    /**
+     * This function handles the DHCP Release message
+     *
+     * When receive DHCP Release message, server should mark the address as not allocated.
+     *
+     * @param instance
+     * @param chaddr
+     * @return
+     */
+    public boolean handleDHCPRelease(@Nonnull DHCPInstance instance, @Nonnull MacAddress chaddr) {
+        return instance.getDHCPPool().cancelLeaseOfMac(chaddr);
+    }
+
+    /**
+     * This function handles the DHCP Inform message
+     *
+     * Server responds the DHCP Inform message by sending a DHCP ACK directly to the address given in "ciaddr" field of
+     * the DHCP Inform message. Server must not send a lease expiration time to the client and should not fill in "yiaddr"
+     *
+     * @param sw
+     * @param inPort
+     * @param instance
+     * @param dstAddr
+     * @param payload
+     * @return
+     */
+    public OFPacketOut handleDHCPInform(@Nonnull IOFSwitch sw, @Nonnull OFPort inPort, @Nonnull DHCPInstance instance,
+                                        @Nonnull IPv4Address dstAddr, @Nonnull DHCP payload) {
+        int xid = payload.getTransactionId();
+        IPv4Address ciaddr = payload.getClientIPAddress();
+        IPv4Address yiaddr = IPv4Address.NONE;
+        IPv4Address giaddr = payload.getGatewayIPAddress();    // Will have GW IP if a relay agent was used
+        MacAddress chaddr = payload.getClientHardwareAddress();
+        List<Byte> requestOrder = new ArrayList<>();
+
+        return createDHCPAck(instance, sw, inPort, chaddr, dstAddr, yiaddr, giaddr, xid, requestOrder);
+    }
+
     private IDHCPService.ClientState determineClientState(@Nullable IPv4Address requstIP, @Nullable IPv4Address serverID,
                                                           IPv4Address dstAddr) {
-
         if (requstIP != null && serverID == null) {
             return IDHCPService.ClientState.INIT_REBOOT;
         }
@@ -767,5 +820,6 @@ public class DHCPMessageHandler {
         return dhcpNak;
 
     }
+
 
 }

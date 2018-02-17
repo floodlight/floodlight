@@ -42,16 +42,16 @@ public class DHCPPool {
 
 	private int setPoolSize(int size) { return this.poolSize = size; }
 
-	private boolean checkRegistration(MacAddress clientMac) {
+	private boolean isClientRegistered(MacAddress clientMac) {
 		return dhcpLeasingPool.containsKey(clientMac);
 	}
 
-	private boolean checkIPInLease(IPv4Address ip) {
+	private boolean isIPInLease(IPv4Address ip) {
 		return dhcpLeasingPool.values().stream()
 				.anyMatch(binding -> binding.getIPv4Address().equals(ip));
 	}
 
-	public boolean checkIPBelongsToPool(IPv4Address ip) {
+	public boolean isIPBelongsToPool(IPv4Address ip) {
 		return (ip.getInt() >= startingAddress.getInt() &&
 				ip.getInt() < startingAddress.getInt() + poolSize -1);
 	}
@@ -64,9 +64,9 @@ public class DHCPPool {
 		return dhcpLeasingPool.get(clientMac);
 	}
 
-	public boolean checkPoolAvailable() { return !dhcpRepository.isEmpty(); }
+	public boolean isPoolAvailable() { return !dhcpRepository.isEmpty(); }
 
-	private boolean checkIPAvailableInRepo(IPv4Address ip) {
+	private boolean isIPAvailableInRepo(IPv4Address ip) {
 		return dhcpRepository.stream()
 				.anyMatch(binding -> binding.getIPv4Address().equals(ip));
 	}
@@ -113,7 +113,7 @@ public class DHCPPool {
 
 	public Optional<IPv4Address> assignLeaseToClient(MacAddress clientMac, long time) {
 		// Client registered already
-		if (checkRegistration(clientMac)) {
+		if (isClientRegistered(clientMac)) {
 			DHCPBinding lease = dhcpLeasingPool.get(clientMac);
 			if (lease.getCurrLeaseState() != LeasingState.EXPIRED) {
 				return Optional.of(lease.getIPv4Address());
@@ -134,7 +134,7 @@ public class DHCPPool {
 
 	public Optional<IPv4Address> assignPermanentLeaseToClient(MacAddress clientMac) {
 		// Client registered already
-		if (checkRegistration(clientMac)) {
+		if (isClientRegistered(clientMac)) {
 			DHCPBinding lease = dhcpLeasingPool.get(clientMac);
 			if (lease.getCurrLeaseState() == LeasingState.PERMANENT_LEASED) {
 				return Optional.of(lease.getIPv4Address());
@@ -155,7 +155,7 @@ public class DHCPPool {
 
 	public Optional<IPv4Address> assignPermanentLeaseToClient(IPv4Address requestIP, MacAddress clientMac) {
 		// Not a valid IP request
-		if (checkIPInLease(requestIP) || !checkIPAvailableInRepo(requestIP) ) {
+		if (isIPInLease(requestIP) || !isIPAvailableInRepo(requestIP) ) {
 			log.info("Request static IP address is not available in pool");
 			return Optional.empty();
 		}
@@ -165,14 +165,14 @@ public class DHCPPool {
 
 	public Optional<IPv4Address> assignLeaseToClientWithRequestIP(@Nonnull IPv4Address requestIP, @Nonnull MacAddress clientMac, long time) {
 		// Found client registered
-		if (checkRegistration(clientMac)) {
+		if (isClientRegistered(clientMac)) {
 			if (dhcpLeasingPool.get(clientMac).getCurrLeaseState() == LeasingState.PERMANENT_LEASED) {
 				log.info("Reserved Fixed dhcp entry for MAC trumps requested IP {}. Returning binding for MAC {}",
 						requestIP, clientMac);
 				return Optional.of(dhcpLeasingPool.get(clientMac).getIPv4Address());
 			}
 			else {
-				if (checkIPAvailableInRepo(requestIP)) { // Request IP available, update current lease to the binding with request IP
+				if (isIPAvailableInRepo(requestIP)) { // Request IP available, update current lease to the binding with request IP
 					returnDHCPBindingtoRepository(dhcpLeasingPool.get(clientMac));
 					DHCPBinding lease = createRequestLeaseForClient(clientMac, requestIP, time);
 					log.info("Found required IP address available in pool. Updating lease for MAC {} with request IP address {}",
@@ -189,7 +189,7 @@ public class DHCPPool {
 		}
 		else {
 			// Found client not registered
-			if (!checkIPAvailableInRepo(requestIP)) { // If Request IP not available
+			if (!isIPAvailableInRepo(requestIP)) { // If Request IP not available
 				DHCPBinding lease = createLeaseForClient(clientMac, time);
 				log.info("Required IP address is not a valid IP address in this DHCP pool. " +
 								"Assigning a valid IP address {} instead for MAC {}",
@@ -206,19 +206,19 @@ public class DHCPPool {
 	}
 
 	public boolean cancelLeaseOfMac(@Nonnull MacAddress clientMac) {
-		if (!checkRegistration(clientMac)) {
+		if (!isClientRegistered(clientMac)) {
 			log.info("MAC {} not registered yet, no need to cancel dhcp lease", clientMac);
 			return false;
 		}
 
-		returnDHCPBindingtoRepository(dhcpLeasingPool.get(clientMac));
 		log.info("DHCP lease has been cancel on MAC {} with IP {}", clientMac,
 				dhcpLeasingPool.get(clientMac).getIPv4Address());
+		returnDHCPBindingtoRepository(dhcpLeasingPool.get(clientMac));
 		return true;
 	}
 
 	public boolean cancelLeaseOfIP(@Nonnull IPv4Address ip) {
-		if(!checkIPInLease(ip)){
+		if(!isIPInLease(ip)){
 			log.info("The request IP {} not in lease, no need to cancel", ip);
 			return false;
 		}
@@ -233,7 +233,7 @@ public class DHCPPool {
 	}
 
 	public boolean renewLeaseOfMAC(@Nonnull MacAddress clientMac, long time) {
-		if (!checkRegistration(clientMac)) {
+		if (!isClientRegistered(clientMac)) {
 			log.info("MAC {} not registered yet, can't renew lease", clientMac);
 			return false;
 		}
@@ -281,7 +281,7 @@ public class DHCPPool {
 	}
 
 	public boolean removeIPEntryfromPool(@Nonnull IPv4Address ip) {
-		if (!checkIPAvailableInRepo(ip)) {
+		if (!isIPAvailableInRepo(ip)) {
 			log.info("The request IP address {} is not valid, either because it is in use at this point " +
 					"or it is not an existing IP in DHCP pool", ip);
 			return false;

@@ -104,7 +104,7 @@ public class DHCPServer implements IOFMessageListener, IFloodlightModule, IDHCPS
         // TODO: double-check sychronized usage here
         // Check DHCP pool availability
         synchronized (instance.getDHCPPool()) {
-            if (!instance.getDHCPPool().checkPoolAvailable()) {
+            if (!instance.getDHCPPool().isPoolAvailable()) {
                 log.info("DHCP Pool is full, trying to allocate more space");
                 return Command.CONTINUE;
             }
@@ -132,28 +132,29 @@ public class DHCPServer implements IOFMessageListener, IFloodlightModule, IDHCPS
             case DISCOVER:
                 log.debug("DHCP DISCOVER message received, start handling... ");
                 OFPacketOut dhcpOffer = handler.handleDHCPDiscover(sw, inPort, instance, srcAddr, DhcpPayload);
-                if (dhcpOffer != null) {
-                    sw.write(dhcpOffer);
-                }
+                sw.write(dhcpOffer);
                 break;
 
             case REQUEST:
-                OFPacketOut dhcpConfirm = handler.handleDHCPRequest(sw, inPort, instance, srcAddr, dstAddr, DhcpPayload);
-                if (dhcpConfirm != null) {
-                    sw.write(dhcpConfirm);    // either ACK or NAK
-                }
+                log.debug("DHCP REQUEST message received, start handling... ");
+                OFPacketOut dhcpReply = handler.handleDHCPRequest(sw, inPort, instance, srcAddr, dstAddr, DhcpPayload);
+                sw.write(dhcpReply);    // either ACK or NAK
                 break;
 
             case RELEASE:   // clear client IP (e.g. client shut down, etc)
-
+                log.debug("DHCP RELEASE message received, start handling... ");
+                handler.handleDHCPRelease(instance, DhcpPayload.getClientHardwareAddress());
                 break;
 
             case DECLINE:   // client found assigned IP invalid
-
+                log.debug("DHCP DECLINE message received, start handling... ");
+                handler.handleDHCPDecline(instance, DhcpPayload.getClientHardwareAddress());
                 break;
 
             case INFORM:    // client request some information
-
+                log.debug("DHCP INFORM message received, start handling... ");
+                OFPacketOut dhcpAck = handler.handleDHCPInform(sw, inPort, instance, dstAddr, DhcpPayload);
+                sw.write(dhcpAck);
                 break;
 
             default:
@@ -347,7 +348,7 @@ public class DHCPServer implements IOFMessageListener, IFloodlightModule, IDHCPS
     @Override
     public Optional<DHCPInstance> getInstance(IPv4Address ip) {
         return dhcpInstanceMap.values().stream()
-                .filter(dhcpInstance -> dhcpInstance.getDHCPPool().checkIPBelongsToPool(ip))
+                .filter(dhcpInstance -> dhcpInstance.getDHCPPool().isIPBelongsToPool(ip))
                 .findAny();
     }
 
