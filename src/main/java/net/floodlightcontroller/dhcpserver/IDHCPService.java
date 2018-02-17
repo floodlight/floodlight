@@ -36,9 +36,7 @@ public interface IDHCPService extends IFloodlightService {
 		DISCOVER, REQUEST, RELEASE, DECLINE, INFORM, OFFER, ACK, NAK
 	}
 
-
 	public enum ClientState {
-
 		INIT_REBOOT, SELECTING, RENEWING, REBINDING, UNKNOWN
 	}
 

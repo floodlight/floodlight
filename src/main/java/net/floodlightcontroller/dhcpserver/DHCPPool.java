@@ -11,13 +11,18 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
 /**
- * The class representing a DHCP Pool.
- * This class is essentially a list of DHCPBinding objects containing IP, MAC, and lease status information.
+ * The class representing a DHCP Pool, which essentially a list of DHCPBinding objects containing IP, MAC, and
+ * lease status information
+ *
+ * The DHCP pool consists fo two DHCP tables
+ *   DHCP Repository - all DHCP binding here is available
+ *   DHCP Leasing Pool - all DHCP binding here is in lease
  *
  * @author Ryan Izard (rizard@g.clemson.edu)
  * @edited Qing Wang (qw@g.clemson.edu) on 1/3/2018
+ *
  */
-public class DHCPPool {
+public class DHCPPool implements IDHCPPool {
 	protected static final Logger log = LoggerFactory.getLogger(OldDHCPPool.class);
 	private volatile List<DHCPBinding> dhcpRepository;
 	private volatile Map<MacAddress, DHCPBinding> dhcpLeasingPool;
@@ -25,7 +30,7 @@ public class DHCPPool {
 	private volatile IPv4Address startingAddress;
 	private int poolSize;
 
-	public DHCPPool(IPv4Address startingAddress, int size) {
+	public DHCPPool(@Nonnull IPv4Address startingAddress, int size) {
 		dhcpRepository = new ArrayList<>();
 		dhcpLeasingPool = new HashMap<>();
 		int ipv4AsInt = startingAddress.getInt();
@@ -51,16 +56,16 @@ public class DHCPPool {
 				.anyMatch(binding -> binding.getIPv4Address().equals(ip));
 	}
 
-	public boolean isIPBelongsToPool(IPv4Address ip) {
+	public boolean isIPBelongsToPool(@Nonnull IPv4Address ip) {
 		return (ip.getInt() >= startingAddress.getInt() &&
 				ip.getInt() < startingAddress.getInt() + poolSize -1);
 	}
 
-	public IPv4Address getLeaseIP(MacAddress clientMac) {
+	public IPv4Address getLeaseIP(@Nonnull MacAddress clientMac) {
 		return dhcpLeasingPool.get(clientMac).getIPv4Address();
 	}
 
-	public DHCPBinding getLeaseBinding(MacAddress clientMac) {
+	public DHCPBinding getLeaseBinding(@Nonnull MacAddress clientMac) {
 		return dhcpLeasingPool.get(clientMac);
 	}
 
@@ -111,7 +116,7 @@ public class DHCPPool {
 		return lease.get();
 	}
 
-	public Optional<IPv4Address> assignLeaseToClient(MacAddress clientMac, long time) {
+	public Optional<IPv4Address> assignLeaseToClient(@Nonnull MacAddress clientMac, long time) {
 		// Client registered already
 		if (isClientRegistered(clientMac)) {
 			DHCPBinding lease = dhcpLeasingPool.get(clientMac);
@@ -132,7 +137,7 @@ public class DHCPPool {
 		}
 	}
 
-	public Optional<IPv4Address> assignPermanentLeaseToClient(MacAddress clientMac) {
+	public Optional<IPv4Address> assignPermanentLeaseToClient(@Nonnull MacAddress clientMac) {
 		// Client registered already
 		if (isClientRegistered(clientMac)) {
 			DHCPBinding lease = dhcpLeasingPool.get(clientMac);
@@ -153,7 +158,7 @@ public class DHCPPool {
 		}
 	}
 
-	public Optional<IPv4Address> assignPermanentLeaseToClient(IPv4Address requestIP, MacAddress clientMac) {
+	public Optional<IPv4Address> assignPermanentLeaseToClient(@Nonnull IPv4Address requestIP, @Nonnull MacAddress clientMac) {
 		// Not a valid IP request
 		if (isIPInLease(requestIP) || !isIPAvailableInRepo(requestIP) ) {
 			log.info("Request static IP address is not available in pool");
