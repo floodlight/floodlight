@@ -22,9 +22,5 @@ public class DHCPPoolTest extends FloodlightTestCase {
         return new DHCPPool(startIP, poolSize);
     }
 
-    @Test
-    public void testDisplayPool() throws Exception {
-        dhcpPool.displayDHCPPool();
-    }
 
 }

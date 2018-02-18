@@ -120,7 +120,7 @@ public class DHCP extends BasePacket {
             this.value = value;
         }
 
-        public byte getCode() {
+        public byte getValue() {
             return value;
         }
     }
@@ -140,7 +140,7 @@ public class DHCP extends BasePacket {
             this.value = value;
         }
 
-        public byte getCode(){
+        public byte getValue(){
             return value;
         }
     }
@@ -170,7 +170,7 @@ public class DHCP extends BasePacket {
         protected byte value;
         private DHCPMessageType(byte value) { this.value = value; }
 
-        public byte getCode(){
+        public byte getValue(){
             return value;
         }
     }

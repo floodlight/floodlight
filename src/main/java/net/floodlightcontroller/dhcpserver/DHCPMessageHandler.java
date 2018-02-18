@@ -13,6 +13,7 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * @author Qing Wang (qw@g.clemson.edu) at 2/4/18
@@ -60,17 +61,17 @@ public class DHCPMessageHandler {
          * --		(6)  DNS
          **/
         int xid = payload.getTransactionId();
-        IPv4Address yiaddr = payload.getYourIPAddress();
         IPv4Address giaddr = payload.getGatewayIPAddress();    // Will have GW IP if a relay agent was used
+        IPv4Address yiaddr = payload.getYourIPAddress();
         MacAddress chaddr = payload.getClientHardwareAddress();
         List<Byte> requestOrder = new ArrayList<>();
         IPv4Address requestIP = null;
 
         for (DHCPOption option : payload.getOptions()) {
-            if (option.getCode() == DHCPOptionCode.OptionCode_RequestedIP.getCode()) {
+            if (option.getCode() == DHCPOptionCode.OptionCode_RequestedIP.getValue()) {
                 requestIP = IPv4Address.of(option.getData());
                 log.debug("Handling Discover Message: got requested IP");
-            } else if (option.getCode() == DHCPOptionCode.OptionCode_RequestedParameters.getCode()) {
+            } else if (option.getCode() == DHCPOptionCode.OptionCode_RequestedParameters.getValue()) {
                 requestOrder = getRequestedParameters(payload, false);
                 log.debug("Handling Discover Message: got requested param list");
             }
@@ -101,41 +102,41 @@ public class DHCPMessageHandler {
         boolean requestedRenewTime = false;
 
         for (byte specificRequest : requests) {
-            if (specificRequest == DHCPOptionCode.OptionCode_SubnetMask.getCode()) {
-                requestOrder.add(DHCPOptionCode.OptionCode_SubnetMask.getCode());
+            if (specificRequest == DHCPOptionCode.OptionCode_SubnetMask.getValue()) {
+                requestOrder.add(DHCPOptionCode.OptionCode_SubnetMask.getValue());
 
-            } else if (specificRequest == DHCPOptionCode.OptionCode_Router.getCode()) {
-                requestOrder.add(DHCPOptionCode.OptionCode_Router.getCode());
+            } else if (specificRequest == DHCPOptionCode.OptionCode_Router.getValue()) {
+                requestOrder.add(DHCPOptionCode.OptionCode_Router.getValue());
 
-            } else if (specificRequest == DHCPOptionCode.OptionCode_DomainName.getCode()) {
-                requestOrder.add(DHCPOptionCode.OptionCode_DomainName.getCode());
+            } else if (specificRequest == DHCPOptionCode.OptionCode_DomainName.getValue()) {
+                requestOrder.add(DHCPOptionCode.OptionCode_DomainName.getValue());
 
-            } else if (specificRequest == DHCPOptionCode.OptionCode_DNS.getCode()) {
-                requestOrder.add(DHCPOptionCode.OptionCode_DNS.getCode());
+            } else if (specificRequest == DHCPOptionCode.OptionCode_DNS.getValue()) {
+                requestOrder.add(DHCPOptionCode.OptionCode_DNS.getValue());
 
-            } else if (specificRequest == DHCPOptionCode.OptionCode_LeaseTime.getCode()) {
-                requestOrder.add(DHCPOptionCode.OptionCode_LeaseTime.getCode());
+            } else if (specificRequest == DHCPOptionCode.OptionCode_LeaseTime.getValue()) {
+                requestOrder.add(DHCPOptionCode.OptionCode_LeaseTime.getValue());
                 requestedLeaseTime = true;
 
-            } else if (specificRequest == DHCPOptionCode.OptionCode_DHCPServerID.getCode()) {
-                requestOrder.add(DHCPOptionCode.OptionCode_DHCPServerID.getCode());
+            } else if (specificRequest == DHCPOptionCode.OptionCode_DHCPServerID.getValue()) {
+                requestOrder.add(DHCPOptionCode.OptionCode_DHCPServerID.getValue());
 
-            } else if (specificRequest == DHCPOptionCode.OptionCode_Broadcast_IP.getCode()) {
-                requestOrder.add(DHCPOptionCode.OptionCode_Broadcast_IP.getCode());
+            } else if (specificRequest == DHCPOptionCode.OptionCode_Broadcast_IP.getValue()) {
+                requestOrder.add(DHCPOptionCode.OptionCode_Broadcast_IP.getValue());
 
-            } else if (specificRequest == DHCPOptionCode.OptionCode_NTP_IP.getCode()) {
-                requestOrder.add(DHCPOptionCode.OptionCode_NTP_IP.getCode());
+            } else if (specificRequest == DHCPOptionCode.OptionCode_NTP_IP.getValue()) {
+                requestOrder.add(DHCPOptionCode.OptionCode_NTP_IP.getValue());
 
-            } else if (specificRequest == DHCPOptionCode.OPtionCode_RebindingTime.getCode()) {
-                requestOrder.add(DHCPOptionCode.OPtionCode_RebindingTime.getCode());
+            } else if (specificRequest == DHCPOptionCode.OPtionCode_RebindingTime.getValue()) {
+                requestOrder.add(DHCPOptionCode.OPtionCode_RebindingTime.getValue());
                 requestedRebindTime = true;
 
-            } else if (specificRequest == DHCPOptionCode.OptionCode_RenewalTime.getCode()) {
-                requestOrder.add(DHCPOptionCode.OptionCode_RenewalTime.getCode());
+            } else if (specificRequest == DHCPOptionCode.OptionCode_RenewalTime.getValue()) {
+                requestOrder.add(DHCPOptionCode.OptionCode_RenewalTime.getValue());
                 requestedRenewTime = true;
 
-            } else if (specificRequest == DHCPOptionCode.OptionCode_IPForwarding.getCode()) {
-                requestOrder.add(DHCPOptionCode.OptionCode_IPForwarding.getCode());
+            } else if (specificRequest == DHCPOptionCode.OptionCode_IPForwarding.getValue()) {
+                requestOrder.add(DHCPOptionCode.OptionCode_IPForwarding.getValue());
                 log.debug("requested IP FORWARDING");
 
             } else {
@@ -147,15 +148,15 @@ public class DHCPMessageHandler {
         // We need to add these in regardless if the request list includes them
         if (!isInform) {
             if (!requestedLeaseTime) {
-                requestOrder.add(DHCPOptionCode.OptionCode_LeaseTime.getCode());
+                requestOrder.add(DHCPOptionCode.OptionCode_LeaseTime.getValue());
                 log.debug("added option LEASE TIME");
             }
             if (!requestedRenewTime) {
-                requestOrder.add(DHCPOptionCode.OptionCode_RenewalTime.getCode());
+                requestOrder.add(DHCPOptionCode.OptionCode_RenewalTime.getValue());
                 log.debug("added option RENEWAL TIME");
             }
             if (!requestedRebindTime) {
-                requestOrder.add(DHCPOptionCode.OPtionCode_RebindingTime.getCode());
+                requestOrder.add(DHCPOptionCode.OPtionCode_RebindingTime.getValue());
                 log.debug("added option REBIND TIME");
             }
         }
@@ -165,7 +166,7 @@ public class DHCPMessageHandler {
 
     private DHCP buildDHCPOfferMessage(DHCPInstance instance, MacAddress chaddr, IPv4Address yiaddr, IPv4Address giaddr, int xid, List<Byte> requestOrder) {
         DHCP dhcpOffer = new DHCP()
-                .setOpCode(DHCP.DHCPOpCode.OpCode_Reply.getCode())
+                .setOpCode(DHCP.DHCPOpCode.OpCode_Reply.getValue())
                 .setHardwareType((byte) 1)
                 .setHardwareAddressLength((byte) 6)
                 .setHops((byte) 0)
@@ -182,67 +183,67 @@ public class DHCPMessageHandler {
 
         DHCPOption newOption;
         newOption = new DHCPOption()
-                .setCode(DHCPOptionCode.OptionCode_MessageType.getCode())
-                .setData(new byte[]{DHCP.DHCPMessageType.DISCOVER.getCode()})
+                .setCode(DHCPOptionCode.OptionCode_MessageType.getValue())
+                .setData(new byte[]{DHCP.DHCPMessageType.DISCOVER.getValue()})
                 .setLength((byte) 1);
         dhcpOfferOptions.add(newOption);
 
         for (Byte specificRequest : requestOrder) {
             newOption = new DHCPOption();
-            if (specificRequest == DHCPOptionCode.OptionCode_SubnetMask.getCode()) {
-                newOption.setCode(DHCPOptionCode.OptionCode_SubnetMask.getCode())
+            if (specificRequest == DHCPOptionCode.OptionCode_SubnetMask.getValue()) {
+                newOption.setCode(DHCPOptionCode.OptionCode_SubnetMask.getValue())
                         .setData(instance.getSubnetMask().getBytes())
                         .setLength((byte) 4);
 
-            } else if (specificRequest == DHCPOptionCode.OptionCode_Router.getCode()) {
-                newOption.setCode(DHCPOptionCode.OptionCode_Router.getCode())
+            } else if (specificRequest == DHCPOptionCode.OptionCode_Router.getValue()) {
+                newOption.setCode(DHCPOptionCode.OptionCode_Router.getValue())
                         .setData(instance.getRouterIP().getBytes())
                         .setLength((byte) 4);
 
-            } else if (specificRequest == DHCPOptionCode.OptionCode_DomainName.getCode()) {
-                newOption.setCode(DHCPOptionCode.OptionCode_DomainName.getCode())
+            } else if (specificRequest == DHCPOptionCode.OptionCode_DomainName.getValue()) {
+                newOption.setCode(DHCPOptionCode.OptionCode_DomainName.getValue())
                         .setData(instance.getDomainName().getBytes())
                         .setLength((byte) instance.getDomainName().getBytes().length);
 
-            } else if (specificRequest == DHCPOptionCode.OptionCode_DNS.getCode()) {
+            } else if (specificRequest == DHCPOptionCode.OptionCode_DNS.getValue()) {
                 byte[] byteArray = DHCPServerUtils.IPv4ListToByteArr(instance.getDNSServers()); // Convert List<IPv4Address> to byte[]
-                newOption.setCode(DHCPOptionCode.OptionCode_DNS.getCode())
+                newOption.setCode(DHCPOptionCode.OptionCode_DNS.getValue())
                         .setData(byteArray)
                         .setLength((byte) byteArray.length);
 
-            } else if (specificRequest == DHCPOptionCode.OptionCode_Broadcast_IP.getCode()) {
-                newOption.setCode(DHCPOptionCode.OptionCode_Broadcast_IP.getCode())
+            } else if (specificRequest == DHCPOptionCode.OptionCode_Broadcast_IP.getValue()) {
+                newOption.setCode(DHCPOptionCode.OptionCode_Broadcast_IP.getValue())
                         .setData(instance.getBroadcastIP().getBytes())
                         .setLength((byte) 4);
 
-            } else if (specificRequest == DHCPOptionCode.OptionCode_DHCPServerID.getCode()) {
-                newOption.setCode(DHCPOptionCode.OptionCode_DHCPServerID.getCode())
+            } else if (specificRequest == DHCPOptionCode.OptionCode_DHCPServerID.getValue()) {
+                newOption.setCode(DHCPOptionCode.OptionCode_DHCPServerID.getValue())
                         .setData(instance.getServerID().getBytes())
                         .setLength((byte) 4);
 
-            } else if (specificRequest == DHCPOptionCode.OptionCode_LeaseTime.getCode()) {
-                newOption.setCode(DHCPOptionCode.OptionCode_LeaseTime.getCode())
+            } else if (specificRequest == DHCPOptionCode.OptionCode_LeaseTime.getValue()) {
+                newOption.setCode(DHCPOptionCode.OptionCode_LeaseTime.getValue())
                         .setData(DHCPServerUtils.intToBytes(instance.getLeaseTimeSec()))
                         .setLength((byte) 4);
 
-            } else if (specificRequest == DHCPOptionCode.OptionCode_NTP_IP.getCode()) {
+            } else if (specificRequest == DHCPOptionCode.OptionCode_NTP_IP.getValue()) {
                 byte[] byteArray = DHCPServerUtils.IPv4ListToByteArr(instance.getNtpServers()); // Convert List<IPv4Address> to byte[]
-                newOption.setCode(DHCPOptionCode.OptionCode_NTP_IP.getCode())
+                newOption.setCode(DHCPOptionCode.OptionCode_NTP_IP.getValue())
                         .setData(byteArray)
                         .setLength((byte) byteArray.length);
 
-            } else if (specificRequest == DHCPOptionCode.OPtionCode_RebindingTime.getCode()) {
-                newOption.setCode(DHCPOptionCode.OPtionCode_RebindingTime.getCode())
+            } else if (specificRequest == DHCPOptionCode.OPtionCode_RebindingTime.getValue()) {
+                newOption.setCode(DHCPOptionCode.OPtionCode_RebindingTime.getValue())
                         .setData(DHCPServerUtils.intToBytes(instance.getRebindTimeSec()))
                         .setLength((byte) 4);
 
-            } else if (specificRequest == DHCPOptionCode.OptionCode_RenewalTime.getCode()) {
-                newOption.setCode(DHCPOptionCode.OptionCode_RenewalTime.getCode())
+            } else if (specificRequest == DHCPOptionCode.OptionCode_RenewalTime.getValue()) {
+                newOption.setCode(DHCPOptionCode.OptionCode_RenewalTime.getValue())
                         .setData(DHCPServerUtils.intToBytes(instance.getRenewalTimeSec()))
                         .setLength((byte) 4);
 
-            } else if (specificRequest == DHCPOptionCode.OptionCode_IPForwarding.getCode()) {
-                newOption.setCode(DHCPOptionCode.OptionCode_IPForwarding.getCode())
+            } else if (specificRequest == DHCPOptionCode.OptionCode_IPForwarding.getValue()) {
+                newOption.setCode(DHCPOptionCode.OptionCode_IPForwarding.getValue())
                         .setData(DHCPServerUtils.intToBytes(instance.getIpforwarding() ? 1 : 0))
                         .setLength((byte) 4);
 
@@ -255,7 +256,7 @@ public class DHCPMessageHandler {
         }
 
         newOption = new DHCPOption()
-                .setCode(DHCPOptionCode.OptionCode_END.getCode())
+                .setCode(DHCPOptionCode.OptionCode_END.getValue())
                 .setLength((byte) 0);
         dhcpOfferOptions.add(newOption);
 
@@ -335,12 +336,11 @@ public class DHCPMessageHandler {
      * @param sw
      * @param inPort
      * @param instance
-     * @param srcAddr
      * @param payload
      * @return
      */
     public OFPacketOut handleDHCPRequest(@Nonnull IOFSwitch sw, @Nonnull OFPort inPort, @Nonnull DHCPInstance instance,
-                                         @Nonnull IPv4Address srcAddr, @Nonnull IPv4Address dstAddr, @Nonnull DHCP payload) {
+                                         @Nonnull IPv4Address dstAddr, @Nonnull DHCP payload) {
 
         /** DHCP Request Message
          * -- UDP src port = 68
@@ -361,7 +361,6 @@ public class DHCPMessageHandler {
          * --	Option 54 = DHCP Server Identifier
          **/
         int xid = payload.getTransactionId();
-        IPv4Address ciaddr = payload.getClientIPAddress();
         IPv4Address yiaddr = payload.getYourIPAddress();
         IPv4Address giaddr = payload.getGatewayIPAddress();    // Will have GW IP if a relay agent was used
         MacAddress chaddr = payload.getClientHardwareAddress();
@@ -370,13 +369,13 @@ public class DHCPMessageHandler {
         IPv4Address serverID = null;
 
         for (DHCPOption option : payload.getOptions()) {
-            if (option.getCode() == DHCPOptionCode.OptionCode_DHCPServerID.getCode()) {
+            if (option.getCode() == DHCPOptionCode.OptionCode_DHCPServerID.getValue()) {
                 serverID = IPv4Address.of(option.getData());
             }
-            else if (option.getCode() == DHCPOptionCode.OptionCode_RequestedIP.getCode()) {
+            else if (option.getCode() == DHCPOptionCode.OptionCode_RequestedIP.getValue()) {
                 requestIP = IPv4Address.of(option.getData());
             }
-            else if (option.getCode() == DHCPOptionCode.OptionCode_RequestedParameters.getCode()) {
+            else if (option.getCode() == DHCPOptionCode.OptionCode_RequestedParameters.getValue()) {
                 requestOrder = getRequestedParameters(payload, false);
             }
         }
@@ -397,6 +396,10 @@ public class DHCPMessageHandler {
 
             case REBINDING:
                 sendACK = handleRebinding(instance, chaddr);
+                break;
+
+            default:
+                sendACK = false;
                 break;
         }
 
@@ -454,7 +457,6 @@ public class DHCPMessageHandler {
     public OFPacketOut handleDHCPInform(@Nonnull IOFSwitch sw, @Nonnull OFPort inPort, @Nonnull DHCPInstance instance,
                                         @Nonnull IPv4Address dstAddr, @Nonnull DHCP payload) {
         int xid = payload.getTransactionId();
-        IPv4Address ciaddr = payload.getClientIPAddress();
         IPv4Address yiaddr = IPv4Address.NONE;
         IPv4Address giaddr = payload.getGatewayIPAddress();    // Will have GW IP if a relay agent was used
         MacAddress chaddr = payload.getClientHardwareAddress();
@@ -525,12 +527,19 @@ public class DHCPMessageHandler {
         if (!serverID.equals(instance.getServerID())) {
             sendACK = false;
         }
-        // Client wants a different IP than we have on file
-        else if (!requstIP.equals(instance.getDHCPPool().getLeaseIP(chaddr))) {
-            sendACK = false;
-        }
         else {
-            sendACK = true;
+            Optional<IPv4Address> leaseIP = instance.getDHCPPool().getLeaseIP(chaddr);
+            if (!leaseIP.isPresent()) {
+                sendACK = false;
+            }
+            // Client wants a different IP than we have on file
+            else if (!requstIP.equals(instance.getDHCPPool().getLeaseIP(chaddr))) {
+                sendACK =false;
+            }
+            else {
+                sendACK = true;
+            }
+
         }
 
         if (!sendACK) {
@@ -552,15 +561,22 @@ public class DHCPMessageHandler {
      */
     private boolean handleRenewing(DHCPInstance instance, MacAddress chaddr) {
         boolean sendAck = false;
-        DHCPBinding lease = instance.getDHCPPool().getLeaseBinding(chaddr);
-        // If lease expired already, send NAK and cancel current lease; Client should start over to request an IP
-        if (lease.getCurrLeaseState() == LeasingState.EXPIRED) {
+        Optional<DHCPBinding> lease = instance.getDHCPPool().getLeaseBinding(chaddr);
+        // TODO: any way to refactor this?
+        if (!lease.isPresent()) {
             sendAck = false;
-            instance.getDHCPPool().cancelLeaseOfMac(chaddr);
         }
-        else { // If lease still alive, renew that lease
-            sendAck = true;
-            instance.getDHCPPool().renewLeaseOfMAC(chaddr, instance.getLeaseTimeSec());
+        else {
+            DHCPBinding l = lease.get();
+            // If lease expired already, send NAK and cancel current lease; Client should start over to request an IP
+            if (l.getCurrLeaseState() == LeasingState.EXPIRED) {
+                sendAck = false;
+                instance.getDHCPPool().cancelLeaseOfMac(chaddr);
+            }
+            else { // If lease still alive, renew that lease
+                sendAck = true;
+                instance.getDHCPPool().renewLeaseOfMAC(chaddr, instance.getLeaseTimeSec());
+            }
         }
 
         return sendAck;
@@ -579,12 +595,14 @@ public class DHCPMessageHandler {
      */
     private boolean handleRebinding(DHCPInstance instance, MacAddress chaddr) {
         boolean sendAck = false;
-        if (instance.getDHCPPool().getLeaseBinding(chaddr) != null) {
-            sendAck = true;
-            instance.getDHCPPool().renewLeaseOfMAC(chaddr, instance.getLeaseTimeSec());
+        // TODO: any way to refactor this?
+        Optional<DHCPBinding> binding = instance.getDHCPPool().getLeaseBinding(chaddr);
+        if (!binding.isPresent()) {
+            sendAck = false;
         }
         else {
-            sendAck = false;
+            sendAck = true;
+            instance.getDHCPPool().renewLeaseOfMAC(chaddr, instance.getLeaseTimeSec());
         }
 
         return sendAck;
@@ -651,7 +669,7 @@ public class DHCPMessageHandler {
     private DHCP setDHCPAck(DHCPInstance instance, MacAddress chaddr, IPv4Address yiaddr, IPv4Address giaddr,
                             int xid, List<Byte> requestOrder) {
         DHCP dhcpAck = new DHCP()
-                        .setOpCode(DHCP.DHCPOpCode.OpCode_Reply.getCode())
+                        .setOpCode(DHCP.DHCPOpCode.OpCode_Reply.getValue())
                         .setHardwareType((byte) 1)
                         .setHardwareAddressLength((byte) 6)
                         .setHops((byte) 0)
@@ -667,67 +685,67 @@ public class DHCPMessageHandler {
         List<DHCPOption> ackOptions = new ArrayList<>();
 
         DHCPOption newOption = new DHCPOption()
-                                .setCode(DHCPOptionCode.OptionCode_MessageType.getCode())
-                                .setData(new byte[]{DHCP.DHCPMessageType.ACK.getCode()})
+                                .setCode(DHCPOptionCode.OptionCode_MessageType.getValue())
+                                .setData(new byte[]{DHCP.DHCPMessageType.ACK.getValue()})
                                 .setLength((byte) 1);
 
         ackOptions.add(newOption);
         for (Byte specificRequest : requestOrder) {
             newOption = new DHCPOption();
-            if (specificRequest == DHCPOptionCode.OptionCode_SubnetMask.getCode()) {
-                newOption.setCode(DHCPOptionCode.OptionCode_SubnetMask.getCode())
+            if (specificRequest == DHCPOptionCode.OptionCode_SubnetMask.getValue()) {
+                newOption.setCode(DHCPOptionCode.OptionCode_SubnetMask.getValue())
                          .setData(instance.getSubnetMask().getBytes())
                          .setLength((byte) 4);
 
-            } else if (specificRequest == DHCPOptionCode.OptionCode_Router.getCode()) {
-                newOption.setCode(DHCPOptionCode.OptionCode_Router.getCode())
+            } else if (specificRequest == DHCPOptionCode.OptionCode_Router.getValue()) {
+                newOption.setCode(DHCPOptionCode.OptionCode_Router.getValue())
                          .setData(instance.getRouterIP().getBytes())
                          .setLength((byte) 4);
 
-            } else if (specificRequest == DHCPOptionCode.OptionCode_DomainName.getCode()) {
-                newOption.setCode(DHCPOptionCode.OptionCode_DomainName.getCode())
+            } else if (specificRequest == DHCPOptionCode.OptionCode_DomainName.getValue()) {
+                newOption.setCode(DHCPOptionCode.OptionCode_DomainName.getValue())
                          .setData(instance.getDomainName().getBytes())
                          .setLength((byte) instance.getDomainName().getBytes().length);
 
-            } else if (specificRequest == DHCPOptionCode.OptionCode_DNS.getCode()) {
+            } else if (specificRequest == DHCPOptionCode.OptionCode_DNS.getValue()) {
                 byte[] byteArray = DHCPServerUtils.IPv4ListToByteArr(instance.getDNSServers());		// Convert List<IPv4Address> to byte[]
-                newOption.setCode(DHCPOptionCode.OptionCode_DNS.getCode())
+                newOption.setCode(DHCPOptionCode.OptionCode_DNS.getValue())
                          .setData(byteArray)
                          .setLength((byte) byteArray.length);
 
-            } else if (specificRequest == DHCPOptionCode.OptionCode_Broadcast_IP.getCode()) {
-                newOption.setCode(DHCPOptionCode.OptionCode_Broadcast_IP.getCode())
+            } else if (specificRequest == DHCPOptionCode.OptionCode_Broadcast_IP.getValue()) {
+                newOption.setCode(DHCPOptionCode.OptionCode_Broadcast_IP.getValue())
                          .setData(instance.getBroadcastIP().getBytes())
                          .setLength((byte) 4);
 
-            } else if (specificRequest == DHCPOptionCode.OptionCode_DHCPServerID.getCode()) {
-                newOption.setCode(DHCPOptionCode.OptionCode_DHCPServerID.getCode())
+            } else if (specificRequest == DHCPOptionCode.OptionCode_DHCPServerID.getValue()) {
+                newOption.setCode(DHCPOptionCode.OptionCode_DHCPServerID.getValue())
                          .setData(instance.getServerID().getBytes())
                          .setLength((byte) 4);
 
-            } else if (specificRequest == DHCPOptionCode.OptionCode_LeaseTime.getCode()) {
-                newOption.setCode(DHCPOptionCode.OptionCode_LeaseTime.getCode())
+            } else if (specificRequest == DHCPOptionCode.OptionCode_LeaseTime.getValue()) {
+                newOption.setCode(DHCPOptionCode.OptionCode_LeaseTime.getValue())
                          .setData(DHCPServerUtils.intToBytes(instance.getLeaseTimeSec()))
                          .setLength((byte) 4);
 
-            } else if (specificRequest == DHCPOptionCode.OptionCode_NTP_IP.getCode()) {
+            } else if (specificRequest == DHCPOptionCode.OptionCode_NTP_IP.getValue()) {
                 byte[] byteArray = DHCPServerUtils.IPv4ListToByteArr(instance.getNtpServers());		// Convert List<IPv4Address> to byte[]
-                newOption.setCode(DHCPOptionCode.OptionCode_NTP_IP.getCode())
+                newOption.setCode(DHCPOptionCode.OptionCode_NTP_IP.getValue())
                          .setData(byteArray)
                          .setLength((byte) byteArray.length);
 
-            } else if (specificRequest == DHCPOptionCode.OPtionCode_RebindingTime.getCode()) {
-                newOption.setCode(DHCPOptionCode.OPtionCode_RebindingTime.getCode())
+            } else if (specificRequest == DHCPOptionCode.OPtionCode_RebindingTime.getValue()) {
+                newOption.setCode(DHCPOptionCode.OPtionCode_RebindingTime.getValue())
                          .setData(DHCPServerUtils.intToBytes(instance.getRebindTimeSec()))
                          .setLength((byte) 4);
 
-            } else if (specificRequest == DHCPOptionCode.OptionCode_RenewalTime.getCode()) {
-                newOption.setCode(DHCPOptionCode.OptionCode_RenewalTime.getCode())
+            } else if (specificRequest == DHCPOptionCode.OptionCode_RenewalTime.getValue()) {
+                newOption.setCode(DHCPOptionCode.OptionCode_RenewalTime.getValue())
                          .setData(DHCPServerUtils.intToBytes(instance.getRenewalTimeSec()))
                          .setLength((byte) 4);
 
-            } else if (specificRequest == DHCPOptionCode.OptionCode_IPForwarding.getCode()) {
-                newOption.setCode(DHCPOptionCode.OptionCode_IPForwarding.getCode())
+            } else if (specificRequest == DHCPOptionCode.OptionCode_IPForwarding.getValue()) {
+                newOption.setCode(DHCPOptionCode.OptionCode_IPForwarding.getValue())
                          .setData(DHCPServerUtils.intToBytes( instance.getIpforwarding() ? 1 : 0 ))
                          .setLength((byte) 1);
 
@@ -739,7 +757,7 @@ public class DHCPMessageHandler {
         }
 
         newOption = new DHCPOption()
-                    .setCode(DHCPOptionCode.OptionCode_END.getCode())
+                    .setCode(DHCPOptionCode.OptionCode_END.getValue())
                     .setLength((byte) 0);
         ackOptions.add(newOption);
 
@@ -784,7 +802,7 @@ public class DHCPMessageHandler {
 
     private DHCP setDHCPNak(DHCPInstance instance, MacAddress chaddr, IPv4Address giaddr, int xid) {
         DHCP dhcpNak = new DHCP()
-                        .setOpCode(DHCP.DHCPOpCode.OpCode_Reply.getCode())
+                        .setOpCode(DHCP.DHCPOpCode.OpCode_Reply.getValue())
                         .setHardwareType((byte) 1)
                         .setHardwareAddressLength((byte) 6)
                         .setHops((byte) 0)
@@ -800,19 +818,19 @@ public class DHCPMessageHandler {
         List<DHCPOption> nakOptions = new ArrayList<>();
         DHCPOption newOption;
         newOption = new DHCPOption()
-                        .setCode(DHCPOptionCode.OptionCode_MessageType.getCode())
-                        .setData(new byte[]{DHCP.DHCPMessageType.NAK.getCode()})
+                        .setCode(DHCPOptionCode.OptionCode_MessageType.getValue())
+                        .setData(new byte[]{DHCP.DHCPMessageType.NAK.getValue()})
                         .setLength((byte) 1);
         nakOptions.add(newOption);
 
         newOption = new DHCPOption()
-                .setCode(DHCPOptionCode.OptionCode_DHCPServerID.getCode())
+                .setCode(DHCPOptionCode.OptionCode_DHCPServerID.getValue())
                 .setData(instance.getServerID().getBytes())
                 .setLength((byte) 4);
         nakOptions.add(newOption);
 
         newOption = new DHCPOption()
-                .setCode(DHCPOptionCode.OptionCode_END.getCode())
+                .setCode(DHCPOptionCode.OptionCode_END.getValue())
                 .setLength((byte) 0);
         nakOptions.add(newOption);
 

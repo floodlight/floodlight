@@ -1,10 +1,10 @@
 package net.floodlightcontroller.dhcpserver.web;
 
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
+import java.io.IOException;
+import java.util.*;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import net.floodlightcontroller.dhcpserver.DHCPInstance;
 import net.floodlightcontroller.dhcpserver.IDHCPService;
 
@@ -17,47 +17,52 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class InstanceResource extends ServerResource {
-	private static final Logger log = LoggerFactory.getLogger(InstanceResource.class);
-	
+
 	@Get
-	Collection<DHCPInstance> getInstance() {
-		IDHCPService dhcp = (IDHCPService) getContext().getAttributes().get(IDHCPService.class.getCanonicalName());
-        String whichInstance = (String) getRequestAttributes().get(DHCPServerWebRoutable.STR_INSTANCE);
-        Collection<DHCPInstance> instances = null;
-        
-        if (whichInstance == null || whichInstance.isEmpty() || whichInstance.equalsIgnoreCase(DHCPServerWebRoutable.STR_ALL)) {
-        	instances = dhcp.getInstances();
-        } else {
-        	DHCPInstance instance = dhcp.getInstance(whichInstance);
-        	if (instance != null) {
-        		instances = Collections.singleton(instance);
-        	}
-        }
-        
-        if (instances == null) {
-        	log.error("Could not locate DHCP instance {}", whichInstance);
-        	return Collections.emptySet();
-        }
-        return instances;
+	public Object getInstance() {
+		IDHCPService dhcpService = (IDHCPService) getContext()
+									.getAttributes().get(IDHCPService.class.getCanonicalName());
+        String whichInstance = (String) getRequestAttributes().get("instance-name");
+
+        if (whichInstance.equalsIgnoreCase("all")) {
+        	Optional<Collection<DHCPInstance>> instances = dhcpService.getInstances();
+        	return instances.get().isEmpty() ? Collections.singletonMap("INFO: ", "No DHCP instance exist yet") : instances.get();
+		}
+		else {
+        	Optional<DHCPInstance> instance = dhcpService.getInstance(whichInstance);
+        	return instance.isPresent() ? instance.get() : Collections.singletonMap("INFO: ", "DHCP instance " + whichInstance + " not found");
+		}
+
 	}
 	
 	@Put
 	@Post
-	Map<String, String> addInstance(String json) {
-		IDHCPService dhcp = (IDHCPService) getContext().getAttributes().get(IDHCPService.class.getCanonicalName());
-		Map<String, String> rc = new HashMap<String, String>(1);
-		
-		rc.put("result", "DHCP instance added");
-		return rc;
+	public Object addInstance(String json) throws IOException {
+		IDHCPService dhcpService = (IDHCPService) getContext().getAttributes()
+									.get(IDHCPService.class.getCanonicalName());
+
+		try {
+			ObjectMapper mapper = new ObjectMapper();
+			JsonNode nameNode = mapper.readTree(json).get("instance-name");
+
+			if (nameNode == null) {
+				return Collections.singletonMap("INFO: ", "some fields missing");
+			}
+
+			DHCPInstance instance = mapper.reader(DHCPInstance.class).readValue(json);
+			dhcpService.addInstance(instance);
+			return Collections.singletonMap("INFO: ", "DHCP instance '" + instance.getName() + "' created");
+		}
+		catch (IOException e) {
+			throw new IOException(e);
+		}
+
+
 	}
 	
-	@Delete
-	Map<String, String> delInstance() {
-		IDHCPService dhcp = (IDHCPService) getContext().getAttributes().get(IDHCPService.class.getCanonicalName());
-        String whichInstance = (String) getRequestAttributes().get(DHCPServerWebRoutable.STR_INSTANCE);
-		Map<String, String> rc = new HashMap<String, String>(1);
-		
-		rc.put("result", "DHCP instance " + whichInstance + " deleted");
-		return rc;
-	}
+//	@Delete
+//	Object delInstance() {
+//		IDHCPService dhcp = (IDHCPService) getContext().getAttributes().get(IDHCPService.class.getCanonicalName());
+//
+//	}
 }

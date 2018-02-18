@@ -3,8 +3,10 @@ package net.floodlightcontroller.dhcpserver;
 import java.util.*;
 
 import net.floodlightcontroller.core.*;
+import net.floodlightcontroller.dhcpserver.web.DHCPServerWebRoutable;
 import net.floodlightcontroller.forwarding.Forwarding;
 import net.floodlightcontroller.packet.*;
+import net.floodlightcontroller.restserver.IRestApiService;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.OFPacketOut;
@@ -70,8 +72,9 @@ import net.floodlightcontroller.util.OFMessageUtils;
  */
 public class DHCPServer implements IOFMessageListener, IFloodlightModule, IDHCPService {
     protected static final Logger log = LoggerFactory.getLogger(DHCPServer.class);
-    protected static IFloodlightProviderService floodlightProviderService;
-    protected static IOFSwitchService switchService;
+    protected IFloodlightProviderService floodlightProviderService;
+    protected IOFSwitchService switchService;
+    protected IRestApiService restApiService;
 
     private static Map<String, DHCPInstance> dhcpInstanceMap;
     private static volatile boolean enableDHCPService = false;
@@ -125,35 +128,35 @@ public class DHCPServer implements IOFMessageListener, IFloodlightModule, IDHCPS
         return Command.CONTINUE;
     }
 
-    private void processDhcpRequest(DHCP DhcpPayload, IOFSwitch sw, OFPort inPort, DHCPInstance instance,
+    private void processDhcpRequest(DHCP dhcpPayload, IOFSwitch sw, OFPort inPort, DHCPInstance instance,
                                     IPv4Address srcAddr, IPv4Address dstAddr) {
         DHCPMessageHandler handler = new DHCPMessageHandler();
-        switch (DHCPServerUtils.getMessageType(DhcpPayload)) {
+        switch (DHCPServerUtils.getMessageType(dhcpPayload)) {
             case DISCOVER:
                 log.debug("DHCP DISCOVER message received, start handling... ");
-                OFPacketOut dhcpOffer = handler.handleDHCPDiscover(sw, inPort, instance, srcAddr, DhcpPayload);
+                OFPacketOut dhcpOffer = handler.handleDHCPDiscover(sw, inPort, instance, srcAddr, dhcpPayload);
                 sw.write(dhcpOffer);
                 break;
 
             case REQUEST:
                 log.debug("DHCP REQUEST message received, start handling... ");
-                OFPacketOut dhcpReply = handler.handleDHCPRequest(sw, inPort, instance, srcAddr, dstAddr, DhcpPayload);
+                OFPacketOut dhcpReply = handler.handleDHCPRequest(sw, inPort, instance, dstAddr, dhcpPayload);
                 sw.write(dhcpReply);    // either ACK or NAK
                 break;
 
             case RELEASE:   // clear client IP (e.g. client shut down, etc)
                 log.debug("DHCP RELEASE message received, start handling... ");
-                handler.handleDHCPRelease(instance, DhcpPayload.getClientHardwareAddress());
+                handler.handleDHCPRelease(instance, dhcpPayload.getClientHardwareAddress());
                 break;
 
             case DECLINE:   // client found assigned IP invalid
                 log.debug("DHCP DECLINE message received, start handling... ");
-                handler.handleDHCPDecline(instance, DhcpPayload.getClientHardwareAddress());
+                handler.handleDHCPDecline(instance, dhcpPayload.getClientHardwareAddress());
                 break;
 
             case INFORM:    // client request some information
                 log.debug("DHCP INFORM message received, start handling... ");
-                OFPacketOut dhcpAck = handler.handleDHCPInform(sw, inPort, instance, dstAddr, DhcpPayload);
+                OFPacketOut dhcpAck = handler.handleDHCPInform(sw, inPort, instance, dstAddr, dhcpPayload);
                 sw.write(dhcpAck);
                 break;
 
@@ -162,7 +165,6 @@ public class DHCPServer implements IOFMessageListener, IFloodlightModule, IDHCPS
         }
 
     }
-
 
     @Override
     public String getName() {
@@ -186,17 +188,27 @@ public class DHCPServer implements IOFMessageListener, IFloodlightModule, IDHCPS
 
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleServices() {
-        return null;
+        Collection<Class<? extends IFloodlightService>> s =
+                new HashSet<Class<? extends IFloodlightService>>();
+        s.add(IDHCPService.class);
+        return s;
     }
 
     @Override
     public Map<Class<? extends IFloodlightService>, IFloodlightService> getServiceImpls() {
-        return null;
+        Map<Class<? extends IFloodlightService>, IFloodlightService> m =
+                new HashMap<Class<? extends IFloodlightService>, IFloodlightService>();
+        m.put(IDHCPService.class, this);
+        return m;
     }
 
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleDependencies() {
-        return null;
+        Collection<Class<? extends IFloodlightService>> l = new ArrayList<Class<? extends IFloodlightService>>();
+        l.add(IFloodlightProviderService.class);
+        l.add(IDHCPService.class);
+        l.add(IRestApiService.class);
+        return l;
     }
 
     private DHCPInstance readDHCPConfig(Map<String, String> configOptions, DHCPInstanceBuilder builder) {
@@ -292,9 +304,9 @@ public class DHCPServer implements IOFMessageListener, IFloodlightModule, IDHCPS
             }
             builder.setVlanMembers(new HashSet<>(vlanMembers));
         }
-        // TODO: monitor DHCP bindings and clear expired leases?
-        // TODO: Optional check empty howto
-        if (!configOptions.get("enable").isEmpty() && ) {
+
+        String enableDHCP = configOptions.get("enable");
+        if (enableDHCP != null && !enableDHCP.isEmpty()) {
             enableDHCP();
         }
         else {
@@ -306,21 +318,19 @@ public class DHCPServer implements IOFMessageListener, IFloodlightModule, IDHCPS
 
     @Override
     public void init(FloodlightModuleContext context) throws FloodlightModuleException {
-        floodlightProviderService = context.getServiceImpl(IFloodlightProviderService.class);
-        switchService = context.getServiceImpl(IOFSwitchService.class);
+        this.floodlightProviderService = context.getServiceImpl(IFloodlightProviderService.class);
+        this.switchService = context.getServiceImpl(IOFSwitchService.class);
+        this.restApiService = context.getServiceImpl(IRestApiService.class);
         dhcpInstanceMap = new HashMap<>();
 
         DHCPInstance instance = readDHCPConfig(context.getConfigParams(this), DHCPInstance.createBuilder());
         dhcpInstanceMap.put(instance.getName(), instance);
-
-
-        // TODO: dhcpPool assign IP should check if pool available
-
     }
 
     @Override
     public void startUp(FloodlightModuleContext context) throws FloodlightModuleException {
         floodlightProviderService.addOFMessageListener(OFType.PACKET_IN, this);
+        restApiService.addRestletRoutable(new DHCPServerWebRoutable());
     }
 
     @Override
@@ -367,17 +377,19 @@ public class DHCPServer implements IOFMessageListener, IFloodlightModule, IDHCPS
     }
 
     @Override
-    public Collection<DHCPInstance> getInstances() {
-        return dhcpInstanceMap.values();
+    public Optional<Collection<DHCPInstance>> getInstances() {
+        return Optional.of(dhcpInstanceMap.values());
     }
 
     @Override
     public boolean addInstance(DHCPInstance instance) {
-        return false;
+        dhcpInstanceMap.put(instance.getName(), instance);
+        return true;
     }
 
     @Override
     public boolean deleteInstance(String name) {
         return false;
     }
+
 }

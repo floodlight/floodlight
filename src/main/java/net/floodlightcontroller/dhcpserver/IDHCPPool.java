@@ -17,7 +17,7 @@ public interface IDHCPPool {
      * @param clientMac
      * @return
      */
-    public IPv4Address getLeaseIP(MacAddress clientMac);
+    public Optional<IPv4Address> getLeaseIP(MacAddress clientMac);
 
     /**
      * Return the DHCP binding based on client MAC address
@@ -25,7 +25,7 @@ public interface IDHCPPool {
      * @param clientMac
      * @return
      */
-    public DHCPBinding getLeaseBinding(MacAddress clientMac);
+    public Optional<DHCPBinding> getLeaseBinding(MacAddress clientMac);
 
     /**
      * Assign an IPv4 address to client, one available IP from DHCP pool will be returned

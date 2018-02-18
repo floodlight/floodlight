@@ -23,7 +23,7 @@ import javax.annotation.Nullable;
  *
  */
 public class DHCPPool implements IDHCPPool {
-	protected static final Logger log = LoggerFactory.getLogger(OldDHCPPool.class);
+	protected static final Logger log = LoggerFactory.getLogger(DHCPPool.class);
 	private volatile List<DHCPBinding> dhcpRepository;
 	private volatile Map<MacAddress, DHCPBinding> dhcpLeasingPool;
 	private static final MacAddress unassignedMacAddress = MacAddress.NONE;
@@ -58,15 +58,15 @@ public class DHCPPool implements IDHCPPool {
 
 	public boolean isIPBelongsToPool(@Nonnull IPv4Address ip) {
 		return (ip.getInt() >= startingAddress.getInt() &&
-				ip.getInt() < startingAddress.getInt() + poolSize -1);
+				ip.getInt() < startingAddress.getInt() + poolSize - 1);
 	}
 
-	public IPv4Address getLeaseIP(@Nonnull MacAddress clientMac) {
-		return dhcpLeasingPool.get(clientMac).getIPv4Address();
+	public Optional<IPv4Address> getLeaseIP(@Nonnull MacAddress clientMac) {
+        return Optional.of(dhcpLeasingPool.get(clientMac).getIPv4Address());
 	}
 
-	public DHCPBinding getLeaseBinding(@Nonnull MacAddress clientMac) {
-		return dhcpLeasingPool.get(clientMac);
+	public Optional<DHCPBinding> getLeaseBinding(@Nonnull MacAddress clientMac) {
+		return Optional.of(dhcpLeasingPool.get(clientMac));
 	}
 
 	public boolean isPoolAvailable() { return !dhcpRepository.isEmpty(); }

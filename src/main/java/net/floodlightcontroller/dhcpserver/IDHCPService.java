@@ -48,7 +48,7 @@ public interface IDHCPService extends IFloodlightService {
 	public Optional<DHCPInstance> getInstance(IPv4Address ip);
 	public Optional<DHCPInstance> getInstance(NodePortTuple npt);
 	public Optional<DHCPInstance> getInstance(VlanVid vid);
-	public Collection<DHCPInstance> getInstances();
+	public Optional<Collection<DHCPInstance>> getInstances();
 
 	public boolean addInstance(DHCPInstance instance);
 	public boolean deleteInstance(String name);
