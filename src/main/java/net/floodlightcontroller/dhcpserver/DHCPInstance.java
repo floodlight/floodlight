@@ -3,6 +3,8 @@ package net.floodlightcontroller.dhcpserver;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import net.floodlightcontroller.core.types.NodePortTuple;
 import net.floodlightcontroller.dhcpserver.web.DHCPInstanceSerializer;
@@ -26,12 +28,14 @@ import java.util.concurrent.ConcurrentHashMap;
  *
  */
 @JsonSerialize(using = DHCPInstanceSerializer.class)
+@JsonDeserialize(builder = DHCPInstance.DHCPInstanceBuilder.class)
 public class DHCPInstance {
 
 	protected static final Logger log = LoggerFactory.getLogger(DHCPInstance.class);
 
 	private String name = null;
 	private volatile DHCPPool dhcpPool = null;
+	private volatile DHCPInstanceBuilder builder = null;
 
 	private IPv4Address serverID = IPv4Address.NONE;
 	private MacAddress serverMac = MacAddress.NONE;
@@ -77,38 +81,7 @@ public class DHCPInstance {
 	public Set<VlanVid> getVlanMembers() { return vlanMembers; }
 	public Set<MacAddress> getClientMembers() { return clientMembers; }
 
-
-	@JsonCreator
-	@JsonIgnoreProperties(ignoreUnknown = true)
-	private DHCPInstance(@JsonProperty("instance-name") String name,
-						 @JsonProperty("server-id") String serverID,
-						 @JsonProperty("server-mac") String serverMac,
-						 @JsonProperty("broadcast-ip") String broadcastIP,
-						 @JsonProperty("router-ip") String routerIP,
-						 @JsonProperty("subnet-mask") String subnetMask,
-						 @JsonProperty("start-ip") String startIP,
-						 @JsonProperty("end-ip") String endIP,
-						 @JsonProperty("lease-time") String leaseTime,
-						 @JsonProperty("rebind-time") String rebindTime,
-						 @JsonProperty("renew-time") String renewTime,
-						 @JsonProperty("ip-forwarding") String ipForwarding,
-						 @JsonProperty("domain-name") String domainName) {
-		this.name = name;
-		this.serverID = IPv4Address.of(serverID);
-		this.serverMac = MacAddress.of(serverMac);
-		this.broadcastIP = IPv4Address.of(broadcastIP);
-		this.routerIP = IPv4Address.of(routerIP);
-		this.subnetMask = IPv4Address.of(subnetMask);
-		this.startIPAddress = IPv4Address.of(startIP);
-		this.endIPAddress = IPv4Address.of(endIP);
-		this.leaseTimeSec = Integer.parseInt(leaseTime);
-		this.rebindTimeSec = (int)(Integer.parseInt(rebindTime) * 0.875);
-		this.renewalTimeSec = (int)(Integer.parseInt(renewTime) * 0.5);
-		this.ipforwarding = Boolean.valueOf(ipForwarding);
-		this.domainName = domainName;
-
-		this.dhcpPool = new DHCPPool(startIPAddress, endIPAddress.getInt() - startIPAddress.getInt() + 1);
-	}
+	public DHCPInstanceBuilder getBuilder() {return builder;}
 
 	private DHCPInstance(DHCPInstanceBuilder builder) {
 		this.name = builder.name;
@@ -133,12 +106,16 @@ public class DHCPInstance {
 		this.vlanMembers = builder.vlanMembers;
 		this.nptMembers = builder.nptMembers;
 		this.clientMembers = builder.clientMembers;
+
+		this.builder = builder;
 	}
 
 	public static DHCPInstanceBuilder createBuilder(){
 		return new DHCPInstanceBuilder();
 	}
 
+	@JsonPOJOBuilder(buildMethodName = "build", withPrefix = "set")
+	@JsonIgnoreProperties(ignoreUnknown = true)
 	public static class DHCPInstanceBuilder {
 		private String name;
 		private DHCPPool dhcpPool;
@@ -162,6 +139,41 @@ public class DHCPInstance {
 		private Set<MacAddress> clientMembers;
 		private Set<VlanVid> vlanMembers;
 		private Set<NodePortTuple> nptMembers;
+
+		public DHCPInstanceBuilder() { }
+
+		// Only used for create DHCP instance from REST API
+		@JsonCreator
+		@JsonIgnoreProperties(ignoreUnknown = true)
+		private DHCPInstanceBuilder(@JsonProperty("name") String name,
+									@JsonProperty("server-id") String serverID,
+									@JsonProperty("server-mac") String serverMac,
+									@JsonProperty("broadcast-ip") String broadcastIP,
+									@JsonProperty("router-ip") String routerIP,
+									@JsonProperty("subnet-mask") String subnetMask,
+									@JsonProperty("start-ip") String startIP,
+									@JsonProperty("end-ip") String endIP,
+									@JsonProperty("lease-time") String leaseTime,
+									@JsonProperty("rebind-time") String rebindTime,
+									@JsonProperty("renew-time") String renewTime,
+									@JsonProperty("ip-forwarding") String ipForwarding,
+									@JsonProperty("domain-name") String domainName) {
+			this.name = name;
+			this.serverID = IPv4Address.of(serverID);
+			this.serverMac = MacAddress.of(serverMac);
+			this.broadcastIP = IPv4Address.of(broadcastIP);
+			this.routerIP = IPv4Address.of(routerIP);
+			this.subnetMask = IPv4Address.of(subnetMask);
+			this.startIPAddress = IPv4Address.of(startIP);
+			this.endIPAddress = IPv4Address.of(endIP);
+			this.leaseTimeSec = Integer.parseInt(leaseTime);
+			this.rebindTimeSec = (int)(Integer.parseInt(rebindTime) * 0.875);
+			this.renewalTimeSec = (int)(Integer.parseInt(renewTime) * 0.5);
+			this.ipforwarding = Boolean.valueOf(ipForwarding);
+			this.domainName = domainName;
+
+			this.dhcpPool = new DHCPPool(startIPAddress, endIPAddress.getInt() - startIPAddress.getInt() + 1);
+		}
 
 		public DHCPInstanceBuilder setName(@Nonnull String name) {
 			if(name.isEmpty()){

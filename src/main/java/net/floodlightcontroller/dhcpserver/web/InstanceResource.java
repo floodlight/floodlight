@@ -3,6 +3,7 @@ package net.floodlightcontroller.dhcpserver.web;
 import java.io.IOException;
 import java.util.*;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import net.floodlightcontroller.dhcpserver.DHCPInstance;
@@ -37,32 +38,94 @@ public class InstanceResource extends ServerResource {
 	
 	@Put
 	@Post
+	// This would also overwrite/update an existing dhcp instance
 	public Object addInstance(String json) throws IOException {
 		IDHCPService dhcpService = (IDHCPService) getContext().getAttributes()
 									.get(IDHCPService.class.getCanonicalName());
 
 		try {
 			ObjectMapper mapper = new ObjectMapper();
-			JsonNode nameNode = mapper.readTree(json).get("instance-name");
+			mapper.configure(DeserializationFeature.FAIL_ON_IGNORED_PROPERTIES, false);
+			JsonNode nameNode = mapper.readTree(json).get("name");
+			JsonNode startIPNode = mapper.readTree(json).get("start-ip");
+			JsonNode endIPNode = mapper.readTree(json).get("end-ip");
+			JsonNode serverIDNode = mapper.readTree(json).get("server-id");
+			JsonNode serverMacNode = mapper.readTree(json).get("server-mac");
+			JsonNode routerIPNode = mapper.readTree(json).get("router-ip");
+			JsonNode broadcastNode = mapper.readTree(json).get("broadcast-ip");
+			JsonNode leaseTimeNode = mapper.readTree(json).get("lease-time");
+			JsonNode rebindTimeNode = mapper.readTree(json).get("rebind-time");
+			JsonNode renewTimeNode = mapper.readTree(json).get("renew-time");
+			JsonNode ipforwardingNode = mapper.readTree(json).get("ip-forwarding");
+			JsonNode domainNameNode = mapper.readTree(json).get("domain-name");
 
-			if (nameNode == null) {
-				return Collections.singletonMap("INFO: ", "some fields missing");
+			boolean getFields = false;
+			getFields = checkRequiredFields(nameNode, startIPNode, endIPNode, serverIDNode, serverMacNode,
+							routerIPNode, broadcastNode, leaseTimeNode, rebindTimeNode, renewTimeNode,
+							ipforwardingNode, domainNameNode);
+
+			if (!getFields) {
+				return Collections.singletonMap("INFO: ", "One or more required fields missing");
 			}
 
 			DHCPInstance instance = mapper.reader(DHCPInstance.class).readValue(json);
-			dhcpService.addInstance(instance);
-			return Collections.singletonMap("INFO: ", "DHCP instance '" + instance.getName() + "' created");
+			if (!dhcpService.getInstance(instance.getName()).isPresent()) {
+				// create a new dhcp instance
+				dhcpService.addInstance(instance);
+				return Collections.singletonMap("INFO: ", "DHCP instance '" + instance.getName() + "' created");
+			}
+			else {
+				// update an existing dhcp instance
+				dhcpService.updateInstance(nameNode.asText(), instance);
+				return Collections.singletonMap("INFO: ", "DHCP instance '" + nameNode.asText() + "' updated");
+			}
+
+
 		}
 		catch (IOException e) {
 			throw new IOException(e);
 		}
 
+	}
+
+	private boolean checkRequiredFields(JsonNode nameNode, JsonNode startIPNode, JsonNode endIPNode, JsonNode serverIDNode, JsonNode serverMacNode,
+										JsonNode routerIPNode, JsonNode broadcastNode, JsonNode leaseTimeNode, JsonNode rebindTimeNode,
+										JsonNode renewTimeNode, JsonNode ipforwardingNode, JsonNode domainNameNode) {
+		if (nameNode == null ||startIPNode == null || endIPNode == null || serverIDNode == null || serverMacNode == null
+				|| routerIPNode == null || broadcastNode == null || leaseTimeNode == null || rebindTimeNode == null
+				|| renewTimeNode == null || ipforwardingNode == null || domainNameNode == null) {
+			return false;
+		}
+		else {
+			return true;
+		}
 
 	}
 	
-//	@Delete
-//	Object delInstance() {
-//		IDHCPService dhcp = (IDHCPService) getContext().getAttributes().get(IDHCPService.class.getCanonicalName());
-//
-//	}
+	@Delete
+	public Object delInstance() {
+		IDHCPService dhcpService = (IDHCPService) getContext().getAttributes()
+								.get(IDHCPService.class.getCanonicalName());
+
+		String whichInstance = (String) getRequestAttributes().get("instance-name");
+
+		Optional<Collection<DHCPInstance>> instances = dhcpService.getInstances();
+		if (!instances.isPresent()) {
+			return Collections.singletonMap("INFO: ", "No dhcp instance exists yet");
+		}
+
+		if (whichInstance.equals("all")) {
+			dhcpService.deleteAllInstances();
+			return Collections.singletonMap("INFO: ", "All dhcp instances removed");
+		}
+		else {
+			if (dhcpService.deleteInstance(whichInstance)) {
+				return Collections.singletonMap("INFO: ", "DHCP instance '" + whichInstance + "' removed");
+			}
+			else {
+				return Collections.singletonMap("INFO: ", "DHCP instance '"  + whichInstance + "' not found");
+			}
+		}
+	}
+
 }

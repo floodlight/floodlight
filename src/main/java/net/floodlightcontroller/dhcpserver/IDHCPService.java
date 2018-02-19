@@ -50,7 +50,9 @@ public interface IDHCPService extends IFloodlightService {
 	public Optional<DHCPInstance> getInstance(VlanVid vid);
 	public Optional<Collection<DHCPInstance>> getInstances();
 
-	public boolean addInstance(DHCPInstance instance);
+	public void addInstance(DHCPInstance instance);
+	public void updateInstance(String name, DHCPInstance newInstance);
 	public boolean deleteInstance(String name);
+	public void deleteAllInstances();
 
 }

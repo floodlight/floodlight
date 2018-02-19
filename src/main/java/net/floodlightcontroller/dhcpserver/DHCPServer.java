@@ -211,6 +211,7 @@ public class DHCPServer implements IOFMessageListener, IFloodlightModule, IDHCPS
         return l;
     }
 
+    /**
     private DHCPInstance readDHCPConfig(Map<String, String> configOptions, DHCPInstanceBuilder builder) {
         try{
             builder.setName(configOptions.get("name"))
@@ -315,6 +316,7 @@ public class DHCPServer implements IOFMessageListener, IFloodlightModule, IDHCPS
 
         return builder.build();
     }
+    */
 
     @Override
     public void init(FloodlightModuleContext context) throws FloodlightModuleException {
@@ -323,8 +325,8 @@ public class DHCPServer implements IOFMessageListener, IFloodlightModule, IDHCPS
         this.restApiService = context.getServiceImpl(IRestApiService.class);
         dhcpInstanceMap = new HashMap<>();
 
-        DHCPInstance instance = readDHCPConfig(context.getConfigParams(this), DHCPInstance.createBuilder());
-        dhcpInstanceMap.put(instance.getName(), instance);
+//        DHCPInstance instance = readDHCPConfig(context.getConfigParams(this), DHCPInstance.createBuilder());
+//        dhcpInstanceMap.put(instance.getName(), instance);
     }
 
     @Override
@@ -382,14 +384,39 @@ public class DHCPServer implements IOFMessageListener, IFloodlightModule, IDHCPS
     }
 
     @Override
-    public boolean addInstance(DHCPInstance instance) {
+    public void addInstance(DHCPInstance instance) {
         dhcpInstanceMap.put(instance.getName(), instance);
-        return true;
     }
 
     @Override
     public boolean deleteInstance(String name) {
-        return false;
+        if (getInstance(name).isPresent()) {
+            dhcpInstanceMap.remove(name);
+            return true;
+        }
+        else {
+            return false;
+        }
     }
 
+    @Override
+    public void deleteAllInstances() {
+        dhcpInstanceMap.clear();
+    }
+
+    @Override
+    public void updateInstance(String name, DHCPInstance newInstance) {
+        DHCPInstance old = dhcpInstanceMap.get(name);
+        old.getBuilder().setSubnetMask(newInstance.getSubnetMask())
+                        .setStartIP(newInstance.getStartIPAddress())
+                        .setEndIP(newInstance.getEndIPAddress())
+                        .setBroadcastIP(newInstance.getBroadcastIP())
+                        .setRouterIP(newInstance.getRouterIP())
+                        .setDomainName(newInstance.getDomainName())
+                        .setLeaseTimeSec(newInstance.getLeaseTimeSec())
+                        .setIPforwarding(newInstance.getIpforwarding())
+                        .setServerMac(newInstance.getServerMac())
+                        .setServerID(newInstance.getServerID())
+                        .build();
+    }
 }
