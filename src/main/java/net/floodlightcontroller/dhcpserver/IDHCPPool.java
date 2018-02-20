@@ -17,7 +17,7 @@ public interface IDHCPPool {
      * @param clientMac
      * @return
      */
-    public Optional<IPv4Address> getLeaseIP(MacAddress clientMac);
+    Optional<IPv4Address> getLeaseIP(MacAddress clientMac);
 
     /**
      * Return the DHCP binding based on client MAC address
@@ -25,7 +25,7 @@ public interface IDHCPPool {
      * @param clientMac
      * @return
      */
-    public Optional<DHCPBinding> getLeaseBinding(MacAddress clientMac);
+    Optional<DHCPBinding> getLeaseBinding(MacAddress clientMac);
 
     /**
      * Assign an IPv4 address to client, one available IP from DHCP pool will be returned
@@ -34,7 +34,7 @@ public interface IDHCPPool {
      * @param time
      * @return
      */
-    public Optional<IPv4Address> assignLeaseToClient(MacAddress clientMac, long time);
+    Optional<IPv4Address> assignLeaseToClient(MacAddress clientMac, long time);
 
     /**
      * Assign an IPv4 address to client based on the Request IP address
@@ -44,7 +44,7 @@ public interface IDHCPPool {
      * @param time
      * @return
      */
-    public Optional<IPv4Address> assignLeaseToClientWithRequestIP(IPv4Address requestIP, MacAddress clientMac, long time);
+    Optional<IPv4Address> assignLeaseToClientWithRequestIP(IPv4Address requestIP, MacAddress clientMac, long time);
 
     /**
      * Assign a "permanent" IPv4 address to client, based on client MAC address. Because no specific IP address requested,
@@ -53,7 +53,7 @@ public interface IDHCPPool {
      * @param clientMac
      * @return
      */
-    public Optional<IPv4Address> assignPermanentLeaseToClient(MacAddress clientMac);
+    Optional<IPv4Address> assignPermanentLeaseToClient(MacAddress clientMac);
 
     /**
      * Assign a "permanent" IPv4 address to client, based on client MAC address and request IP address
@@ -62,7 +62,7 @@ public interface IDHCPPool {
      * @param clientMac
      * @return
      */
-    public Optional<IPv4Address> assignPermanentLeaseToClient(IPv4Address requestIP, MacAddress clientMac);
+    Optional<IPv4Address> assignPermanentLeaseToClient(IPv4Address requestIP, MacAddress clientMac);
 
     /**
      * Cancel the client dhcp lease based on client MAC address
@@ -70,7 +70,7 @@ public interface IDHCPPool {
      * @param clientMac
      * @return
      */
-    public boolean cancelLeaseOfMac(MacAddress clientMac);
+    boolean cancelLeaseOfMac(MacAddress clientMac);
 
     /**
      * Cancel the client dhcp lease based on the IP address
@@ -78,7 +78,7 @@ public interface IDHCPPool {
      * @param ip
      * @return
      */
-    public boolean cancelLeaseOfIP(IPv4Address ip);
+    boolean cancelLeaseOfIP(IPv4Address ip);
 
     /**
      * Renew the lease IP based on client MAC address
@@ -87,7 +87,7 @@ public interface IDHCPPool {
      * @param time
      * @return
      */
-    public boolean renewLeaseOfMAC(MacAddress clientMac, long time);
+    boolean renewLeaseOfMAC(MacAddress clientMac, long time);
 
     /**
      * Renew the lease IP based on request IP address
@@ -96,6 +96,6 @@ public interface IDHCPPool {
      * @param time
      * @return
      */
-    public boolean renewLeaseOfIP(IPv4Address ip, long time);
+    boolean renewLeaseOfIP(IPv4Address ip, long time);
 
 }
