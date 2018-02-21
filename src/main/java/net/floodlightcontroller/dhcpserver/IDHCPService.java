@@ -1,16 +1,15 @@
 package net.floodlightcontroller.dhcpserver;
 
-import java.util.Collection;
-import java.util.Optional;
-
+import net.floodlightcontroller.core.module.IFloodlightService;
+import net.floodlightcontroller.core.types.NodePortTuple;
 import org.projectfloodlight.openflow.types.IPv4Address;
 import org.projectfloodlight.openflow.types.VlanVid;
 
-import net.floodlightcontroller.core.module.IFloodlightService;
-import net.floodlightcontroller.core.types.NodePortTuple;
+import java.util.Collection;
+import java.util.Optional;
 
 public interface IDHCPService extends IFloodlightService {
-	public enum OpcodeType {
+	enum OpcodeType {
 		/**
 		 * DHCP messages are either:
 		 *		REQUEST  (client -- 0x01 --> server)
@@ -19,7 +18,7 @@ public interface IDHCPService extends IFloodlightService {
 		REQUEST, REPLY
 	}
 
-	public enum MessageType {
+	enum MessageType {
 		/**
 		 * DHCP REQUEST messages are either of type:
 		 *		DISCOVER (0x01)
@@ -36,23 +35,23 @@ public interface IDHCPService extends IFloodlightService {
 		DISCOVER, REQUEST, RELEASE, DECLINE, INFORM, OFFER, ACK, NAK
 	}
 
-	public enum ClientState {
+	enum ClientState {
 		INIT_REBOOT, SELECTING, RENEWING, REBINDING, UNKNOWN
 	}
 
-	public void enableDHCP();
-	public void disableDHCP();
-	public boolean isDHCPEnabled();
+	void enableDHCP();
+	void disableDHCP();
+	boolean isDHCPEnabled();
 
-	public Optional<DHCPInstance> getInstance(String name);
-	public Optional<DHCPInstance> getInstance(IPv4Address ip);
-	public Optional<DHCPInstance> getInstance(NodePortTuple npt);
-	public Optional<DHCPInstance> getInstance(VlanVid vid);
-	public Optional<Collection<DHCPInstance>> getInstances();
+	Optional<DHCPInstance> getInstance(String name);
+	Optional<DHCPInstance> getInstance(IPv4Address ip);
+	Optional<DHCPInstance> getInstance(NodePortTuple npt);
+	Optional<DHCPInstance> getInstance(VlanVid vid);
+	Collection<DHCPInstance> getInstances();
 
-	public void addInstance(DHCPInstance instance);
-	public void updateInstance(String name, DHCPInstance newInstance);
-	public boolean deleteInstance(String name);
-	public void deleteAllInstances();
+	void addInstance(DHCPInstance instance);
+	void updateInstance(String name, DHCPInstance newInstance);
+	boolean deleteInstance(String name);
+	void deleteAllInstances();
 
 }
