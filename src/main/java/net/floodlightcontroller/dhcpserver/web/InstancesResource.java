@@ -10,32 +10,25 @@ import org.restlet.data.Status;
 import org.restlet.resource.*;
 
 import java.io.IOException;
-import java.util.Optional;
+import java.util.Collection;
 
-public class InstanceResource extends ServerResource {
-
-    private static final String INSTANCE_NOT_FOUND_MESSAGE = "Instance not found.";
+/**
+ * @author Geddings Barrineau, geddings.barrineau@bigswitch.com on 2/21/18.
+ */
+public class InstancesResource extends ServerResource {
 
     @Get
-    public Object getInstance() {
+    public Object getInstances() {
         IDHCPService dhcpService = (IDHCPService) getContext()
                 .getAttributes().get(IDHCPService.class.getCanonicalName());
-        String whichInstance = (String) getRequestAttributes().get("instance-name");
 
-        Optional<DHCPInstance> instance = dhcpService.getInstance(whichInstance);
-
-        if (instance.isPresent()) {
-            return instance.get();
-        } else {
-            setStatus(Status.CLIENT_ERROR_NOT_FOUND, INSTANCE_NOT_FOUND_MESSAGE);
-            return null;
-        }
+        return dhcpService.getInstances();
     }
 
     @Put
     @Post
     // This would also overwrite/update an existing dhcp instance
-    public Object updateInstance(String json) {
+    public Object addInstance(String json) {
         IDHCPService dhcpService = (IDHCPService) getContext().getAttributes()
                 .get(IDHCPService.class.getCanonicalName());
 
@@ -60,14 +53,17 @@ public class InstanceResource extends ServerResource {
                     ipforwardingNode, domainNameNode);
 
             if (!getFields) {
-                setStatus(Status.CLIENT_ERROR_BAD_REQUEST, "One or more required fields missing.");
+                setStatus(org.restlet.data.Status.CLIENT_ERROR_BAD_REQUEST, "One or more required fields missing.");
                 return null;
             }
 
             DHCPInstance instance = mapper.reader(DHCPInstance.class).readValue(json);
             if (!dhcpService.getInstance(instance.getName()).isPresent()) {
-                setStatus(Status.CLIENT_ERROR_NOT_FOUND, INSTANCE_NOT_FOUND_MESSAGE);
-                return null;
+                // create a new dhcp instance
+                dhcpService.addInstance(instance);
+                setStatus(Status.SUCCESS_CREATED);
+                setLocationRef(getReference().toString() + "/" + instance.getName());
+                return instance;
             } else {
                 // update an existing dhcp instance
                 dhcpService.updateInstance(nameNode.asText(), instance);
@@ -78,7 +74,6 @@ public class InstanceResource extends ServerResource {
             setStatus(org.restlet.data.Status.CLIENT_ERROR_BAD_REQUEST, "Instance object could not be deserialized.");
             return e;
         }
-
     }
 
     private boolean checkRequiredFields(JsonNode nameNode, JsonNode startIPNode, JsonNode endIPNode, JsonNode
@@ -94,18 +89,13 @@ public class InstanceResource extends ServerResource {
     }
 
     @Delete
-    public Object deleteInstance() {
-        IDHCPService dhcpService = (IDHCPService) getContext().getAttributes()
-                .get(IDHCPService.class.getCanonicalName());
+    public Object deleteInstances() {
+        IDHCPService dhcpService = (IDHCPService) getContext()
+                .getAttributes().get(IDHCPService.class.getCanonicalName());
 
-        String whichInstance = (String) getRequestAttributes().get("instance-name");
+        Collection<DHCPInstance> instances = dhcpService.getInstances();
+        dhcpService.deleteAllInstances();
 
-        if (dhcpService.deleteInstance(whichInstance)) {
-            return ImmutableMap.of("deleted", whichInstance);
-        } else {
-            setStatus(Status.CLIENT_ERROR_NOT_FOUND, INSTANCE_NOT_FOUND_MESSAGE);
-            return null;
-        }
+        return ImmutableMap.of("deleted", instances);
     }
-
 }

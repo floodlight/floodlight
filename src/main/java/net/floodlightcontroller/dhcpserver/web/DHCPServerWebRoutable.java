@@ -11,11 +11,8 @@ public class DHCPServerWebRoutable implements RestletRoutable {
     @Override
     public Router getRestlet(Context context) {
         Router router = new Router(context);
-        router.attach("/add/instance/json", InstanceResource.class);
-        router.attach("/get/instance/{instance-name}/json", InstanceResource.class);
-        router.attach("/del/instance/{instance-name}/json", InstanceResource.class);
-        router.attach("/static-binding/json", BindingResource.class);
-
+        router.attach("/instance", InstancesResource.class);
+        router.attach("/instance/{instance-name}", InstanceResource.class);
         return router;
     }
 
@@ -24,6 +21,6 @@ public class DHCPServerWebRoutable implements RestletRoutable {
      */
     @Override
     public String basePath() {
-        return "/wm/dhcpserver";
+        return "/wm/dhcp";
     }
 }

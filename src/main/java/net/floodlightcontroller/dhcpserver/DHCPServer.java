@@ -1,28 +1,33 @@
 package net.floodlightcontroller.dhcpserver;
 
-import java.util.*;
-
-import net.floodlightcontroller.core.*;
-import net.floodlightcontroller.dhcpserver.web.DHCPServerWebRoutable;
-import net.floodlightcontroller.forwarding.Forwarding;
-import net.floodlightcontroller.packet.*;
-import net.floodlightcontroller.restserver.IRestApiService;
-import org.projectfloodlight.openflow.protocol.OFMessage;
-import org.projectfloodlight.openflow.protocol.OFPacketIn;
-import org.projectfloodlight.openflow.protocol.OFPacketOut;
-import org.projectfloodlight.openflow.protocol.OFType;
-import org.projectfloodlight.openflow.types.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
+import net.floodlightcontroller.core.FloodlightContext;
+import net.floodlightcontroller.core.IFloodlightProviderService;
+import net.floodlightcontroller.core.IOFMessageListener;
+import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.core.types.NodePortTuple;
-import net.floodlightcontroller.dhcpserver.DHCPInstance.DHCPInstanceBuilder;
+import net.floodlightcontroller.dhcpserver.web.DHCPServerWebRoutable;
+import net.floodlightcontroller.forwarding.Forwarding;
+import net.floodlightcontroller.packet.DHCP;
+import net.floodlightcontroller.packet.Ethernet;
+import net.floodlightcontroller.packet.IPv4;
+import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.util.OFMessageUtils;
+import org.projectfloodlight.openflow.protocol.OFMessage;
+import org.projectfloodlight.openflow.protocol.OFPacketIn;
+import org.projectfloodlight.openflow.protocol.OFPacketOut;
+import org.projectfloodlight.openflow.protocol.OFType;
+import org.projectfloodlight.openflow.types.IPv4Address;
+import org.projectfloodlight.openflow.types.OFPort;
+import org.projectfloodlight.openflow.types.VlanVid;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.*;
 
 /**
  * SDN DHCP Server
@@ -379,8 +384,8 @@ public class DHCPServer implements IOFMessageListener, IFloodlightModule, IDHCPS
     }
 
     @Override
-    public Optional<Collection<DHCPInstance>> getInstances() {
-        return Optional.of(dhcpInstanceMap.values());
+    public Collection<DHCPInstance> getInstances() {
+        return dhcpInstanceMap.values();
     }
 
     @Override
