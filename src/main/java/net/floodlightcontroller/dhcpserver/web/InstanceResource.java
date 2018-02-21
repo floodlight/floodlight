@@ -39,6 +39,11 @@ public class InstanceResource extends ServerResource {
         IDHCPService dhcpService = (IDHCPService) getContext().getAttributes()
                 .get(IDHCPService.class.getCanonicalName());
 
+        if (json == null) {
+            setStatus(org.restlet.data.Status.CLIENT_ERROR_BAD_REQUEST, "One or more required fields missing.");
+            return null;
+        }
+
         try {
             ObjectMapper mapper = new ObjectMapper();
             mapper.configure(DeserializationFeature.FAIL_ON_IGNORED_PROPERTIES, false);
