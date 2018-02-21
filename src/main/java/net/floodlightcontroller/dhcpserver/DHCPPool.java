@@ -1,7 +1,5 @@
 package net.floodlightcontroller.dhcpserver;
 
-import java.util.*;
-
 import org.projectfloodlight.openflow.types.IPv4Address;
 import org.projectfloodlight.openflow.types.MacAddress;
 import org.slf4j.Logger;
@@ -9,6 +7,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import java.util.*;
 
 /**
  * The class representing a DHCP Pool, which essentially a list of DHCPBinding objects containing IP, MAC, and
@@ -62,7 +61,8 @@ public class DHCPPool implements IDHCPPool {
 	}
 
 	public Optional<IPv4Address> getLeaseIP(@Nonnull MacAddress clientMac) {
-        return Optional.of(dhcpLeasingPool.get(clientMac).getIPv4Address());
+		DHCPBinding binding = dhcpLeasingPool.get(clientMac);
+		return binding != null ? Optional.of(binding.getIPv4Address()) : Optional.empty();
 	}
 
 	public Optional<DHCPBinding> getLeaseBinding(@Nonnull MacAddress clientMac) {
@@ -82,9 +82,9 @@ public class DHCPPool implements IDHCPPool {
 	}
 
 	private void returnDHCPBindingtoRepository(DHCPBinding binding) {
+		dhcpLeasingPool.remove(binding.getMACAddress());
 		binding.cancelLease();
 		dhcpRepository.add(binding);
-		dhcpLeasingPool.remove(binding);
 	}
 
 	private DHCPBinding createLeaseForClient(@Nonnull MacAddress clientMac, long time) {
