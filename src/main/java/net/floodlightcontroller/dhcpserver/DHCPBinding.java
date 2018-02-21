@@ -2,11 +2,10 @@ package net.floodlightcontroller.dhcpserver;
 
 import org.projectfloodlight.openflow.types.IPv4Address;
 import org.projectfloodlight.openflow.types.MacAddress;
-
-import javax.annotation.Nonnull;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import javax.annotation.Nonnull;
 
 /**
  * The class representing a DHCP Binding -- MAC and IP.
@@ -31,16 +30,17 @@ import org.slf4j.LoggerFactory;
 
 public class DHCPBinding {
 	protected static final Logger log = LoggerFactory.getLogger(DHCPBinding.class);
-	private MacAddress mac = MacAddress.NONE;
-	private IPv4Address ip = IPv4Address.NONE;
-	private LeasingState currentState;
 
+	private final IPv4Address ip;
+
+	private MacAddress mac = MacAddress.NONE;
+	private LeasingState currentState;
 	private long startTimeSec;
 	private long durationTimeSec;
 	
 	protected DHCPBinding(IPv4Address ip, MacAddress mac) {
+		this.ip = ip;
 		this.setMACAddress(mac);
-		this.setIPv4Address(ip);
 		this.currentState = LeasingState.AVAILABLE;
 	}
 
@@ -95,10 +95,6 @@ public class DHCPBinding {
 		setLeaseDuration(durationTime);
 		currentState = LeasingState.LEASED;
 	}
-
-	private void setIPv4Address(IPv4Address ip) {
-		this.ip = ip;
-	}
 	
 	private void setMACAddress(MacAddress mac) {
 		this.mac = mac;
@@ -109,23 +105,14 @@ public class DHCPBinding {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
 
-		DHCPBinding binding = (DHCPBinding) o;
+		DHCPBinding that = (DHCPBinding) o;
 
-		if (startTimeSec != binding.startTimeSec) return false;
-		if (durationTimeSec != binding.durationTimeSec) return false;
-		if (mac != null ? !mac.equals(binding.mac) : binding.mac != null) return false;
-		if (ip != null ? !ip.equals(binding.ip) : binding.ip != null) return false;
-		return currentState == binding.currentState;
+		return ip != null ? ip.equals(that.ip) : that.ip == null;
 	}
 
 	@Override
 	public int hashCode() {
-		int result = mac != null ? mac.hashCode() : 0;
-		result = 31 * result + (ip != null ? ip.hashCode() : 0);
-		result = 31 * result + (currentState != null ? currentState.hashCode() : 0);
-		result = 31 * result + (int) (startTimeSec ^ (startTimeSec >>> 32));
-		result = 31 * result + (int) (durationTimeSec ^ (durationTimeSec >>> 32));
-		return result;
+		return ip != null ? ip.hashCode() : 0;
 	}
 
 	@Override
