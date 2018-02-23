@@ -122,6 +122,8 @@ public class DHCPServer implements IOFMessageListener, IFloodlightModule, IDHCPS
         IPv4Address srcAddr = ((IPv4) eth.getPayload()).getSourceAddress();
         IPv4Address dstAddr = ((IPv4) eth.getPayload()).getDestinationAddress();
 
+        // TODO: any better design for check expired leases?
+        instance.getDHCPPool().checkExpiredLeases();
         switch (DHCPServerUtils.getOpcodeType(dhcPayload)) {
             case REQUEST:
                 processDhcpRequest(dhcPayload, sw, inPort, instance, srcAddr, dstAddr);

@@ -8,7 +8,6 @@ import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import net.floodlightcontroller.core.types.NodePortTuple;
 import net.floodlightcontroller.dhcpserver.web.DHCPInstanceSerializer;
-import net.floodlightcontroller.packet.IPv4;
 import org.projectfloodlight.openflow.types.IPv4Address;
 import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.VlanVid;
@@ -324,7 +323,7 @@ public class DHCPInstance {
 			if (this.staticAddresseses != null) {
 				// Remove invalid entry
 				for (Map.Entry<MacAddress, IPv4Address> entry : this.staticAddresseses.entrySet()) {
-					if (!this.dhcpPool.assignPermanentLeaseToClient(entry.getValue(), entry.getKey()).isPresent()) {
+					if (!this.dhcpPool.assignPermanentLeaseToClientWithRequestIP(entry.getValue(), entry.getKey()).isPresent()) {
 						staticAddresseses.remove(entry.getKey());
 					}
 				}

@@ -31,20 +31,20 @@ public interface IDHCPPool {
      * Assign an IPv4 address to client, one available IP from DHCP pool will be returned
      *
      * @param clientMac
-     * @param time
+     * @param timeSec
      * @return
      */
-    Optional<IPv4Address> assignLeaseToClient(MacAddress clientMac, long time);
+    Optional<IPv4Address> assignLeaseToClient(MacAddress clientMac, long timeSec);
 
     /**
      * Assign an IPv4 address to client based on the Request IP address
      *
      * @param requestIP
      * @param clientMac
-     * @param time
+     * @param timeSec
      * @return
      */
-    Optional<IPv4Address> assignLeaseToClientWithRequestIP(IPv4Address requestIP, MacAddress clientMac, long time);
+    Optional<IPv4Address> assignLeaseToClientWithRequestIP(IPv4Address requestIP, MacAddress clientMac, long timeSec);
 
     /**
      * Assign a "permanent" IPv4 address to client, based on client MAC address. Because no specific IP address requested,
@@ -58,11 +58,14 @@ public interface IDHCPPool {
     /**
      * Assign a "permanent" IPv4 address to client, based on client MAC address and request IP address
      *
+     * If request IP is not valid, DHCP server will not try to allocate an available IP. It is client responsibility to
+     * specify an valid IP as a permanent IP
+     *
      * @param requestIP
      * @param clientMac
      * @return
      */
-    Optional<IPv4Address> assignPermanentLeaseToClient(IPv4Address requestIP, MacAddress clientMac);
+    Optional<IPv4Address> assignPermanentLeaseToClientWithRequestIP(IPv4Address requestIP, MacAddress clientMac);
 
     /**
      * Cancel the client dhcp lease based on client MAC address
@@ -84,18 +87,20 @@ public interface IDHCPPool {
      * Renew the lease IP based on client MAC address
      *
      * @param clientMac
-     * @param time
+     * @param timeSec
      * @return
      */
-    boolean renewLeaseOfMAC(MacAddress clientMac, long time);
+    boolean renewLeaseOfMAC(MacAddress clientMac, long timeSec);
 
     /**
      * Renew the lease IP based on request IP address
      *
      * @param ip
-     * @param time
+     * @param timeSec
      * @return
      */
-    boolean renewLeaseOfIP(IPv4Address ip, long time);
+    boolean renewLeaseOfIP(IPv4Address ip, long timeSec);
+
+    void checkExpiredLeases();
 
 }
