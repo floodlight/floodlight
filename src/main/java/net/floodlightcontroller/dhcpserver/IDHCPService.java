@@ -50,7 +50,7 @@ public interface IDHCPService extends IFloodlightService {
 	Collection<DHCPInstance> getInstances();
 
 	void addInstance(DHCPInstance instance);
-	void updateInstance(String name, DHCPInstance newInstance);
+	DHCPInstance updateInstance(String name, DHCPInstance newInstance);
 	boolean deleteInstance(String name);
 	void deleteAllInstances();
 

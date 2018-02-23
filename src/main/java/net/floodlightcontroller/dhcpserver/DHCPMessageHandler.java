@@ -164,7 +164,30 @@ public class DHCPMessageHandler {
         return requestOrder;
     }
 
-    private DHCP buildDHCPOfferMessage(DHCPInstance instance, MacAddress chaddr, IPv4Address yiaddr, IPv4Address giaddr, int xid, List<Byte> requestOrder) {
+    public DHCP buildDHCPOfferMessage(DHCPInstance instance, MacAddress chaddr, IPv4Address yiaddr, IPv4Address giaddr, int xid, List<Byte> requestOrder) {
+        /**
+         * DHCP Offer Message
+         * -- UDP src port = 67
+         * -- UDP dst port = 68
+         * -- IP src addr = DHCP DHCPServer's IP
+         * -- IP dst addr = 255.255.255.255
+         * -- Opcode = 0x02
+         *
+         * -- XID = transactionX
+         * -- ciaddr = 0.0.0.0
+         * -- yiaddr = offer IP from DHCP pool
+         * -- siaddr = DHCP DHCPServer IP
+         * -- giaddr = blank
+         * -- chaddr = Client's MAC
+         * --
+         * -- Options:
+         * --	Option 53 = DHCP Offer
+         * --	Option 1 = SN Mask IP
+         * --	Option 3 = Router IP
+         * --	Option 51 = Lease time (s)
+         * --	Option 54 = DHCP DHCPServer IP
+         * --	Option 6 = DNS servers
+         **/
         DHCP dhcpOffer = new DHCP()
                 .setOpCode(DHCP.DHCPOpCode.OpCode_Reply.getValue())
                 .setHardwareType((byte) 1)
@@ -268,28 +291,7 @@ public class DHCPMessageHandler {
 
     public OFPacketOut buildDHCPOfferPacketOut(@Nonnull DHCPInstance instance, @Nonnull IOFSwitch sw, @Nonnull OFPort inPort,
                                                @Nonnull IPv4Address clientIPAddress, @Nonnull DHCP dhcpOfferPacket) {
-        /**
-         * DHCP Offer Message
-         * -- UDP src port = 67
-         * -- UDP dst port = 68
-         * -- IP src addr = DHCP DHCPServer's IP
-         * -- IP dst addr = 255.255.255.255
-         * -- Opcode = 0x02
-         * -- XID = transactionX
-         * -- ciaddr = blank
-         * -- yiaddr = offer IP
-         * -- siaddr = DHCP DHCPServer IP
-         * -- giaddr = blank
-         * -- chaddr = Client's MAC
-         * --
-         * -- Options:
-         * --	Option 53 = DHCP Offer
-         * --	Option 1 = SN Mask IP
-         * --	Option 3 = Router IP
-         * --	Option 51 = Lease time (s)
-         * --	Option 54 = DHCP DHCPServer IP
-         * --	Option 6 = DNS servers
-         **/
+
         if (clientIPAddress.equals(IPv4Address.NONE)) {
             clientIPAddress = IPv4Address.NO_MASK;      // Broadcast IP
         }
@@ -300,6 +302,7 @@ public class DHCPMessageHandler {
                 .setEtherType(EthType.IPv4)
                 .setPayload(
                         new IPv4()
+
                                 .setTtl((byte) 64)
                                 .setSourceAddress(instance.getServerID())
                                 .setDestinationAddress(clientIPAddress)

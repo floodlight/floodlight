@@ -71,7 +71,7 @@ public class InstancesResource extends ServerResource {
                 return instance;
             } else {
                 // update an existing dhcp instance
-                dhcpService.updateInstance(nameNode.asText(), instance);
+                instance = dhcpService.updateInstance(nameNode.asText(), instance);
                 return instance;
             }
 

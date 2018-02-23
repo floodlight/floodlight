@@ -412,9 +412,10 @@ public class DHCPServer implements IOFMessageListener, IFloodlightModule, IDHCPS
     }
 
     @Override
-    public void updateInstance(String name, DHCPInstance newInstance) {
+    public DHCPInstance updateInstance(String name, DHCPInstance newInstance) {
+        // TODO: should we build again here?
         DHCPInstance old = dhcpInstanceMap.get(name);
-        old.getBuilder().setSubnetMask(newInstance.getSubnetMask())
+        newInstance = old.getBuilder().setSubnetMask(newInstance.getSubnetMask())
                         .setStartIP(newInstance.getStartIPAddress())
                         .setEndIP(newInstance.getEndIPAddress())
                         .setBroadcastIP(newInstance.getBroadcastIP())
@@ -425,5 +426,7 @@ public class DHCPServer implements IOFMessageListener, IFloodlightModule, IDHCPS
                         .setServerMac(newInstance.getServerMac())
                         .setServerID(newInstance.getServerID())
                         .build();
+
+        return newInstance;
     }
 }

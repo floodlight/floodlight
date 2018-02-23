@@ -10,6 +10,8 @@ import net.floodlightcontroller.util.OFMessageUtils;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.types.*;
 
+import java.math.BigInteger;
+import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.List;
 
@@ -32,6 +34,11 @@ public class DHCPServerUtils {
         byte[] bytes = new byte[1];
         bytes[0] = (byte) (integer);
         return bytes;
+    }
+
+    /* Convert byte[] to int */
+    public static int bytesToInt(byte[] bytes) {
+        return new BigInteger(bytes).intValue();
     }
 
     /* Convert List<IPv4Address> to byte[] */
@@ -91,7 +98,7 @@ public class DHCPServerUtils {
 
     /* Get DHCP Payload */
     public static DHCP getDHCPayload(Ethernet eth) {
-        return (DHCP) eth.getPayload().getPayload();
+        return (DHCP) eth.getPayload().getPayload().getPayload();
     }
 
     /* Determine DHCP Message Type: REQUEST or REPLY */

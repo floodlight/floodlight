@@ -255,14 +255,24 @@ public class DHCPPoolTest extends FloodlightTestCase {
     /* Tests for assignPermanentLeaseToClientWithRequestIP() */
     @Test
     public void testAssignPermanentLeaseToClientWithRequestIP() throws Exception {
-        //
-        dhcpPool = initPool(IPv4Address.of("10.0.0.1"), 2);
+        // Request IP "10.0.0.1" as permanent, will return a permanent lease for "10.0.0.1"
+        dhcpPool = initPool(IPv4Address.of("10.0.0.1"), 9);
         Optional<IPv4Address> leaseIP = dhcpPool.assignPermanentLeaseToClientWithRequestIP(IPv4Address.of("10.0.0.1"),
                                         MacAddress.of(1));
         Optional<DHCPBinding> leaseBinding = dhcpPool.getLeaseBinding(MacAddress.of(1));
 
         assertEquals(IPv4Address.of("10.0.0.1"), leaseIP.get());
         assertEquals(LeasingState.PERMANENT_LEASED, leaseBinding.get().getCurrLeaseState());
+
+        // Request IP "10.0.0.9" as permanent, will return a permanent lease for "10.0.0.9"
+        Optional<IPv4Address> leaseIP1 = dhcpPool.assignPermanentLeaseToClientWithRequestIP(IPv4Address.of("10.0.0.9"),
+                MacAddress.of(2));
+        Optional<DHCPBinding> leaseBinding1 = dhcpPool.getLeaseBinding(MacAddress.of(2));
+
+        assertEquals(IPv4Address.of("10.0.0.9"), leaseIP1.get());
+        assertEquals(LeasingState.PERMANENT_LEASED, leaseBinding1.get().getCurrLeaseState());
+
+
     }
 
     @Test

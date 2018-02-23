@@ -321,7 +321,7 @@ public class DHCPInstance {
 				this.nptMembers = new HashSet<>();
 			}
 			if (this.staticAddresseses != null) {
-				// Remove invalid entry
+				// Setup permanent DHCP binding and remove invalid entry
 				for (Map.Entry<MacAddress, IPv4Address> entry : this.staticAddresseses.entrySet()) {
 					if (!this.dhcpPool.assignPermanentLeaseToClientWithRequestIP(entry.getValue(), entry.getKey()).isPresent()) {
 						staticAddresseses.remove(entry.getKey());

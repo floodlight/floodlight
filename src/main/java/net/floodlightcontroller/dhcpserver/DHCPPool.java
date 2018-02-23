@@ -13,7 +13,7 @@ import java.util.*;
  * The class representing a DHCP Pool, which essentially a list of DHCPBinding objects containing IP, MAC, and
  * lease status information
  *
- * The DHCP pool consists fo two DHCP tables
+ * The DHCP pool consists of two DHCP tables
  *   DHCP Repository - all DHCP binding here is available
  *   DHCP Leasing Pool - all DHCP binding here is in lease
  *
@@ -102,6 +102,16 @@ public class DHCPPool implements IDHCPPool {
 		return lease;
 	}
 
+	private DHCPBinding createPermanentLeaseForClientWithRequestIP(@Nonnull IPv4Address ip, @Nonnull MacAddress clientMac) {
+		Optional<DHCPBinding> lease = dhcpRepository.stream()
+							.filter(binding -> binding.getIPv4Address().equals(ip))
+							.findAny();
+
+		lease.get().configurePermanentLease(clientMac);
+		moveDHCPBindingToLeasingPool(lease.get());
+		return lease.get();
+	}
+
 	@Nullable
 	private DHCPBinding createRequestLeaseForClient(@Nonnull MacAddress clientMac,
 													@Nonnull IPv4Address requestIP, long time) {
@@ -166,7 +176,7 @@ public class DHCPPool implements IDHCPPool {
 			return Optional.empty();
 		}
 
-		return assignPermanentLeaseToClient(clientMac);
+		return Optional.of(createPermanentLeaseForClientWithRequestIP(requestIP, clientMac).getIPv4Address());
 	}
 
 	public Optional<IPv4Address> assignLeaseToClientWithRequestIP(@Nonnull IPv4Address requestIP, @Nonnull MacAddress clientMac, long timeSec) {

@@ -1,6 +1,7 @@
 package net.floodlightcontroller.dhcpserver;
 
 import com.google.common.collect.Sets;
+import net.floodlightcontroller.core.test.PacketFactory;
 import net.floodlightcontroller.core.types.NodePortTuple;
 import net.floodlightcontroller.test.FloodlightTestCase;
 import org.junit.Before;
@@ -83,7 +84,7 @@ public class DHCPInstanceTest extends FloodlightTestCase {
 
     @Test
     public void testConfigureStaticAddresses() throws Exception {
-                /* Expected valid static address */
+        /* Expected valid static address */
         Map<MacAddress, IPv4Address> expectStaticAddresses = new HashMap<>();
         expectStaticAddresses.put(MacAddress.of("44:55:66:77:88:99"), IPv4Address.of("192.168.1.3"));
         expectStaticAddresses.put(MacAddress.of("99:88:77:66:55:44"), IPv4Address.of("192.168.1.5"));
@@ -139,6 +140,19 @@ public class DHCPInstanceTest extends FloodlightTestCase {
                 .setEndIP(endIP)
                 .setLeaseTimeSec(10)
                 .build();
+
+    }
+
+    @Test
+    public void testBuildInstanceWithStaticAddressesNotValid() throws Exception {
+
+
+    }
+
+
+    @Test
+    public void testUpdateInstance() throws Exception {
+
 
     }
 
