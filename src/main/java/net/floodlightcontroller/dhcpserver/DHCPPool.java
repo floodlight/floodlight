@@ -326,7 +326,7 @@ public class DHCPPool implements IDHCPPool {
 	@Override
 	public void checkExpiredLeases() {
 		for(DHCPBinding binding : dhcpLeasingPool.values()) {
-			binding.checkForTimeout();
+			binding.isBindingTimeout();
 		}
 	}
 

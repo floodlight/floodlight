@@ -67,7 +67,7 @@ public class DHCPBinding {
 		setLeaseDuration(durationTimeSec);
 	}
 
-	public boolean checkForTimeout() {
+	public boolean isBindingTimeout() {
 		long currentTime = System.currentTimeMillis();
 		if ((currentTime / 1000) >= (startTimeSec + durationTimeSec)) {
 			currentState = LeasingState.EXPIRED;

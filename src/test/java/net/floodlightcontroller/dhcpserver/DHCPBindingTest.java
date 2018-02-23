@@ -5,7 +5,6 @@ import org.junit.Before;
 import org.junit.Test;
 import static org.junit.Assert.*;
 
-import org.junit.runner.RunWith;
 import org.projectfloodlight.openflow.types.IPv4Address;
 import org.projectfloodlight.openflow.types.MacAddress;
 
@@ -29,13 +28,13 @@ public class DHCPBindingTest extends FloodlightTestCase {
     @Test
     public void testLeaseNotExpired() throws Exception {
         binding.setLeaseDuration(1000);
-        assertEquals(false, binding.checkForTimeout());
+        assertEquals(false, binding.isBindingTimeout());
     }
 
     @Test
     public void testLeaseDoesExpired() throws Exception {
         binding.setLeaseDuration(0L);
-        assertEquals(true, binding.checkForTimeout());
+        assertEquals(true, binding.isBindingTimeout());
     }
 
     @Test
@@ -49,27 +48,41 @@ public class DHCPBindingTest extends FloodlightTestCase {
     @Test
     public void testRenewLease() throws Exception {
         binding.setLeaseDuration(0);
-        assertEquals(true, binding.checkForTimeout());
+
+        assertEquals(true, binding.isBindingTimeout());
+
         binding.renewLease(100);
-        assertEquals(false, binding.checkForTimeout());
+
+        assertEquals(false, binding.isBindingTimeout());
         assertEquals(LeasingState.LEASED, binding.getCurrLeaseState());
     }
 
     @Test
-    public void configureNormalLease() throws Exception {
+    public void testConfigureNormalLease() throws Exception {
         assertEquals(LeasingState.AVAILABLE, binding.getCurrLeaseState());
         binding.configureNormalLease(MacAddress.of("00:00:00:00:00:AA"), 100);
+
         assertEquals(LeasingState.LEASED, binding.getCurrLeaseState());
         assertEquals(MacAddress.of("00:00:00:00:00:AA"), binding.getMACAddress());
     }
 
     @Test
-    public void configurePermanentLease() throws Exception {
+    public void testConfigurePermanentLease() throws Exception {
         assertEquals(LeasingState.AVAILABLE, binding.getCurrLeaseState());
         binding.configurePermanentLease(MacAddress.of("00:00:00:00:00:BB"));
+
         assertEquals(LeasingState.PERMANENT_LEASED, binding.getCurrLeaseState());
         assertEquals(MacAddress.of("00:00:00:00:00:BB"), binding.getMACAddress());
 
+    }
+
+    @Test
+    public void testCheckForTimeOut() throws Exception {
+        binding.setLeaseDuration(0);
+        assertTrue(binding.isBindingTimeout());
+
+        binding.setLeaseDuration(100);
+        assertFalse(binding.isBindingTimeout());
     }
 
 }
