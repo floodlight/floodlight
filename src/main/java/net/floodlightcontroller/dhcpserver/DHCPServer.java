@@ -82,7 +82,7 @@ public class DHCPServer implements IOFMessageListener, IFloodlightModule, IDHCPS
     protected IRestApiService restApiService;
 
     private static Map<String, DHCPInstance> dhcpInstanceMap;
-    private static volatile boolean enableDHCPService = false;
+    private static volatile boolean enableDHCPService = true;
 
 
     @Override

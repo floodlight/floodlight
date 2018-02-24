@@ -1,11 +1,13 @@
 package net.floodlightcontroller.dhcpserver.web;
 
-import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableMap;
+import net.floodlightcontroller.core.types.NodePortTuple;
 import net.floodlightcontroller.dhcpserver.DHCPInstance;
 import net.floodlightcontroller.dhcpserver.IDHCPService;
+import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.OFPort;
 import org.restlet.data.Status;
 import org.restlet.resource.*;
 
@@ -35,55 +37,29 @@ public class InstanceResource extends ServerResource {
     @Put
     @Post
     // This would also overwrite/update an existing dhcp instance
-    public Object updateInstance(String json) {
+    public Object updateInstance(String json) throws IOException {
         IDHCPService dhcpService = (IDHCPService) getContext().getAttributes()
                 .get(IDHCPService.class.getCanonicalName());
+        String whichInstance = (String) getRequestAttributes().get("instance-name");
+        Optional<DHCPInstance> dhcpInstance = dhcpService.getInstance(whichInstance);
 
         if (json == null) {
             setStatus(org.restlet.data.Status.CLIENT_ERROR_BAD_REQUEST, "One or more required fields missing.");
             return null;
         }
 
-        try {
-            ObjectMapper mapper = new ObjectMapper();
-            mapper.configure(DeserializationFeature.FAIL_ON_IGNORED_PROPERTIES, false);
-            JsonNode nameNode = mapper.readTree(json).get("name");
-            JsonNode startIPNode = mapper.readTree(json).get("start-ip");
-            JsonNode endIPNode = mapper.readTree(json).get("end-ip");
-            JsonNode serverIDNode = mapper.readTree(json).get("server-id");
-            JsonNode serverMacNode = mapper.readTree(json).get("server-mac");
-            JsonNode routerIPNode = mapper.readTree(json).get("router-ip");
-            JsonNode broadcastNode = mapper.readTree(json).get("broadcast-ip");
-            JsonNode leaseTimeNode = mapper.readTree(json).get("lease-time");
-            JsonNode rebindTimeNode = mapper.readTree(json).get("rebind-time");
-            JsonNode renewTimeNode = mapper.readTree(json).get("renew-time");
-            JsonNode ipforwardingNode = mapper.readTree(json).get("ip-forwarding");
-            JsonNode domainNameNode = mapper.readTree(json).get("domain-name");
-
-            boolean getFields = checkRequiredFields(nameNode, startIPNode, endIPNode, serverIDNode, serverMacNode,
-                    routerIPNode, broadcastNode, leaseTimeNode, rebindTimeNode, renewTimeNode,
-                    ipforwardingNode, domainNameNode);
-
-            if (!getFields) {
-                setStatus(Status.CLIENT_ERROR_BAD_REQUEST, "One or more required fields missing.");
-                return null;
+        JsonNode jsonNode = new ObjectMapper().readTree(json);
+        JsonNode switchportsNode = jsonNode.get("switchport");
+        if (switchportsNode != null) {
+            for (JsonNode swpt : switchportsNode) {
+                JsonNode dpidNode = swpt.get("dpid");
+                JsonNode portNode = swpt.get("port");
+                dhcpInstance.get().addNptMember(new NodePortTuple(DatapathId.of(dpidNode.asText()), OFPort.of
+                        (portNode.asInt())));
             }
-
-            DHCPInstance instance = mapper.reader(DHCPInstance.class).readValue(json);
-            if (!dhcpService.getInstance(instance.getName()).isPresent()) {
-                setStatus(Status.CLIENT_ERROR_NOT_FOUND, INSTANCE_NOT_FOUND_MESSAGE);
-                return null;
-            } else {
-                // update an existing dhcp instance
-                instance = dhcpService.updateInstance(nameNode.asText(), instance);
-                return instance;
-            }
-
-        } catch (IOException e) {
-            setStatus(org.restlet.data.Status.CLIENT_ERROR_BAD_REQUEST, "Instance object could not be deserialized.");
-            return e;
         }
 
+        return null;
     }
 
     private boolean checkRequiredFields(JsonNode nameNode, JsonNode startIPNode, JsonNode endIPNode, JsonNode
