@@ -80,6 +80,10 @@ public class DHCPInstance {
 	public Set<VlanVid> getVlanMembers() { return vlanMembers; }
 	public Set<MacAddress> getClientMembers() { return clientMembers; }
 
+	public void addNptMember(NodePortTuple npt) {
+		this.nptMembers.add(npt);
+	}
+
 	public DHCPInstanceBuilder getBuilder() {return builder;}
 
 	private DHCPInstance(DHCPInstanceBuilder builder) {
