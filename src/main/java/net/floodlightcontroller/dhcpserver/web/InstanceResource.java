@@ -42,8 +42,13 @@ public class InstanceResource extends ServerResource {
         String whichInstance = (String) getRequestAttributes().get("instance-name");
         Optional<DHCPInstance> dhcpInstance = dhcpService.getInstance(whichInstance);
 
+        if (!dhcpInstance.isPresent()) {
+            setStatus(Status.CLIENT_ERROR_NOT_FOUND, INSTANCE_NOT_FOUND_MESSAGE);
+            return null;
+        }
+
         if (json == null) {
-            setStatus(org.restlet.data.Status.CLIENT_ERROR_BAD_REQUEST, "One or more required fields missing.");
+            setStatus(Status.CLIENT_ERROR_BAD_REQUEST, "One or more required fields missing.");
             return null;
         }
 
@@ -53,12 +58,16 @@ public class InstanceResource extends ServerResource {
             for (JsonNode swpt : switchportsNode) {
                 JsonNode dpidNode = swpt.get("dpid");
                 JsonNode portNode = swpt.get("port");
-                dhcpInstance.get().addNptMember(new NodePortTuple(DatapathId.of(dpidNode.asText()), OFPort.of
-                        (portNode.asInt())));
+                if (dpidNode != null && portNode != null) {
+                    NodePortTuple npt = new NodePortTuple(DatapathId.of(dpidNode.asText()), OFPort.of
+                            (portNode.asInt()));
+                    dhcpInstance.get().addNptMember(npt);
+                }
             }
         }
 
-        return null;
+        setDescription("Instance updated.");
+        return dhcpInstance.get();
     }
 
     private boolean checkRequiredFields(JsonNode nameNode, JsonNode startIPNode, JsonNode endIPNode, JsonNode
