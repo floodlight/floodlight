@@ -44,9 +44,8 @@ public class DHCPMessageHandler {
          * -- Opcode = 0x01
          * -- XID = transactionX
          * --
-         * -- All addresses blank:
-         * --	ciaddr (client IP)
-         * --	yiaddr (your IP)
+         * --	ciaddr = 0.0.0.0
+         * --	yiaddr (leased IP)
          * --	siaddr (DHCPServer IP)
          * --	giaddr (GW IP)
          * --   chaddr = Client's MAC
@@ -352,8 +351,9 @@ public class DHCPMessageHandler {
          * -- IP dst addr = 255.255.255.255
          * -- Opcode = 0x01
          * -- XID = transactionX
-         * -- ciaddr = blank
-         * -- yiaddr = blank
+         * --
+         * -- ciaddr = 0.0.0.0
+         * -- yiaddr = 0.0.0.0
          * -- siaddr = DHCP Server IP
          * -- giaddr = GW IP
          * -- chaddr = Client's MAC
@@ -366,6 +366,7 @@ public class DHCPMessageHandler {
         int xid = payload.getTransactionId();
         IPv4Address yiaddr = payload.getYourIPAddress();
         IPv4Address giaddr = payload.getGatewayIPAddress();    // Will have GW IP if a relay agent was used
+        IPv4Address ciaddr = payload.getClientIPAddress();
         MacAddress chaddr = payload.getClientHardwareAddress();
         List<Byte> requestOrder = new ArrayList<>();
         IPv4Address requestIP = null;
@@ -386,7 +387,7 @@ public class DHCPMessageHandler {
         boolean sendACK = false;
         switch (determineClientState(requestIP, serverID, dstAddr)) {
             case INIT_REBOOT:
-                sendACK = handleInitReboot(instance, requestIP, giaddr, chaddr);
+                sendACK = handleInitReboot(instance, requestIP, giaddr, chaddr, ciaddr);
                 break;
 
             case SELECTING:
@@ -490,18 +491,25 @@ public class DHCPMessageHandler {
     /**
      * This function handles the "Init_Reboot" state of the client
      *
-     * DHCP Server should send DHCPNAK message to client if "Request IP" is incorrect, or is on the wrong network
+     * DHCP Server should send DHCPNAK message to client if "Request IP" is incorrect, or is on the wrong network (giaddr is incorrect)
      *
      * @param requestIP
      * @param giaddr
      * @return
      */
-    private boolean handleInitReboot(DHCPInstance instance, IPv4Address requestIP, IPv4Address giaddr, MacAddress chaddr) {
+    public boolean handleInitReboot(DHCPInstance instance, IPv4Address requestIP, IPv4Address giaddr,
+                                    MacAddress chaddr, IPv4Address ciaddr) {
         boolean sendACK = true;
-        if (!giaddr.equals(instance.getRouterIP())) {   // TODO: maybe more complex than this
+        if (requestIP == null) {
             sendACK = false;
         }
-        else if (!requestIP.equals(instance.getDHCPPool().getLeaseIP(chaddr))) {
+        else if (!ciaddr.equals(IPv4Address.NONE)) {
+            sendACK = false;
+        }
+        else if (!giaddr.equals(instance.getRouterIP())) {
+            sendACK = false;
+        }
+        else if (!requestIP.equals(instance.getDHCPPool().getLeaseIP(chaddr).get())) {
             sendACK = false;
         }
         else {
@@ -524,7 +532,7 @@ public class DHCPMessageHandler {
      * @param chaddr
      * @return
      */
-    private boolean handleSelecting(DHCPInstance instance, IPv4Address requstIP, IPv4Address serverID, MacAddress chaddr) {
+    public boolean handleSelecting(DHCPInstance instance, IPv4Address requstIP, IPv4Address serverID, MacAddress chaddr) {
         boolean sendACK = true;
         // We're not the DHCP server that client wants
         if (!serverID.equals(instance.getServerID())) {
@@ -562,7 +570,7 @@ public class DHCPMessageHandler {
      * @param chaddr
      * @return
      */
-    private boolean handleRenewing(DHCPInstance instance, MacAddress chaddr) {
+    public boolean handleRenewing(DHCPInstance instance, MacAddress chaddr) {
         boolean sendAck = false;
         Optional<DHCPBinding> lease = instance.getDHCPPool().getLeaseBinding(chaddr);
         // TODO: any way to refactor this?
@@ -596,7 +604,7 @@ public class DHCPMessageHandler {
      * @param chaddr
      * @return
      */
-    private boolean handleRebinding(DHCPInstance instance, MacAddress chaddr) {
+    public boolean handleRebinding(DHCPInstance instance, MacAddress chaddr) {
         boolean sendAck = false;
         // TODO: any way to refactor this?
         Optional<DHCPBinding> binding = instance.getDHCPPool().getLeaseBinding(chaddr);

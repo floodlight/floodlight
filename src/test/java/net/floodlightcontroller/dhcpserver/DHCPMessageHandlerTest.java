@@ -15,6 +15,8 @@ import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
 import org.projectfloodlight.openflow.protocol.*;
+import org.projectfloodlight.openflow.protocol.action.OFAction;
+import org.projectfloodlight.openflow.protocol.action.OFActionOutput;
 import org.projectfloodlight.openflow.types.*;
 
 import javax.xml.crypto.Data;
@@ -25,9 +27,7 @@ import static org.easymock.EasyMock.reset;
 import static org.easymock.EasyMock.expect;
 
 import static junit.framework.TestCase.assertTrue;
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.*;
 
 /**
  * @author Qing Wang (qw@g.clemson.edu) at 2/22/18
@@ -224,6 +224,8 @@ public class DHCPMessageHandlerTest extends FloodlightTestCase {
 
     }
 
+    // Any case that return lease IP is not exist?
+
     /* Tests for handleDHCPDiscover() */
     @Test
     public void testHandleDHCPDiscover() throws Exception {
@@ -232,9 +234,62 @@ public class DHCPMessageHandlerTest extends FloodlightTestCase {
 
         OFPacketOut dhcpOffer = handler.handleDHCPDiscover(sw, OFPort.of(1), instance, clientIP, dhcpPayload);
 
-        dhcpOffer.getActions().get(0);
+        OFActionOutput output = sw.getOFFactory().actions().buildOutput()
+                                .setMaxLen(0xffFFffFF)
+                                .setPort(OFPort.of(1))
+                                .build();
+
+        assertEquals(output, dhcpOffer.getActions().get(0));
 
     }
+
+    /* Tests for handleDHCPRequest() */
+    @Test
+    public void handleRequestWhenClientIsInitRebootState() throws Exception {
+        MacAddress chaddr = dhcpPayload.getClientHardwareAddress();
+        IPv4Address ciaddr = IPv4Address.NONE;
+
+        // Send Ack is true when client "request IP" is correct
+        DHCPInstance instance = initInstance();
+        IPv4Address requestIP = IPv4Address.of("10.0.0.5");
+        instance.getDHCPPool().assignLeaseToClientWithRequestIP(requestIP, chaddr, 60);
+        boolean sendAck = handler.handleInitReboot(instance, requestIP, instance.getRouterIP(), chaddr, ciaddr);
+
+        assertTrue(sendAck);
+
+        // Send Ack fails if client request IP is incorrect
+        DHCPInstance instance1 = initInstance();
+        IPv4Address requestIP1 = IPv4Address.of("192.168.0.1");
+        instance1.getDHCPPool().assignLeaseToClientWithRequestIP(requestIP1, chaddr, 60);
+        boolean sendAck1 = handler.handleInitReboot(instance1, requestIP, instance1.getRouterIP(), chaddr, ciaddr);
+
+        assertFalse(sendAck1);
+
+        // Send Ack fails if client is on different subnet
+        DHCPInstance instance2 = initInstance();
+        IPv4Address requestIP2 = IPv4Address.of("10.0.0.2");
+        instance2.getDHCPPool().assignLeaseToClientWithRequestIP(requestIP2, chaddr, 60);
+        boolean sendAck2 = handler.handleInitReboot(instance2, requestIP, IPv4Address.of("192.168.0.1"), chaddr, ciaddr);
+
+        assertFalse(sendAck2);
+
+        // Send Ack fails if client IP is not zero
+        DHCPInstance instance3 = initInstance();
+        IPv4Address requestIP3 = IPv4Address.of("10.0.0.2");
+        instance3.getDHCPPool().assignLeaseToClientWithRequestIP(requestIP3, chaddr, 60);
+        boolean sendAck3 = handler.handleInitReboot(instance2, requestIP, IPv4Address.of("192.168.0.1"), chaddr, IPv4Address.of("10.0.0.1"));
+
+        assertFalse(sendAck3);
+
+    }
+
+    @Test
+    public void handRequestWhenClientIsSelectingState() throws Exception {
+
+
+
+    }
+
 
 
 }
