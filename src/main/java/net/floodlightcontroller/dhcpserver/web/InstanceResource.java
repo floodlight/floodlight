@@ -36,7 +36,6 @@ public class InstanceResource extends ServerResource {
 
     @Put
     @Post
-    // This would also overwrite/update an existing dhcp instance
     public Object updateInstance(String json) throws IOException {
         IDHCPService dhcpService = (IDHCPService) getContext().getAttributes()
                 .get(IDHCPService.class.getCanonicalName());
@@ -49,7 +48,7 @@ public class InstanceResource extends ServerResource {
         }
 
         JsonNode jsonNode = new ObjectMapper().readTree(json);
-        JsonNode switchportsNode = jsonNode.get("switchport");
+        JsonNode switchportsNode = jsonNode.get("switchports");
         if (switchportsNode != null) {
             for (JsonNode swpt : switchportsNode) {
                 JsonNode dpidNode = swpt.get("dpid");

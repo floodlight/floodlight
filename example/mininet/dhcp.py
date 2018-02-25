@@ -47,7 +47,6 @@ def rest_call(path, data, action):
     conn.close()
     return ret
 
-
 def addDHCPInstance(name):
     data = {
         "name"         : name,
@@ -70,7 +69,7 @@ def addDHCPInstance(name):
 
 def addNodePortTupleToDHCPInstance(name):
     data = {
-        "switchport": [
+        "switchports": [
             {
                 "dpid": "1",
                 "port": "1"
@@ -80,6 +79,12 @@ def addNodePortTupleToDHCPInstance(name):
     ret = rest_call('/wm/dhcp/instance/' + name, data, 'POST')
     return ret
 
+def enableDHCPServer():
+    data = {
+        "enable" : "true"
+    }
+    ret = rest_call('/wm/dhcp/config', data, 'POST')
+    return ret
 
 # DHCP client functions
 
@@ -105,7 +110,7 @@ def waitForIP(host):
         time.sleep(1)
     info('\n')
     info('*', host, 'is now using',
-         host.cmd('grep nameserver /etc/resolv.conf'))
+         host.cmd('grep nameserver /etcresolv.conf'))
 
 
 def mountPrivateResolvconf(host):
@@ -142,6 +147,9 @@ def startNetwork():
     net.start()
 
     # Start DHCP
+    ret = enableDHCPServer()
+    print(ret)
+
     ret = addDHCPInstance('mininet-dhcp')
     print(ret)
 
