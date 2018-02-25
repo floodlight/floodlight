@@ -11,6 +11,7 @@ public class DHCPServerWebRoutable implements RestletRoutable {
     @Override
     public Router getRestlet(Context context) {
         Router router = new Router(context);
+        router.attach("/config", ConfigResource.class);
         router.attach("/instance", InstancesResource.class);
         router.attach("/instance/{instance-name}", InstanceResource.class);
         return router;
