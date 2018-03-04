@@ -28,6 +28,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
 
 /**
  * SDN DHCP Server
@@ -84,6 +85,11 @@ public class DHCPServer implements IOFMessageListener, IFloodlightModule, IDHCPS
     private static Map<String, DHCPInstance> dhcpInstanceMap;
     private static volatile boolean enableDHCPService = false;
 
+    /**
+     * Garbage collector service for DHCP server
+     * It handles expired DHCP lease
+     */
+    private static ScheduledThreadPoolExecutor leasePoliceDispatcher;
 
     @Override
     public Command receive(IOFSwitch sw, OFMessage msg, FloodlightContext cntx) {
@@ -332,7 +338,7 @@ public class DHCPServer implements IOFMessageListener, IFloodlightModule, IDHCPS
         this.restApiService = context.getServiceImpl(IRestApiService.class);
         dhcpInstanceMap = new HashMap<>();
 
-//        DHCPInstance instance = readDHCPConfig(context.getConfigParams(this), DHCPInstance.createBuilder());
+//        DHCPInstance instance = readDHCPConfig(context.getConfigParams(this), DHCPInstance.createInstance());
 //        dhcpInstanceMap.put(instance.getName(), instance);
     }
 
@@ -340,6 +346,9 @@ public class DHCPServer implements IOFMessageListener, IFloodlightModule, IDHCPS
     public void startUp(FloodlightModuleContext context) throws FloodlightModuleException {
         floodlightProviderService.addOFMessageListener(OFType.PACKET_IN, this);
         restApiService.addRestletRoutable(new DHCPServerWebRoutable());
+
+        leasePoliceDispatcher = new ScheduledThreadPoolExecutor(1);
+
     }
 
     @Override
@@ -413,7 +422,6 @@ public class DHCPServer implements IOFMessageListener, IFloodlightModule, IDHCPS
 
     @Override
     public DHCPInstance updateInstance(String name, DHCPInstance newInstance) {
-        // TODO: should we build again here?
         DHCPInstance old = dhcpInstanceMap.get(name);
         newInstance = old.getBuilder().setSubnetMask(newInstance.getSubnetMask())
                         .setStartIP(newInstance.getStartIPAddress())
