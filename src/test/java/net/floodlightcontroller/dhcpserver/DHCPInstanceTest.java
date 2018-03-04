@@ -37,7 +37,7 @@ public class DHCPInstanceTest extends FloodlightTestCase {
         DHCPPool returnDHCPPool = new DHCPPool(IPv4Address.of("192.168.1.3"), 8);
 
         /* Create DHCP Instance */
-        DHCPInstance instance = DHCPInstance.createBuilder().setName("dhcpTestInstance")
+        DHCPInstance instance = DHCPInstance.createInstance("dhcpTestInstance")
                 .setServerID(IPv4Address.of("192.168.1.2"))
                 .setServerMac(MacAddress.of("aa:bb:cc:dd:ee:ff"))
                 .setBroadcastIP(IPv4Address.of("192.168.1.255"))
@@ -91,7 +91,7 @@ public class DHCPInstanceTest extends FloodlightTestCase {
         expectStaticAddresses.put(MacAddress.of("99:88:77:66:55:44"), IPv4Address.of("192.168.1.5"));
 
         /* valid static IP address as request */
-        DHCPInstance instance1 = DHCPInstance.createBuilder().setName("dhcpTestInstance")
+        DHCPInstance instance1 = DHCPInstance.createInstance("dhcpTestInstance")
                 .setServerID(IPv4Address.of("192.168.1.2"))
                 .setServerMac(MacAddress.of("aa:bb:cc:dd:ee:ff"))
                 .setStartIP(IPv4Address.of("192.168.1.3"))
@@ -104,8 +104,7 @@ public class DHCPInstanceTest extends FloodlightTestCase {
 
 
         /* invalid static IP address request should return null */
-        DHCPInstance instance2 = DHCPInstance.createBuilder()
-                .setName("dhcpTestInstance")
+        DHCPInstance instance2 = DHCPInstance.createInstance("dhcpTestInstance")
                 .setServerID(IPv4Address.of("192.168.1.2"))
                 .setServerMac(MacAddress.of("aa:bb:cc:dd:ee:ff"))
                 .setStartIP(IPv4Address.of("192.168.1.3"))
@@ -119,7 +118,7 @@ public class DHCPInstanceTest extends FloodlightTestCase {
 
     @Test(expected = IllegalArgumentException.class)
     public void testBuildInstanceWithMissingFields() throws Exception {
-        DHCPInstance instance = DHCPInstance.createBuilder()
+        DHCPInstance instance = DHCPInstance.createInstance("dhcpTestInstance")
                 .setLeaseTimeSec(10)
                 .build();
 
@@ -130,8 +129,7 @@ public class DHCPInstanceTest extends FloodlightTestCase {
         IPv4Address startIP = IPv4Address.of("10.0.0.5");
         IPv4Address endIP = IPv4Address.of("10.0.0.1");
 
-        DHCPInstance instance = DHCPInstance.createBuilder()
-                .setName("dhcpTestInstance")
+        DHCPInstance instance = DHCPInstance.createInstance("dhcpTestInstance")
                 .setServerID(IPv4Address.of("192.168.1.2"))
                 .setServerMac(MacAddress.of("aa:bb:cc:dd:ee:ff"))
                 .setBroadcastIP(IPv4Address.of("192.168.1.255"))
@@ -146,7 +144,7 @@ public class DHCPInstanceTest extends FloodlightTestCase {
 
     @Test
     public void testBuildInstanceWithStaticAddressesNotValid() throws Exception {
-        DHCPInstance instance = DHCPInstance.createBuilder().setName("dhcpTestInstance")
+        DHCPInstance instance = DHCPInstance.createInstance("dhcpTestInstance")
                 .setServerID(IPv4Address.of("192.168.1.2"))
                 .setServerMac(MacAddress.of("aa:bb:cc:dd:ee:ff"))
                 .setBroadcastIP(IPv4Address.of("192.168.1.255"))
@@ -171,7 +169,7 @@ public class DHCPInstanceTest extends FloodlightTestCase {
         assertEquals(0, instance.getStaticAddresseses().size());
 
 
-        DHCPInstance instance1 = DHCPInstance.createBuilder().setName("dhcpTestInstance1")
+        DHCPInstance instance1 = DHCPInstance.createInstance("dhcpTestInstance1")
                 .setServerID(IPv4Address.of("192.168.1.2"))
                 .setServerMac(MacAddress.of("aa:bb:cc:dd:ee:ff"))
                 .setBroadcastIP(IPv4Address.of("192.168.1.255"))
@@ -196,7 +194,7 @@ public class DHCPInstanceTest extends FloodlightTestCase {
 
     @Test
     public void testUpdateInstance() throws Exception {
-        DHCPInstance instance = DHCPInstance.createBuilder().setName("dhcpTestInstance")
+        DHCPInstance instance = DHCPInstance.createInstance("dhcpTestInstance")
                 .setServerID(IPv4Address.of("192.168.1.2"))
                 .setServerMac(MacAddress.of("aa:bb:cc:dd:ee:ff"))
                 .setBroadcastIP(IPv4Address.of("192.168.1.255"))
@@ -215,7 +213,6 @@ public class DHCPInstanceTest extends FloodlightTestCase {
                 .setVlanMembers(Sets.newHashSet(VlanVid.ofVlan(100), VlanVid.ofVlan(200)))
                 .setNptMembers(Sets.newHashSet(new NodePortTuple(DatapathId.of(1L), OFPort.of(1)), new NodePortTuple(DatapathId.of(2L), OFPort.of(2))))
                 .build();
-
 
         instance = instance.getBuilder().setServerID(IPv4Address.of("192.168.1.4")).build();
         instance = instance.getBuilder().setRouterIP(IPv4Address.of("192.168.1.3")).build();

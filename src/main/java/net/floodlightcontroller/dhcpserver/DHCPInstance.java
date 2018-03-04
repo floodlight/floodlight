@@ -32,7 +32,7 @@ public class DHCPInstance {
 
 	protected static final Logger log = LoggerFactory.getLogger(DHCPInstance.class);
 
-	private String name = null;
+	private final String name;
 	private volatile DHCPPool dhcpPool = null;
 	private volatile DHCPInstanceBuilder builder = null;
 
@@ -113,14 +113,18 @@ public class DHCPInstance {
 		this.builder = builder;
 	}
 
-	public static DHCPInstanceBuilder createBuilder(){
-		return new DHCPInstanceBuilder();
+	public static DHCPInstanceBuilder createInstance(@Nonnull final String name){
+		if(name.isEmpty()){
+			throw new IllegalArgumentException("Build DHCP instance failed : DHCP server name can not be empty");
+		}
+
+		return new DHCPInstanceBuilder(name);
 	}
 
 	@JsonPOJOBuilder(buildMethodName = "build", withPrefix = "set")
 	@JsonIgnoreProperties(ignoreUnknown = true)
 	public static class DHCPInstanceBuilder {
-		private String name;
+		private final String name;
 		private DHCPPool dhcpPool;
 		private IPv4Address serverID;
 		private MacAddress serverMac;
@@ -143,7 +147,7 @@ public class DHCPInstance {
 		private Set<VlanVid> vlanMembers;
 		private Set<NodePortTuple> nptMembers;
 
-		public DHCPInstanceBuilder() { }
+		public DHCPInstanceBuilder(final String name) { this.name = name;}
 
 		// Only used for create DHCP instance from REST API
 		@JsonCreator
@@ -176,14 +180,6 @@ public class DHCPInstance {
 			this.domainName = domainName;
 
 			this.dhcpPool = new DHCPPool(startIPAddress, endIPAddress.getInt() - startIPAddress.getInt() + 1);
-		}
-
-		public DHCPInstanceBuilder setName(@Nonnull String name) {
-			if(name.isEmpty()){
-				throw new IllegalArgumentException("Build DHCP instance failed : DHCP server name can not be empty");
-			}
-			this.name = name;
-			return this;
 		}
 
 		public DHCPInstanceBuilder setServerID(@Nonnull IPv4Address serverID) {
@@ -344,56 +340,12 @@ public class DHCPInstance {
 
 		DHCPInstance instance = (DHCPInstance) o;
 
-		if (leaseTimeSec != instance.leaseTimeSec) return false;
-		if (rebindTimeSec != instance.rebindTimeSec) return false;
-		if (renewalTimeSec != instance.renewalTimeSec) return false;
-		if (ipforwarding != instance.ipforwarding) return false;
-		if (name != null ? !name.equals(instance.name) : instance.name != null) return false;
-		if (dhcpPool != null ? !dhcpPool.equals(instance.dhcpPool) : instance.dhcpPool != null) return false;
-		if (serverID != null ? !serverID.equals(instance.serverID) : instance.serverID != null) return false;
-		if (serverMac != null ? !serverMac.equals(instance.serverMac) : instance.serverMac != null) return false;
-		if (broadcastIP != null ? !broadcastIP.equals(instance.broadcastIP) : instance.broadcastIP != null)
-			return false;
-		if (routerIP != null ? !routerIP.equals(instance.routerIP) : instance.routerIP != null) return false;
-		if (subnetMask != null ? !subnetMask.equals(instance.subnetMask) : instance.subnetMask != null) return false;
-		if (startIPAddress != null ? !startIPAddress.equals(instance.startIPAddress) : instance.startIPAddress != null)
-			return false;
-		if (endIPAddress != null ? !endIPAddress.equals(instance.endIPAddress) : instance.endIPAddress != null)
-			return false;
-		if (dnsServers != null ? !dnsServers.equals(instance.dnsServers) : instance.dnsServers != null) return false;
-		if (ntpServers != null ? !ntpServers.equals(instance.ntpServers) : instance.ntpServers != null) return false;
-		if (domainName != null ? !domainName.equals(instance.domainName) : instance.domainName != null) return false;
-		if (staticAddresseses != null ? !staticAddresseses.equals(instance.staticAddresseses) : instance.staticAddresseses != null)
-			return false;
-		if (clientMembers != null ? !clientMembers.equals(instance.clientMembers) : instance.clientMembers != null)
-			return false;
-		if (vlanMembers != null ? !vlanMembers.equals(instance.vlanMembers) : instance.vlanMembers != null)
-			return false;
-		return nptMembers != null ? nptMembers.equals(instance.nptMembers) : instance.nptMembers == null;
+		return name != null ? name.equals(instance.name) : instance.name == null;
 	}
 
 	@Override
 	public int hashCode() {
-		int result = name != null ? name.hashCode() : 0;
-		result = 31 * result + (dhcpPool != null ? dhcpPool.hashCode() : 0);
-		result = 31 * result + (serverID != null ? serverID.hashCode() : 0);
-		result = 31 * result + (serverMac != null ? serverMac.hashCode() : 0);
-		result = 31 * result + (broadcastIP != null ? broadcastIP.hashCode() : 0);
-		result = 31 * result + (routerIP != null ? routerIP.hashCode() : 0);
-		result = 31 * result + (subnetMask != null ? subnetMask.hashCode() : 0);
-		result = 31 * result + (startIPAddress != null ? startIPAddress.hashCode() : 0);
-		result = 31 * result + (endIPAddress != null ? endIPAddress.hashCode() : 0);
-		result = 31 * result + leaseTimeSec;
-		result = 31 * result + rebindTimeSec;
-		result = 31 * result + renewalTimeSec;
-		result = 31 * result + (dnsServers != null ? dnsServers.hashCode() : 0);
-		result = 31 * result + (ntpServers != null ? ntpServers.hashCode() : 0);
-		result = 31 * result + (ipforwarding ? 1 : 0);
-		result = 31 * result + (domainName != null ? domainName.hashCode() : 0);
-		result = 31 * result + (staticAddresseses != null ? staticAddresseses.hashCode() : 0);
-		result = 31 * result + (clientMembers != null ? clientMembers.hashCode() : 0);
-		result = 31 * result + (vlanMembers != null ? vlanMembers.hashCode() : 0);
-		result = 31 * result + (nptMembers != null ? nptMembers.hashCode() : 0);
-		return result;
+		return name != null ? name.hashCode() : 0;
 	}
+
 }

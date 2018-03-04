@@ -74,7 +74,7 @@ public class DHCPMessageHandlerTest extends FloodlightTestCase {
     }
 
     private DHCPInstance initInstance() {
-        return DHCPInstance.createBuilder().setName("dhcpTestInstance")
+        return DHCPInstance.createInstance("dhcpTestInstance")
                 .setServerID(IPv4Address.of("192.168.1.2"))
                 .setServerMac(MacAddress.of(1))
                 .setBroadcastIP(IPv4Address.of("192.168.1.255"))
