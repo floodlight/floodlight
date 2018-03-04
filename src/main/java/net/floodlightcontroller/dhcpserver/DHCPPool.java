@@ -63,7 +63,6 @@ public class DHCPPool implements IDHCPPool {
 	public Optional<IPv4Address> getLeaseIP(@Nonnull MacAddress clientMac) {
 		DHCPBinding binding = dhcpLeasingPool.get(clientMac);
 		return binding != null ? Optional.of(binding.getIPv4Address()) : Optional.empty();
-
 	}
 
 	public Optional<DHCPBinding> getLeaseBinding(@Nonnull MacAddress clientMac) {

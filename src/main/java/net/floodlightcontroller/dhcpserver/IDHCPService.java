@@ -42,6 +42,7 @@ public interface IDHCPService extends IFloodlightService {
 	void enableDHCP();
 	void disableDHCP();
 	boolean isDHCPEnabled();
+	void setCheckExpiredLeasePeriod(long timeSec);
 
 	Optional<DHCPInstance> getInstance(String name);
 	Optional<DHCPInstance> getInstance(IPv4Address ip);

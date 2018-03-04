@@ -37,8 +37,12 @@ public class ConfigResource extends ServerResource {
 
         JsonNode jsonNode = new ObjectMapper().readTree(json);
         JsonNode enableNode = jsonNode.get("enable");
+        JsonNode leaseGCPeriodNode = jsonNode.get("lease-gc-period");
         if (enableNode != null) {
-            if (enableNode.asBoolean()) dhcpService.enableDHCP();
+            if (enableNode.asBoolean()) {
+                dhcpService.enableDHCP();
+                dhcpService.setCheckExpiredLeasePeriod(leaseGCPeriodNode.asLong());
+            }
             else dhcpService.disableDHCP();
         }
 

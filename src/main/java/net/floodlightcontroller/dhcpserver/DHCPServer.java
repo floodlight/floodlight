@@ -29,6 +29,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.*;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 /**
  * SDN DHCP Server
@@ -85,11 +86,8 @@ public class DHCPServer implements IOFMessageListener, IFloodlightModule, IDHCPS
     private static Map<String, DHCPInstance> dhcpInstanceMap;
     private static volatile boolean enableDHCPService = false;
 
-    /**
-     * Garbage collector service for DHCP server
-     * It handles expired DHCP lease
-     */
     private static ScheduledThreadPoolExecutor leasePoliceDispatcher;
+    private static long DHCP_SERVER_CHECK_EXPIRED_LEASE_PERIOD_SECONDS;
 
     @Override
     public Command receive(IOFSwitch sw, OFMessage msg, FloodlightContext cntx) {
@@ -128,8 +126,6 @@ public class DHCPServer implements IOFMessageListener, IFloodlightModule, IDHCPS
         IPv4Address srcAddr = ((IPv4) eth.getPayload()).getSourceAddress();
         IPv4Address dstAddr = ((IPv4) eth.getPayload()).getDestinationAddress();
 
-        // TODO: any better design for check expired leases?
-        instance.getDHCPPool().checkExpiredLeases();
         switch (DHCPServerUtils.getOpcodeType(dhcPayload)) {
             case REQUEST:
                 processDhcpRequest(dhcPayload, sw, inPort, instance, srcAddr, dstAddr);
@@ -347,7 +343,20 @@ public class DHCPServer implements IOFMessageListener, IFloodlightModule, IDHCPS
         floodlightProviderService.addOFMessageListener(OFType.PACKET_IN, this);
         restApiService.addRestletRoutable(new DHCPServerWebRoutable());
 
+        /**
+         * Thread for DHCP server that periodically check expired DHCP lease
+         *
+         * The period of the check for expired lease, in seconds, is specified either in floodlightdefault.properties,
+         * or through REST API to setup.
+         */
         leasePoliceDispatcher = new ScheduledThreadPoolExecutor(1);
+        leasePoliceDispatcher.scheduleAtFixedRate(() -> {
+            for (DHCPInstance instance : dhcpInstanceMap.values()) {
+                synchronized (instance.getDHCPPool()) {
+                    instance.getDHCPPool().checkExpiredLeases();
+                }
+            }
+        }, 10, DHCP_SERVER_CHECK_EXPIRED_LEASE_PERIOD_SECONDS, TimeUnit.SECONDS);
 
     }
 
@@ -364,6 +373,11 @@ public class DHCPServer implements IOFMessageListener, IFloodlightModule, IDHCPS
     @Override
     public boolean isDHCPEnabled() {
         return enableDHCPService;
+    }
+
+    @Override
+    public void setCheckExpiredLeasePeriod(long timeSec) {
+        DHCP_SERVER_CHECK_EXPIRED_LEASE_PERIOD_SECONDS = timeSec;
     }
 
     @Override

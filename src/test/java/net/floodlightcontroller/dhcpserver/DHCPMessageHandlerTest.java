@@ -360,7 +360,7 @@ public class DHCPMessageHandlerTest extends FloodlightTestCase {
         // Send Ack fails if client lease is already expired
         DHCPInstance instance2 = initInstance();
         instance2.getDHCPPool().assignLeaseToClient(chaddr, 0);
-        instance2. getDHCPPool().checkExpiredLeases();
+        instance2.getDHCPPool().checkExpiredLeases();
         sendAck = handler.handleRenewing(instance2, chaddr);
 
         assertFalse(sendAck);
