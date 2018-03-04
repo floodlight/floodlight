@@ -44,9 +44,9 @@ public class DHCPMessageHandler {
          * -- XID = transactionX
          * --
          * --	ciaddr = 0.0.0.0
-         * --	yiaddr (leased IP)
-         * --	siaddr (DHCPServer IP)
-         * --	giaddr (GW IP)
+         * --	yiaddr = 0.0.0.0
+         * --	siaddr = 0.0.0.0
+         * --	giaddr = 0.0.0.0
          * --   chaddr = Client's MAC
          * --
          * -- Options:
@@ -175,8 +175,8 @@ public class DHCPMessageHandler {
          * -- XID = transactionX
          * -- ciaddr = 0.0.0.0
          * -- yiaddr = offer IP from DHCP pool
-         * -- siaddr = DHCP DHCPServer IP
-         * -- giaddr = blank
+         * -- siaddr = 0.0.0.0
+         * -- giaddr = 0.0.0.0
          * -- chaddr = Client's MAC
          * --
          * -- Options:
@@ -196,9 +196,9 @@ public class DHCPMessageHandler {
                 .setSeconds((short) 0)
                 .setFlags((short) 0)
                 .setClientIPAddress(IPv4Address.FULL_MASK)
+                .setServerIPAddress(IPv4Address.FULL_MASK)
                 .setYourIPAddress(yiaddr)
-                .setServerIPAddress(instance.getServerID())
-                .setGatewayIPAddress(giaddr)
+                .setGatewayIPAddress(IPv4Address.FULL_MASK)
                 .setClientHardwareAddress(chaddr);
 
         List<DHCPOption> dhcpOfferOptions = new ArrayList<>();
@@ -206,7 +206,6 @@ public class DHCPMessageHandler {
         DHCPOption newOption;
         newOption = new DHCPOption()
                 .setCode(DHCPOptionCode.OptionCode_MessageType.getValue())
-                //                .setData(new byte[]{DHCP.DHCPMessageType.DISCOVER.getValue()})
                 .setData(new byte[]{DHCP.DHCPMessageType.OFFER.getValue()})
                 .setLength((byte) 1);
         dhcpOfferOptions.add(newOption);
@@ -358,8 +357,8 @@ public class DHCPMessageHandler {
          * --
          * -- ciaddr = 0.0.0.0
          * -- yiaddr = 0.0.0.0
-         * -- siaddr = DHCP Server IP
-         * -- giaddr = GW IP
+         * -- siaddr = 0.0.0.0
+         * -- giaddr = 0.0.0.0
          * -- chaddr = Client's MAC
          * --
          * -- Options:
@@ -475,16 +474,15 @@ public class DHCPMessageHandler {
         return createDHCPAck(instance, sw, inPort, chaddr, dstAddr, yiaddr, giaddr, xid, requestOrder);
     }
 
-    private IDHCPService.ClientState determineClientState(@Nullable IPv4Address requstIP, @Nullable IPv4Address
-            serverID,
-                                                          IPv4Address dstAddr) {
+    public IDHCPService.ClientState determineClientState(@Nullable IPv4Address requstIP, @Nullable IPv4Address
+                                                          serverID, IPv4Address dstAddr) {
         if (requstIP != null && serverID == null) {
             return IDHCPService.ClientState.INIT_REBOOT;
         } else if (requstIP != null && serverID != null) {
             return IDHCPService.ClientState.SELECTING;
-        } else if (requstIP == null && serverID == null && dstAddr != IPv4Address.NO_MASK) {  // unicast message
+        } else if (requstIP == null && serverID == null && !dstAddr.equals(IPv4Address.NO_MASK)) {  // unicast message
             return IDHCPService.ClientState.RENEWING;
-        } else if (requstIP == null && serverID == null && dstAddr == IPv4Address.NO_MASK) {  // broadcast message
+        } else if (requstIP == null && serverID == null && dstAddr.equals(IPv4Address.NO_MASK)) {  // broadcast message
             return IDHCPService.ClientState.REBINDING;
         } else {
             return IDHCPService.ClientState.UNKNOWN; // This shouldn't happen
@@ -494,7 +492,12 @@ public class DHCPMessageHandler {
     /**
      * This function handles the "Init_Reboot" state of the client
      * <p>
-     * DHCP Server should send DHCPNAK message to client if "Request IP" is incorrect, or is on the wrong network
+     * In this state, client already has a valid lease starts up after a power-down or reboot, it attempts to verify its
+     * lease and re-obtain its configuration parameters from DHCP server.
+     *
+     * Client will then send DHCP request w/ "request IP" but no "server ID" filled in.
+     *
+     * DHCP Server should send DHCPNAK message to client if "Request IP" is incorrect/invalid, or is on the wrong network
      *
      * @param requestIP
      * @param giaddr
@@ -512,7 +515,7 @@ public class DHCPMessageHandler {
             log.debug("Client {} gateway IP address {} does not match the DHCP instance gateway IP address {}.",
                     new Object[]{chaddr, giaddr, routerIP});
             sendACK = false;
-        } else if (!requestIP.equals(instance.getDHCPPool().getLeaseIP(chaddr))) {
+        } else if (!requestIP.equals(instance.getDHCPPool().getLeaseIP(chaddr).get())) {
             sendACK = false;
         } else {
             sendACK = true;
@@ -524,13 +527,14 @@ public class DHCPMessageHandler {
     /**
      * This function handles the "Selecting" state of the client
      * <p>
-     * In this state, client is waiting to receive the DHCP Offer message from one or more DHCP servers, so it can
-     * choose one
+     * In this state, client already received the DHCP Offer message from one or more DHCP servers, it will choose one
+     * and broadcast DHCP request w/ both "request IP" and "server ID" to tell all DHCP servers what its choice was
+     *
      * If client preferred to receive DHCP offer from other server, we should cancel the DHCP binding that hold for
      * lease
      *
      * @param instance
-     * @param requestIP
+     * @param requstIP
      * @param serverID
      * @param chaddr
      * @return
@@ -546,7 +550,7 @@ public class DHCPMessageHandler {
                 sendACK = false;
             }
             // Client wants a different IP than we have on file
-            else if (!requstIP.equals(instance.getDHCPPool().getLeaseIP(chaddr))) {
+            else if (!requstIP.equals(instance.getDHCPPool().getLeaseIP(chaddr).get())) {
                 sendACK = false;
             } else {
                 sendACK = true;
@@ -565,7 +569,8 @@ public class DHCPMessageHandler {
      * This function handles the "Renewing" state of the client
      * <p>
      * In this state, client trying to renew its lease from original server.
-     * Client send "Unicast" DHCP Request message to the original server, and waits for the reply
+     * Client send "Unicast" DHCP Request message(w/ no "request IP" and "server ID") to the original server, and waits
+     * for the reply
      *
      * @param instance
      * @param chaddr
@@ -583,7 +588,9 @@ public class DHCPMessageHandler {
             if (l.getCurrLeaseState() == LeasingState.EXPIRED) {
                 sendAck = false;
                 instance.getDHCPPool().cancelLeaseOfMac(chaddr);
-            } else { // If lease still alive, renew that lease
+            }else if (l.getCurrLeaseState() == LeasingState.PERMANENT_LEASED) {
+                sendAck = false;
+            }else { // If lease still alive, renew that lease
                 sendAck = true;
                 instance.getDHCPPool().renewLeaseOfMAC(chaddr, instance.getLeaseTimeSec());
             }
@@ -609,6 +616,8 @@ public class DHCPMessageHandler {
         Optional<DHCPBinding> binding = instance.getDHCPPool().getLeaseBinding(chaddr);
         if (!binding.isPresent()) {
             sendAck = false;
+        }else if (binding.get().getCurrLeaseState() == LeasingState.PERMANENT_LEASED) {
+            sendAck = false;
         } else {
             sendAck = true;
             instance.getDHCPPool().renewLeaseOfMAC(chaddr, instance.getLeaseTimeSec());
@@ -619,8 +628,8 @@ public class DHCPMessageHandler {
 
 
     public OFPacketOut createDHCPAck(DHCPInstance instance, IOFSwitch sw, OFPort inPort, MacAddress chaddr,
-                                     IPv4Address dstIPAddr,
-                                     IPv4Address yiaddr, IPv4Address giaddr, int xid, List<Byte> requestOrder) {
+                                     IPv4Address dstIPAddr, IPv4Address yiaddr, IPv4Address giaddr,
+                                     int xid, List<Byte> requestOrder) {
         /** DHCP ACK Message
          * -- UDP src port = 67
          * -- UDP dst port = 68
@@ -628,10 +637,11 @@ public class DHCPMessageHandler {
          * -- IP dst addr = 255.255.255.255
          * -- Opcode = 0x02
          * -- XID = transactionX
-         * -- ciaddr = blank
-         * -- yiaddr = offer IP
-         * -- siaddr = DHCP DHCPServer IP
-         * -- giaddr = blank
+         * --
+         * -- ciaddr = 0.0.0.0
+         * -- yiaddr = offered IP
+         * -- siaddr = 0.0.0.0
+         * -- giaddr = 0.0.0.0
          * -- chaddr = Client's MAC
          * --
          * -- Options:
@@ -676,7 +686,7 @@ public class DHCPMessageHandler {
         return pob.build();
     }
 
-    private DHCP setDHCPAck(DHCPInstance instance, MacAddress chaddr, IPv4Address yiaddr, IPv4Address giaddr,
+    public DHCP setDHCPAck(DHCPInstance instance, MacAddress chaddr, IPv4Address yiaddr, IPv4Address giaddr,
                             int xid, List<Byte> requestOrder) {
         DHCP dhcpAck = new DHCP()
                 .setOpCode(DHCP.DHCPOpCode.OpCode_Reply.getValue())
@@ -687,9 +697,9 @@ public class DHCPMessageHandler {
                 .setSeconds((short) 0)
                 .setFlags((short) 0)
                 .setClientIPAddress(IPv4Address.FULL_MASK) // unassigned IP
+                .setServerIPAddress(IPv4Address.FULL_MASK)
                 .setYourIPAddress(yiaddr)
-                .setServerIPAddress(instance.getServerID())
-                .setGatewayIPAddress(giaddr)
+                .setGatewayIPAddress(IPv4Address.FULL_MASK)
                 .setClientHardwareAddress(chaddr);
 
         List<DHCPOption> ackOptions = new ArrayList<>();
@@ -812,7 +822,7 @@ public class DHCPMessageHandler {
 
     }
 
-    private DHCP setDHCPNak(DHCPInstance instance, MacAddress chaddr, IPv4Address giaddr, int xid) {
+    public DHCP setDHCPNak(DHCPInstance instance, MacAddress chaddr, IPv4Address giaddr, int xid) {
         DHCP dhcpNak = new DHCP()
                 .setOpCode(DHCP.DHCPOpCode.OpCode_Reply.getValue())
                 .setHardwareType((byte) 1)
@@ -822,9 +832,9 @@ public class DHCPMessageHandler {
                 .setSeconds((short) 0)
                 .setFlags((short) 0)
                 .setClientIPAddress(IPv4Address.FULL_MASK)  // unassigned IP
+                .setServerIPAddress(IPv4Address.FULL_MASK)
                 .setYourIPAddress(IPv4Address.FULL_MASK)
-                .setServerIPAddress(instance.getServerID())
-                .setGatewayIPAddress(giaddr)
+                .setGatewayIPAddress(IPv4Address.FULL_MASK)
                 .setClientHardwareAddress(chaddr);
 
         List<DHCPOption> nakOptions = new ArrayList<>();

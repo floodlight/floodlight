@@ -9,7 +9,6 @@ import net.floodlightcontroller.core.test.PacketFactory;
 import net.floodlightcontroller.core.types.NodePortTuple;
 import net.floodlightcontroller.packet.DHCP;
 import net.floodlightcontroller.packet.Ethernet;
-import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.test.FloodlightTestCase;
 import org.easymock.EasyMock;
 import org.junit.Before;
@@ -19,7 +18,6 @@ import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.action.OFActionOutput;
 import org.projectfloodlight.openflow.types.*;
 
-import javax.xml.crypto.Data;
 import java.util.*;
 
 import static org.easymock.EasyMock.replay;
@@ -108,13 +106,16 @@ public class DHCPMessageHandlerTest extends FloodlightTestCase {
         DHCP dhcpOffer = handler.buildDHCPOfferMessage(instance, clientMac, yiaddr, instance.getRouterIP(),
                                         dhcpPayload.getTransactionId(), requestOrder);
 
+        // DHCP message type should be "DHCP Offer"
+        assertArrayEquals(new byte[]{DHCP.DHCPMessageType.OFFER.getValue()},
+                dhcpOffer.getOption(DHCP.DHCPOptionCode.OptionCode_MessageType).getData());
 
         // DHCP header should equal to the instance setup
         assertEquals(DHCP.DHCPOpCode.OpCode_Reply.getValue(), dhcpOffer.getOpCode());
         assertEquals(chaddr, dhcpOffer.getClientHardwareAddress());
         assertEquals(dhcpPayload.getTransactionId(), dhcpOffer.getTransactionId());
         assertEquals(IPv4Address.of("0.0.0.0"), dhcpOffer.getClientIPAddress());    // Client IP should be "0.0.0.0" in DHCP offer message
-        assertEquals(instance.getServerID(), dhcpOffer.getServerIPAddress());
+        assertEquals(IPv4Address.FULL_MASK, dhcpOffer.getServerIPAddress());
 
         // lease time, renew time and rebinding time in DHCP offer message should be equal to DHCP instance setup
         assertArrayEquals(DHCPServerUtils.intToBytes(instance.getLeaseTimeSec()),
@@ -157,7 +158,11 @@ public class DHCPMessageHandlerTest extends FloodlightTestCase {
         assertEquals(chaddr, dhcpOffer.getClientHardwareAddress());
         assertEquals(dhcpPayload.getTransactionId(), dhcpOffer.getTransactionId());
         assertEquals(IPv4Address.of("0.0.0.0"), dhcpOffer.getClientIPAddress());    // Client IP should be "0.0.0.0" in DHCP offer message
-        assertEquals(instance.getServerID(), dhcpOffer.getServerIPAddress());
+        assertEquals(IPv4Address.FULL_MASK, dhcpOffer.getServerIPAddress());
+
+        // DHCP message type should be "DHCP Offer"
+        assertArrayEquals(new byte[]{DHCP.DHCPMessageType.OFFER.getValue()},
+                dhcpOffer.getOption(DHCP.DHCPOptionCode.OptionCode_MessageType).getData());
 
         // lease time, renew time and rebinding time in DHCP offer message should be equal to DHCP instance setup
         assertArrayEquals(DHCPServerUtils.intToBytes(instance.getLeaseTimeSec()),
@@ -205,6 +210,9 @@ public class DHCPMessageHandlerTest extends FloodlightTestCase {
 
         assertEquals(IPv4Address.of("10.0.0.9"), dhcpOffer.getYourIPAddress());
 
+        // DHCP message type should be "DHCP Offer"
+        assertArrayEquals(new byte[]{DHCP.DHCPMessageType.OFFER.getValue()},
+                dhcpOffer.getOption(DHCP.DHCPOptionCode.OptionCode_MessageType).getData());
 
         // Client registered as static DHCP binding and request static IP, directly return pre-configured static IP as lease IP
         IPv4Address yiaddr1 = instance.getDHCPPool().assignLeaseToClientWithRequestIP(IPv4Address.of("10.0.0.9"), MacAddress.of(9), instance.getLeaseTimeSec()).get();
@@ -249,7 +257,7 @@ public class DHCPMessageHandlerTest extends FloodlightTestCase {
         MacAddress chaddr = dhcpPayload.getClientHardwareAddress();
         IPv4Address ciaddr = IPv4Address.NONE;
 
-        // Send Ack is true when client "request IP" is correct
+        // Send Ack when client "request IP" is correct
         DHCPInstance instance = initInstance();
         IPv4Address requestIP = IPv4Address.of("10.0.0.5");
         instance.getDHCPPool().assignLeaseToClientWithRequestIP(requestIP, chaddr, 60);
@@ -257,11 +265,11 @@ public class DHCPMessageHandlerTest extends FloodlightTestCase {
 
         assertTrue(sendAck);
 
-        // Send Ack fails if client request IP is incorrect
+        // Send Ack fails if client request IP not match the lease IP that DHCP server holds in file
         DHCPInstance instance1 = initInstance();
         IPv4Address requestIP1 = IPv4Address.of("192.168.0.1");
         instance1.getDHCPPool().assignLeaseToClientWithRequestIP(requestIP1, chaddr, 60);
-        boolean sendAck1 = handler.handleInitReboot(instance1, requestIP, instance1.getRouterIP(), chaddr, ciaddr);
+        boolean sendAck1 = handler.handleInitReboot(instance1, requestIP1, instance1.getRouterIP(), chaddr, ciaddr);
 
         assertFalse(sendAck1);
 
@@ -269,7 +277,7 @@ public class DHCPMessageHandlerTest extends FloodlightTestCase {
         DHCPInstance instance2 = initInstance();
         IPv4Address requestIP2 = IPv4Address.of("10.0.0.2");
         instance2.getDHCPPool().assignLeaseToClientWithRequestIP(requestIP2, chaddr, 60);
-        boolean sendAck2 = handler.handleInitReboot(instance2, requestIP, IPv4Address.of("192.168.0.1"), chaddr, ciaddr);
+        boolean sendAck2 = handler.handleInitReboot(instance2, requestIP2, IPv4Address.of("192.168.0.1"), chaddr, ciaddr);
 
         assertFalse(sendAck2);
 
@@ -277,19 +285,177 @@ public class DHCPMessageHandlerTest extends FloodlightTestCase {
         DHCPInstance instance3 = initInstance();
         IPv4Address requestIP3 = IPv4Address.of("10.0.0.2");
         instance3.getDHCPPool().assignLeaseToClientWithRequestIP(requestIP3, chaddr, 60);
-        boolean sendAck3 = handler.handleInitReboot(instance2, requestIP, IPv4Address.of("192.168.0.1"), chaddr, IPv4Address.of("10.0.0.1"));
+        boolean sendAck3 = handler.handleInitReboot(instance2, requestIP3, IPv4Address.of("192.168.0.1"), chaddr, IPv4Address.of("10.0.0.1"));
 
         assertFalse(sendAck3);
+
+        // send Ack fails if client not registered yet
+        DHCPInstance instance4 = initInstance();
+        IPv4Address requestIP4 = IPv4Address.of("10.0.0.5");
+        boolean sendACK4 = handler.handleInitReboot(instance4, requestIP4, IPv4Address.of("192.168.0.1"), chaddr, ciaddr);
+
+        assertFalse(sendACK4);
 
     }
 
     @Test
     public void handRequestWhenClientIsSelectingState() throws Exception {
+        MacAddress chaddr = dhcpPayload.getClientHardwareAddress();
+        boolean sendAck;
+
+        // Send Ack when client "request IP" is correct and "server ID" is correct
+        DHCPInstance instance = initInstance();
+        IPv4Address serverID = instance.getServerID();
+        IPv4Address requestIP = IPv4Address.of("10.0.0.5");
+        instance.getDHCPPool().assignLeaseToClientWithRequestIP(requestIP, chaddr, 60);
+
+        sendAck = handler.handleSelecting(instance, requestIP, serverID, chaddr);
+        assertTrue(sendAck);
+
+        // Send Ack fails if Server ID is not the same as inside DHCP instance (this because client broadcast DHCP request)
+        DHCPInstance instance1 = initInstance();
+        IPv4Address serverID1 = IPv4Address.of("192.168.1.100");
+        IPv4Address requestIP1 = IPv4Address.of("10.0.0.5");
+        instance.getDHCPPool().assignLeaseToClientWithRequestIP(requestIP1, chaddr, 60);
+
+        sendAck = handler.handleSelecting(instance1, requestIP1, serverID1, chaddr);
+        assertFalse(sendAck);
+
+        // Send ACK fails if client "request IP" is different than DHCP server has on file
+        DHCPInstance instance2 = initInstance();
+        instance2.getDHCPPool().assignLeaseToClientWithRequestIP(IPv4Address.of("10.0.0.3"), chaddr, 60);
+        IPv4Address requestIP2 = IPv4Address.of("10.0.0.5");
+        IPv4Address serverID2 = instance2.getServerID();
+
+        sendAck = handler.handleSelecting(instance2, requestIP2, serverID2, chaddr);
+        assertFalse(sendAck);
+
+        // Send ACK fails if client not registered yet
+        DHCPInstance instance3 = initInstance();
+        IPv4Address serverID3 = instance3.getServerID();
+        IPv4Address requestIP3 = IPv4Address.of("10.0.0.5");
+
+        sendAck = handler.handleSelecting(instance3, requestIP3, serverID3, chaddr);
+        assertFalse(sendAck);
+    }
+
+    @Test
+    public void handRequestWhenClientIsRenewingState() throws Exception {
+        boolean sendAck;
+        MacAddress chaddr = dhcpPayload.getClientHardwareAddress();
+
+        // Send Ack when client lease is valid and still alive
+        DHCPInstance instance = initInstance();
+        instance.getDHCPPool().assignLeaseToClient(chaddr, 5);
+        sendAck = handler.handleRenewing(instance, chaddr);
+
+        assertTrue(sendAck);
+
+        // Send Ack fails if client not registered yet
+        DHCPInstance instance1 = initInstance();
+        sendAck = handler.handleRenewing(instance1, chaddr);
+
+        assertFalse(sendAck);
+
+        // Send Ack fails if client lease is already expired
+        DHCPInstance instance2 = initInstance();
+        instance2.getDHCPPool().assignLeaseToClient(chaddr, 0);
+        instance2. getDHCPPool().checkExpiredLeases();
+        sendAck = handler.handleRenewing(instance2, chaddr);
+
+        assertFalse(sendAck);
+
+        // Send Ack fails if client lease is not valid (client lease is permanent)
+        DHCPInstance instance3 = initInstance();
+        instance3.getDHCPPool().assignPermanentLeaseToClient(chaddr);
+        sendAck = handler.handleRenewing(instance3, chaddr);
+
+        assertFalse(sendAck);
+    }
+
+    @Test
+    public void handleRequestWhenClientIsRebindingState() throws Exception {
+        boolean sendAck;
+        MacAddress chaddr = dhcpPayload.getClientHardwareAddress();
+
+        // Send Ack when client registered before and its lease is still valid in the record
+        DHCPInstance instance = initInstance();
+        instance.getDHCPPool().assignLeaseToClient(chaddr, 5);
+        sendAck = handler.handleRebinding(instance, chaddr);
+
+        assertTrue(sendAck);
+
+        // Send Ack fails if client not registered before
+        DHCPInstance instance1 = initInstance();
+        sendAck = handler.handleRebinding(instance1, chaddr);
+
+        assertFalse(sendAck);
+
+        // Send Ack fails if client lease is not valid
+        DHCPInstance instance2 = initInstance();
+        instance2.getDHCPPool().assignPermanentLeaseToClient(chaddr);
+        sendAck = handler.handleRebinding(instance2, chaddr);
+
+        assertFalse(sendAck);
+
+    }
+
+    @Test
+    public void testDetermineClientState() throws Exception {
+
+        // Returns "Init_Reboot" state if client sends DHCP request w/ "Request IP" while "Server ID" not filled in
+        assertEquals(IDHCPService.ClientState.INIT_REBOOT, handler.determineClientState(IPv4Address.of("10.0.0.3"), null,
+                IPv4Address.of("255.255.255.255")));
+
+        // Returns "Selecting" state if client sends DHCP request w/ both "Request IP" and "Server ID"
+        assertEquals(IDHCPService.ClientState.SELECTING, handler.determineClientState(IPv4Address.of("10.0.0.3"), IPv4Address.of("192.168.1.2"),
+                IPv4Address.of("255.255.255.255")));
+
+        // Returns "Renewing" state if client sends DHCP request message w/ both "Request IP" and "Server ID" not filled
+        // in while the DHCP request message is "Unicast"
+        assertEquals(IDHCPService.ClientState.RENEWING, handler.determineClientState(null, null,
+                IPv4Address.of("192.168.1.2")));
 
 
+        // Returns "Rebinding" state if client sends DHCP request message w/ both "Request IP" and "Server ID" not filled
+        // in while the DHCP request message is "Broadcast"
+        assertEquals(IDHCPService.ClientState.REBINDING, handler.determineClientState(null, null,
+                IPv4Address.of("255.255.255.255")));
 
     }
 
 
+    @Test
+    public void testSetDHCPAck() throws Exception {
+        DHCPInstance instance = initInstance();
+        MacAddress chaddr = dhcpPayload.getClientHardwareAddress();
+        IPv4Address giaddr = IPv4Address.FULL_MASK;
+        IPv4Address yiaddr = IPv4Address.of("10.0.0.2");
+        int xid = dhcpPayload.getTransactionId();
+        List<Byte> requestOrder = handler.getRequestedParameters(dhcpPayload, false);
+
+        DHCP dhcpAck = handler.setDHCPAck(instance, chaddr, yiaddr, giaddr, xid, requestOrder);
+
+        assertEquals(IPv4Address.of("10.0.0.2"), dhcpAck.getYourIPAddress());
+        assertEquals(DHCP.DHCPOpCode.OpCode_Reply.getValue(), dhcpAck.getOpCode());
+        // DHCP message type should be "DHCP Ack"
+        assertArrayEquals(new byte[]{DHCP.DHCPMessageType.ACK.getValue()},
+                dhcpAck.getOption(DHCP.DHCPOptionCode.OptionCode_MessageType).getData());
+    }
+
+    @Test
+    public void testSetDHCPNak() throws Exception {
+        DHCPInstance instance = initInstance();
+        MacAddress chaddr = dhcpPayload.getClientHardwareAddress();
+        IPv4Address giaddr = IPv4Address.FULL_MASK;
+        int xid = dhcpPayload.getTransactionId();
+
+        DHCP dhcpNak = handler.setDHCPNak(instance, chaddr, giaddr, xid);
+
+        assertEquals(DHCP.DHCPOpCode.OpCode_Reply.getValue(), dhcpNak.getOpCode());
+        // DHCP message type should be "DHCP Ack"
+        assertArrayEquals(new byte[]{DHCP.DHCPMessageType.NAK.getValue()},
+                dhcpNak.getOption(DHCP.DHCPOptionCode.OptionCode_MessageType).getData());
+    }
 
 }
