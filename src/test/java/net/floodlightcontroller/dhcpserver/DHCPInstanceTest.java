@@ -15,6 +15,7 @@ import java.util.Map;
 import static junit.framework.TestCase.assertNotNull;
 import static junit.framework.TestCase.assertTrue;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 
 /**
  * @author Qing Wang (qw@g.clemson.edu) at 2/22/18
@@ -145,14 +146,82 @@ public class DHCPInstanceTest extends FloodlightTestCase {
 
     @Test
     public void testBuildInstanceWithStaticAddressesNotValid() throws Exception {
+        DHCPInstance instance = DHCPInstance.createBuilder().setName("dhcpTestInstance")
+                .setServerID(IPv4Address.of("192.168.1.2"))
+                .setServerMac(MacAddress.of("aa:bb:cc:dd:ee:ff"))
+                .setBroadcastIP(IPv4Address.of("192.168.1.255"))
+                .setRouterIP(IPv4Address.of("192.168.1.1"))
+                .setSubnetMask(IPv4Address.of("255.255.255.0"))
+                .setStartIP(IPv4Address.of("192.168.1.3"))
+                .setEndIP(IPv4Address.of("192.168.1.10"))
+                .setLeaseTimeSec(10)
+                .setDNSServers(Arrays.asList(IPv4Address.of("10.0.0.1"), IPv4Address.of("10.0.0.2")))
+                .setNTPServers(Arrays.asList(IPv4Address.of("10.0.0.3"), IPv4Address.of("10.0.0.4")))
+                .setIPforwarding(true)
+                .setDomainName("testDomainName")
+                .setStaticAddresses(MacAddress.of("44:55:66:77:88:99"), IPv4Address.of("10.0.0.1"))
+                .setStaticAddresses(MacAddress.of("99:88:77:66:55:44"), IPv4Address.of("10.0.0.2"))
+                .setClientMembers(Sets.newHashSet(MacAddress.of("00:11:22:33:44:55"), MacAddress.of("55:44:33:22:11:00")))
+                .setVlanMembers(Sets.newHashSet(VlanVid.ofVlan(100), VlanVid.ofVlan(200)))
+                .setNptMembers(Sets.newHashSet(new NodePortTuple(DatapathId.of(1L), OFPort.of(1)), new NodePortTuple(DatapathId.of(2L), OFPort.of(2))))
+                .build();
 
+
+        // Will return size = 0 if try to set static address but none of them are valid
+        assertEquals(0, instance.getStaticAddresseses().size());
+
+
+        DHCPInstance instance1 = DHCPInstance.createBuilder().setName("dhcpTestInstance1")
+                .setServerID(IPv4Address.of("192.168.1.2"))
+                .setServerMac(MacAddress.of("aa:bb:cc:dd:ee:ff"))
+                .setBroadcastIP(IPv4Address.of("192.168.1.255"))
+                .setRouterIP(IPv4Address.of("192.168.1.1"))
+                .setSubnetMask(IPv4Address.of("255.255.255.0"))
+                .setStartIP(IPv4Address.of("192.168.1.3"))
+                .setEndIP(IPv4Address.of("192.168.1.10"))
+                .setLeaseTimeSec(10)
+                .setDNSServers(Arrays.asList(IPv4Address.of("10.0.0.1"), IPv4Address.of("10.0.0.2")))
+                .setNTPServers(Arrays.asList(IPv4Address.of("10.0.0.3"), IPv4Address.of("10.0.0.4")))
+                .setIPforwarding(true)
+                .setDomainName("testDomainName")
+                .setClientMembers(Sets.newHashSet(MacAddress.of("00:11:22:33:44:55"), MacAddress.of("55:44:33:22:11:00")))
+                .setVlanMembers(Sets.newHashSet(VlanVid.ofVlan(100), VlanVid.ofVlan(200)))
+                .setNptMembers(Sets.newHashSet(new NodePortTuple(DatapathId.of(1L), OFPort.of(1)), new NodePortTuple(DatapathId.of(2L), OFPort.of(2))))
+                .build();
+
+        // Will also return "null" if static address never been set
+        assertEquals(0, instance1.getStaticAddresseses().size());
 
     }
 
-
     @Test
     public void testUpdateInstance() throws Exception {
+        DHCPInstance instance = DHCPInstance.createBuilder().setName("dhcpTestInstance")
+                .setServerID(IPv4Address.of("192.168.1.2"))
+                .setServerMac(MacAddress.of("aa:bb:cc:dd:ee:ff"))
+                .setBroadcastIP(IPv4Address.of("192.168.1.255"))
+                .setRouterIP(IPv4Address.of("192.168.1.1"))
+                .setSubnetMask(IPv4Address.of("255.255.255.0"))
+                .setStartIP(IPv4Address.of("192.168.1.3"))
+                .setEndIP(IPv4Address.of("192.168.1.10"))
+                .setLeaseTimeSec(10)
+                .setDNSServers(Arrays.asList(IPv4Address.of("10.0.0.1"), IPv4Address.of("10.0.0.2")))
+                .setNTPServers(Arrays.asList(IPv4Address.of("10.0.0.3"), IPv4Address.of("10.0.0.4")))
+                .setIPforwarding(true)
+                .setDomainName("testDomainName")
+                .setStaticAddresses(MacAddress.of("44:55:66:77:88:99"), IPv4Address.of("10.0.0.1"))
+                .setStaticAddresses(MacAddress.of("99:88:77:66:55:44"), IPv4Address.of("10.0.0.2"))
+                .setClientMembers(Sets.newHashSet(MacAddress.of("00:11:22:33:44:55"), MacAddress.of("55:44:33:22:11:00")))
+                .setVlanMembers(Sets.newHashSet(VlanVid.ofVlan(100), VlanVid.ofVlan(200)))
+                .setNptMembers(Sets.newHashSet(new NodePortTuple(DatapathId.of(1L), OFPort.of(1)), new NodePortTuple(DatapathId.of(2L), OFPort.of(2))))
+                .build();
 
+
+        instance = instance.getBuilder().setServerID(IPv4Address.of("192.168.1.4")).build();
+        instance = instance.getBuilder().setRouterIP(IPv4Address.of("192.168.1.3")).build();
+
+        assertEquals(IPv4Address.of("192.168.1.4"), instance.getServerID());
+        assertEquals(IPv4Address.of("192.168.1.3"), instance.getRouterIP());
 
     }
 
