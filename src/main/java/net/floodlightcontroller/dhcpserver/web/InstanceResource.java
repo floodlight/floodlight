@@ -6,8 +6,7 @@ import com.google.common.collect.ImmutableMap;
 import net.floodlightcontroller.core.types.NodePortTuple;
 import net.floodlightcontroller.dhcpserver.DHCPInstance;
 import net.floodlightcontroller.dhcpserver.IDHCPService;
-import org.projectfloodlight.openflow.types.DatapathId;
-import org.projectfloodlight.openflow.types.OFPort;
+import org.projectfloodlight.openflow.types.*;
 import org.restlet.data.Status;
 import org.restlet.resource.*;
 
@@ -53,33 +52,64 @@ public class InstanceResource extends ServerResource {
         }
 
         JsonNode jsonNode = new ObjectMapper().readTree(json);
+
         JsonNode switchportsNode = jsonNode.get("switchports");
         if (switchportsNode != null) {
             for (JsonNode swpt : switchportsNode) {
                 JsonNode dpidNode = swpt.get("dpid");
                 JsonNode portNode = swpt.get("port");
                 if (dpidNode != null && portNode != null) {
-                    NodePortTuple npt = new NodePortTuple(DatapathId.of(dpidNode.asText()), OFPort.of
-                            (portNode.asInt()));
+                    NodePortTuple npt = new NodePortTuple(DatapathId.of(dpidNode.asText()), OFPort.of(portNode.asInt()));
                     dhcpInstance.get().addNptMember(npt);
                 }
             }
         }
 
+        JsonNode vlansNode = jsonNode.get("vlans");
+        if (vlansNode != null) {
+            for (JsonNode vlan : vlansNode) {
+                VlanVid vid = VlanVid.ofVlan(vlan.asInt());
+                dhcpInstance.get().addVlanMember(vid);
+            }
+        }
+
+        JsonNode staticAddressesNode = jsonNode.get("staticaddresses");
+        if (staticAddressesNode != null) {
+            for (JsonNode staticAddress : staticAddressesNode) {
+                JsonNode macNode = staticAddress.get("mac");
+                JsonNode ipNode = staticAddress.get("ip");
+                if (macNode != null && ipNode != null) {
+                    dhcpInstance.get().addStaticAddress(MacAddress.of(macNode.asText()), IPv4Address.of(ipNode.asText()));
+                }
+            }
+        }
+
+        JsonNode clientMembersNode = jsonNode.get("clientmembers");
+        if (clientMembersNode != null) {
+            for (JsonNode clientmember : clientMembersNode) {
+                MacAddress cm = MacAddress.of(clientmember.asText());
+                dhcpInstance.get().addClientMember(cm);
+            }
+        }
+
+        JsonNode dnsServersNode = jsonNode.get("dnsservers");
+        if (dnsServersNode != null) {
+            for (JsonNode dnsServer : dnsServersNode) {
+                IPv4Address ds = IPv4Address.of(dnsServer.asText());
+                dhcpInstance.get().addDnsServer(ds);
+            }
+        }
+
+        JsonNode ntpServersNode = jsonNode.get("ntpservers");
+        if (ntpServersNode != null) {
+            for (JsonNode ntpServer : ntpServersNode) {
+                IPv4Address ns = IPv4Address.of(ntpServer.asText());
+                dhcpInstance.get().addNtpServer(ns);
+            }
+        }
+
         setDescription("Instance updated.");
         return dhcpInstance.get();
-    }
-
-    private boolean checkRequiredFields(JsonNode nameNode, JsonNode startIPNode, JsonNode endIPNode, JsonNode
-            serverIDNode, JsonNode serverMacNode,
-                                        JsonNode routerIPNode, JsonNode broadcastNode, JsonNode leaseTimeNode,
-                                        JsonNode rebindTimeNode,
-                                        JsonNode renewTimeNode, JsonNode ipforwardingNode, JsonNode domainNameNode) {
-        return nameNode != null && startIPNode != null && endIPNode != null && serverIDNode != null && serverMacNode
-                != null
-                && routerIPNode != null && broadcastNode != null && leaseTimeNode != null && rebindTimeNode != null
-                && renewTimeNode != null && ipforwardingNode != null && domainNameNode != null;
-
     }
 
     @Delete

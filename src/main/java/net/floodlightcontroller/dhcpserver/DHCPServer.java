@@ -87,7 +87,7 @@ public class DHCPServer implements IOFMessageListener, IFloodlightModule, IDHCPS
     private static volatile boolean enableDHCPService = false;
 
     private static ScheduledThreadPoolExecutor leasePoliceDispatcher;
-    private static long DHCP_SERVER_CHECK_EXPIRED_LEASE_PERIOD_SECONDS;
+    private static long DHCP_SERVER_CHECK_EXPIRED_LEASE_PERIOD_SECONDS = 10; // 10 secs as default
 
     @Override
     public Command receive(IOFSwitch sw, OFMessage msg, FloodlightContext cntx) {

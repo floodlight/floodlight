@@ -44,18 +44,11 @@ public class InstancesResource extends ServerResource {
             JsonNode startIPNode = mapper.readTree(json).get("start-ip");
             JsonNode endIPNode = mapper.readTree(json).get("end-ip");
             JsonNode serverIDNode = mapper.readTree(json).get("server-id");
-            JsonNode serverMacNode = mapper.readTree(json).get("server-mac");
             JsonNode routerIPNode = mapper.readTree(json).get("router-ip");
-            JsonNode broadcastNode = mapper.readTree(json).get("broadcast-ip");
             JsonNode leaseTimeNode = mapper.readTree(json).get("lease-time");
-            JsonNode rebindTimeNode = mapper.readTree(json).get("rebind-time");
-            JsonNode renewTimeNode = mapper.readTree(json).get("renew-time");
-            JsonNode ipforwardingNode = mapper.readTree(json).get("ip-forwarding");
-            JsonNode domainNameNode = mapper.readTree(json).get("domain-name");
 
-            boolean getFields = checkRequiredFields(nameNode, startIPNode, endIPNode, serverIDNode, serverMacNode,
-                    routerIPNode, broadcastNode, leaseTimeNode, rebindTimeNode, renewTimeNode,
-                    ipforwardingNode, domainNameNode);
+            boolean getFields = checkRequiredFields(nameNode, startIPNode, endIPNode, serverIDNode,
+                                    routerIPNode, leaseTimeNode);
 
             if (!getFields) {
                 setStatus(org.restlet.data.Status.CLIENT_ERROR_BAD_REQUEST, "One or more required fields missing.");
@@ -81,16 +74,10 @@ public class InstancesResource extends ServerResource {
         }
     }
 
-    private boolean checkRequiredFields(JsonNode nameNode, JsonNode startIPNode, JsonNode endIPNode, JsonNode
-            serverIDNode, JsonNode serverMacNode,
-                                        JsonNode routerIPNode, JsonNode broadcastNode, JsonNode leaseTimeNode,
-                                        JsonNode rebindTimeNode,
-                                        JsonNode renewTimeNode, JsonNode ipforwardingNode, JsonNode domainNameNode) {
-        return nameNode != null && startIPNode != null && endIPNode != null && serverIDNode != null && serverMacNode
-                != null
-                && routerIPNode != null && broadcastNode != null && leaseTimeNode != null && rebindTimeNode != null
-                && renewTimeNode != null && ipforwardingNode != null && domainNameNode != null;
-
+    private boolean checkRequiredFields(JsonNode nameNode, JsonNode startIPNode, JsonNode endIPNode,
+                                        JsonNode serverIDNode, JsonNode routerIPNode, JsonNode leaseTimeNode) {
+        return nameNode != null && startIPNode != null && endIPNode != null && serverIDNode != null
+                && routerIPNode != null && leaseTimeNode != null;
     }
 
     @Delete

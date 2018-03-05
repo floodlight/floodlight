@@ -75,13 +75,33 @@ public class DHCPInstance {
 	public boolean getIpforwarding() { return ipforwarding; }
 	public String getDomainName() { return domainName; }
 
-	public Map<MacAddress, IPv4Address> getStaticAddresseses() { return staticAddresseses; };
+	public Map<MacAddress, IPv4Address> getStaticAddresseses() { return staticAddresseses; }
 	public Set<NodePortTuple> getNptMembers() { return nptMembers; }
 	public Set<VlanVid> getVlanMembers() { return vlanMembers; }
 	public Set<MacAddress> getClientMembers() { return clientMembers; }
 
+	public void addNtpServer(IPv4Address ns) {
+		this.ntpServers.add(ns);
+	}
+
+	public void addDnsServer(IPv4Address ds) {
+		this.dnsServers.add(ds);
+	}
+
 	public void addNptMember(NodePortTuple npt) {
 		this.nptMembers.add(npt);
+	}
+
+	public void addVlanMember(VlanVid vid) {
+		this.vlanMembers.add(vid);
+	}
+
+	public void addClientMember(MacAddress cm) {
+		this.clientMembers.add(cm);
+	}
+
+	public void addStaticAddress(MacAddress staticAddressMac, IPv4Address staticAddressIP) {
+		this.staticAddresseses.put(staticAddressMac, staticAddressIP);
 	}
 
 	public DHCPInstanceBuilder getBuilder() {return builder;}
@@ -126,20 +146,20 @@ public class DHCPInstance {
 	public static class DHCPInstanceBuilder {
 		private final String name;
 		private DHCPPool dhcpPool;
-		private IPv4Address serverID;
-		private MacAddress serverMac;
-		private IPv4Address broadcastIP;
-		private IPv4Address routerIP;
-		private IPv4Address subnetMask;
-		private IPv4Address startIPAddress;
-		private IPv4Address endIPAddress;
-		private int leaseTimeSec;
-		private int rebindTimeSec;
-		private int renewalTimeSec;
+		private IPv4Address serverID = IPv4Address.NONE;
+		private MacAddress serverMac = MacAddress.NONE;
+		private IPv4Address broadcastIP = IPv4Address.NONE;
+		private IPv4Address routerIP = IPv4Address.NONE;
+		private IPv4Address subnetMask = IPv4Address.NONE;
+		private IPv4Address startIPAddress = IPv4Address.NONE;
+		private IPv4Address endIPAddress = IPv4Address.NONE;
+		private int leaseTimeSec = 0;
+		private int rebindTimeSec = 0;
+		private int renewalTimeSec = 0;
 
 		private List<IPv4Address> dnsServers;
 		private List<IPv4Address> ntpServers;
-		private boolean ipforwarding;
+		private boolean ipforwarding = false;
 		private String domainName;
 
 		private Map<MacAddress, IPv4Address> staticAddresseses = new ConcurrentHashMap<>();
@@ -167,17 +187,32 @@ public class DHCPInstance {
 									@JsonProperty("domain-name") String domainName) {
 			this.name = name;
 			this.serverID = IPv4Address.of(serverID);
-			this.serverMac = MacAddress.of(serverMac);
-			this.broadcastIP = IPv4Address.of(broadcastIP);
 			this.routerIP = IPv4Address.of(routerIP);
-			this.subnetMask = IPv4Address.of(subnetMask);
 			this.startIPAddress = IPv4Address.of(startIP);
 			this.endIPAddress = IPv4Address.of(endIP);
 			this.leaseTimeSec = Integer.parseInt(leaseTime);
 			this.rebindTimeSec = (int)(Integer.parseInt(rebindTime) * 0.875);
 			this.renewalTimeSec = (int)(Integer.parseInt(renewTime) * 0.5);
-			this.ipforwarding = Boolean.valueOf(ipForwarding);
-			this.domainName = domainName;
+
+			if (serverMac != null) {
+				this.serverMac = MacAddress.of(serverMac);
+			}
+
+			if (broadcastIP != null) {
+				this.broadcastIP = IPv4Address.of(broadcastIP);
+			}
+
+			if (subnetMask != null) {
+				this.subnetMask = IPv4Address.of(subnetMask);
+			}
+
+			if (ipForwarding != null) {
+				this.ipforwarding = Boolean.valueOf(ipForwarding);
+			}
+
+			if (domainName != null) {
+				this.domainName = domainName;
+			}
 
 			this.dhcpPool = new DHCPPool(startIPAddress, endIPAddress.getInt() - startIPAddress.getInt() + 1);
 		}
