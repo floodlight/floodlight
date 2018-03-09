@@ -399,7 +399,9 @@ public class Controller implements IFloodlightProviderService, IStorageSourceLis
                     // Get the starting time (overall and per-component) of
                     // the processing chain for this packet if performance
                     // monitoring is turned on
-                    pktinProcTimeService.bootstrap(listeners);
+                    for (IOFMessageListener l : listeners) {
+                        pktinProcTimeService.addListener(l);
+                    }
                     pktinProcTimeService.recordStartTimePktIn();
                     Command cmd;
                     for (IOFMessageListener listener : listeners) {
@@ -678,6 +680,9 @@ public class Controller implements IFloodlightProviderService, IStorageSourceLis
         // Switch Service Startup
         switchService.registerLogicalOFMessageCategory(LogicalOFMessageCategory.MAIN);
         counters = new ControllerCounters(debugCounterService);
+
+        pktinProcTimeService.bootstrap();
+
      }
 
     /**
