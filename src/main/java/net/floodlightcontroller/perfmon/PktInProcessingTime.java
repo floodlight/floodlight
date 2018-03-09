@@ -99,7 +99,9 @@ public class PktInProcessingTime
 
     @Override
     public void bootstrap() {
-        ctb = new CumulativeTimeBucket();
+        if (ctb == null) {
+            ctb = new CumulativeTimeBucket();
+        }
     }
 
     @Override
