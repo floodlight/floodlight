@@ -117,7 +117,6 @@ public class PktInProcessingTime
     @Override
     public void setEnabled(boolean enabled) {
     	if(enabled){
-//    		bootstrap(floodlightProvider.getListeners().get(OFType.PACKET_IN));
             bootstrap();
     	}
         this.isEnabled = enabled;

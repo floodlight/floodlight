@@ -683,8 +683,6 @@ public class Controller implements IFloodlightProviderService, IStorageSourceLis
         switchService.registerLogicalOFMessageCategory(LogicalOFMessageCategory.MAIN);
         counters = new ControllerCounters(debugCounterService);
 
-//        pktinProcTimeService.bootstrap();
-
      }
 
     /**
