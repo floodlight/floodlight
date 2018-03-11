@@ -368,7 +368,7 @@ public class DHCPMessageHandler {
          **/
         int xid = payload.getTransactionId();
         IPv4Address yiaddr = payload.getYourIPAddress();
-        IPv4Address giaddr = payload.getGatewayIPAddress();    // Will have GW IP if a relay agent was used
+        IPv4Address giaddr = payload.getGatewayIPAddress();    // Will have value if a relay agent is used
         IPv4Address ciaddr = payload.getClientIPAddress();
         MacAddress chaddr = payload.getClientHardwareAddress();
         List<Byte> requestOrder = new ArrayList<>();
@@ -386,11 +386,22 @@ public class DHCPMessageHandler {
         }
 
         boolean sendACK = false;
+        boolean broadcastFlag = false;
         IDHCPService.ClientState clientState = determineClientState(requestIP, serverID, dstAddr);
         log.debug("Handling DHCP request from client {} who is in {} state.", chaddr, clientState);
         switch (clientState) {
             case INIT_REBOOT:
-                sendACK = handleInitReboot(instance, requestIP, giaddr, chaddr, ciaddr);
+                sendACK = handleInitReboot(instance, requestIP, chaddr, ciaddr);
+                // if giaddr is 0x0 then client is on same subnet as server, server will broadcast DHCP NAK
+                if (giaddr.equals(IPv4Address.NONE) && !sendACK) {
+                    dstAddr = IPv4Address.NO_MASK;
+                    broadcastFlag = false;
+                }
+                // if giaddr is set then client is on a different subnet and dhcp relay agent is used
+                // server will set broadcast bit in DHCP NAK
+                else if (!giaddr.equals(IPv4Address.NONE) && !sendACK) {
+                    broadcastFlag = true;
+                }
                 break;
 
             case SELECTING:
@@ -411,6 +422,7 @@ public class DHCPMessageHandler {
         }
 
         if (sendACK) {
+            yiaddr = instance.getDHCPPool().getLeaseIP(chaddr).get();
             return createDHCPAck(instance, sw, inPort, chaddr, dstAddr, yiaddr, giaddr, xid, requestOrder);
         } else {
             return createDHCPNak(instance, sw, inPort, chaddr, giaddr, xid);
@@ -500,20 +512,17 @@ public class DHCPMessageHandler {
      * DHCP Server should send DHCPNAK message to client if "Request IP" is incorrect/invalid, or is on the wrong network
      *
      * @param requestIP
-     * @param giaddr
      * @return
      */
-    public boolean handleInitReboot(DHCPInstance instance, IPv4Address requestIP, IPv4Address giaddr,
+    public boolean handleInitReboot(DHCPInstance instance, IPv4Address requestIP,
                                     MacAddress chaddr, IPv4Address ciaddr) {
         boolean sendACK = true;
-        IPv4Address routerIP = instance.getRouterIP();
+
         if (requestIP == null) {
             sendACK = false;
         } else if (!ciaddr.equals(IPv4Address.NONE)) {
             sendACK = false;
-        } else if (!giaddr.equals(routerIP)) {   // TODO: maybe more complex than this
-            log.debug("Client {} gateway IP address {} does not match the DHCP instance gateway IP address {}.",
-                    new Object[]{chaddr, giaddr, routerIP});
+        }else if (!instance.getDHCPPool().getLeaseIP(chaddr).isPresent()) {
             sendACK = false;
         } else if (!requestIP.equals(instance.getDHCPPool().getLeaseIP(chaddr).get())) {
             sendACK = false;
@@ -634,7 +643,7 @@ public class DHCPMessageHandler {
          * -- UDP src port = 67
          * -- UDP dst port = 68
          * -- IP src addr = DHCP Server's IP
-         * -- IP dst addr = 255.255.255.255
+         * -- IP dst addr = 255.255.255.255 or client IP
          * -- Opcode = 0x02
          * -- XID = transactionX
          * --

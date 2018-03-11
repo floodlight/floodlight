@@ -261,7 +261,7 @@ public class DHCPMessageHandlerTest extends FloodlightTestCase {
         DHCPInstance instance = initInstance();
         IPv4Address requestIP = IPv4Address.of("10.0.0.5");
         instance.getDHCPPool().assignLeaseToClientWithRequestIP(requestIP, chaddr, 60);
-        boolean sendAck = handler.handleInitReboot(instance, requestIP, instance.getRouterIP(), chaddr, ciaddr);
+        boolean sendAck = handler.handleInitReboot(instance, requestIP, chaddr, ciaddr);
 
         assertTrue(sendAck);
 
@@ -269,30 +269,22 @@ public class DHCPMessageHandlerTest extends FloodlightTestCase {
         DHCPInstance instance1 = initInstance();
         IPv4Address requestIP1 = IPv4Address.of("192.168.0.1");
         instance1.getDHCPPool().assignLeaseToClientWithRequestIP(requestIP1, chaddr, 60);
-        boolean sendAck1 = handler.handleInitReboot(instance1, requestIP1, instance1.getRouterIP(), chaddr, ciaddr);
+        boolean sendAck1 = handler.handleInitReboot(instance1, requestIP1, chaddr, ciaddr);
 
         assertFalse(sendAck1);
-
-        // Send Ack fails if client is on different subnet
-        DHCPInstance instance2 = initInstance();
-        IPv4Address requestIP2 = IPv4Address.of("10.0.0.2");
-        instance2.getDHCPPool().assignLeaseToClientWithRequestIP(requestIP2, chaddr, 60);
-        boolean sendAck2 = handler.handleInitReboot(instance2, requestIP2, IPv4Address.of("192.168.0.1"), chaddr, ciaddr);
-
-        assertFalse(sendAck2);
 
         // Send Ack fails if client IP is not zero
         DHCPInstance instance3 = initInstance();
         IPv4Address requestIP3 = IPv4Address.of("10.0.0.2");
         instance3.getDHCPPool().assignLeaseToClientWithRequestIP(requestIP3, chaddr, 60);
-        boolean sendAck3 = handler.handleInitReboot(instance2, requestIP3, IPv4Address.of("192.168.0.1"), chaddr, IPv4Address.of("10.0.0.1"));
+        boolean sendAck3 = handler.handleInitReboot(instance3, requestIP3, chaddr, IPv4Address.of("10.0.0.1"));
 
         assertFalse(sendAck3);
 
         // send Ack fails if client not registered yet
         DHCPInstance instance4 = initInstance();
         IPv4Address requestIP4 = IPv4Address.of("10.0.0.5");
-        boolean sendACK4 = handler.handleInitReboot(instance4, requestIP4, IPv4Address.of("192.168.0.1"), chaddr, ciaddr);
+        boolean sendACK4 = handler.handleInitReboot(instance4, requestIP4, chaddr, ciaddr);
 
         assertFalse(sendACK4);
 

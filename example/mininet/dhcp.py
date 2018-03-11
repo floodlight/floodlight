@@ -47,7 +47,7 @@ def rest_call(path, data, action):
     conn.close()
     return ret
 
-def addDHCPInstance(name):
+def addDHCPInstance1(name):
     data = {
         "name"         : name,
         "start-ip"     : "10.0.0.100",
@@ -58,16 +58,30 @@ def addDHCPInstance(name):
         "broadcast-ip" : "10.0.0.255",
         "subnet-mask"  : "255.255.255.0",
         "lease-time"   : "60",
-        "rebind-time"  : "60",
-        "renew-time"   : "60",
         "ip-forwarding": "true",
         "domain-name"  : "mininet-domain-name"
     }
     ret = rest_call('/wm/dhcp/instance', data, 'POST')
     return ret
 
+def addDHCPInstance2(name):
+    data = {
+        "name"         : name,
+        "start-ip"     : "20.0.0.100",
+        "end-ip"       : "20.0.0.200",
+        "server-id"    : "20.0.0.2",
+        "server-mac"   : "aa:bb:cc:dd:ee:ff",   #TODO: not quite sure why another MAC address is not working..
+        "router-ip"    : "20.0.0.1",
+        "broadcast-ip" : "20.0.0.255",
+        "subnet-mask"  : "255.255.255.0",
+        "lease-time"   : "60",
+        "ip-forwarding": "true",
+        "domain-name"  : "mininet-domain-name"
+    }
+    ret = rest_call('/wm/dhcp/instance', data, 'POST')
+    return ret
 
-def addNodePortTupleToDHCPInstance(name):
+def addNodePortTupleToDHCPInstance1(name):
     data = {
         "switchports": [
             {
@@ -79,9 +93,22 @@ def addNodePortTupleToDHCPInstance(name):
     ret = rest_call('/wm/dhcp/instance/' + name, data, 'POST')
     return ret
 
+def addNodePortTupleToDHCPInstance2(name):
+    data = {
+        "switchports": [
+            {
+                "dpid": "1",
+                "port": "2"
+            }
+        ]
+    }
+    ret = rest_call('/wm/dhcp/instance/' + name, data, 'POST')
+    return ret
+
 def enableDHCPServer():
     data = {
-        "enable" : "true"
+        "enable" : "true",
+        "lease-gc-period" : "10"
     }
     ret = rest_call('/wm/dhcp/config', data, 'POST')
     return ret
@@ -150,10 +177,16 @@ def startNetwork():
     ret = enableDHCPServer()
     print(ret)
 
-    ret = addDHCPInstance('mininet-dhcp')
+    # ret = addDHCPInstance1('mininet-dhcp-1')
+    # print(ret)
+    #
+    # ret = addNodePortTupleToDHCPInstance1('mininet-dhcp-1')
+    # print(ret)
+
+    ret = addDHCPInstance2('mininet-dhcp-2')
     print(ret)
 
-    ret = addNodePortTupleToDHCPInstance('mininet-dhcp')
+    ret = addNodePortTupleToDHCPInstance2('mininet-dhcp-2')
     print(ret)
 
     h1 = net.get('h1')
@@ -161,13 +194,20 @@ def startNetwork():
     startDHCPclient(h1)
     waitForIP(h1)
 
+    h2 = net.get('h2')
+    mountPrivateResolvconf(h2)
+    startDHCPclient(h2)
+    waitForIP(h2)
 
 def stopNetwork():
     if net is not None:
         info('** Tearing down network\n')
         h1 = net.get('h1')
+        h2 = net.get('h2')
         unmountPrivateResolvconf(h1)
+        unmountPrivateResolvconf(h2)
         stopDHCPclient(h1)
+        stopDHCPclient(h2)
         net.stop()
 
 

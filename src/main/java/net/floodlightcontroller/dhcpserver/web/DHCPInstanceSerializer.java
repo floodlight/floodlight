@@ -69,9 +69,8 @@ public class DHCPInstanceSerializer extends JsonSerializer<DHCPInstance> {
 
         if (instance.getNptMembers() != null) {
             jGen.writeArrayFieldStart("ntp_ips");
-            for (NodePortTuple ip : instance.getNptMembers()) {
-                jGen.writeStartObject();
-                jGen.writeString(ip.toString());
+            for (NodePortTuple npt : instance.getNptMembers()) {
+                jGen.writeString(npt.toString());
             }
             jGen.writeEndArray();
         }

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableMap;
 import net.floodlightcontroller.dhcpserver.IDHCPService;
+import org.restlet.data.Status;
 import org.restlet.resource.Get;
 import org.restlet.resource.Post;
 import org.restlet.resource.Put;
@@ -38,14 +39,19 @@ public class ConfigResource extends ServerResource {
         JsonNode jsonNode = new ObjectMapper().readTree(json);
         JsonNode enableNode = jsonNode.get("enable");
         JsonNode leaseGCPeriodNode = jsonNode.get("lease-gc-period");
-        if (enableNode != null) {
-            if (enableNode.asBoolean()) {
-                dhcpService.enableDHCP();
-                dhcpService.setCheckExpiredLeasePeriod(leaseGCPeriodNode.asLong());
-            }
-            else dhcpService.disableDHCP();
+
+        if (enableNode == null || leaseGCPeriodNode == null) {
+            setStatus(Status.CLIENT_ERROR_BAD_REQUEST, "One or more required fields missing.");
+            return null;
         }
 
+        if (enableNode.asBoolean()) {
+            dhcpService.enableDHCP();
+            dhcpService.setCheckExpiredLeasePeriod(leaseGCPeriodNode.asLong());
+        }
+        else dhcpService.disableDHCP();
+
         return getConfig();
+
     }
 }

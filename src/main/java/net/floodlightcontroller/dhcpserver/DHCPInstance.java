@@ -181,8 +181,6 @@ public class DHCPInstance {
 									@JsonProperty("start-ip") String startIP,
 									@JsonProperty("end-ip") String endIP,
 									@JsonProperty("lease-time") String leaseTime,
-									@JsonProperty("rebind-time") String rebindTime,
-									@JsonProperty("renew-time") String renewTime,
 									@JsonProperty("ip-forwarding") String ipForwarding,
 									@JsonProperty("domain-name") String domainName) {
 			this.name = name;
@@ -191,8 +189,8 @@ public class DHCPInstance {
 			this.startIPAddress = IPv4Address.of(startIP);
 			this.endIPAddress = IPv4Address.of(endIP);
 			this.leaseTimeSec = Integer.parseInt(leaseTime);
-			this.rebindTimeSec = (int)(Integer.parseInt(rebindTime) * 0.875);
-			this.renewalTimeSec = (int)(Integer.parseInt(renewTime) * 0.5);
+			this.rebindTimeSec = (int)(this.leaseTimeSec * 0.875);
+			this.renewalTimeSec = (int)(this.leaseTimeSec * 0.5);
 
 			if (serverMac != null) {
 				this.serverMac = MacAddress.of(serverMac);
