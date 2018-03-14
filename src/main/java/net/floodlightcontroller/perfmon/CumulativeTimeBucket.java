@@ -69,13 +69,16 @@ public class CumulativeTimeBucket {
         return compStats.values();
     }
 
-    public CumulativeTimeBucket(List<IOFMessageListener> listeners) {
-        compStats = new ConcurrentHashMap<Integer, OneComponentTime>(listeners.size());
-        for (IOFMessageListener l : listeners) {
-            OneComponentTime oct = new OneComponentTime(l);
+    public CumulativeTimeBucket() {
+        compStats = new ConcurrentHashMap<>();
+        startTime_ns = System.nanoTime();
+    }
+
+    public void addListener(IOFMessageListener listener) {
+        if (!compStats.containsKey(listener.hashCode())) {
+            OneComponentTime oct = new OneComponentTime(listener);
             compStats.put(oct.hashCode(), oct);
         }
-        startTime_ns = System.nanoTime();
     }
 
     private void updateSquaredProcessingTime(long curTimeNs) {

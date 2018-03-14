@@ -16,33 +16,61 @@
 
 package net.floodlightcontroller.perfmon;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.google.common.collect.ImmutableMap;
 import org.restlet.data.Status;
 import org.restlet.resource.Get;
+import org.restlet.resource.Post;
+import org.restlet.resource.Put;
 import org.restlet.resource.ServerResource;
 
+import java.io.IOException;
+
 public class PerfMonToggleResource extends ServerResource {
-    
-    @Get("json")
-    public String retrieve() {
-        IPktInProcessingTimeService pktinProcTime = 
-                (IPktInProcessingTimeService)getContext().getAttributes().
-                    get(IPktInProcessingTimeService.class.getCanonicalName());
-        
-        String param = ((String)getRequestAttributes().get("perfmonstate")).toLowerCase();
-        if (param.equals("reset")) {
-        	// We cannot reset something that is disabled, so enable it first.
-        	if(!pktinProcTime.isEnabled()){
-        		pktinProcTime.setEnabled(true);
-        	}
-            pktinProcTime.getCtb().reset();
-        } else {
-            if (param.equals("enable") || param.equals("true")) {
-                pktinProcTime.setEnabled(true);
-            } else if (param.equals("disable") || param.equals("false")) {
-                pktinProcTime.setEnabled(false);
-            }
-        }
-        setStatus(Status.SUCCESS_OK, "OK");
-        return "{ \"enabled\" : " + pktinProcTime.isEnabled() + " }";
+
+    @Get
+    public Object getConfig() {
+        IPktInProcessingTimeService pktInProcessingTimeService = (IPktInProcessingTimeService) getContext()
+                .getAttributes().get(IPktInProcessingTimeService.class.getCanonicalName());
+
+        return ImmutableMap.of("enabled", pktInProcessingTimeService.isEnabled());
+
     }
+
+    @Put
+    @Post
+    public Object configure() throws IOException {
+        IPktInProcessingTimeService pktInProcessingTimeService = (IPktInProcessingTimeService) getContext()
+                .getAttributes().get(IPktInProcessingTimeService.class.getCanonicalName());
+
+        if (getRequestAttributes().get("perfmonstate") == null) {
+            setStatus(Status.CLIENT_ERROR_BAD_REQUEST, "Not a valid request.");
+            return null;
+        }
+
+        String param = ((String) getRequestAttributes().get("perfmonstate")).toLowerCase();
+
+        if (param.equals("reset")) {
+            if (!pktInProcessingTimeService.isEnabled()) {
+                pktInProcessingTimeService.setEnabled(true);
+            }
+            pktInProcessingTimeService.getCtb().reset();
+        }
+        else if (param.equals("enable")) {
+            pktInProcessingTimeService.setEnabled(true);
+        }
+        else if (param.equals("disable")) {
+            pktInProcessingTimeService.setEnabled(false);
+        }
+        else {
+            setStatus(Status.CLIENT_ERROR_BAD_REQUEST, "Not a valid request.");
+            return null;
+        }
+
+        setStatus(Status.SUCCESS_OK, "OK");
+        return "{ \"enabled\" : " + pktInProcessingTimeService.isEnabled() + " }";
+
+    }
+
+
 }
