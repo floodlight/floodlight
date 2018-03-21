@@ -165,6 +165,7 @@ public class StaticEntries {
 		entry.put(StaticEntryPusher.Columns.COLUMN_PRIORITY, Integer.toString(fm.getPriority()));
 		entry.put(StaticEntryPusher.Columns.COLUMN_IDLE_TIMEOUT, Integer.toString(fm.getIdleTimeout()));
 		entry.put(StaticEntryPusher.Columns.COLUMN_HARD_TIMEOUT, Integer.toString(fm.getHardTimeout()));
+		entry.put(StaticEntryPusher.Columns.COLUMN_COOKIE, Long.toString(fm.getCookie().getValue()));
 
 		switch (fm.getVersion()) {
 		case OF_10:
