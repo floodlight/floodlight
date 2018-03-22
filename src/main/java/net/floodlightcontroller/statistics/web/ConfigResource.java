@@ -19,12 +19,36 @@ public class ConfigResource extends ServerResource {
 			statisticsService.collectStatistics(true);
 			return Collections.singletonMap("statistics-collection", "enabled");
 		}
-		
+
 		if (getReference().getPath().contains(SwitchStatisticsWebRoutable.DISABLE_STR)) {
 			statisticsService.collectStatistics(false);
 			return Collections.singletonMap("statistics-collection", "disabled");
 		}
-	
+
+
+		if (getReference().getPath().contains(SwitchStatisticsWebRoutable.PORT_STR)) {
+			String period = (String) getRequestAttributes().get("period");
+			try{
+				int val = Integer.valueOf(period);
+				return statisticsService.setPortStatsPeriod(val);
+			}catch(Exception e) {
+				return "{\"status\" : \"Failed! " + e.getMessage() + "\"}";
+				
+			}
+			
+		}
+
+		if (getReference().getPath().contains(SwitchStatisticsWebRoutable.FLOW_STR)) {
+			String period = (String) getRequestAttributes().get("period");
+			try{
+				int val = Integer.valueOf(period);
+				return statisticsService.setFlowStatsPeriod(val);
+			}catch(Exception e) {
+				return "{\"status\" : \"Failed! " + e.getMessage() + "\"}";
+				
+			}
+		}
+
 		return Collections.singletonMap("ERROR", "Unimplemented configuration option");
 	}
 }

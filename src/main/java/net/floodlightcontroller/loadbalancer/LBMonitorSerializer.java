@@ -18,28 +18,26 @@ package net.floodlightcontroller.loadbalancer;
 
 import java.io.IOException;
 
+import org.projectfloodlight.openflow.types.IPv4Address;
+
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonSerializer;
 import com.fasterxml.jackson.databind.SerializerProvider;
 
-public class LBPoolSerializer extends JsonSerializer<LBPool>{
+public class LBMonitorSerializer extends JsonSerializer<LBMonitor>{
+	
+	@Override
+	public void serialize(LBMonitor monitor, JsonGenerator jGen, SerializerProvider serializer)
+			throws IOException, JsonProcessingException {
+		jGen.writeStartObject();
 
-    @Override
-    public void serialize(LBPool pool, JsonGenerator jGen,
-                          SerializerProvider serializer) throws IOException,
-                                                  JsonProcessingException {
-        jGen.writeStartObject();
-        
-        jGen.writeStringField("id", pool.id);
-        jGen.writeStringField("name", pool.name);
-        jGen.writeStringField("vipId", pool.vipId);
-        jGen.writeStringField("lbMethod", Short.toString(pool.lbMethod));
-
-        for (int i=0; i<pool.members.size(); i++)
-            jGen.writeStringField("poolMembers", pool.members.get(i));
-
-        jGen.writeEndObject();
-    }
-
+		jGen.writeStringField("id", monitor.id);
+		jGen.writeStringField("address", String.valueOf(IPv4Address.of(monitor.address)));
+		jGen.writeStringField("name", monitor.name);
+		jGen.writeStringField("type", Short.toString(monitor.type));
+		jGen.writeStringField("poolId", monitor.poolId);
+		jGen.writeEndObject();
+		
+	}
 }
