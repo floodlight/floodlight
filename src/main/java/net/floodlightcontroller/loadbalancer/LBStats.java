@@ -16,6 +16,8 @@
 
 package net.floodlightcontroller.loadbalancer;
 
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+
 /**
  * Data structure for Load Balancer based on
  * Quantum proposal http://wiki.openstack.org/LBaaS/CoreResourceModel/proposal 
@@ -23,16 +25,54 @@ package net.floodlightcontroller.loadbalancer;
  * @author KC Wang
  */
 
+@JsonSerialize(using=LBStatsSerializer.class)
 public class LBStats {
-    protected int bytesIn;
-    protected int bytesOut;
-    protected int activeConnections;
-    protected int totalConnections;
+    protected long bytesIn;
+    protected long bytesOut;
+	protected int activeFlows;
+    protected int totalFlows;
     
     public LBStats() {
         bytesIn = 0;
         bytesOut = 0;
-        activeConnections = 0;
-        totalConnections = 0;
+        activeFlows = 0;
+        totalFlows = 0;
     }
+    
+    public int getActiveFlows() {
+		return activeFlows;
+	}
+
+	public void setActiveFlows(int activeFlows) {
+		this.activeFlows = activeFlows;
+	}
+
+	public int getTotalFlows() {
+		return totalFlows;
+	}
+
+	public void setTotalFlows(int totalFlows) {
+		this.totalFlows = totalFlows;
+	}
+
+	public LBStats getStats(){
+		return this;
+	}
+    
+    public long getBytesIn() {
+		return bytesIn;
+	}
+
+	public void setBytesIn(int bytesIn) {
+		this.bytesIn = bytesIn;
+	}
+
+	public long getBytesOut() {
+		return bytesOut;
+	}
+
+	public void setBytesOut(int bytesOut) {
+		this.bytesOut = bytesOut;
+	}
+
 }

@@ -170,5 +170,12 @@ public interface ILoadBalancerService extends IFloodlightService {
      * @return int: operation status
      */
 	public int setPriorityToMember(String poolId, String memberId);
+	
+	 /**
+     * Get statistics of an existing pool.
+     * @param String poolId 
+     * @return int[]: bytesIn, bytesOut, activeConnections , totalConnections 
+     */
+    public LBStats getPoolStats(String poolId);
     
 }
