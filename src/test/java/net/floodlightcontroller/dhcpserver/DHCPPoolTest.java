@@ -77,7 +77,7 @@ public class DHCPPoolTest extends FloodlightTestCase {
         dhcpPool = initPool(IPv4Address.of("10.0.0.1"), 1);
         
         Optional<IPv4Address> lease = dhcpPool.assignLeaseToClient(MacAddress.of(1), 60);
-        
+
         assertTrue(lease.isPresent());
         assertEquals(IPv4Address.of("10.0.0.1"), lease.get());
     }
@@ -107,7 +107,7 @@ public class DHCPPoolTest extends FloodlightTestCase {
         dhcpPool = initPool(IPv4Address.of("10.0.0.1"), 1);
 
         // Will return the request IP if it is available
-        Optional<IPv4Address> lease = dhcpPool.assignLeaseToClientWithRequestIP(IPv4Address.of("10.0.0.1"), MacAddress.of(1), 60);
+        Optional<IPv4Address> lease = dhcpPool.assignLeaseToClientWithRequestIP(IPv4Address.of("10.0.0.1"), MacAddress.of(1), 60, false);
         assertTrue(lease.isPresent());
         assertEquals(IPv4Address.of("10.0.0.1"), lease.get());
     }
@@ -117,7 +117,7 @@ public class DHCPPoolTest extends FloodlightTestCase {
         dhcpPool = initPool(IPv4Address.of("10.0.0.1"), 3);
 
         // Will return the first available IP in DHCP pool
-        Optional<IPv4Address> lease = dhcpPool.assignLeaseToClientWithRequestIP(IPv4Address.of("10.0.1.10"), MacAddress.of(1), 60);
+        Optional<IPv4Address> lease = dhcpPool.assignLeaseToClientWithRequestIP(IPv4Address.of("10.0.1.10"), MacAddress.of(1), 60, false);
 
         assertNotEquals(IPv4Address.of("10.0.1.10"), lease.get());
         assertEquals(IPv4Address.of("10.0.0.1"), lease.get());
@@ -127,24 +127,24 @@ public class DHCPPoolTest extends FloodlightTestCase {
     public void testAssignLeaseToClientWithRequestIPNotAvaliable() throws Exception {
         // DHCP pool is full, will return a non-present Optional IPv4Address
         dhcpPool = initPool(IPv4Address.of("10.0.0.1"), 2);
-        dhcpPool.assignLeaseToClientWithRequestIP(IPv4Address.of("10.0.0.1"), MacAddress.of(1), 60);
-        dhcpPool.assignLeaseToClientWithRequestIP(IPv4Address.of("10.0.0.2"), MacAddress.of(2), 60);
+        dhcpPool.assignLeaseToClientWithRequestIP(IPv4Address.of("10.0.0.1"), MacAddress.of(1), 60, false);
+        dhcpPool.assignLeaseToClientWithRequestIP(IPv4Address.of("10.0.0.2"), MacAddress.of(2), 60, false);
 
-        Optional<IPv4Address> lease = dhcpPool.assignLeaseToClientWithRequestIP(IPv4Address.of("10.0.0.1"), MacAddress.of(3), 10);
+        Optional<IPv4Address> lease = dhcpPool.assignLeaseToClientWithRequestIP(IPv4Address.of("10.0.0.1"), MacAddress.of(3), 10, false);
         assertFalse(lease.isPresent());
 
         // Request IP is an static or permanent IP, will return an available IP in the pool
         dhcpPool = initPool(IPv4Address.of("10.0.0.1"), 2);
         dhcpPool.assignPermanentLeaseToClientWithRequestIP(IPv4Address.of("10.0.0.1"), MacAddress.of(1));
-        Optional<IPv4Address> lease1 = dhcpPool.assignLeaseToClientWithRequestIP(IPv4Address.of("10.0.0.1"), MacAddress.of(3), 10);
+        Optional<IPv4Address> lease1 = dhcpPool.assignLeaseToClientWithRequestIP(IPv4Address.of("10.0.0.1"), MacAddress.of(3), 10, false);
 
         assertTrue(lease1.isPresent());
         assertEquals(IPv4Address.of("10.0.0.2"), lease1.get());
 
         // Request IP already leased to another client, will return an available IP in the pool
         dhcpPool = initPool(IPv4Address.of("10.0.0.1"), 2);
-        dhcpPool.assignLeaseToClientWithRequestIP(IPv4Address.of("10.0.0.1"), MacAddress.of(1), 60);
-        Optional<IPv4Address> lease2 = dhcpPool.assignLeaseToClientWithRequestIP(IPv4Address.of("10.0.0.1"), MacAddress.of(3), 10);
+        dhcpPool.assignLeaseToClientWithRequestIP(IPv4Address.of("10.0.0.1"), MacAddress.of(1), 60, false);
+        Optional<IPv4Address> lease2 = dhcpPool.assignLeaseToClientWithRequestIP(IPv4Address.of("10.0.0.1"), MacAddress.of(3), 10, false);
 
         assertTrue(lease2.isPresent());
         assertEquals(IPv4Address.of("10.0.0.2"), lease2.get());
@@ -156,25 +156,25 @@ public class DHCPPoolTest extends FloodlightTestCase {
     public void testAssignLeaseToClientWithRequestIPWhenClientRegistered() throws Exception {
         // Will return the new request IP if it is still available in the pool
         dhcpPool = initPool(IPv4Address.of("10.0.0.1"), 2);
-        dhcpPool.assignLeaseToClientWithRequestIP(IPv4Address.of("10.0.0.1"), MacAddress.of(1), 60);
-        Optional<IPv4Address> lease1 = dhcpPool.assignLeaseToClientWithRequestIP(IPv4Address.of("10.0.0.2"), MacAddress.of(1), 10);
+        dhcpPool.assignLeaseToClientWithRequestIP(IPv4Address.of("10.0.0.1"), MacAddress.of(1), 60, false);
+        Optional<IPv4Address> lease1 = dhcpPool.assignLeaseToClientWithRequestIP(IPv4Address.of("10.0.0.2"), MacAddress.of(1), 10, false);
 
         assertTrue(lease1.isPresent());
         assertEquals(IPv4Address.of("10.0.0.2"), lease1.get());
 
         // Will return the IP previously given to client if the new request IP is not available
         dhcpPool = initPool(IPv4Address.of("10.0.0.1"), 2);
-        dhcpPool.assignLeaseToClientWithRequestIP(IPv4Address.of("10.0.0.1"), MacAddress.of(1), 60);
-        dhcpPool.assignLeaseToClientWithRequestIP(IPv4Address.of("10.0.0.2"), MacAddress.of(2), 60);
-        Optional<IPv4Address> lease2 = dhcpPool.assignLeaseToClientWithRequestIP(IPv4Address.of("10.0.0.2"), MacAddress.of(1), 10);
+        dhcpPool.assignLeaseToClientWithRequestIP(IPv4Address.of("10.0.0.1"), MacAddress.of(1), 60, false);
+        dhcpPool.assignLeaseToClientWithRequestIP(IPv4Address.of("10.0.0.2"), MacAddress.of(2), 60, false);
+        Optional<IPv4Address> lease2 = dhcpPool.assignLeaseToClientWithRequestIP(IPv4Address.of("10.0.0.2"), MacAddress.of(1), 10, false);
 
         assertTrue(lease2.isPresent());
         assertEquals(IPv4Address.of("10.0.0.1"), lease2.get());
 
         // Will return the IP previously given to client if the new request IP is not exist in the pool
         dhcpPool = initPool(IPv4Address.of("10.0.0.1"), 2);
-        dhcpPool.assignLeaseToClientWithRequestIP(IPv4Address.of("10.0.0.1"), MacAddress.of(1), 60);
-        Optional<IPv4Address> lease3 = dhcpPool.assignLeaseToClientWithRequestIP(IPv4Address.of("10.0.0.5"), MacAddress.of(1), 60);
+        dhcpPool.assignLeaseToClientWithRequestIP(IPv4Address.of("10.0.0.1"), MacAddress.of(1), 60, false);
+        Optional<IPv4Address> lease3 = dhcpPool.assignLeaseToClientWithRequestIP(IPv4Address.of("10.0.0.5"), MacAddress.of(1), 60, false);
 
         assertTrue(lease3.isPresent());
         assertEquals(IPv4Address.of("10.0.0.1"), lease3.get());
@@ -187,9 +187,9 @@ public class DHCPPoolTest extends FloodlightTestCase {
 
         // Static/permanent IP will trump the request IP if client requests again
         Optional<IPv4Address> lease = dhcpPool.assignPermanentLeaseToClient(MacAddress.of(1));
-        Optional<IPv4Address> lease1 = dhcpPool.assignLeaseToClientWithRequestIP(IPv4Address.of("10.0.0.1"), MacAddress.of(1), 60);
-        Optional<IPv4Address> lease2 = dhcpPool.assignLeaseToClientWithRequestIP(IPv4Address.of("10.0.0.2"), MacAddress.of(1), 60);
-        Optional<IPv4Address> lease3 = dhcpPool.assignLeaseToClientWithRequestIP(IPv4Address.of("10.0.0.5"), MacAddress.of(1), 60);
+        Optional<IPv4Address> lease1 = dhcpPool.assignLeaseToClientWithRequestIP(IPv4Address.of("10.0.0.1"), MacAddress.of(1), 60, false);
+        Optional<IPv4Address> lease2 = dhcpPool.assignLeaseToClientWithRequestIP(IPv4Address.of("10.0.0.2"), MacAddress.of(1), 60, false);
+        Optional<IPv4Address> lease3 = dhcpPool.assignLeaseToClientWithRequestIP(IPv4Address.of("10.0.0.5"), MacAddress.of(1), 60, false);
 
 
         assertEquals(lease.get(), lease1.get());
@@ -200,7 +200,7 @@ public class DHCPPoolTest extends FloodlightTestCase {
     @Test
     public void testAssignLeaseToClientWithRequestIPFailsWhenNoAvailableAddress() throws Exception {
         dhcpPool = initPool(IPv4Address.of("10.0.0.1"), 0);
-        Optional<IPv4Address> lease = dhcpPool.assignLeaseToClientWithRequestIP(IPv4Address.of("10.0.0.1"), MacAddress.of(1), 60);
+        Optional<IPv4Address> lease = dhcpPool.assignLeaseToClientWithRequestIP(IPv4Address.of("10.0.0.1"), MacAddress.of(1), 60, false);
 
         assertFalse(lease.isPresent());
     }
@@ -271,8 +271,6 @@ public class DHCPPoolTest extends FloodlightTestCase {
 
         assertEquals(IPv4Address.of("10.0.0.9"), leaseIP1.get());
         assertEquals(LeasingState.PERMANENT_LEASED, leaseBinding1.get().getCurrLeaseState());
-
-
     }
 
     @Test
@@ -293,11 +291,34 @@ public class DHCPPoolTest extends FloodlightTestCase {
 
         // Request IP is already in lease for another client
         dhcpPool = initPool(IPv4Address.of("10.0.0.1"), 2);
-        dhcpPool.assignLeaseToClientWithRequestIP(IPv4Address.of("10.0.0.1"), MacAddress.of(1), 10);
+        dhcpPool.assignLeaseToClientWithRequestIP(IPv4Address.of("10.0.0.1"), MacAddress.of(1), 10, false);
         Optional<IPv4Address> leaseIP2 = dhcpPool.assignPermanentLeaseToClientWithRequestIP(IPv4Address.of("10.0.0.1"),
-                MacAddress.of(1));
+                MacAddress.of(2));
 
         assertFalse(leaseIP2.isPresent());
+
+        // Client registered w/ IP address same as request IP address, should update same IP states to permanent
+        dhcpPool = initPool(IPv4Address.of("10.0.0.1"), 2);
+        dhcpPool.assignLeaseToClientWithRequestIP(IPv4Address.of("10.0.0.1"), MacAddress.of(1), 10, false);
+        Optional<IPv4Address> leaseIP3 = dhcpPool.assignPermanentLeaseToClientWithRequestIP(IPv4Address.of("10.0.0.1"),
+                MacAddress.of(1));
+
+        assertTrue(leaseIP3.isPresent());
+        assertEquals(IPv4Address.of("10.0.0.1"), leaseIP3.get());
+        assertEquals(LeasingState.PERMANENT_LEASED, dhcpPool.getLeaseBinding(MacAddress.of(1)).get().getCurrLeaseState());
+
+        // Client registered w/ different IP address, should return original address to repository and assign request IP as permanent
+        dhcpPool = initPool(IPv4Address.of("10.0.0.1"), 2);
+        dhcpPool.assignLeaseToClientWithRequestIP(IPv4Address.of("10.0.0.1"), MacAddress.of(1), 10, false);
+        Optional<IPv4Address> leaseIP4 = dhcpPool.assignPermanentLeaseToClientWithRequestIP(IPv4Address.of("10.0.0.2"),
+                MacAddress.of(1));
+
+        assertTrue(leaseIP4.isPresent());
+        assertEquals(IPv4Address.of("10.0.0.2"), leaseIP4.get());
+        assertEquals(LeasingState.PERMANENT_LEASED, dhcpPool.getLeaseBinding(MacAddress.of(1)).get().getCurrLeaseState());
+        assertEquals(1, dhcpPool.getLeasingPoolSize());
+        assertEquals(1, dhcpPool.getRepositorySize());
+
     }
 
     /* Tests for cancelLeaseOfMac() */

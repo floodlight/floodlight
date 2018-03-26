@@ -145,7 +145,7 @@ public class DHCPMessageHandlerTest extends FloodlightTestCase {
     @Test
     public void testBuildDHCPOfferMessageWhenClientRequestAnIP() throws Exception {
         DHCPInstance instance = initInstance();
-        IPv4Address yiaddr = instance.getDHCPPool().assignLeaseToClientWithRequestIP(IPv4Address.of("10.0.0.5"), clientMac, instance.getLeaseTimeSec()).get();
+        IPv4Address yiaddr = instance.getDHCPPool().assignLeaseToClientWithRequestIP(IPv4Address.of("10.0.0.5"), clientMac, instance.getLeaseTimeSec(), false).get();
         MacAddress chaddr = dhcpPayload.getClientHardwareAddress();
 
         List<Byte> requestOrder = handler.getRequestedParameters(dhcpPayload, false);
@@ -202,7 +202,7 @@ public class DHCPMessageHandlerTest extends FloodlightTestCase {
                 .build();
 
         // Client registered as static DHCP binding but request another IP, return pre-configured static IP as lease IP
-        IPv4Address yiaddr = instance.getDHCPPool().assignLeaseToClientWithRequestIP(IPv4Address.of("10.0.0.5"), MacAddress.of(9), instance.getLeaseTimeSec()).get();
+        IPv4Address yiaddr = instance.getDHCPPool().assignLeaseToClientWithRequestIP(IPv4Address.of("10.0.0.5"), MacAddress.of(9), instance.getLeaseTimeSec(), false).get();
 
         List<Byte> requestOrder = handler.getRequestedParameters(dhcpPayload, false);
         DHCP dhcpOffer = handler.buildDHCPOfferMessage(instance, clientMac, yiaddr, instance.getRouterIP(),
@@ -215,7 +215,7 @@ public class DHCPMessageHandlerTest extends FloodlightTestCase {
                 dhcpOffer.getOption(DHCP.DHCPOptionCode.OptionCode_MessageType).getData());
 
         // Client registered as static DHCP binding and request static IP, directly return pre-configured static IP as lease IP
-        IPv4Address yiaddr1 = instance.getDHCPPool().assignLeaseToClientWithRequestIP(IPv4Address.of("10.0.0.9"), MacAddress.of(9), instance.getLeaseTimeSec()).get();
+        IPv4Address yiaddr1 = instance.getDHCPPool().assignLeaseToClientWithRequestIP(IPv4Address.of("10.0.0.9"), MacAddress.of(9), instance.getLeaseTimeSec(), false).get();
         List<Byte> requestOrder1 = handler.getRequestedParameters(dhcpPayload, false);
         DHCP dhcpOffer1 = handler.buildDHCPOfferMessage(instance, clientMac, yiaddr1, instance.getRouterIP(),
                 dhcpPayload.getTransactionId(), requestOrder1);
@@ -223,7 +223,7 @@ public class DHCPMessageHandlerTest extends FloodlightTestCase {
         assertEquals(IPv4Address.of("10.0.0.9"), dhcpOffer1.getYourIPAddress());
 
         // Client not registered as static DHCP binding and request an static IP, will return an available IP but not the static one
-        IPv4Address yiaddr2 = instance.getDHCPPool().assignLeaseToClientWithRequestIP(IPv4Address.of("10.0.0.9"), MacAddress.of(1), instance.getLeaseTimeSec()).get();
+        IPv4Address yiaddr2 = instance.getDHCPPool().assignLeaseToClientWithRequestIP(IPv4Address.of("10.0.0.9"), MacAddress.of(1), instance.getLeaseTimeSec(), false).get();
         List<Byte> requestOrde2 = handler.getRequestedParameters(dhcpPayload, false);
         DHCP dhcpOffer2 = handler.buildDHCPOfferMessage(instance, clientMac, yiaddr2, instance.getRouterIP(),
                 dhcpPayload.getTransactionId(), requestOrde2);
@@ -240,7 +240,7 @@ public class DHCPMessageHandlerTest extends FloodlightTestCase {
         DHCPInstance instance = initInstance();
         IPv4Address clientIP = IPv4Address.NONE;
 
-        OFPacketOut dhcpOffer = handler.handleDHCPDiscover(sw, OFPort.of(1), instance, clientIP, dhcpPayload);
+        OFPacketOut dhcpOffer = handler.handleDHCPDiscover(sw, OFPort.of(1), instance, clientIP, dhcpPayload, false);
 
         OFActionOutput output = sw.getOFFactory().actions().buildOutput()
                                 .setMaxLen(0xffFFffFF)
@@ -260,7 +260,7 @@ public class DHCPMessageHandlerTest extends FloodlightTestCase {
         // Send Ack when client "request IP" is correct
         DHCPInstance instance = initInstance();
         IPv4Address requestIP = IPv4Address.of("10.0.0.5");
-        instance.getDHCPPool().assignLeaseToClientWithRequestIP(requestIP, chaddr, 60);
+        instance.getDHCPPool().assignLeaseToClientWithRequestIP(requestIP, chaddr, 60, false);
         boolean sendAck = handler.handleInitReboot(instance, requestIP, chaddr, ciaddr);
 
         assertTrue(sendAck);
@@ -268,7 +268,7 @@ public class DHCPMessageHandlerTest extends FloodlightTestCase {
         // Send Ack fails if client request IP not match the lease IP that DHCP server holds in file
         DHCPInstance instance1 = initInstance();
         IPv4Address requestIP1 = IPv4Address.of("192.168.0.1");
-        instance1.getDHCPPool().assignLeaseToClientWithRequestIP(requestIP1, chaddr, 60);
+        instance1.getDHCPPool().assignLeaseToClientWithRequestIP(requestIP1, chaddr, 60, false);
         boolean sendAck1 = handler.handleInitReboot(instance1, requestIP1, chaddr, ciaddr);
 
         assertFalse(sendAck1);
@@ -276,7 +276,7 @@ public class DHCPMessageHandlerTest extends FloodlightTestCase {
         // Send Ack fails if client IP is not zero
         DHCPInstance instance3 = initInstance();
         IPv4Address requestIP3 = IPv4Address.of("10.0.0.2");
-        instance3.getDHCPPool().assignLeaseToClientWithRequestIP(requestIP3, chaddr, 60);
+        instance3.getDHCPPool().assignLeaseToClientWithRequestIP(requestIP3, chaddr, 60, false);
         boolean sendAck3 = handler.handleInitReboot(instance3, requestIP3, chaddr, IPv4Address.of("10.0.0.1"));
 
         assertFalse(sendAck3);
@@ -299,7 +299,7 @@ public class DHCPMessageHandlerTest extends FloodlightTestCase {
         DHCPInstance instance = initInstance();
         IPv4Address serverID = instance.getServerID();
         IPv4Address requestIP = IPv4Address.of("10.0.0.5");
-        instance.getDHCPPool().assignLeaseToClientWithRequestIP(requestIP, chaddr, 60);
+        instance.getDHCPPool().assignLeaseToClientWithRequestIP(requestIP, chaddr, 60, false);
 
         sendAck = handler.handleSelecting(instance, requestIP, serverID, chaddr);
         assertTrue(sendAck);
@@ -308,14 +308,14 @@ public class DHCPMessageHandlerTest extends FloodlightTestCase {
         DHCPInstance instance1 = initInstance();
         IPv4Address serverID1 = IPv4Address.of("192.168.1.100");
         IPv4Address requestIP1 = IPv4Address.of("10.0.0.5");
-        instance.getDHCPPool().assignLeaseToClientWithRequestIP(requestIP1, chaddr, 60);
+        instance.getDHCPPool().assignLeaseToClientWithRequestIP(requestIP1, chaddr, 60, false);
 
         sendAck = handler.handleSelecting(instance1, requestIP1, serverID1, chaddr);
         assertFalse(sendAck);
 
         // Send ACK fails if client "request IP" is different than DHCP server has on file
         DHCPInstance instance2 = initInstance();
-        instance2.getDHCPPool().assignLeaseToClientWithRequestIP(IPv4Address.of("10.0.0.3"), chaddr, 60);
+        instance2.getDHCPPool().assignLeaseToClientWithRequestIP(IPv4Address.of("10.0.0.3"), chaddr, 60, false);
         IPv4Address requestIP2 = IPv4Address.of("10.0.0.5");
         IPv4Address serverID2 = instance2.getServerID();
 

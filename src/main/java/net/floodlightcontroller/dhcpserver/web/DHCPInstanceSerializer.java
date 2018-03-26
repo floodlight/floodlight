@@ -2,6 +2,7 @@ package net.floodlightcontroller.dhcpserver.web;
 
 import java.io.IOException;
 
+import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.IPv4Address;
 
 import net.floodlightcontroller.core.types.NodePortTuple;
@@ -12,6 +13,7 @@ import com.fasterxml.jackson.core.JsonGenerator.Feature;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonSerializer;
 import com.fasterxml.jackson.databind.SerializerProvider;
+import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.VlanVid;
 
 public class DHCPInstanceSerializer extends JsonSerializer<DHCPInstance> {
@@ -37,7 +39,9 @@ public class DHCPInstanceSerializer extends JsonSerializer<DHCPInstance> {
 
         if (instance.getStaticAddresseses() != null) {
             jGen.writeArrayFieldStart("static_addresses");
-            for (IPv4Address ip : instance.getStaticAddresseses().values()) {
+            for (MacAddress mac : instance.getStaticAddresseses().keySet()) {
+                IPv4Address ip = instance.getStaticAddresseses().get(mac);
+                jGen.writeString(mac.toString());
                 jGen.writeString(ip.toString());
             }
             jGen.writeEndArray();
@@ -52,7 +56,7 @@ public class DHCPInstanceSerializer extends JsonSerializer<DHCPInstance> {
         }
 
         if (instance.getNtpServers() != null) {
-            jGen.writeArrayFieldStart("ntp_ips");
+            jGen.writeArrayFieldStart("ntpserver_ips");
             for (IPv4Address ip : instance.getNtpServers()) {
                 jGen.writeString(ip.toString());
             }
@@ -68,12 +72,21 @@ public class DHCPInstanceSerializer extends JsonSerializer<DHCPInstance> {
         }
 
         if (instance.getNptMembers() != null) {
-            jGen.writeArrayFieldStart("ntp_ips");
+            jGen.writeArrayFieldStart("npt_ips");
             for (NodePortTuple npt : instance.getNptMembers()) {
                 jGen.writeString(npt.toString());
             }
             jGen.writeEndArray();
         }
+
+        if (instance.getSwitchMembers() != null) {
+            jGen.writeArrayFieldStart("switch_dpids");
+            for (DatapathId dpid : instance.getSwitchMembers()) {
+                jGen.writeString(dpid.toString());
+            }
+            jGen.writeEndArray();
+        }
+
 
         jGen.writeEndObject();
     }

@@ -6,8 +6,10 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import io.netty.util.internal.ConcurrentSet;
 import net.floodlightcontroller.core.types.NodePortTuple;
 import net.floodlightcontroller.dhcpserver.web.DHCPInstanceSerializer;
+import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.IPv4Address;
 import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.VlanVid;
@@ -56,6 +58,7 @@ public class DHCPInstance {
 	private Set<MacAddress> clientMembers = null;
 	private Set<VlanVid> vlanMembers = null;
 	private Set<NodePortTuple> nptMembers = null;
+	private Set<DatapathId> switchMembers = null;
 
 	public String getName() { return name; }
 	public DHCPPool getDHCPPool() { return dhcpPool; }
@@ -77,6 +80,7 @@ public class DHCPInstance {
 
 	public Map<MacAddress, IPv4Address> getStaticAddresseses() { return staticAddresseses; }
 	public Set<NodePortTuple> getNptMembers() { return nptMembers; }
+	public Set<DatapathId> getSwitchMembers() { return switchMembers; }
 	public Set<VlanVid> getVlanMembers() { return vlanMembers; }
 	public Set<MacAddress> getClientMembers() { return clientMembers; }
 
@@ -92,6 +96,8 @@ public class DHCPInstance {
 		this.nptMembers.add(npt);
 	}
 
+	public void addSwitchMember(DatapathId dpid) { this.switchMembers.add(dpid); }
+
 	public void addVlanMember(VlanVid vid) {
 		this.vlanMembers.add(vid);
 	}
@@ -100,8 +106,33 @@ public class DHCPInstance {
 		this.clientMembers.add(cm);
 	}
 
-	public void addStaticAddress(MacAddress staticAddressMac, IPv4Address staticAddressIP) {
+	// add or update static addresses
+	public void addStaticAddress(@Nonnull MacAddress staticAddressMac, @Nonnull IPv4Address staticAddressIP) {
 		this.staticAddresseses.put(staticAddressMac, staticAddressIP);
+		this.dhcpPool.assignPermanentLeaseToClientWithRequestIP(staticAddressIP, staticAddressMac);
+	}
+
+	public void updateDefaultGateway(@Nonnull IPv4Address defaultGatewayIP) {
+		this.routerIP = defaultGatewayIP;
+	}
+
+	public void removeSwitchFromInstance(DatapathId dpid) {
+		if (!this.switchMembers.isEmpty()) {
+			for (DatapathId id : this.switchMembers) {
+				if (id.equals(dpid)) {
+					this.switchMembers.remove(id);
+				}
+			}
+		}
+
+		if (!this.nptMembers.isEmpty()) {
+			for (NodePortTuple npt : this.nptMembers) {
+				if (npt.getNodeId().equals(dpid)) {
+					this.nptMembers.remove(npt);
+				}
+			}
+		}
+
 	}
 
 	public DHCPInstanceBuilder getBuilder() {return builder;}
@@ -128,6 +159,7 @@ public class DHCPInstance {
 		this.staticAddresseses = builder.staticAddresseses;
 		this.vlanMembers = builder.vlanMembers;
 		this.nptMembers = builder.nptMembers;
+		this.switchMembers = builder.switchMembers;
 		this.clientMembers = builder.clientMembers;
 
 		this.builder = builder;
@@ -163,9 +195,10 @@ public class DHCPInstance {
 		private String domainName;
 
 		private Map<MacAddress, IPv4Address> staticAddresseses = new ConcurrentHashMap<>();
-		private Set<MacAddress> clientMembers;
-		private Set<VlanVid> vlanMembers;
-		private Set<NodePortTuple> nptMembers;
+		private Set<MacAddress> clientMembers = new ConcurrentSet<>();
+		private Set<VlanVid> vlanMembers = new ConcurrentSet<>();
+		private Set<NodePortTuple> nptMembers = new ConcurrentSet<>();
+		private Set<DatapathId> switchMembers = new ConcurrentSet<>();
 
 		public DHCPInstanceBuilder(final String name) { this.name = name;}
 
@@ -315,6 +348,11 @@ public class DHCPInstance {
 			return this;
 		}
 
+		public DHCPInstanceBuilder setSwitchMembers(@Nonnull Set<DatapathId> switchMembers) {
+			this.switchMembers = switchMembers;
+			return this;
+		}
+
 		public DHCPInstanceBuilder setClientMembers(@Nonnull Set<MacAddress> clientMembers) {
 			this.clientMembers = clientMembers;
 			return this;
@@ -345,14 +383,18 @@ public class DHCPInstance {
 				this.ntpServers = new ArrayList<>();
 			}
 			if (this.clientMembers == null) {
-				this.clientMembers = new HashSet<>();
+				this.clientMembers = new ConcurrentSet<>();
 			}
 			if (this.vlanMembers == null) {
-				this.vlanMembers = new HashSet<>();
+				this.vlanMembers = new ConcurrentSet<>();
 			}
 			if (this.nptMembers == null) {
-				this.nptMembers = new HashSet<>();
+				this.nptMembers = new ConcurrentSet<>();
 			}
+			if (this.switchMembers == null) {
+				this.switchMembers = new ConcurrentSet<>();
+			}
+
 			if (this.staticAddresseses != null) {
 				// Setup permanent DHCP binding and remove invalid entry
 				for (Map.Entry<MacAddress, IPv4Address> entry : this.staticAddresseses.entrySet()) {

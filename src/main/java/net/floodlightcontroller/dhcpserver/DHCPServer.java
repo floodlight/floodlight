@@ -1,9 +1,6 @@
 package net.floodlightcontroller.dhcpserver;
 
-import net.floodlightcontroller.core.FloodlightContext;
-import net.floodlightcontroller.core.IFloodlightProviderService;
-import net.floodlightcontroller.core.IOFMessageListener;
-import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.core.*;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
@@ -11,19 +8,16 @@ import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.core.types.NodePortTuple;
 import net.floodlightcontroller.dhcpserver.web.DHCPServerWebRoutable;
-import net.floodlightcontroller.forwarding.Forwarding;
 import net.floodlightcontroller.packet.DHCP;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.restserver.IRestApiService;
+import net.floodlightcontroller.staticentry.IStaticEntryPusherService;
+import net.floodlightcontroller.core.IOFSwitchListener;
+import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.util.OFMessageUtils;
-import org.projectfloodlight.openflow.protocol.OFMessage;
-import org.projectfloodlight.openflow.protocol.OFPacketIn;
-import org.projectfloodlight.openflow.protocol.OFPacketOut;
-import org.projectfloodlight.openflow.protocol.OFType;
-import org.projectfloodlight.openflow.types.IPv4Address;
-import org.projectfloodlight.openflow.types.OFPort;
-import org.projectfloodlight.openflow.types.VlanVid;
+import org.projectfloodlight.openflow.protocol.*;
+import org.projectfloodlight.openflow.types.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -77,14 +71,17 @@ import java.util.concurrent.TimeUnit;
  * 
  * 
  */
-public class DHCPServer implements IOFMessageListener, IFloodlightModule, IDHCPService {
+public class DHCPServer implements IOFMessageListener, IOFSwitchListener, IFloodlightModule, IDHCPService {
     protected static final Logger log = LoggerFactory.getLogger(DHCPServer.class);
     protected IFloodlightProviderService floodlightProviderService;
     protected IOFSwitchService switchService;
     protected IRestApiService restApiService;
+    protected ITopologyService topologyService;
+    protected IStaticEntryPusherService staticEntryPusherService;
 
     private static Map<String, DHCPInstance> dhcpInstanceMap;
     private static volatile boolean enableDHCPService = false;
+    private static volatile boolean enableDHCPDynamicService = false;
 
     private static ScheduledThreadPoolExecutor leasePoliceDispatcher;
     private static long DHCP_SERVER_CHECK_EXPIRED_LEASE_PERIOD_SECONDS = 10; // 10 secs as default
@@ -100,21 +97,22 @@ public class DHCPServer implements IOFMessageListener, IFloodlightModule, IDHCPS
         NodePortTuple npt = DHCPServerUtils.getNodePortTuple(sw, inPort);
         VlanVid vid = DHCPServerUtils.getVlanVid((OFPacketIn) msg, eth);
 
-        if (!getInstance(npt).isPresent() && !getInstance(vid).isPresent()) {
-            log.error("Could not locate DHCP instance for DPID {}, port {}, VLAN {}", new Object[] {sw.getId(), inPort, vid});
+        if (!getInstance(npt).isPresent() && !getInstance(sw.getId()).isPresent() && !getInstance(vid).isPresent()) {
+            log.error("Could not locate DHCP instance for DPID {}, port {} or VLAN {}", new Object[] {sw.getId(), inPort, vid});
             return Command.CONTINUE;
         }
 
         DHCPInstance instance = null;
-        if (getInstance(npt).isPresent()) {
+        if (getInstance(sw.getId()).isPresent()) {
+            instance = getInstance(sw.getId()).get();
+        }
+        else if (getInstance(npt).isPresent()) {
             instance = getInstance(npt).get();
         }
         else {
             instance = getInstance(vid).get();
         }
 
-        // TODO: double-check sychronized usage here
-        // Check DHCP pool availability
         synchronized (instance.getDHCPPool()) {
             if (!instance.getDHCPPool().isPoolAvailable()) {
                 log.info("DHCP Pool is full, trying to allocate more space");
@@ -125,11 +123,12 @@ public class DHCPServer implements IOFMessageListener, IFloodlightModule, IDHCPS
         DHCP dhcPayload = DHCPServerUtils.getDHCPayload(eth);
         IPv4Address srcAddr = ((IPv4) eth.getPayload()).getSourceAddress();
         IPv4Address dstAddr = ((IPv4) eth.getPayload()).getDestinationAddress();
+        MacAddress srcMac = eth.getSourceMACAddress();
 
         switch (DHCPServerUtils.getOpcodeType(dhcPayload)) {
             case REQUEST:
-                processDhcpRequest(dhcPayload, sw, inPort, instance, srcAddr, dstAddr);
-                break;
+                processDhcpRequest(dhcPayload, sw, inPort, instance, srcAddr, dstAddr, srcMac);
+                return Command.STOP;
             default:
                 break;
         }
@@ -138,33 +137,35 @@ public class DHCPServer implements IOFMessageListener, IFloodlightModule, IDHCPS
     }
 
     private void processDhcpRequest(DHCP dhcpPayload, IOFSwitch sw, OFPort inPort, DHCPInstance instance,
-                                    IPv4Address srcAddr, IPv4Address dstAddr) {
+                                    IPv4Address srcAddr, IPv4Address dstAddr, MacAddress srcMac) {
         DHCPMessageHandler handler = new DHCPMessageHandler();
         switch (DHCPServerUtils.getMessageType(dhcpPayload)) {
             case DISCOVER:
-                log.debug("DHCP DISCOVER message received, start handling... ");
-                OFPacketOut dhcpOffer = handler.handleDHCPDiscover(sw, inPort, instance, srcAddr, dhcpPayload);
+                OFPacketOut dhcpOffer = handler.handleDHCPDiscover(sw, inPort, instance, srcAddr, dhcpPayload, enableDHCPDynamicService);
+                log.info("DHCP DISCOVER message received from switch {} for client interface {}, handled by dhcp instance {} ... ",
+                        new Object[]{sw.getId().toString(), srcMac.toString(), instance.getName()});
                 sw.write(dhcpOffer);
                 break;
 
             case REQUEST:
-                log.debug("DHCP REQUEST message received, start handling... ");
                 OFPacketOut dhcpReply = handler.handleDHCPRequest(sw, inPort, instance, dstAddr, dhcpPayload);
+                log.info("DHCP REQUEST message received from switch {} for client interface {}, handled by dhcp instance {} ... ",
+                        new Object[]{sw.getId().toString(), srcMac.toString(), instance.getName()});
                 sw.write(dhcpReply);    // either ACK or NAK
                 break;
 
             case RELEASE:   // clear client IP (e.g. client shut down, etc)
-                log.debug("DHCP RELEASE message received, start handling... ");
+                log.debug("DHCP RELEASE message received from switch {}, start handling... ", sw.getId().toString());
                 handler.handleDHCPRelease(instance, dhcpPayload.getClientHardwareAddress());
                 break;
 
             case DECLINE:   // client found assigned IP invalid
-                log.debug("DHCP DECLINE message received, start handling... ");
+                log.debug("DHCP DECLINE message received from switch {}, start handling... ", sw.getId().toString());
                 handler.handleDHCPDecline(instance, dhcpPayload.getClientHardwareAddress());
                 break;
 
             case INFORM:    // client request some information
-                log.debug("DHCP INFORM message received, start handling... ");
+                log.debug("DHCP INFORM message received from switch {}, start handling... ", sw.getId().toString());
                 OFPacketOut dhcpAck = handler.handleDHCPInform(sw, inPort, instance, dstAddr, dhcpPayload);
                 sw.write(dhcpAck);
                 break;
@@ -177,7 +178,7 @@ public class DHCPServer implements IOFMessageListener, IFloodlightModule, IDHCPS
 
     @Override
     public String getName() {
-        return DHCPServer.class.getSimpleName();
+        return "dhcpserver";
     }
 
     @Override
@@ -187,12 +188,7 @@ public class DHCPServer implements IOFMessageListener, IFloodlightModule, IDHCPS
 
     @Override
     public boolean isCallbackOrderingPostreq(OFType type, String name) {
-        if (type == OFType.PACKET_IN && name.equals(Forwarding.class.getSimpleName())) {
-            return true;
-        }
-        else {
-            return false;
-        }
+        return (type.equals(OFType.PACKET_IN) && name.equals("forwarding"));
     }
 
     @Override
@@ -220,118 +216,18 @@ public class DHCPServer implements IOFMessageListener, IFloodlightModule, IDHCPS
         return l;
     }
 
-    /**
-    private DHCPInstance readDHCPConfig(Map<String, String> configOptions, DHCPInstanceBuilder builder) {
-        try{
-            builder.setName(configOptions.get("name"))
-                    .setSubnetMask(IPv4Address.of(configOptions.get("subnet-mask")))
-                    .setStartIP(IPv4Address.of(configOptions.get("lower-ip-range")))
-                    .setEndIP(IPv4Address.of(configOptions.get("upper-ip-range")))
-                    .setBroadcastIP(IPv4Address.of(configOptions.get("broadcast-address")))
-                    .setRouterIP(IPv4Address.of(configOptions.get("router")))
-                    .setDomainName(configOptions.get("domain-name"))
-                    .setLeaseTimeSec(Integer.parseInt(configOptions.get("default-lease-time")))
-                    .setIPforwarding(Boolean.parseBoolean(configOptions.get("ip-forwarding")))
-                    .setServerMac(MacAddress.of(configOptions.get("controller-mac")))
-                    .setServerID(IPv4Address.of(configOptions.get("controller-ip")));
 
+//    private DHCPInstance readDHCPConfig(Map<String, String> configOptions, DHCPInstanceBuilder builder) {
+//    }
 
-        } catch (Exception e) {
-            log.error("Could not parse DHCP parameters, check DHCP options in floodlightdefault.properties file.");
-        }
-
-        // Optional DHCP parameters below
-        String staticAddresses = configOptions.get("reserved-static-addresses");
-        if (staticAddresses != null) {
-            String[] macIpCouples = staticAddresses.split("\\s*;\\s*");
-            int i;
-            String[] macIpSplit;
-            int ipPos, macPos;
-            for (i = 0; i < macIpCouples.length; i++) {
-                macIpSplit = macIpCouples[i].split("\\s*,\\s*");
-                // Determine which element is the MAC and which is the IP
-                // i.e. which order have they been typed in in the config file?
-                if (macIpSplit[0].length() > macIpSplit[1].length()) {
-                    macPos = 0;
-                    ipPos = 1;
-                }
-                else {
-                    macPos = 1;
-                    ipPos = 0;
-                }
-                builder.setStaticAddresses(MacAddress.of(macIpSplit[macPos]), IPv4Address.of(macIpSplit[ipPos]));
-            }
-        }
-
-        String nptes = configOptions.get("node-port-tuple");
-        if (nptes != null) {
-            String[] nptCouples = nptes.split("\\s*;\\s*");
-
-            String[] nodeportSplit;
-            int i, nodePos, portPos;
-            List<NodePortTuple> nptMembers = new ArrayList<>();
-            for (i = 0; i < nptCouples.length; i++) {
-                nodeportSplit = nptCouples[i].split("\\s*,\\s*");
-                // determine which element is sw ID and which is the port number
-                if (nodeportSplit[0].length() > nodeportSplit[1].length()) {
-                    nodePos = 0;
-                    portPos = 1;
-                }
-                else {
-                    nodePos = 1;
-                    portPos = 0;
-                }
-                nptMembers.add(new NodePortTuple(DatapathId.of(nodeportSplit[nodePos]), OFPort.of(Integer.valueOf(nodeportSplit[portPos]))));
-            }
-            builder.setNptMembers(new HashSet<>(nptMembers));
-        }
-
-        // Separate the servers in the comma-delimited list, O.W client will get incorrect option information
-        String dnses = configOptions.get("domain-name-servers");
-        if (dnses != null) {
-            List<IPv4Address> dnsServerIPs = new ArrayList<>();
-            for (String dnsServerIP : dnses.split("\\s*,\\s*")) {
-                dnsServerIPs.add(IPv4Address.of(dnsServerIP));
-            }
-            builder.setDNSServers(dnsServerIPs);
-        }
-
-        String ntps = configOptions.get("ntp-servers");
-        if (ntps != null) {
-            List<IPv4Address> ntpServerIPs = new ArrayList<>();
-            for (String ntpServerIP : ntps.split("\\s*,\\s*")) {
-                ntpServerIPs.add(IPv4Address.of(ntpServerIP));
-            }
-            builder.setNTPServers(ntpServerIPs);
-        }
-
-        // Separate VLAN IDs in the comma-delimited list, then convert to set
-        String vlanvids = configOptions.get("vlanvid");
-        if (vlanvids != null) {
-            List<VlanVid> vlanMembers = new ArrayList<>();
-            for (String vlanvid : vlanvids.split("\\s*,\\s*")) {
-                vlanMembers.add(VlanVid.ofVlan(Integer.valueOf(vlanvid)));
-            }
-            builder.setVlanMembers(new HashSet<>(vlanMembers));
-        }
-
-        String enableDHCP = configOptions.get("enable");
-        if (enableDHCP != null && !enableDHCP.isEmpty()) {
-            enableDHCP();
-        }
-        else {
-            disableDHCP();
-        }
-
-        return builder.build();
-    }
-    */
 
     @Override
     public void init(FloodlightModuleContext context) throws FloodlightModuleException {
         this.floodlightProviderService = context.getServiceImpl(IFloodlightProviderService.class);
         this.switchService = context.getServiceImpl(IOFSwitchService.class);
         this.restApiService = context.getServiceImpl(IRestApiService.class);
+        this.topologyService = context.getServiceImpl(ITopologyService.class);
+        this.staticEntryPusherService = context.getServiceImpl(IStaticEntryPusherService.class);
         dhcpInstanceMap = new HashMap<>();
 
 //        DHCPInstance instance = readDHCPConfig(context.getConfigParams(this), DHCPInstance.createInstance());
@@ -341,6 +237,7 @@ public class DHCPServer implements IOFMessageListener, IFloodlightModule, IDHCPS
     @Override
     public void startUp(FloodlightModuleContext context) throws FloodlightModuleException {
         floodlightProviderService.addOFMessageListener(OFType.PACKET_IN, this);
+        switchService.addOFSwitchListener(this);
         restApiService.addRestletRoutable(new DHCPServerWebRoutable());
 
         /**
@@ -354,6 +251,7 @@ public class DHCPServer implements IOFMessageListener, IFloodlightModule, IDHCPS
             for (DHCPInstance instance : dhcpInstanceMap.values()) {
                 synchronized (instance.getDHCPPool()) {
                     instance.getDHCPPool().checkExpiredLeases();
+//                    instance.getDHCPPool().clearExpiredLeases();
                 }
             }
         }, 10, DHCP_SERVER_CHECK_EXPIRED_LEASE_PERIOD_SECONDS, TimeUnit.SECONDS);
@@ -368,6 +266,21 @@ public class DHCPServer implements IOFMessageListener, IFloodlightModule, IDHCPS
     @Override
     public void disableDHCP() {
         enableDHCPService = false;
+    }
+
+    @Override
+    public void enableDHCPDynamic() {
+        enableDHCPDynamicService = true;
+    }
+
+    @Override
+    public void disableDHCDynamic() {
+        enableDHCPDynamicService = false;
+    }
+
+    @Override
+    public boolean isDHCPDynamicEnabled() {
+        return enableDHCPDynamicService;
     }
 
     @Override
@@ -398,6 +311,13 @@ public class DHCPServer implements IOFMessageListener, IFloodlightModule, IDHCPS
     public Optional<DHCPInstance> getInstance(NodePortTuple npt) {
         return dhcpInstanceMap.values().stream()
                 .filter(instance -> instance.getNptMembers().contains(npt))
+                .findAny();
+    }
+
+    @Override
+    public Optional<DHCPInstance> getInstance(DatapathId dpid) {
+        return dhcpInstanceMap.values().stream()
+                .filter(instance -> instance.getSwitchMembers().contains(dpid))
                 .findAny();
     }
 
@@ -451,4 +371,28 @@ public class DHCPServer implements IOFMessageListener, IFloodlightModule, IDHCPS
 
         return newInstance;
     }
+
+    @Override
+    public void switchAdded(DatapathId switchId) { }
+
+    @Override
+    public void switchRemoved(DatapathId switchId) {
+        dhcpInstanceMap.values().stream()
+                .forEach(instance -> instance.removeSwitchFromInstance(switchId));
+        log.info("Handle switchRemoved. Switch {} removed from dhcp instance", switchId.toString());
+        return;
+    }
+
+    @Override
+    public void switchActivated(DatapathId switchId) { }
+
+    @Override
+    public void switchPortChanged(DatapathId switchId, OFPortDesc port, PortChangeType type) { }
+
+    @Override
+    public void switchChanged(DatapathId switchId) { }
+
+    @Override
+    public void switchDeactivated(DatapathId switchId) { }
+
 }

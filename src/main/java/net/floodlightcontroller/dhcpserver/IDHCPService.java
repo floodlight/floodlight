@@ -2,6 +2,7 @@ package net.floodlightcontroller.dhcpserver;
 
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.core.types.NodePortTuple;
+import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.IPv4Address;
 import org.projectfloodlight.openflow.types.VlanVid;
 
@@ -41,12 +42,16 @@ public interface IDHCPService extends IFloodlightService {
 
 	void enableDHCP();
 	void disableDHCP();
+	void enableDHCPDynamic();
+	void disableDHCDynamic();
 	boolean isDHCPEnabled();
+	boolean isDHCPDynamicEnabled();
 	void setCheckExpiredLeasePeriod(long timeSec);
 
 	Optional<DHCPInstance> getInstance(String name);
 	Optional<DHCPInstance> getInstance(IPv4Address ip);
 	Optional<DHCPInstance> getInstance(NodePortTuple npt);
+	Optional<DHCPInstance> getInstance(DatapathId dpid);
 	Optional<DHCPInstance> getInstance(VlanVid vid);
 	Collection<DHCPInstance> getInstances();
 

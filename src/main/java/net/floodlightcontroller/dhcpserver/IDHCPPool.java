@@ -37,6 +37,17 @@ public interface IDHCPPool {
     Optional<IPv4Address> assignLeaseToClient(MacAddress clientMac, long timeSec);
 
     /**
+     * Assign an IPv4 address to client, one available IP from DHCP pool will be returned
+     *
+     * When this function called, each time DHCP pool will return a different IP
+     *
+     * @param clientMac
+     * @param timeSec
+     * @return
+     */
+    Optional<IPv4Address> assignDynamicLeaseToClient(MacAddress clientMac, long timeSec);
+
+    /**
      * Assign an IPv4 address to client based on the Request IP address
      *
      * @param requestIP
@@ -44,7 +55,7 @@ public interface IDHCPPool {
      * @param timeSec
      * @return
      */
-    Optional<IPv4Address> assignLeaseToClientWithRequestIP(IPv4Address requestIP, MacAddress clientMac, long timeSec);
+    Optional<IPv4Address> assignLeaseToClientWithRequestIP(IPv4Address requestIP, MacAddress clientMac, long timeSec, boolean dynamicLease);
 
     /**
      * Assign a "permanent" IPv4 address to client, based on client MAC address. Because no specific IP address requested,

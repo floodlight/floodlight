@@ -57,20 +57,20 @@ public class DHCPBinding {
 	}
 
 	public void configurePermanentLease(@Nonnull MacAddress mac) {
-		setMACAddress(mac);
-		currentState = LeasingState.PERMANENT_LEASED;
+		this.setMACAddress(mac);
+		this.currentState = LeasingState.PERMANENT_LEASED;
 	}
 
 	public void configureNormalLease(@Nonnull MacAddress mac, long durationTimeSec) {
-		setMACAddress(mac);
-		currentState = LeasingState.LEASED;
-		setLeaseDuration(durationTimeSec);
+		this.setMACAddress(mac);
+		this.currentState = LeasingState.LEASED;
+		this.setLeaseDuration(durationTimeSec);
 	}
 
 	public boolean isBindingTimeout() {
-		long currentTime = System.currentTimeMillis();
-		if ((currentTime / 1000) >= (startTimeSec + durationTimeSec)) {
-			currentState = LeasingState.EXPIRED;
+		long currentTime = System.nanoTime();
+		if ((currentTime / 1000000000) >= (this.startTimeSec + this.durationTimeSec)) {
+			this.currentState = LeasingState.EXPIRED;
 			return true;
 		}
 		else {
@@ -80,20 +80,20 @@ public class DHCPBinding {
 	}
 
 	public void setLeaseDuration(long durationTime) {
-		startTimeSec = System.currentTimeMillis() / 1000;
-		durationTimeSec = durationTime;
+		this.startTimeSec = System.nanoTime() / 1000000000;
+		this.durationTimeSec = durationTime;
 	}
 
 	public void cancelLease() {
-		startTimeSec = 0;
-		durationTimeSec = 0;
-		setMACAddress(MacAddress.NONE);
-		currentState = LeasingState.AVAILABLE;
+		this.startTimeSec = 0;
+		this.durationTimeSec = 0;
+		this.setMACAddress(MacAddress.NONE);
+		this.currentState = LeasingState.AVAILABLE;
 	}
 
 	public void renewLease(long durationTime) {
-		setLeaseDuration(durationTime);
-		currentState = LeasingState.LEASED;
+		this.setLeaseDuration(durationTime);
+		this.currentState = LeasingState.LEASED;
 	}
 	
 	private void setMACAddress(MacAddress mac) {

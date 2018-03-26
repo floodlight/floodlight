@@ -3,6 +3,7 @@ package net.floodlightcontroller.dhcpserver.web;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableMap;
+import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.types.NodePortTuple;
 import net.floodlightcontroller.dhcpserver.DHCPInstance;
 import net.floodlightcontroller.dhcpserver.IDHCPService;
@@ -53,6 +54,12 @@ public class InstanceResource extends ServerResource {
 
         JsonNode jsonNode = new ObjectMapper().readTree(json);
 
+        JsonNode gatewayNode = jsonNode.get("router-ip");
+        if (gatewayNode != null) {
+            IPv4Address routerIP = IPv4Address.of(gatewayNode.asText());
+            dhcpInstance.get().updateDefaultGateway(routerIP);
+        }
+
         JsonNode switchportsNode = jsonNode.get("switchports");
         if (switchportsNode != null) {
             for (JsonNode swpt : switchportsNode) {
@@ -65,10 +72,20 @@ public class InstanceResource extends ServerResource {
             }
         }
 
+        JsonNode switchesNode = jsonNode.get("switches");
+        if (switchesNode != null) {
+            for (JsonNode sw : switchesNode) {
+                JsonNode dpidNode = sw.get("dpid");
+                if (dpidNode != null) {
+                    dhcpInstance.get().addSwitchMember(DatapathId.of(dpidNode.asText()));
+                }
+            }
+        }
+
         JsonNode vlansNode = jsonNode.get("vlans");
         if (vlansNode != null) {
             for (JsonNode vlan : vlansNode) {
-                VlanVid vid = VlanVid.ofVlan(vlan.asInt());
+                VlanVid vid = VlanVid.ofVlan(vlan.get("vlan").asInt());
                 dhcpInstance.get().addVlanMember(vid);
             }
         }

@@ -11,9 +11,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 /**
  * @author Qing Wang (qw@g.clemson.edu) at 2/4/18
@@ -34,7 +32,7 @@ public class DHCPMessageHandler {
      * @return
      */
     public OFPacketOut handleDHCPDiscover(@Nonnull IOFSwitch sw, @Nonnull OFPort inPort, @Nonnull DHCPInstance instance,
-                                          @Nonnull IPv4Address clientIP, @Nonnull DHCP payload) {
+                                          @Nonnull IPv4Address clientIP, @Nonnull DHCP payload, @Nonnull Boolean dynamicLease) {
         /**  DHCP Discover Message
          * -- UDP src port = 68
          * -- UDP dst port = 67
@@ -58,6 +56,9 @@ public class DHCPMessageHandler {
          * --		(15) Domain Name
          * --		(6)  DNS
          **/
+
+        DHCPReturnMessage returnMessage = new DHCPReturnMessage();
+
         int xid = payload.getTransactionId();
         IPv4Address giaddr = payload.getGatewayIPAddress();    // Will have GW IP if a relay agent was used
         IPv4Address yiaddr = payload.getYourIPAddress();
@@ -78,17 +79,26 @@ public class DHCPMessageHandler {
         DHCPPool dhcpPool = instance.getDHCPPool();
         long leaseTime = instance.getLeaseTimeSec();
         IPv4Address ipLease = null;
-        if (requestIP == null) {
-            ipLease = dhcpPool.assignLeaseToClient(chaddr, leaseTime).get();
-        } else {
-            ipLease = dhcpPool.assignLeaseToClientWithRequestIP(requestIP,
-                    chaddr, leaseTime).orElse(dhcpPool.assignLeaseToClient(chaddr, leaseTime).get());
+
+        if (!dynamicLease) {
+            if (requestIP == null) {
+                ipLease = dhcpPool.assignLeaseToClient(chaddr, leaseTime).get();
+            } else {
+                ipLease = dhcpPool.assignLeaseToClientWithRequestIP(requestIP, chaddr, leaseTime, false).get();
+            }
+        }else {
+            if (requestIP == null) {
+                ipLease = dhcpPool.assignDynamicLeaseToClient(chaddr, leaseTime).get();
+            } else {
+                ipLease = dhcpPool.assignLeaseToClientWithRequestIP(requestIP, chaddr, leaseTime, true).get();
+            }
+
         }
+
         yiaddr = ipLease;
-
         DHCP dhcpOffer = buildDHCPOfferMessage(instance, chaddr, yiaddr, giaddr, xid, requestOrder);
-
-        return buildDHCPOfferPacketOut(instance, sw, inPort, clientIP, dhcpOffer);
+        OFPacketOut dhcpPacketOut = buildDHCPOfferPacketOut(instance, sw, inPort, clientIP, dhcpOffer);
+        return dhcpPacketOut;
 
     }
 
@@ -588,7 +598,6 @@ public class DHCPMessageHandler {
     public boolean handleRenewing(DHCPInstance instance, MacAddress chaddr) {
         boolean sendAck = false;
         Optional<DHCPBinding> lease = instance.getDHCPPool().getLeaseBinding(chaddr);
-        // TODO: any way to refactor this?
         if (!lease.isPresent()) {
             sendAck = false;
         } else {
@@ -621,7 +630,6 @@ public class DHCPMessageHandler {
      */
     public boolean handleRebinding(DHCPInstance instance, MacAddress chaddr) {
         boolean sendAck = false;
-        // TODO: any way to refactor this?
         Optional<DHCPBinding> binding = instance.getDHCPPool().getLeaseBinding(chaddr);
         if (!binding.isPresent()) {
             sendAck = false;
