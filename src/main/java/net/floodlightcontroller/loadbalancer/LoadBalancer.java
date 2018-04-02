@@ -1247,6 +1247,17 @@ ILoadBalancerService, IOFMessageListener {
 		healthMonitorsInterval = period;
 		return "{\"status\" : \"Monitors period changed to " + period + "\"}";
 	}
+	
+	
+	@Override
+	public String removeAll() {
+		// Clear all LB objects
+		monitors.clear();
+		members.clear();
+		pools.clear();
+		vips.clear();
+		return "{\"status\" : \"All Vips, Pools, Members and Monitors have been deleted \"}";
+	}
 
 	/*
 	 * Floodlight module dependencies

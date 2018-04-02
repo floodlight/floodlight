@@ -25,6 +25,7 @@ import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.databind.MappingJsonFactory;
 
 import org.projectfloodlight.openflow.types.IpProtocol;
+import org.restlet.data.Status;
 import org.restlet.resource.Delete;
 import org.restlet.resource.Get;
 import org.restlet.resource.Post;
@@ -88,7 +89,8 @@ public class PoolsResource extends ServerResource {
 
 		int status = lbs.removePool(poolId);
 		if(status == -1){
-			throw new ResourceException(NOT_FOUND);
+			setStatus(Status.CLIENT_ERROR_NOT_FOUND, "Pool was not found.");
+			//throw new ResourceException(NOT_FOUND);
 		} else
 			throw new ResourceException(SUCCESS);
 	}

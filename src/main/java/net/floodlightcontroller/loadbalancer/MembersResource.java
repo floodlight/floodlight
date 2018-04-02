@@ -25,6 +25,8 @@ import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.databind.MappingJsonFactory;
+
+import org.restlet.data.Status;
 import org.restlet.resource.Delete;
 import org.restlet.resource.Get;
 import org.restlet.resource.Post;
@@ -88,7 +90,8 @@ public class MembersResource extends ServerResource {
 
 		int status = lbs.removeMember(memberId);
 		if(status == -1){
-			throw new ResourceException(NOT_FOUND);
+			setStatus(Status.CLIENT_ERROR_NOT_FOUND, "Member was not found.");
+		//	throw new ResourceException(NOT_FOUND);
 		} else
 			throw new ResourceException(SUCCESS);
 

@@ -56,6 +56,13 @@ public class ConfigResource extends ServerResource{
 
 			}	
 		}
+		
+		if (getReference().getPath().contains(LoadBalancerWebRoutable.CLEAR_STR)) {
+			String status = lbs.removeAll();
+			return Collections.singletonMap("Load Balancer instances ", status);
+		}
+		
+		
 		return Collections.singletonMap("ERROR", "Unimplemented configuration option");
 	}
 }

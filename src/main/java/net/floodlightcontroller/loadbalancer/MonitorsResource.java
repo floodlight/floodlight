@@ -27,6 +27,7 @@ import com.fasterxml.jackson.databind.MappingJsonFactory;
 import net.floodlightcontroller.packet.IPv4;
 
 import org.projectfloodlight.openflow.types.IpProtocol;
+import org.restlet.data.Status;
 import org.restlet.resource.Delete;
 import org.restlet.resource.Get;
 import org.restlet.resource.Post;
@@ -91,7 +92,8 @@ public class MonitorsResource extends ServerResource {
 
 		int status = lbs.removeMonitor(monitorId);
 		if(status == -1){
-			throw new ResourceException(NOT_FOUND);
+			setStatus(Status.CLIENT_ERROR_NOT_FOUND, "Monitor was not found.");
+			//throw new ResourceException(NOT_FOUND);
 		} else
 			throw new ResourceException(SUCCESS);
 

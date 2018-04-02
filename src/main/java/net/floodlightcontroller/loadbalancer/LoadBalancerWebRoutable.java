@@ -27,6 +27,7 @@ public class LoadBalancerWebRoutable implements RestletRoutable {
 	protected static final String ENABLE_STR = "enable";
 	protected static final String DISABLE_STR = "disable";
 	protected static final String MONITORS_STR = "monitors";
+	protected static final String CLEAR_STR = "clear";
 
     @Override
     public Restlet getRestlet(Context context) {
@@ -47,8 +48,9 @@ public class LoadBalancerWebRoutable implements RestletRoutable {
         router.attach("/health_monitors/{monitor}", MonitorsResource.class); //GET, PUT, DELETE
         router.attach("/health_monitors/{monitor}", MonitorsResource.class); //GET, PUT, DELETE   
         router.attach("/health_monitors/enable/", ConfigResource.class); //PUT, POST
-        router.attach("/health_monitors/disable/", ConfigResource.class); //PUT, POS
-        router.attach("/health_monitors/monitors/{period}", ConfigResource.class); //PUT, POS
+        router.attach("/health_monitors/disable/", ConfigResource.class); //PUT, POST
+        router.attach("/health_monitors/monitors/{period}", ConfigResource.class); //PUT, POST
+        router.attach("/clear", ConfigResource.class); //PUT, POST
         router.attachDefault(NoOp.class);
         return router;
      }

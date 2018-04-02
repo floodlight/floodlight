@@ -31,6 +31,7 @@ import org.restlet.resource.Delete;
 import org.restlet.resource.Get;
 import org.restlet.resource.Post;
 import org.restlet.resource.Put;
+import org.restlet.data.Status;
 import org.restlet.resource.ResourceException;
 import org.restlet.resource.ServerResource;
 import org.slf4j.Logger;
@@ -90,7 +91,8 @@ public class VipsResource extends ServerResource {
 
         int status = lbs.removeVip(vipId);
         if(status == -1){
-        	throw new ResourceException(NOT_FOUND);
+        	setStatus(Status.CLIENT_ERROR_NOT_FOUND, "Vip not found.");
+      //  	throw new ResourceException(NOT_FOUND);
         } else
         	throw new ResourceException(SUCCESS);
     }

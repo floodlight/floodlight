@@ -214,4 +214,10 @@ public interface ILoadBalancerService extends IFloodlightService {
      */
     public String setMonitorsPeriod(int monitor);
     
+    /**
+     * Remove VIPs,Pools,Members and Monitors
+     * return Success or Failure message
+     */
+    public String removeAll();
+    
 }
