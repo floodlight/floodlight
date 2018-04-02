@@ -81,7 +81,16 @@ public class LBPool {
 		poolStats = new LBStats();
 	}
 
-
+	public String lbMethodToString(short lbMethod) {
+		if (lbMethod == 1){
+			return "Round-Robin";
+		} else if (lbMethod == 2){
+			return "Statistics";
+		} else if (lbMethod == 3) {
+			return "Weighted Round-Robin";
+		}
+		return "Invalid Method";
+	}
 	public void setPoolStatistics(ArrayList<Long> bytesIn,ArrayList<Long> bytesOut,int activeFlows){
 		if(!bytesIn.isEmpty() && !bytesOut.isEmpty()){
 			long sumIn = 0;

@@ -956,7 +956,7 @@ ILoadBalancerService, IOFMessageListener {
 		if (pool.vipId != null && vips.containsKey(pool.vipId))
 			vips.get(pool.vipId).pools.add(pool.id);
 		else {
-			log.error("Specified vip-id must exist, creating pool with null vipId");
+			log.error("Specified vip-id must exist, creating pool with null vipId anyway");
 			pool.vipId = null;
 			pools.put(pool.id, pool);
 		}
