@@ -92,7 +92,7 @@ public class VipsResource extends ServerResource {
         int status = lbs.removeVip(vipId);
         if(status == -1){
         	setStatus(Status.CLIENT_ERROR_NOT_FOUND, "Vip not found.");
-      //  	throw new ResourceException(NOT_FOUND);
+        	return 0;
         } else
         	throw new ResourceException(SUCCESS);
     }

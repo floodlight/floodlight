@@ -892,7 +892,7 @@ ILoadBalancerService, IOFMessageListener {
 	}
 
 	/*
-	 * ILoadBalancerService methods TODO
+	 * ILoadBalancerService methods
 	 */
 
 	@Override
@@ -1021,8 +1021,8 @@ ILoadBalancerService, IOFMessageListener {
 			if (!pools.get(member.poolId).members.contains(member.id))
 				pools.get(member.poolId).members.add(member.id);
 		} else{
-			log.error("member must be specified with non-null pool_id");
-			return "{\"status\" : \"Member must be specified with existing pool_id \"}";
+			log.error("Member must be specified with existing pool_id");
+			return null;
 		}
 		members.put(member.id, member);
 		memberIdToIp.put(member.id, member.address);
@@ -1140,7 +1140,7 @@ ILoadBalancerService, IOFMessageListener {
 		for(LBMonitor allMonitors: monitors.values()){
 			if(monitor.poolId.equals(allMonitors.poolId)){
 				log.error("Pool already has monitor associated with");
-				return "{\"status\" : \"Pool " + monitor.poolId + " already has monitor associated with \"}";
+				return null;
 			}
 		}
 		monitors.put(monitor.id, monitor);
@@ -1160,7 +1160,7 @@ ILoadBalancerService, IOFMessageListener {
 		for(LBMonitor allMonitors: monitors.values()){
 			if(Objects.equals(poolId, allMonitors.poolId)){
 				log.error("Pool " + poolId + " already has monitor associated with");
-				return "{\"status\" : \"Pool " + poolId + " already has monitor associated with \"}";
+				return null;
 			}
 		}
 
@@ -1186,7 +1186,7 @@ ILoadBalancerService, IOFMessageListener {
 			}
 			return result;
 		}
-		return "{\"status\" : \"Pool " + poolId +  " was not found.\"}";
+		return result;
 	}
 
 	@Override

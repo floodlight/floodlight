@@ -90,7 +90,7 @@ public class PoolsResource extends ServerResource {
 		int status = lbs.removePool(poolId);
 		if(status == -1){
 			setStatus(Status.CLIENT_ERROR_NOT_FOUND, "Pool was not found.");
-			//throw new ResourceException(NOT_FOUND);
+			return 0;
 		} else
 			throw new ResourceException(SUCCESS);
 	}

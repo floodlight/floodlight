@@ -91,7 +91,7 @@ public class MembersResource extends ServerResource {
 		int status = lbs.removeMember(memberId);
 		if(status == -1){
 			setStatus(Status.CLIENT_ERROR_NOT_FOUND, "Member was not found.");
-		//	throw new ResourceException(NOT_FOUND);
+			return 0;
 		} else
 			throw new ResourceException(SUCCESS);
 
