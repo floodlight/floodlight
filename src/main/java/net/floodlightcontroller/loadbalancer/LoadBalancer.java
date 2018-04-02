@@ -956,7 +956,7 @@ ILoadBalancerService, IOFMessageListener {
 		if (pool.vipId != null && vips.containsKey(pool.vipId))
 			vips.get(pool.vipId).pools.add(pool.id);
 		else {
-			log.error("specified vip-id must exist");
+			log.error("Specified vip-id must exist, creating pool with null vipId");
 			pool.vipId = null;
 			pools.put(pool.id, pool);
 		}
@@ -1022,7 +1022,7 @@ ILoadBalancerService, IOFMessageListener {
 				pools.get(member.poolId).members.add(member.id);
 		} else{
 			log.error("member must be specified with non-null pool_id");
-			return null;
+			return "{\"status\" : \"Member must be specified with existing pool_id \"}";
 		}
 		members.put(member.id, member);
 		memberIdToIp.put(member.id, member.address);
@@ -1129,7 +1129,7 @@ ILoadBalancerService, IOFMessageListener {
 
 		monitors.put(monitor.id, monitor);
 		if(monitor.poolId != null){
-			log.error("To associate a monitor with a pool, use associate function");
+			log.error("To associate a monitor with a pool, use associateMonitorWithPool function");
 			monitor.poolId = null;
 		}
 		return monitor;
@@ -1140,7 +1140,7 @@ ILoadBalancerService, IOFMessageListener {
 		for(LBMonitor allMonitors: monitors.values()){
 			if(monitor.poolId.equals(allMonitors.poolId)){
 				log.error("Pool already has monitor associated with");
-				return null;
+				return "{\"status\" : \"Pool " + monitor.poolId + " already has monitor associated with \"}";
 			}
 		}
 		monitors.put(monitor.id, monitor);
@@ -1160,7 +1160,7 @@ ILoadBalancerService, IOFMessageListener {
 		for(LBMonitor allMonitors: monitors.values()){
 			if(Objects.equals(poolId, allMonitors.poolId)){
 				log.error("Pool " + poolId + " already has monitor associated with");
-				return null;
+				return "{\"status\" : \"Pool " + poolId + " already has monitor associated with \"}";
 			}
 		}
 
@@ -1186,7 +1186,7 @@ ILoadBalancerService, IOFMessageListener {
 			}
 			return result;
 		}
-		return null;
+		return "{\"status\" : \"Pool " + poolId +  " was not found.\"}";
 	}
 
 	@Override

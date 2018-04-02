@@ -152,7 +152,9 @@ public class VipsResource extends ServerResource {
                     vip.protocol = (byte) IpProtocol.ICMP.getIpProtocolNumber();
 	            } else if (tmp.equalsIgnoreCase("TLS")) {
 	                vip.protocol = (byte) IpProtocol.TLSP.getIpProtocolNumber();
-	            } 
+	            } else {
+	            	log.info("Invalid Protocol, valid options are: TCP, UDP, ICMP or TLS");
+	            }
                 continue;
             }
             if (n.equals("address")) {
