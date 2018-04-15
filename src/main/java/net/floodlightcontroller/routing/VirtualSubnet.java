@@ -19,7 +19,7 @@ import java.util.List;
 public class VirtualSubnet {
     protected static final Logger log = LoggerFactory.getLogger(VirtualSubnet.class);
 
-    private volatile String name = null;
+    private final String name;
     private volatile IPv4Address gatewayIP = IPv4Address.NONE;
     private volatile IPv4Address SubnetMask = IPv4Address.NONE;
     private volatile ArrayList<DatapathId> subnetDPIDs = new ArrayList<>();
@@ -142,23 +142,12 @@ public class VirtualSubnet {
 
         VirtualSubnet that = (VirtualSubnet) o;
 
-        if (name != null ? !name.equals(that.name) : that.name != null) return false;
-        if (gatewayIP != null ? !gatewayIP.equals(that.gatewayIP) : that.gatewayIP != null) return false;
-        if (SubnetMask != null ? !SubnetMask.equals(that.SubnetMask) : that.SubnetMask != null) return false;
-        if (subnetDPIDs != null ? !subnetDPIDs.equals(that.subnetDPIDs) : that.subnetDPIDs != null) return false;
-        if (subnetNPTs != null ? !subnetNPTs.equals(that.subnetNPTs) : that.subnetNPTs != null) return false;
-        return currentBuildMode == that.currentBuildMode;
+        return name != null ? name.equals(that.name) : that.name == null;
     }
 
     @Override
     public int hashCode() {
-        int result = name != null ? name.hashCode() : 0;
-        result = 31 * result + (gatewayIP != null ? gatewayIP.hashCode() : 0);
-        result = 31 * result + (SubnetMask != null ? SubnetMask.hashCode() : 0);
-        result = 31 * result + (subnetDPIDs != null ? subnetDPIDs.hashCode() : 0);
-        result = 31 * result + (subnetNPTs != null ? subnetNPTs.hashCode() : 0);
-        result = 31 * result + (currentBuildMode != null ? currentBuildMode.hashCode() : 0);
-        return result;
+        return name != null ? name.hashCode() : 0;
     }
 
     @Override

@@ -29,7 +29,7 @@ public class VirtualSubnetSwitchResource extends ServerResource {
             ObjectMapper mapper = new ObjectMapper();
             JsonNode nameNode = mapper.readTree(jsonData).get("subnet-name");
             JsonNode gatewayIPNode = mapper.readTree(jsonData).get("gateway-ip");
-            JsonNode switchNode = mapper.readTree(jsonData).get("switch");
+            JsonNode switchNode = mapper.readTree(jsonData).get("switches");
 
             if (nameNode == null || gatewayIPNode == null || switchNode == null) {
                 return Collections.singletonMap("INFO: ", "Some fields missing");

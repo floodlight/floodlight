@@ -103,6 +103,8 @@ public class VirtualInterfaceResource extends ServerResource {
                 return Collections.singletonMap("INFO: ", "some fields missing");
             }
 
+            //TODO: Probably should check if interface-ip is a valid IP with mask here
+
             VirtualGatewayInterface vInterface = new ObjectMapper()
                     .reader(VirtualGatewayInterface.class)
                     .readValue(jsonData);

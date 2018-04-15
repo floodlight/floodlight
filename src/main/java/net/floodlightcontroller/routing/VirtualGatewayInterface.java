@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import net.floodlightcontroller.routing.web.serializers.VirtualInterfaceSerializer;
 import org.projectfloodlight.openflow.types.IPv4Address;
+import org.projectfloodlight.openflow.types.IPv4AddressWithMask;
 import org.projectfloodlight.openflow.types.MacAddress;
 
 /**
@@ -12,17 +13,17 @@ import org.projectfloodlight.openflow.types.MacAddress;
  */
 @JsonSerialize(using = VirtualInterfaceSerializer.class)
 public class VirtualGatewayInterface {
-    private String name;
+    private final String name;
     private MacAddress mac;
-    private IPv4Address ip;
+    private IPv4AddressWithMask iPv4AddressWithMask;
 
     @JsonCreator
-    protected VirtualGatewayInterface(@JsonProperty("interface-name") String name,
+    public VirtualGatewayInterface(@JsonProperty("interface-name") String name,
                                       @JsonProperty("interface-mac") String mac,
-                                      @JsonProperty("interface-ip") String ip) {
+                                      @JsonProperty("interface-ip") String ipWithMask) {
         this.name = name;
         this.mac = MacAddress.of(mac);
-        this.ip = IPv4Address.of(ip);
+        this.iPv4AddressWithMask = IPv4AddressWithMask.of(ipWithMask);
     }
 
     public MacAddress getMac() {
@@ -30,8 +31,10 @@ public class VirtualGatewayInterface {
     }
 
     public IPv4Address getIp() {
-        return ip;
+        return iPv4AddressWithMask.getValue();
     }
+
+    public IPv4AddressWithMask getIPWithMask() { return iPv4AddressWithMask; }
 
     public String getInterfaceName() { return name; }
 
@@ -39,8 +42,12 @@ public class VirtualGatewayInterface {
         this.mac = mac;
     }
 
-    public void setIp(IPv4Address ip) {
-        this.ip = ip;
+    public void setIp(IPv4AddressWithMask iPv4AddressWithMask) {
+        this.iPv4AddressWithMask = iPv4AddressWithMask;
+    }
+
+    public boolean containsIP(IPv4Address ip) {
+        return iPv4AddressWithMask.contains(ip);
     }
 
     @Override
@@ -50,17 +57,12 @@ public class VirtualGatewayInterface {
 
         VirtualGatewayInterface that = (VirtualGatewayInterface) o;
 
-        if (name != null ? !name.equals(that.name) : that.name != null) return false;
-        if (mac != null ? !mac.equals(that.mac) : that.mac != null) return false;
-        return ip != null ? ip.equals(that.ip) : that.ip == null;
+        return name != null ? name.equals(that.name) : that.name == null;
     }
 
     @Override
     public int hashCode() {
-        int result = name != null ? name.hashCode() : 0;
-        result = 31 * result + (mac != null ? mac.hashCode() : 0);
-        result = 31 * result + (ip != null ? ip.hashCode() : 0);
-        return result;
+        return name != null ? name.hashCode() : 0;
     }
 
     @Override
@@ -68,7 +70,8 @@ public class VirtualGatewayInterface {
         return "VirtualGatewayInterface{" +
                 "name='" + name + '\'' +
                 ", mac=" + mac +
-                ", ip=" + ip +
+                ", iPv4AddressWithMask=" + iPv4AddressWithMask +
                 '}';
     }
+
 }

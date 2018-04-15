@@ -17,15 +17,8 @@
 
 package net.floodlightcontroller.forwarding;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import net.floodlightcontroller.core.FloodlightContext;
@@ -46,11 +39,7 @@ import net.floodlightcontroller.devicemanager.IDeviceService;
 import net.floodlightcontroller.devicemanager.SwitchPort;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryListener;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryService;
-import net.floodlightcontroller.packet.Ethernet;
-import net.floodlightcontroller.packet.IPv4;
-import net.floodlightcontroller.packet.IPv6;
-import net.floodlightcontroller.packet.TCP;
-import net.floodlightcontroller.packet.UDP;
+import net.floodlightcontroller.packet.*;
 import net.floodlightcontroller.routing.*;
 import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.util.*;
@@ -60,21 +49,7 @@ import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.match.Match;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.protocol.oxm.OFOxms;
-import org.projectfloodlight.openflow.types.DatapathId;
-import org.projectfloodlight.openflow.types.EthType;
-import org.projectfloodlight.openflow.types.IPv4Address;
-import org.projectfloodlight.openflow.types.IPv6Address;
-import org.projectfloodlight.openflow.types.IpProtocol;
-import org.projectfloodlight.openflow.types.MacAddress;
-import org.projectfloodlight.openflow.types.Masked;
-import org.projectfloodlight.openflow.types.OFBufferId;
-import org.projectfloodlight.openflow.types.OFGroup;
-import org.projectfloodlight.openflow.types.OFPort;
-import org.projectfloodlight.openflow.types.OFVlanVidMatch;
-import org.projectfloodlight.openflow.types.TableId;
-import org.projectfloodlight.openflow.types.U16;
-import org.projectfloodlight.openflow.types.U64;
-import org.projectfloodlight.openflow.types.VlanVid;
+import org.projectfloodlight.openflow.types.*;
 import org.python.google.common.collect.ImmutableList;
 import org.python.google.common.collect.Maps;
 import org.slf4j.Logger;
@@ -217,8 +192,8 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
     public Command processPacketInMessage(IOFSwitch sw, OFPacketIn pi, IRoutingDecision decision, FloodlightContext cntx) {
         Ethernet eth = IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
 
-        // Assume single gateway and single gateway MAC now, consider multiple gateways or multiple interfaces latter
-        VirtualGateway vGateway = routingEngineService.getVirtualGateway("gateway-1").get();
+        //TODO:  Assume single gateway and single gateway MAC now, consider multiple gateways or multiple interfaces latter
+        VirtualGateway vGateway = routingEngineService.getVirtualGateway("mininet-gateway-1").get();
         MacAddress gatewayMac = vGateway.getGatewayMac();
 
         // We found a routing decision (i.e. Firewall is enabled... it's the only thing that makes RoutingDecisions)
@@ -233,7 +208,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                 return Command.CONTINUE;
             case FORWARD_OR_FLOOD:
             case FORWARD:
-                doForwardFlow(sw, pi, decision, cntx, gatewayMac, false);
+                doForwardFlow(sw, pi, decision, cntx, vGateway, false);
                 return Command.CONTINUE;
             case MULTICAST:
                 // treat as broadcast
@@ -252,15 +227,21 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                 log.trace("No decision was made for PacketIn={}, forwarding", pi);
             }
 
-            if (isARP(eth) && eth.getDestinationMACAddress() == gatewayMac) {
-                doL3Flood(sw, pi, cntx, gatewayMac);
-            }
-            else if (isARP(eth) && eth.getDestinationMACAddress() != gatewayMac) {
-                doFlood(sw, pi, decision, cntx);
+            if (isARP(eth)) {
+                IPv4Address dstIP = ((IPv4) eth.getPayload()).getDestinationAddress();
+                if (((ARP) eth.getPayload()).getOpCode().equals(ARP.OP_REQUEST) && vGateway.isAGatewayInft(dstIP)) {
+                    // Virtual gateway generate & return ARP response to that host
+                    IPacket arpReply = gatewayArpReply(cntx, gatewayMac);
+                    pushArpReply(arpReply, sw, OFBufferId.NO_BUFFER, OFPort.ANY, OFMessageUtils.getInPort(pi));
+                }
+                else {
+                    doFlood(sw, pi, decision, cntx);
+                }
             }
             else {
-                doForwardFlow(sw, pi, decision, cntx, gatewayMac, false);
+                doForwardFlow(sw, pi, decision, cntx, vGateway, false);
             }
+
         }
 
         return Command.CONTINUE;
@@ -268,6 +249,158 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 
     private boolean isARP(Ethernet eth) {
         return eth.isBroadcast() || eth.isMulticast();
+    }
+
+    public IPacket gatewayArpReply(FloodlightContext cntx, MacAddress gatewayMac) {
+        Ethernet eth = IFloodlightProviderService.bcStore.get(cntx,
+                IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
+
+        // generate ARP reply to host
+        return new Ethernet()
+                .setSourceMACAddress(gatewayMac)
+                .setDestinationMACAddress(eth.getSourceMACAddress())
+                .setEtherType(EthType.ARP)
+                .setVlanID(eth.getVlanID())
+                .setPriorityCode(eth.getPriorityCode())
+                .setPayload(
+                        new ARP()
+                        .setHardwareType(ARP.HW_TYPE_ETHERNET)
+                        .setProtocolType(ARP.PROTO_TYPE_IP)
+                        .setOpCode(ARP.OP_REPLY)
+                        .setHardwareAddressLength((byte) 6)
+                        .setProtocolAddressLength((byte) 4)
+                        .setSenderHardwareAddress(gatewayMac)
+                        .setSenderProtocolAddress(((IPv4) eth.getPayload()).getDestinationAddress())
+                        .setTargetHardwareAddress(eth.getSourceMACAddress())
+                        .setTargetProtocolAddress(((IPv4) eth.getPayload()).getSourceAddress()));
+
+    }
+
+    /**
+     * Push arp packet to the network when virtual gateway needs to response arp request from host
+     *
+     * @param packet
+     * @param sw
+     * @param bufferId
+     * @param inPort
+     * @param outPort
+     */
+    public void pushArpReply(IPacket packet, IOFSwitch sw, OFBufferId bufferId, OFPort inPort, OFPort outPort) {
+        if (log.isTraceEnabled()) {
+            log.trace("PacketOut srcSwitch={} inPort={} outPort={}",
+                    new Object[] {sw, inPort, outPort});
+        }
+
+        OFPacketOut.Builder pob = sw.getOFFactory().buildPacketOut();
+
+        // Set Actions
+        List<OFAction> actions = new ArrayList<>();
+        actions.add(sw.getOFFactory().actions().buildOutput().setPort(outPort).setMaxLen(Integer.MAX_VALUE).build());
+
+        pob.setActions(actions);
+
+        // Set buffer_id, in_port
+        pob.setBufferId(bufferId);
+        OFMessageUtils.setInPort(pob, inPort);
+
+        // Set Data if buffer_id set to "no buffer"
+        if (pob.getBufferId() == OFBufferId.NO_BUFFER) {
+            if (packet != null) {
+                byte[] pktData = packet.serialize();
+                pob.setData(pktData);
+            }
+            else {
+                log.error("BufferId is not set and packet data is null. " +
+                                "Cannot send packetOut. " +
+                                "srcSwitch={} inPort={} outPort={}",
+                        new Object[] {sw, inPort, outPort});
+                return;
+            }
+        }
+
+        sw.write(pob.build());
+    }
+
+    public IPv4Address findInterfaceIP(VirtualGateway gateway, IPv4Address dstIP) {
+        Optional<VirtualGatewayInterface> intf = gateway.findGatewayInft(dstIP);
+        if (intf.isPresent()) {
+            return intf.get().getIp();
+        }
+        else {
+            return null;
+        }
+    }
+
+    // L3 ARP Handling
+    protected void doL3Flood(VirtualGateway gateway, IOFSwitch sw, OFPacketIn pi,
+                             FloodlightContext cntx) {
+        Ethernet eth = IFloodlightProviderService.bcStore.get(cntx,
+                IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
+
+        MacAddress gatewayMac = gateway.getGatewayMac();
+
+        // generate ARP request to destination host
+        IPv4Address intfIpAddress = findInterfaceIP(gateway, ((IPv4) eth.getPayload()).getDestinationAddress());
+
+        if (intfIpAddress == null) {
+            return;
+        }
+
+        // Set src MAC to virtual gateway MAC, set dst MAC to broadcast
+        IPacket arpPacket = new Ethernet()
+                .setSourceMACAddress(gatewayMac)
+                .setDestinationMACAddress(MacAddress.BROADCAST)
+                .setEtherType(EthType.ARP)
+                .setVlanID(eth.getVlanID()) // TODO: Correct? Should be same VLAN ID as output port
+                .setPriorityCode(eth.getPriorityCode())
+                .setPayload(
+                        new ARP()
+                            .setHardwareType(ARP.HW_TYPE_ETHERNET)
+                            .setProtocolType(ARP.PROTO_TYPE_IP)
+                            .setOpCode(ARP.OP_REQUEST)
+                            .setHardwareAddressLength((byte) 6)
+                            .setProtocolAddressLength((byte) 4)
+                            .setSenderHardwareAddress(gatewayMac)
+                            .setSenderProtocolAddress(intfIpAddress)
+                            .setTargetHardwareAddress(MacAddress.BROADCAST)
+                            .setTargetProtocolAddress(((IPv4) eth.getPayload()).getDestinationAddress()));
+
+        byte[] data = arpPacket.serialize();
+
+        OFPort inPort = OFMessageUtils.getInPort(pi);
+
+        OFFactory factory = sw.getOFFactory();
+        OFPacketOut.Builder packetOut = factory.buildPacketOut();
+
+        // Set Actions
+        List<OFAction> actions = new ArrayList<>();
+
+        Set<OFPort> broadcastPorts = this.topologyService.getSwitchBroadcastPorts(sw.getId());
+        if (broadcastPorts.isEmpty()) {
+            log.debug("No broadcast ports found. Using FLOOD output action");
+            broadcastPorts = Collections.singleton(OFPort.FLOOD);
+        }
+
+        for (OFPort p : broadcastPorts) {
+            if (p.equals(inPort)) continue;
+            actions.add(factory.actions().output(p, Integer.MAX_VALUE));
+        }
+//        actions.add(factory.actions().buildSetField().setField(factory.oxms().arpSha(gatewayMac)).build());
+//        actions.add(factory.actions().buildSetField().setField(factory.oxms().arpTha(MacAddress.BROADCAST)).build());
+        packetOut.setActions(actions);
+
+        // set buffer-id, in-port and packet-data based on packet-in
+        packetOut.setBufferId(OFBufferId.NO_BUFFER);
+        OFMessageUtils.setInPort(packetOut, inPort);
+        packetOut.setData(data);
+
+        if (log.isTraceEnabled()) {
+            log.trace("Writing flood PacketOut switch={} packet-in={} packet-out={}",
+                    new Object[] {sw, pi, packetOut.build()});
+        }
+        messageDamper.write(sw, packetOut.build());
+
+        return;
     }
 
     /**
@@ -414,18 +547,28 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
     }
 
     protected void doForwardFlow(IOFSwitch sw, OFPacketIn pi, IRoutingDecision decision, FloodlightContext cntx,
-                                 MacAddress virtualGatewayMac, boolean requestFlowRemovedNotifn) {
+                                 VirtualGateway gateway, boolean requestFlowRemovedNotifn) {
         Ethernet eth = IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
         IPv4Address srcIP = ((IPv4) eth.getPayload()).getSourceAddress();
         IPv4Address dstIP = ((IPv4) eth.getPayload()).getDestinationAddress();
         OFPort srcPort = OFMessageUtils.getInPort(pi);
+
+        MacAddress virtualGatewayMac = gateway.getGatewayMac();
         DatapathId srcSw = sw.getId();
         IDevice dstDevice = IDeviceService.fcStore.get(cntx, IDeviceService.CONTEXT_DST_DEVICE);
         IDevice srcDevice = IDeviceService.fcStore.get(cntx, IDeviceService.CONTEXT_SRC_DEVICE);
 
+
         if (dstDevice == null) {
-            log.debug("Destination device unknown. Flooding packet");
-            doFlood(sw, pi, decision, cntx);
+            // L3 traffic at 1st hop, virtual gateway creates & floods ARP to learn destination device
+            if (eth.getDestinationMACAddress().equals(virtualGatewayMac)) {
+                log.debug("Virtual gateway handles L3 traffic. Create arp packet and flooding");
+                doL3Flood(gateway, sw, pi, cntx);
+            }
+            else { // Normal L2 traffic
+                log.debug("Destination device unknown. Flooding packet");
+                doFlood(sw, pi, decision, cntx);
+            }
             return;
         }
 
@@ -495,11 +638,12 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                 dstAp.getNodeId(),
                 dstAp.getPortId());
 
-        // Same subnet, L2 forwarding
-        if (isSameSubnet(switchService.getSwitch(srcSw), switchService.getSwitch(dstAp.getNodeId()),
+
+        boolean sameSubnet = isSameSubnet(switchService.getSwitch(srcSw), switchService.getSwitch(dstAp.getNodeId()),
                 new NodePortTuple(srcSw, srcPort), new NodePortTuple(dstAp.getNodeId(), dstAp.getPortId()),
-                srcIP, dstIP)) {
-            // Same subnet, normal L2 forwarding
+                srcIP, dstIP);
+
+        if (sameSubnet) { // Same subnet, normal L2 forwarding
             Match m = createMatchFromPacket(sw, srcPort, pi, cntx);
 
             if (! path.getPath().isEmpty()) {
@@ -527,33 +671,22 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 
             } /* else no path was found */
         }
-        else { // Not same subnet, L3 routing
-            // Rewrite on first & last hop switch in bi-direction
+        else {
+            // L3 rewrite on first hop (in bi-direction)
             IOFSwitch firstHop = switchService.getSwitch(srcSw);
             Match match = createMatchFromPacket(firstHop, srcPort, pi, cntx);
             OFPort outPort = path.getPath().get(path.getPath().size()-2).getPortId();
 
-//            if (rewriteField.equals(RewriteField.REQUEST)) {
-//                buildRewriteFlows(match, srcSw, outPort,
-//                        cookie, virtualGatewayMac, dstDevice.getMACAddress(),
-//                        requestFlowRemovedNotifn);
-//                rewriteField = RewriteField.REPLY;
-//            } else if (rewriteField.equals(RewriteField.REPLY)) {
-//                buildRewriteFlows(match, srcSw, outPort,
-//                        cookie, virtualGatewayMac, dstDevice.getMACAddress(),
-//                        requestFlowRemovedNotifn);
-//                rewriteField = RewriteField.REQUEST;
-//            }
-
-            buildRewriteFlows(match, srcSw, outPort, cookie,
+            buildRewriteFlows(pi, match, srcSw, outPort, cookie,
                     virtualGatewayMac, dstDevice.getMACAddress(), requestFlowRemovedNotifn);
 
-            // Remove first/last hop, push routes as normal in the middle
+            // Remove first hop, push routes as normal in the middle
             Path newPath = getNewPath(path);
             pushRoute(newPath, match, pi, sw.getId(), cookie,
                     cntx, requestFlowRemovedNotifn,
                     OFFlowModCommand.ADD);
 
+            // TODO: need this?
             for (NodePortTuple npt : path.getPath()) {
                 flowSetIdRegistry.registerFlowSetId(npt, flowSetId);
             }
@@ -561,44 +694,17 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         }
     }
 
-    private boolean isSameSubnet(IOFSwitch srcSw, IOFSwitch dstSw,
-                                 NodePortTuple srcNpt, NodePortTuple dstNpt,
-                                 IPv4Address srcIP, IPv4Address dstIP) {
-        boolean same = false;
-        switch (routingEngineService.getCurrentSubnetMode()) {
-            case SWITCH:
-                if (routingEngineService.isSameSubnet(srcSw, dstSw)) {
-                    same = true;
-                }
-                break;
-
-            case NodePortTuple:
-                if (routingEngineService.isSameSubnet(srcNpt, dstNpt)){
-                    same = true;
-                }
-                break;
-
-            case IP:
-                //TODO: check IP same subnet
-                break;
-
-            default:
-                break;
-        }
-
-        return same;
-    }
-
     // L3 Rewrite Flows
-    protected void buildRewriteFlows(@Nonnull Match match, @Nonnull DatapathId sw, @Nonnull OFPort outPort,
-                                     @Nonnull U64 cookie, @Nonnull MacAddress gatewayMac,
+    protected void buildRewriteFlows(@Nonnull OFPacketIn pi, @Nonnull Match match, @Nonnull DatapathId sw,
+                                     @Nonnull OFPort outPort, @Nonnull U64 cookie, @Nonnull MacAddress gatewayMac,
                                      @Nonnull MacAddress hostMac, boolean requestFlowRemovedNotification) {
         OFFactory factory = switchService.getSwitch(sw).getOFFactory();
         OFOxms oxms = factory.oxms();
         List<OFAction> actions = new ArrayList<>();
         OFFlowAdd.Builder flowAdd = factory.buildFlowAdd();
 
-        flowAdd.setBufferId(OFBufferId.NO_BUFFER)
+        flowAdd.setXid(pi.getXid())
+                .setBufferId(OFBufferId.NO_BUFFER)
                 .setIdleTimeout(FLOWMOD_DEFAULT_IDLE_TIMEOUT)
                 .setHardTimeout(FLOWMOD_DEFAULT_HARD_TIMEOUT)
                 .setBufferId(OFBufferId.NO_BUFFER)
@@ -621,14 +727,6 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 
         FlowModUtils.setActions(flowAdd, actions, switchService.getSwitch(sw));
 
-        // Only for debug purpose now
-        log.info("Pushing flowmod with srcMac={} dstMac={} " +
-                        "sw={} inPort={} outPort={}",
-                new Object[] { gatewayMac, hostMac,
-                        sw,
-                        flowAdd.getMatch().get(MatchField.IN_PORT),
-                        outPort });
-
         if (log.isTraceEnabled()) {
             log.trace("Pushing flowmod with srcMac={} dstMac={} " +
                             "sw={} inPort={} outPort={}",
@@ -637,6 +735,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                             flowAdd.getMatch().get(MatchField.IN_PORT),
                             outPort });
         }
+
         messageDamper.write(switchService.getSwitch(sw), flowAdd.build());
         return;
     }
@@ -645,6 +744,34 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         oldPath.getPath().remove(oldPath.getPath().get(oldPath.getPath().size()-1));
         oldPath.getPath().remove(oldPath.getPath().get(oldPath.getPath().size()-1));
         return oldPath;
+    }
+
+    private boolean isSameSubnet(IOFSwitch srcSw, IOFSwitch dstSw,
+                                 NodePortTuple srcNpt, NodePortTuple dstNpt,
+                                 IPv4Address srcIP, IPv4Address dstIP) {
+        boolean same = false;
+        switch (routingEngineService.getCurrentSubnetMode()) {
+            case SWITCH:
+                if (routingEngineService.isSameSubnet(srcSw, dstSw)) {
+                    same = true;
+                }
+                break;
+
+            case NodePortTuple:
+                if (routingEngineService.isSameSubnet(srcNpt, dstNpt)){
+                    same = true;
+                }
+                break;
+
+            case IP:
+                //TODO: need check IP same subnet?
+                break;
+
+            default:
+                break;
+        }
+
+        return same;
     }
 
 
@@ -859,46 +986,6 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         return;
     }
 
-    // L3 Arp Handling
-    protected void doL3Flood(IOFSwitch sw, OFPacketIn pi,
-                             FloodlightContext cntx, MacAddress gatewayMac) {
-        OFFactory factory = sw.getOFFactory();
-        OFPort inPort = OFMessageUtils.getInPort(pi);
-        OFPacketOut.Builder packetOut = factory.buildPacketOut();
-        List<OFAction> actions = new ArrayList<>();
-        Set<OFPort> broadcastPorts = this.topologyService.getSwitchBroadcastPorts(sw.getId());
-
-        if (broadcastPorts.isEmpty()) {
-            log.debug("No broadcast ports found. Using FLOOD output action");
-            broadcastPorts = Collections.singleton(OFPort.FLOOD);
-        }
-
-        for (OFPort p : broadcastPorts) {
-            if (p.equals(inPort)) continue;
-            actions.add(factory.actions().output(p, Integer.MAX_VALUE));
-        }
-        // Set src MAC to virtual gateway MAC, set dst MAC to broadcast
-        actions.add(factory.actions().buildSetField().setField(factory.oxms().arpSha(gatewayMac)).build());
-        actions.add(factory.actions().buildSetField().setField(factory.oxms().arpTha(MacAddress.BROADCAST)).build());
-        packetOut.setActions(actions);
-
-        // set buffer-id, in-port and packet-data based on packet-in
-        packetOut.setBufferId(OFBufferId.NO_BUFFER);
-        OFMessageUtils.setInPort(packetOut, inPort);
-        packetOut.setData(pi.getData());
-
-        // Debug Purpose
-        log.info("Writing flood PacketOut switch={} packet-in={} packet-out={}",
-                new Object[] {sw, pi, packetOut.build()});
-
-        if (log.isTraceEnabled()) {
-            log.trace("Writing flood PacketOut switch={} packet-in={} packet-out={}",
-                    new Object[] {sw, pi, packetOut.build()});
-        }
-        messageDamper.write(sw, packetOut.build());
-
-        return;
-    }
 
     // IFloodlightModule methods
 

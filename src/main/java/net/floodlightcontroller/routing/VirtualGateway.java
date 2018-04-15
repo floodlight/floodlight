@@ -5,6 +5,8 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import net.floodlightcontroller.routing.web.serializers.VirtualGatewaySerializer;
+import org.projectfloodlight.openflow.types.IPv4Address;
+import org.projectfloodlight.openflow.types.IPv4AddressWithMask;
 import org.projectfloodlight.openflow.types.MacAddress;
 
 import java.util.ArrayList;
@@ -19,7 +21,7 @@ import org.slf4j.LoggerFactory;
  */
 @JsonSerialize(using = VirtualGatewaySerializer.class)
 public class VirtualGateway {
-    private volatile String name;
+    private final String name;
     private volatile MacAddress gatewayMac;
     private volatile ArrayList<VirtualGatewayInterface> interfaces;
 
@@ -73,29 +75,34 @@ public class VirtualGateway {
 
     public void updateInterface(VirtualGatewayInterface vInterface) {
         VirtualGatewayInterface intf = getInterface(vInterface.getInterfaceName()).get();
-        intf.setIp(vInterface.getIp());
+        intf.setIp(vInterface.getIPWithMask());
         intf.setMac(vInterface.getMac());
     }
 
+    public boolean isAGatewayInft(IPv4Address ip) {
+        return interfaces.stream()
+                .anyMatch(intf -> intf.getIp().equals(ip));
+    }
+
+    public Optional<VirtualGatewayInterface> findGatewayInft(IPv4Address ip) {
+        return interfaces.stream()
+                .filter(intf -> intf.containsIP(ip))
+                .findAny();
+    }
 
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
 
-        VirtualGateway that = (VirtualGateway) o;
+        VirtualGateway gateway = (VirtualGateway) o;
 
-        if (name != null ? !name.equals(that.name) : that.name != null) return false;
-        if (gatewayMac != null ? !gatewayMac.equals(that.gatewayMac) : that.gatewayMac != null) return false;
-        return interfaces != null ? interfaces.equals(that.interfaces) : that.interfaces == null;
+        return name != null ? name.equals(gateway.name) : gateway.name == null;
     }
 
     @Override
     public int hashCode() {
-        int result = name != null ? name.hashCode() : 0;
-        result = 31 * result + (gatewayMac != null ? gatewayMac.hashCode() : 0);
-        result = 31 * result + (interfaces != null ? interfaces.hashCode() : 0);
-        return result;
+        return name != null ? name.hashCode() : 0;
     }
 
     @Override
