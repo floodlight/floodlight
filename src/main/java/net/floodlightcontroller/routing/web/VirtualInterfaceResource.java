@@ -97,9 +97,10 @@ public class VirtualInterfaceResource extends ServerResource {
             ObjectMapper mapper = new ObjectMapper();
             JsonNode interfaceNameNode = mapper.readTree(jsonData).get("interface-name");
             JsonNode interfaceIPNode = mapper.readTree(jsonData).get("interface-ip");
+            JsonNode interfaceMaskNode = mapper.readTree(jsonData).get("interface-mask");
             JsonNode interfaceMacNode = mapper.readTree(jsonData).get("interface-mac");
 
-            if (interfaceNameNode == null || interfaceIPNode == null || interfaceMacNode == null) {
+            if (interfaceNameNode == null || interfaceIPNode == null || interfaceMaskNode == null || interfaceMacNode == null) {
                 return Collections.singletonMap("INFO: ", "some fields missing");
             }
 

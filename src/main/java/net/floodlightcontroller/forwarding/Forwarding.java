@@ -40,7 +40,9 @@ import net.floodlightcontroller.devicemanager.SwitchPort;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryListener;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryService;
 import net.floodlightcontroller.packet.*;
+import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.routing.*;
+import net.floodlightcontroller.routing.web.RoutingWebRoutable;
 import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.util.*;
 
@@ -1006,6 +1008,9 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
     public Collection<Class<? extends IFloodlightService>> getModuleDependencies() {
         Collection<Class<? extends IFloodlightService>> l =
                 new ArrayList<Class<? extends IFloodlightService>>();
+        l.add(IRoutingService.class);
+        l.add(IRestApiService.class);
+        l.add(IDeviceService.class);
         l.add(IFloodlightProviderService.class);
         l.add(ITopologyService.class);
         l.add(IDebugCounterService.class);
@@ -1017,6 +1022,9 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
     public void init(FloodlightModuleContext context) throws FloodlightModuleException {
         super.init();
         this.floodlightProviderService = context.getServiceImpl(IFloodlightProviderService.class);
+        this.routingEngineService = context.getServiceImpl(IRoutingService.class);
+        this.deviceManagerService = context.getServiceImpl(IDeviceService.class);
+        this.restApiService = context.getServiceImpl(IRestApiService.class);
         this.topologyService = context.getServiceImpl(ITopologyService.class);
         this.debugCounterService = context.getServiceImpl(IDebugCounterService.class);
         this.switchService = context.getServiceImpl(IOFSwitchService.class);
@@ -1134,6 +1142,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         super.startUp();
         switchService.addOFSwitchListener(this);
         routingEngineService.addRoutingDecisionChangedListener(this);
+        restApiService.addRestletRoutable(new RoutingWebRoutable());
 
         /* Register only if we want to remove stale flows */
         if (REMOVE_FLOWS_ON_LINK_OR_PORT_DOWN) {

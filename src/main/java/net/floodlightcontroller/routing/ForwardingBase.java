@@ -64,7 +64,7 @@ import javax.annotation.Nonnull;
  * responsible for programming flows to a switch in response to a policy
  * decision.
  */
-public abstract class ForwardingBase implements IOFMessageListener, IFloodlightModule {
+public abstract class ForwardingBase implements IOFMessageListener {
     protected static Logger log = LoggerFactory.getLogger(ForwardingBase.class);
 
     public static int FLOWMOD_DEFAULT_IDLE_TIMEOUT = 5; // in seconds
@@ -455,36 +455,4 @@ public abstract class ForwardingBase implements IOFMessageListener, IFloodlightM
         return false;
     }
 
-    @Override
-    public Collection<Class<? extends IFloodlightService>> getModuleServices() {
-        // We don't export any services
-        return null;
-    }
-
-    @Override
-    public Map<Class<? extends IFloodlightService>, IFloodlightService> getServiceImpls() {
-        // We don't have any services
-        return null;
-    }
-
-    @Override
-    public Collection<Class<? extends IFloodlightService>> getModuleDependencies() {
-        Collection<Class< ? extends IFloodlightService>> l = new ArrayList<>();
-        l.add(IRoutingService.class);
-        l.add(IRestApiService.class);
-        l.add(IDeviceService.class);
-        return l;
-    }
-
-    @Override
-    public void init(FloodlightModuleContext context) throws FloodlightModuleException {
-        this.routingEngineService = context.getServiceImpl(IRoutingService.class);
-        this.deviceManagerService = context.getServiceImpl(IDeviceService.class);
-        this.restApiService = context.getServiceImpl(IRestApiService.class);
-    }
-
-    @Override
-    public void startUp(FloodlightModuleContext context) throws FloodlightModuleException {
-        restApiService.addRestletRoutable(new RoutingWebRoutable());
-    }
 }

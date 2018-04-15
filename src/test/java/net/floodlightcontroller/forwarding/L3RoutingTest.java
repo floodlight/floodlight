@@ -20,6 +20,8 @@ import java.util.Map;
 import static org.easymock.EasyMock.expect;
 import static org.easymock.EasyMock.replay;
 import static org.easymock.EasyMock.reset;
+import static org.junit.Assert.*;
+
 
 /**
  * @author Qing Wang (qw@g.clemson.edu) at 4/6/18
@@ -70,9 +72,9 @@ public class L3RoutingTest extends FloodlightTestCase {
         // For simplicity, could set multiple virtual interface mac as same gateway mac, as they're virtual resources
         VirtualGateway gw = new VirtualGateway("gateway-1", "aa:bb:cc:dd:ee:ff");
         VirtualGatewayInterface interface1 = new VirtualGatewayInterface("interface-1",
-                gw.getGatewayMac().toString(), "10.0.0.1");
+                gw.getGatewayMac().toString(), "10.0.0.1", "255.255.255.0");
         VirtualGatewayInterface interface2 = new VirtualGatewayInterface("interface-2",
-                gw.getGatewayMac().toString(), "20.0.0.1");
+                gw.getGatewayMac().toString(), "20.0.0.1", "255.255.255.0");
 
         gw.addInterface(interface1);
         gw.addInterface(interface2);
@@ -115,22 +117,26 @@ public class L3RoutingTest extends FloodlightTestCase {
                 .build();
     }
 
-    // TODO: test IPv6 latter
+    // TODO: may test IPv6 latter
 
 
-    // Create PacketOut then write so we can test
     @Test
-    public void testDoL3Flood() throws Exception {
-        // ARP request packet should set src Mac to gateway MAC, should set dst Mac to broadcast
+    public void testGatewayInterfaceIPSelection() throws Exception {
+        // "30.0.0.1" is not a configured gateway interface IP address
+        assertFalse(gateway.isAGatewayInft(IPv4Address.of("30.0.0.1")));
 
+        // "10.0.0.1" is a configured gateway interface IP address
+        assertTrue(gateway.isAGatewayInft(IPv4Address.of("10.0.0.1")));
 
-        // Port
+        // If destination IP is "10.0.0.25", the packet should select gateway interface "10.0.0.1" to go
+        IPv4Address dstIP = IPv4Address.of("10.0.0.25");
+        assertEquals(IPv4Address.of("10.0.0.1"), gateway.findGatewayInft(dstIP).get().getIp());
 
+        // If destination IP is "20.0.0.10", the packet should select gateway interface "20.0.0.1" to go
+        IPv4Address dstIP1 = IPv4Address.of("20.0.0.10");
+        assertEquals(IPv4Address.of("20.0.0.1"), gateway.findGatewayInft(dstIP1).get().getIp());
 
-
-        // ARP reply packet should set src Mac to gateway Mac, d
     }
-
 
 
 

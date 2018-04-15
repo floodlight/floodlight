@@ -75,8 +75,9 @@ public class VirtualGateway {
 
     public void updateInterface(VirtualGatewayInterface vInterface) {
         VirtualGatewayInterface intf = getInterface(vInterface.getInterfaceName()).get();
-        intf.setIp(vInterface.getIPWithMask());
+        intf.setIp(vInterface.getIp());
         intf.setMac(vInterface.getMac());
+        intf.setMask(vInterface.getMask());
     }
 
     public boolean isAGatewayInft(IPv4Address ip) {

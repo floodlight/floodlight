@@ -15,26 +15,27 @@ import org.projectfloodlight.openflow.types.MacAddress;
 public class VirtualGatewayInterface {
     private final String name;
     private MacAddress mac;
+    private IPv4Address ip;
     private IPv4AddressWithMask iPv4AddressWithMask;
 
     @JsonCreator
     public VirtualGatewayInterface(@JsonProperty("interface-name") String name,
                                       @JsonProperty("interface-mac") String mac,
-                                      @JsonProperty("interface-ip") String ipWithMask) {
+                                      @JsonProperty("interface-ip") String ip,
+                                      @JsonProperty("interface-mask") String mask) {
         this.name = name;
         this.mac = MacAddress.of(mac);
-        this.iPv4AddressWithMask = IPv4AddressWithMask.of(ipWithMask);
+        this.ip = IPv4Address.of(ip);
+        this.iPv4AddressWithMask = IPv4AddressWithMask.of(IPv4Address.of(ip), IPv4Address.of(mask));
     }
 
     public MacAddress getMac() {
         return mac;
     }
 
-    public IPv4Address getIp() {
-        return iPv4AddressWithMask.getValue();
-    }
+    public IPv4Address getIp() { return ip; }
 
-    public IPv4AddressWithMask getIPWithMask() { return iPv4AddressWithMask; }
+    public IPv4Address getMask() { return iPv4AddressWithMask.getMask(); }
 
     public String getInterfaceName() { return name; }
 
@@ -42,8 +43,12 @@ public class VirtualGatewayInterface {
         this.mac = mac;
     }
 
-    public void setIp(IPv4AddressWithMask iPv4AddressWithMask) {
-        this.iPv4AddressWithMask = iPv4AddressWithMask;
+    public void setIp(IPv4Address ip) {
+        this.ip = ip;
+    }
+
+    public void setMask(IPv4Address mask) {
+        this.iPv4AddressWithMask = IPv4AddressWithMask.of(ip, mask);
     }
 
     public boolean containsIP(IPv4Address ip) {
@@ -70,8 +75,8 @@ public class VirtualGatewayInterface {
         return "VirtualGatewayInterface{" +
                 "name='" + name + '\'' +
                 ", mac=" + mac +
-                ", iPv4AddressWithMask=" + iPv4AddressWithMask +
+                ", ip=" + ip +
+                ", subnet_mask=" + iPv4AddressWithMask.getMask() +
                 '}';
     }
-
 }
