@@ -36,7 +36,7 @@ public class CumulativeTimeBucketJSONSerializer
                    SerializerProvider serializer) 
                    throws IOException, JsonProcessingException {
        jGen.writeStartObject();
-       Timestamp ts = new Timestamp(ctb.getStartTimeNs()/1000000);
+       Timestamp ts = new Timestamp(System.currentTimeMillis() - (System.nanoTime() - ctb.getStartTimeNs())/1000000);
        jGen.writeStringField("start-time", ts.toString());
        jGen.writeStringField("current-time", 
          new Timestamp(System.currentTimeMillis()).toString());

@@ -62,11 +62,11 @@
         <include name="jackson-dataformat-csv-2.4.4.jar"/>
         <include name="jackson-dataformat-cbor-2.4.4.jar"/>
         <include name="slf4j-api-1.6.4.jar"/>
-        <include name="org.restlet.jar"/>
-        <include name="org.restlet.ext.jackson.jar"/>
-        <include name="org.restlet.ext.simple.jar"/>
-        <include name="org.restlet.ext.slf4j.jar"/>
-        <include name="org.restlet.ext.jsslutils.jar"/>
+        <include name="org.restlet-2.3.2.jar"/>
+        <include name="org.restlet.ext.jackson-2.3.2.jar"/>
+        <include name="org.restlet.ext.simple-2.3.2.jar"/>
+        <include name="org.restlet.ext.slf4j-2.3.2.jar"/>
+        <include name="org.restlet.ext.jsslutils-2.3.2.jar"/>
         <include name="org.simpleframework.jar"/>
         <include name="org.jsslutils.jar"/>
         <include name="netty-all-4.0.31.Final.jar"/>

@@ -29,10 +29,15 @@ public interface IPktInProcessingTimeService extends IFloodlightService {
 
     /**
      * Creates time buckets for a set of modules to measure their performance
-     * @param listeners The message listeners to create time buckets for
      */
-    public void bootstrap(List<IOFMessageListener> listeners);
-    
+    public void bootstrap();
+
+    /**
+     * Add module message listeners to measure their performance
+     * @param listener
+     */
+    public void addListener(IOFMessageListener listener);
+
     /**
      * Stores a timestamp in ns. Used right before a service handles an
      * OF message. Only stores if the service is enabled.
