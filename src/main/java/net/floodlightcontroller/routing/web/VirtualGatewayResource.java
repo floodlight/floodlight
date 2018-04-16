@@ -64,12 +64,12 @@ public class VirtualGatewayResource extends ServerResource {
             if (!routingService.getVirtualGateway(vGateway.getName()).isPresent()) {
                 // Create new virtual gateway
                 routingService.createVirtualGateway(vGateway);
-                return Collections.singletonMap("INFO: ", "Virtual gateway '" + vGateway.getName() + "' created");
+                return vGateway;
             }
             else {
                 // Update existing virtual gateway
                 routingService.updateVirtualGateway(nameNode.asText(), MacAddress.of(macNode.asText()));
-                return Collections.singletonMap("INFO: ", "Virtual gateway '" + nameNode.asText() + "' updated");
+                return vGateway;
             }
         }
         catch (IOException e) {

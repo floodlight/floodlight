@@ -24,6 +24,7 @@ public class VirtualGateway {
     private final String name;
     private volatile MacAddress gatewayMac;
     private volatile ArrayList<VirtualGatewayInterface> interfaces;
+    private volatile ArrayList<VirtualSubnet> subnets;
 
     protected static Logger log = LoggerFactory.getLogger(VirtualGateway.class);
 
@@ -33,6 +34,7 @@ public class VirtualGateway {
         this.name = name;
         this.gatewayMac = MacAddress.of(mac);
         this.interfaces = new ArrayList<>();
+        this.subnets = new ArrayList<>();
     }
 
     public String getName() {
@@ -47,9 +49,17 @@ public class VirtualGateway {
         return interfaces;
     }
 
+    public List<VirtualSubnet> getSubnets() { return subnets; }
+
     public Optional<VirtualGatewayInterface> getInterface(String name) {
         return interfaces.stream()
                 .filter(intf -> intf.getInterfaceName().equals(name))
+                .findAny();
+    }
+
+    public Optional<VirtualSubnet> getSubnet(String name) {
+        return subnets.stream()
+                .filter(subnet -> subnet.getName().equals(name))
                 .findAny();
     }
 
@@ -65,6 +75,17 @@ public class VirtualGateway {
         }
     }
 
+    public void addSubnet(VirtualSubnet subnet) {
+        if (!subnets.contains(subnet)) {
+            subnets.add(subnet);
+        }
+        else {
+            subnets.set(subnets.indexOf(subnet), subnet);
+        }
+    }
+
+    public void removeSubnet(VirtualSubnet subnet) { subnets.remove(subnet); }
+
     public void removeInterface(VirtualGatewayInterface vInterface) {
         interfaces.remove(vInterface);
     }
@@ -73,11 +94,18 @@ public class VirtualGateway {
         this.interfaces.clear();
     }
 
+    public void clearSubnets() { this.subnets.clear(); }
+
     public void updateInterface(VirtualGatewayInterface vInterface) {
         VirtualGatewayInterface intf = getInterface(vInterface.getInterfaceName()).get();
         intf.setIp(vInterface.getIp());
         intf.setMac(vInterface.getMac());
         intf.setMask(vInterface.getMask());
+    }
+
+    public void updateSubnet(VirtualSubnet subnet) {
+        VirtualSubnet sb = getSubnet(subnet.getName()).get();
+//        sb.setGatewayIP();
     }
 
     public boolean isAGatewayInft(IPv4Address ip) {
@@ -106,12 +134,5 @@ public class VirtualGateway {
         return name != null ? name.hashCode() : 0;
     }
 
-    @Override
-    public String toString() {
-        return "VirtualGateway{" +
-                "name='" + name + '\'' +
-                ", gatewayMac=" + gatewayMac +
-                ", interfaces=" + interfaces +
-                '}';
-    }
+
 }

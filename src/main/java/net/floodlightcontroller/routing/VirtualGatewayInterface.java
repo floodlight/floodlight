@@ -14,15 +14,18 @@ import org.projectfloodlight.openflow.types.MacAddress;
 @JsonSerialize(using = VirtualInterfaceSerializer.class)
 public class VirtualGatewayInterface {
     private final String name;
+    private final String gatewayName;
     private MacAddress mac;
     private IPv4Address ip;
     private IPv4AddressWithMask iPv4AddressWithMask;
 
     @JsonCreator
-    public VirtualGatewayInterface(@JsonProperty("interface-name") String name,
+    public VirtualGatewayInterface(@JsonProperty("gateway-name") String gatewayName,
+                                      @JsonProperty("interface-name") String name,
                                       @JsonProperty("interface-mac") String mac,
                                       @JsonProperty("interface-ip") String ip,
                                       @JsonProperty("interface-mask") String mask) {
+        this.gatewayName = gatewayName;
         this.name = name;
         this.mac = MacAddress.of(mac);
         this.ip = IPv4Address.of(ip);
@@ -38,6 +41,8 @@ public class VirtualGatewayInterface {
     public IPv4Address getMask() { return iPv4AddressWithMask.getMask(); }
 
     public String getInterfaceName() { return name; }
+
+    public String getGatewayName() { return gatewayName; }
 
     public void setMac(MacAddress mac) {
         this.mac = mac;
@@ -70,13 +75,4 @@ public class VirtualGatewayInterface {
         return name != null ? name.hashCode() : 0;
     }
 
-    @Override
-    public String toString() {
-        return "VirtualGatewayInterface{" +
-                "name='" + name + '\'' +
-                ", mac=" + mac +
-                ", ip=" + ip +
-                ", subnet_mask=" + iPv4AddressWithMask.getMask() +
-                '}';
-    }
 }

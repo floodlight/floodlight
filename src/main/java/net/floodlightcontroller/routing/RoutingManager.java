@@ -78,16 +78,28 @@ public class RoutingManager implements IFloodlightModule, IRoutingService {
     public Optional<VirtualGateway> getVirtualGateway(String name) { return l3manager.getVirtualGateway(name); }
 
     @Override
-    public void removeAllVirtualGateways() { l3manager.removeAllVirtualGateways(); }
+    public void removeAllVirtualGateways() {
+        log.info("All virtual gateways removed");
+        l3manager.removeAllVirtualGateways();
+    }
 
     @Override
-    public boolean removeVirtualGateway(String name) { return l3manager.removeVirtualGateway(name); }
+    public boolean removeVirtualGateway(String name) {
+        log.info("Virtual gateway {} removed", name);
+        return l3manager.removeVirtualGateway(name);
+    }
 
     @Override
-    public void createVirtualGateway(VirtualGateway gateway) { l3manager.createVirtualGateway(gateway); }
+    public void createVirtualGateway(VirtualGateway gateway) {
+        log.info("A new virtual gateway {} created", gateway.getName());
+        l3manager.createVirtualGateway(gateway);
+    }
 
     @Override
-    public void updateVirtualGateway(String name, MacAddress newMac) { l3manager.updateVirtualGateway(name, newMac); }
+    public void updateVirtualGateway(String name, MacAddress newMac) {
+        log.info("Virtual gateway {} updated", name);
+        l3manager.updateVirtualGateway(name, newMac);
+    }
 
     @Override
     public Optional<Collection<VirtualGatewayInterface>> getAllGatewayInterfaces(VirtualGateway gateway) {
@@ -101,21 +113,25 @@ public class RoutingManager implements IFloodlightModule, IRoutingService {
 
     @Override
     public void removeAllVirtualInterfaces(VirtualGateway gateway) {
+        log.info("All virtual interfaces removed from gateway {}", gateway.getName());
         l3manager.removeAllVirtualInterfaces(gateway);
     }
 
     @Override
     public boolean removeVirtualInterface(String interfaceName, VirtualGateway gateway) {
+        log.info("Virtual gateway {} removed from gateway {}", interfaceName, gateway.getName());
         return l3manager.removeVirtualInterface(interfaceName, gateway);
     }
 
     @Override
     public void createVirtualInterface(VirtualGateway gateway, VirtualGatewayInterface intf) {
+        log.info("A new virtual interface {} created for gateway {}", intf.getInterfaceName(), gateway.getName());
         l3manager.createVirtualInterface(gateway, intf);
     }
 
     @Override
     public void updateVirtualInterface(VirtualGateway gateway, VirtualGatewayInterface intf) {
+        log.info("Virtual interface {} in gateway {} updated ", intf.getInterfaceName(), gateway.getName());
         l3manager.updateVirtualInterface(gateway, intf);
     }
 
@@ -151,7 +167,9 @@ public class RoutingManager implements IFloodlightModule, IRoutingService {
     }
 
     @Override
-    public void removeAllVirtualSubnets() { l3manager.removeAllVirtualSubnets(); }
+    public void removeAllVirtualSubnets() {
+        l3manager.removeAllVirtualSubnets();
+    }
 
     @Override
     public boolean removeVirtualSubnet(String name) { return l3manager.removeVirtualSubnet(name); }

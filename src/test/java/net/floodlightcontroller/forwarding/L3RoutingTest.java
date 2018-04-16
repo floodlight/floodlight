@@ -71,9 +71,9 @@ public class L3RoutingTest extends FloodlightTestCase {
     private VirtualGateway initGateway() {
         // For simplicity, could set multiple virtual interface mac as same gateway mac, as they're virtual resources
         VirtualGateway gw = new VirtualGateway("gateway-1", "aa:bb:cc:dd:ee:ff");
-        VirtualGatewayInterface interface1 = new VirtualGatewayInterface("interface-1",
+        VirtualGatewayInterface interface1 = new VirtualGatewayInterface("gateway-1", "interface-1",
                 gw.getGatewayMac().toString(), "10.0.0.1", "255.255.255.0");
-        VirtualGatewayInterface interface2 = new VirtualGatewayInterface("interface-2",
+        VirtualGatewayInterface interface2 = new VirtualGatewayInterface("gateway-1","interface-2",
                 gw.getGatewayMac().toString(), "20.0.0.1", "255.255.255.0");
 
         gw.addInterface(interface1);

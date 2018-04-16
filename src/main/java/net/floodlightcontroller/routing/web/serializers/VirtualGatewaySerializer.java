@@ -22,7 +22,20 @@ public class VirtualGatewaySerializer extends JsonSerializer<VirtualGateway> {
         jsonGen.writeStartObject();
         jsonGen.writeStringField("gateway-name", gateway.getName());
         jsonGen.writeStringField("gateway-mac", gateway.getGatewayMac().toString());
-        jsonGen.writeObjectField("interfaces", gateway.getInterfaces());
+//        jsonGen.writeObjectField("interfaces", gateway.getInterfaces());
+
+        if (gateway.getInterfaces() != null) {
+            jsonGen.writeArrayFieldStart("virtual-interfaces");
+            for (VirtualGatewayInterface inft : gateway.getInterfaces()) {
+                jsonGen.writeString(inft.getInterfaceName());
+                jsonGen.writeString(inft.getMac().toString());
+                jsonGen.writeString(inft.getIp().toString());
+                jsonGen.writeString(inft.getMask().toString());
+            }
+            jsonGen.writeEndArray();
+        }
+
+        jsonGen.writeObjectField("subnets", gateway.getSubnets());
         jsonGen.writeEndObject();
 
     }

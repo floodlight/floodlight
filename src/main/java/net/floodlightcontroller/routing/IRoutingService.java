@@ -93,7 +93,6 @@ public interface IRoutingService extends IFloodlightService {
 //    boolean isSameSubnet(IPv4AddressWithMask ip1, IPv4AddressWithMask ip2);
 
     boolean isSameSubnet(IOFSwitch sw1, IOFSwitch sw2);
-
     boolean isSameSubnet(NodePortTuple npt1, NodePortTuple npt2);
 
 
