@@ -22,7 +22,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * The class representing a DHCP instance. One DHCP instance is responsible for managing one subnet.
- * One DHCP instance contains a DHCP pool.
+ * Each DHCP instance contains a DHCP pool.
  *
  * @author Ryan Izard (rizard@g.clemson.edu)
  * @edited Qing Wang (qw@g.clemson.edu) on 1/3/2018.
