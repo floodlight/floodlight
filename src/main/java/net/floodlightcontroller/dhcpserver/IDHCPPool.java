@@ -6,8 +6,8 @@ import org.projectfloodlight.openflow.types.MacAddress;
 import java.util.Optional;
 
 /**
- * @author Qing Wang (qw@g.clemson.edu) at 2/10/18
  *
+ * @author Qing Wang (qw@g.clemson.edu) at 2/10/18
  */
 public interface IDHCPPool {
 
@@ -112,6 +112,9 @@ public interface IDHCPPool {
      */
     boolean renewLeaseOfIP(IPv4Address ip, long timeSec);
 
+    /**
+     * Check expired leases in DHCP pool
+     */
     void checkExpiredLeases();
 
 }

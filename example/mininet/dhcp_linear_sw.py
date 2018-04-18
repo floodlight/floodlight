@@ -14,17 +14,6 @@ from mininet.util import irange
 
 HOME_FOLDER = os.getenv('HOME')
 
-
-class DHCPTopo(Topo):
-    def __init__(self, *args, **kwargs):
-        Topo.__init__(self, *args, **kwargs)
-        h1 = self.addHost('h1', ip='10.0.0.10/24')
-        h2 = self.addHost('h2', ip='10.0.0.20/24')
-        switch = self.addSwitch('s1')
-        self.addLink(h1, switch)
-        self.addLink(h2, switch)
-
-
 class LinearTopo(Topo):
     """
     construct a network of N hosts and N-1 switches, connected as follows:
@@ -102,7 +91,7 @@ def addDHCPInstance2(name):
         "start-ip"     : "20.0.0.101",
         "end-ip"       : "20.0.0.200",
         "server-id"    : "20.0.0.2",
-        "server-mac"   : "aa:bb:cc:dd:ee:ff",
+        "server-mac"   : "aa:bb:cc:dd:ee:ff",   #TODO: not quite sure why another MAC address is not working..
         "router-ip"    : "20.0.0.1",
         "broadcast-ip" : "20.0.0.255",
         "subnet-mask"  : "255.255.255.0",
@@ -113,34 +102,11 @@ def addDHCPInstance2(name):
     ret = rest_call('/wm/dhcp/instance', data, 'POST')
     return ret
 
-def addNodePortTupleToDHCPInstance1(name):
+def addSwitchToDHCPInstance1(name):
     data = {
-        "switchports": [
+        "switches": [
             {
-                "dpid": "1",
-                "port": "1"
-            },
-            {
-                "dpid": "1",
-                "port": "2"
-            },
-            {
-                "dpid": "1",
-                "port": "3"
-            }
-        ]
-    }
-    ret = rest_call('/wm/dhcp/instance/' + name, data, 'POST')
-    return ret
-
-def addVlanToDHCPInstance1(name):
-    data = {
-        "vlans": [
-            {
-                "vlan": "1"
-            },
-            {
-                "vlan": "2"
+                "dpid": "1"
             }
         ]
     }
@@ -148,48 +114,35 @@ def addVlanToDHCPInstance1(name):
     return ret
 
 
-def addNodePortTupleToDHCPInstance2(name):
+def addSwitchToDHCPInstance2(name):
     data = {
-        "switchports": [
+        "switches": [
             {
-                "dpid": "2",
-                "port": "1"
+                "dpid": "2"
             },
             {
-                "dpid": "2",
-                "port": "2"
+                "dpid": "3"
+            },
+            {
+                "dpid": "4"
             }
+
         ]
     }
     ret = rest_call('/wm/dhcp/instance/' + name, data, 'POST')
     return ret
-
-def addVlanToDHCPInstance2(name):
-    data = {
-        "vlans": [
-            {
-                "vlan": "3"
-            },
-            {
-                "vlan": "4"
-            }
-        ]
-    }
-    ret = rest_call('/wm/dhcp/instance/' + name, data, 'POST')
-    return ret
-
 
 def enableDHCPServer():
     data = {
         "enable" : "true",
         "lease-gc-period" : "10",
-        "dynamic-lease" : "false"
+        "dynamic-lease" : "true"
     }
     ret = rest_call('/wm/dhcp/config', data, 'POST')
     return ret
 
-# DHCP client functions
 
+# DHCP client functions
 def startDHCPclient(host):
     "Start DHCP client on host"
     intf = host.defaultIntf()
@@ -234,39 +187,6 @@ def unmountPrivateResolvconf(host):
     host.cmd('rmdir', etc)
 
 
-def startNetwork():
-    # Create the network from a given topology without building it yet
-    global net
-    net = Mininet(topo=DHCPTopo(), build=False)
-
-    remote_ip = getControllerIP()
-    info('** Adding Floodlight Controller\n')
-    net.addController('c1', controller=RemoteController,
-                      ip=remote_ip, port=6653)
-
-    # Build the network
-    net.build()
-    net.start()
-
-    # Start DHCP
-    ret = enableDHCPServer()
-    print(ret)
-
-    ret = addDHCPInstance1('mininet-dhcp-1')
-    ret = addNodePortTupleToDHCPInstance1('mininet-dhcp-1')
-    print(ret)
-
-    ret = addDHCPInstance2('mininet-dhcp-2')
-    ret = addNodePortTupleToDHCPInstance2('mininet-dhcp-2')
-    print(ret)
-
-    hosts = net.hosts
-    for host in hosts:
-        mountPrivateResolvconf(host)
-        startDHCPclient(host)
-        waitForIP(host)
-
-
 def startNetworkWithLinearTopo( hostCount ):
     global net
     net = Mininet(topo=LinearTopo(hostCount), build=False)
@@ -284,12 +204,12 @@ def startNetworkWithLinearTopo( hostCount ):
     ret = enableDHCPServer()
     print(ret)
 
-    ret = addDHCPInstance1('mininet-dhcp-1')
-    ret = addNodePortTupleToDHCPInstance1('mininet-dhcp-1')
+    addDHCPInstance1('mininet-dhcp-1')
+    ret = addSwitchToDHCPInstance1('mininet-dhcp-1')
     print(ret)
 
-    ret = addDHCPInstance2('mininet-dhcp-2')
-    ret = addNodePortTupleToDHCPInstance2('mininet-dhcp-2')
+    addDHCPInstance2('mininet-dhcp-2')
+    ret = addSwitchToDHCPInstance2('mininet-dhcp-2')
     print(ret)
 
     hosts = net.hosts
@@ -314,7 +234,6 @@ def stopNetwork():
 
 if __name__ == '__main__':
     setLogLevel('info')
-    # startNetwork()
-    startNetworkWithLinearTopo(3)
+    startNetworkWithLinearTopo(5)
     CLI(net)
     stopNetwork()

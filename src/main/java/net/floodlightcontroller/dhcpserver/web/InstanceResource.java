@@ -3,7 +3,6 @@ package net.floodlightcontroller.dhcpserver.web;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableMap;
-import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.types.NodePortTuple;
 import net.floodlightcontroller.dhcpserver.DHCPInstance;
 import net.floodlightcontroller.dhcpserver.IDHCPService;
