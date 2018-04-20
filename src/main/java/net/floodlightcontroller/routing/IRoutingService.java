@@ -52,26 +52,90 @@ public interface IRoutingService extends IFloodlightService {
         }
     }
 
+
+    // L3 Routing Service below
     /**
-     * L3 Routing Service below
+     * Get all virtual gateway instances
+     * @return
      */
-    Optional<Collection<VirtualGateway>> getAllVirtualGateways();
-    Optional<VirtualGateway> getVirtualGateway(String name);
+    Optional<Collection<VirtualGatewayInstance>> getAllVirtualGateways();
 
-    void removeAllVirtualGateways();
-    boolean removeVirtualGateway(String name);
+    /**
+     * Get a specific virtual gateway instance based on its name
+     * @param name
+     * @return
+     */
+    Optional<VirtualGatewayInstance> getVirtualGateway(String name);
 
-    void createVirtualGateway(VirtualGateway gateway);
+    /**
+     * Get all virtual interfaces associated with a given gateway
+     * @param gateway
+     * @return
+     */
+    Optional<Collection<VirtualGatewayInterface>> getAllGatewayInterfaces(VirtualGatewayInstance gateway);
+
+    /**
+     * Get a specific virtual interface with a given gateway
+     * @param name
+     * @param gateway
+     * @return
+     */
+    Optional<VirtualGatewayInterface> getGatewayInterface(String name, VirtualGatewayInstance gateway);
+
+    /**
+     * Add a virtual gateway instance
+     * @param gateway
+     */
+    void addVirtualGatewayInstance(VirtualGatewayInstance gateway);
+
+    /**
+     * Add a virtual interface onto gateway
+     * @param gateway
+     * @param intf
+     */
+    void addVirtualInterface(VirtualGatewayInstance gateway, VirtualGatewayInterface intf);
+
+    /**
+     * Update a specific virtual gateway instance
+     * @param name
+     * @param newMac
+     */
     void updateVirtualGateway(String name, MacAddress newMac);
 
-    Optional<Collection<VirtualGatewayInterface>> getAllGatewayInterfaces(VirtualGateway gateway);
-    Optional<VirtualGatewayInterface> getGatewayInterface(String name, VirtualGateway gateway);
+    /**
+     * Update a specific virtual interface
+     * @param gateway
+     * @param intf
+     */
+    void updateVirtualInterface(VirtualGatewayInstance gateway, VirtualGatewayInterface intf);
 
-    void removeAllVirtualInterfaces(VirtualGateway gateway);
-    boolean removeVirtualInterface(String interfaceName, VirtualGateway gateway);
+    /**
+     * Delete all existing virtual gateway instances
+     */
+    void removeAllVirtualGateways();
 
-    void createVirtualInterface(VirtualGateway gateway, VirtualGatewayInterface intf);
-    void updateVirtualInterface(VirtualGateway gateway, VirtualGatewayInterface intf);
+    /**
+     * Delete a specific virtual gateway instance
+     * @param name
+     * @return
+     */
+    boolean removeVirtualGateway(String name);
+
+    /**
+     * Delete all virtual interfaces on gateway
+     * @param gateway
+     */
+    void removeAllVirtualInterfaces(VirtualGatewayInstance gateway);
+
+    /**
+     * Delete a specific virtual interface on gateway
+     * @param interfaceName
+     * @param gateway
+     * @return
+     */
+    boolean removeVirtualInterface(String interfaceName, VirtualGatewayInstance gateway);
+
+
 
     Optional<Collection<VirtualSubnet>> getAllVirtualSubnets();
     Optional<VirtualSubnet> getVirtualSubnet(String name);

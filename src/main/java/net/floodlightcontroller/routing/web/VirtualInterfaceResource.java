@@ -3,7 +3,7 @@ package net.floodlightcontroller.routing.web;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import net.floodlightcontroller.routing.IRoutingService;
-import net.floodlightcontroller.routing.VirtualGateway;
+import net.floodlightcontroller.routing.VirtualGatewayInstance;
 import net.floodlightcontroller.routing.VirtualGatewayInterface;
 import org.restlet.resource.*;
 
@@ -29,7 +29,7 @@ public class VirtualInterfaceResource extends ServerResource {
             return Collections.singletonMap("INFO: ", "Virtual gateway '" + gatewayName + "' not found");
         }
 
-        VirtualGateway gateway = routingService.getVirtualGateway(gatewayName).get();
+        VirtualGatewayInstance gateway = routingService.getVirtualGateway(gatewayName).get();
 
         if (routingService.getAllGatewayInterfaces(gateway).get().isEmpty()) {
             return Collections.singletonMap("INFO: ", "No virtual interface exists on '" + gatewayName + "' yet");
@@ -60,7 +60,7 @@ public class VirtualInterfaceResource extends ServerResource {
             return Collections.singletonMap("INFO: ", "Virtual gateway '" + gatewayName + "' not found");
         }
 
-        VirtualGateway gateway = routingService.getVirtualGateway(gatewayName).get();
+        VirtualGatewayInstance gateway = routingService.getVirtualGateway(gatewayName).get();
 
         if (routingService.getAllGatewayInterfaces(gateway).get().isEmpty()) {
             return Collections.singletonMap("INFO: ", "No virtual interface exists on '" + gatewayName + "' yet");
@@ -95,7 +95,7 @@ public class VirtualInterfaceResource extends ServerResource {
             return Collections.singletonMap("INFO: ", "Virtual gateway '" + gatewayName + "' not found");
         }
 
-        VirtualGateway gateway = routingService.getVirtualGateway(gatewayName).get();
+        VirtualGatewayInstance gateway = routingService.getVirtualGateway(gatewayName).get();
         try{
             ObjectMapper mapper = new ObjectMapper();
             JsonNode gatewayNameNode = mapper.readTree(jsonData).get("gateway-name");
@@ -115,7 +115,7 @@ public class VirtualInterfaceResource extends ServerResource {
 
             if (!gateway.getInterface(interfaceNameNode.asText()).isPresent()) {
                 // Create new virtual interface
-                routingService.createVirtualInterface(gateway, vInterface);
+                routingService.addVirtualInterface(gateway, vInterface);
                 return gateway;
             }
             else {

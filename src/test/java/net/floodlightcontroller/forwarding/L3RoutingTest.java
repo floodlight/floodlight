@@ -4,7 +4,7 @@ import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.packet.*;
-import net.floodlightcontroller.routing.VirtualGateway;
+import net.floodlightcontroller.routing.VirtualGatewayInstance;
 import net.floodlightcontroller.routing.VirtualGatewayInterface;
 import net.floodlightcontroller.test.FloodlightTestCase;
 import org.easymock.EasyMock;
@@ -36,7 +36,7 @@ public class L3RoutingTest extends FloodlightTestCase {
     private DatapathId swDPID = DatapathId.of(swDPIDStr);
     private OFFactory factory = OFFactories.getFactory(OFVersion.OF_13);
 
-    private VirtualGateway gateway;
+    private VirtualGatewayInstance gateway;
 
     private IPacket testPacket;
     private OFPacketIn packetIn;
@@ -68,9 +68,9 @@ public class L3RoutingTest extends FloodlightTestCase {
 
     }
 
-    private VirtualGateway initGateway() {
+    private VirtualGatewayInstance initGateway() {
         // For simplicity, could set multiple virtual interface mac as same gateway mac, as they're virtual resources
-        VirtualGateway gw = new VirtualGateway("gateway-1", "aa:bb:cc:dd:ee:ff");
+        VirtualGatewayInstance gw = new VirtualGatewayInstance("gateway-1", "aa:bb:cc:dd:ee:ff");
         VirtualGatewayInterface interface1 = new VirtualGatewayInterface("gateway-1", "interface-1",
                 gw.getGatewayMac().toString(), "10.0.0.1", "255.255.255.0");
         VirtualGatewayInterface interface2 = new VirtualGatewayInterface("gateway-1","interface-2",

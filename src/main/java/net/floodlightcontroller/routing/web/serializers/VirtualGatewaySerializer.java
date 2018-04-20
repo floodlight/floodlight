@@ -4,18 +4,17 @@ import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonSerializer;
 import com.fasterxml.jackson.databind.SerializerProvider;
-import net.floodlightcontroller.routing.VirtualGateway;
+import net.floodlightcontroller.routing.VirtualGatewayInstance;
 import net.floodlightcontroller.routing.VirtualGatewayInterface;
 
 import java.io.IOException;
-import java.util.stream.Collectors;
 
 /**
  * @author Qing Wang (qw@g.clemson.edu) at 12/31/17
  */
-public class VirtualGatewaySerializer extends JsonSerializer<VirtualGateway> {
+public class VirtualGatewaySerializer extends JsonSerializer<VirtualGatewayInstance> {
     @Override
-    public void serialize(VirtualGateway gateway, JsonGenerator jsonGen, SerializerProvider serializerProvider)
+    public void serialize(VirtualGatewayInstance gateway, JsonGenerator jsonGen, SerializerProvider serializerProvider)
             throws IOException, JsonProcessingException {
         jsonGen.configure(JsonGenerator.Feature.WRITE_NUMBERS_AS_STRINGS, true);
 
@@ -35,7 +34,7 @@ public class VirtualGatewaySerializer extends JsonSerializer<VirtualGateway> {
             jsonGen.writeEndArray();
         }
 
-        jsonGen.writeObjectField("subnets", gateway.getSubnets());
+//        jsonGen.writeObjectField("subnets", gateway.getSubnets());
         jsonGen.writeEndObject();
 
     }

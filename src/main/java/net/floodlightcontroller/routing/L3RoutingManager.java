@@ -14,7 +14,7 @@ import java.util.*;
  */
 public class L3RoutingManager {
 
-    private static Map<String, VirtualGateway> virtualGateways = new HashMap<>();
+    private static Map<String, VirtualGatewayInstance> virtualGateways = new HashMap<>();
 
     private static Map<String, VirtualSubnet> virtualSubnets = new HashMap<>();
 
@@ -24,11 +24,11 @@ public class L3RoutingManager {
         // Do nothing
     }
 
-    public Optional<Collection<VirtualGateway>> getAllVirtualGateways() {
+    public Optional<Collection<VirtualGatewayInstance>> getAllVirtualGateways() {
         return Optional.of(virtualGateways.values());
     }
 
-    public Optional<VirtualGateway> getVirtualGateway(String name) {
+    public Optional<VirtualGatewayInstance> getVirtualGateway(String name) {
         return virtualGateways.values().stream()
                 .filter(gateways -> gateways.getName().equals(name))
                 .findAny();
@@ -48,29 +48,29 @@ public class L3RoutingManager {
         }
     }
 
-    public void createVirtualGateway(VirtualGateway gateway) {
+    public void addVirtualGateway(VirtualGatewayInstance gateway) {
         virtualGateways.put(gateway.getName(), gateway);
     }
 
     public void updateVirtualGateway(String name, MacAddress newMac) {
-       VirtualGateway gateway = virtualGateways.get(name);
+       VirtualGatewayInstance gateway = virtualGateways.get(name);
        gateway.setGatewayMac(newMac);
     }
 
 
-    public Optional<Collection<VirtualGatewayInterface>> getGatewayInterfaces(VirtualGateway gateway) {
+    public Optional<Collection<VirtualGatewayInterface>> getGatewayInterfaces(VirtualGatewayInstance gateway) {
         return Optional.of(gateway.getInterfaces());
     }
 
-    public Optional<VirtualGatewayInterface> getGatewayInterface(String interfaceName, VirtualGateway gateway) {
+    public Optional<VirtualGatewayInterface> getGatewayInterface(String interfaceName, VirtualGatewayInstance gateway) {
         return gateway.getInterface(interfaceName);
     }
 
-    public void removeAllVirtualInterfaces(VirtualGateway gateway) {
+    public void removeAllVirtualInterfaces(VirtualGatewayInstance gateway) {
         gateway.clearInterfaces();
     }
 
-    public boolean removeVirtualInterface(String interfaceName, VirtualGateway gateway) {
+    public boolean removeVirtualInterface(String interfaceName, VirtualGatewayInstance gateway) {
         if (gateway.getInterface(interfaceName).isPresent()) {
             gateway.removeInterface(gateway.getInterface(interfaceName).get());
             return true;
@@ -80,11 +80,11 @@ public class L3RoutingManager {
         }
     }
 
-    public void createVirtualInterface(VirtualGateway gateway, VirtualGatewayInterface intf) {
+    public void addVirtualInterface(VirtualGatewayInstance gateway, VirtualGatewayInterface intf) {
         gateway.addInterface(intf);
     }
 
-    public void updateVirtualInterface(VirtualGateway gateway, VirtualGatewayInterface intf) {
+    public void updateVirtualInterface(VirtualGatewayInstance gateway, VirtualGatewayInterface intf) {
         gateway.updateInterface(intf);
     }
 

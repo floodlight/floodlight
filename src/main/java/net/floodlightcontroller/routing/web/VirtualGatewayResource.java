@@ -3,7 +3,7 @@ package net.floodlightcontroller.routing.web;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import net.floodlightcontroller.routing.IRoutingService;
-import net.floodlightcontroller.routing.VirtualGateway;
+import net.floodlightcontroller.routing.VirtualGatewayInstance;
 import org.projectfloodlight.openflow.types.MacAddress;
 import org.restlet.resource.*;
 
@@ -23,7 +23,7 @@ public class VirtualGatewayResource extends ServerResource {
 
         String name = (String) getRequestAttributes().get("gateway-name");
 
-        Optional<Collection<VirtualGateway>> virtualGateways = routingService.getAllVirtualGateways();
+        Optional<Collection<VirtualGatewayInstance>> virtualGateways = routingService.getAllVirtualGateways();
         if (!virtualGateways.isPresent()) {
             return Collections.singletonMap("INFO: ", "No virtual gateway exists yet");
         }
@@ -60,10 +60,10 @@ public class VirtualGatewayResource extends ServerResource {
                 return Collections.singletonMap("INFO: ", "some fields missing");
             }
 
-            VirtualGateway vGateway = mapper.reader(VirtualGateway.class).readValue(jsonData);
+            VirtualGatewayInstance vGateway = mapper.reader(VirtualGatewayInstance.class).readValue(jsonData);
             if (!routingService.getVirtualGateway(vGateway.getName()).isPresent()) {
                 // Create new virtual gateway
-                routingService.createVirtualGateway(vGateway);
+                routingService.addVirtualGatewayInstance(vGateway);
                 return vGateway;
             }
             else {

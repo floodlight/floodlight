@@ -1,7 +1,7 @@
 package net.floodlightcontroller.routing.web;
 
 import net.floodlightcontroller.routing.IRoutingService;
-import net.floodlightcontroller.routing.VirtualGateway;
+import net.floodlightcontroller.routing.VirtualGatewayInstance;
 import org.restlet.resource.*;
 
 import java.util.Collection;
@@ -22,11 +22,11 @@ public class VirtualGatewayInfoResource extends ServerResource {
         String name = (String) getRequestAttributes().get("gateway-name");
 
         if (name.equals("all")) {
-            Optional<Collection<VirtualGateway>> gateways = routingService.getAllVirtualGateways();
+            Optional<Collection<VirtualGatewayInstance>> gateways = routingService.getAllVirtualGateways();
             return gateways.get().isEmpty() ? Collections.singletonMap("INFO: ", "No virtual gateway exists yet") : gateways.get();
         }
         else {
-            Optional<VirtualGateway> gateway = routingService.getVirtualGateway(name);
+            Optional<VirtualGatewayInstance> gateway = routingService.getVirtualGateway(name);
             return gateway.isPresent() ?  gateway.get() : Collections.singletonMap("INFO: ", "Virtual gateway '" + name + "' not found");
         }
 

@@ -24,25 +24,14 @@ import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
-import net.floodlightcontroller.core.module.FloodlightModuleContext;
-import net.floodlightcontroller.core.module.FloodlightModuleException;
-import net.floodlightcontroller.core.module.IFloodlightModule;
-import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.core.types.NodePortTuple;
 import net.floodlightcontroller.core.util.AppCookie;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
-import net.floodlightcontroller.devicemanager.IDevice;
 import net.floodlightcontroller.devicemanager.IDeviceService;
 import net.floodlightcontroller.devicemanager.SwitchPort;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryService;
-import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPacket;
-import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.restserver.IRestApiService;
-import net.floodlightcontroller.routing.IRoutingService;
-import net.floodlightcontroller.routing.IRoutingDecision;
-import net.floodlightcontroller.routing.Path;
-import net.floodlightcontroller.routing.web.RoutingWebRoutable;
 import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.util.*;
 
@@ -51,13 +40,10 @@ import org.projectfloodlight.openflow.protocol.match.Match;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.action.OFActionOutput;
-import org.projectfloodlight.openflow.protocol.oxm.OFOxm;
-import org.projectfloodlight.openflow.protocol.oxm.OFOxms;
 import org.projectfloodlight.openflow.types.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.Nonnull;
 
 /**
  * Abstract base class for implementing a forwarding module.  Forwarding is
@@ -102,7 +88,7 @@ public abstract class ForwardingBase implements IOFMessageListener {
     protected ILinkDiscoveryService linkService;
     protected IRestApiService restApiService;
 
-    protected static Collection<VirtualGateway> virtualGateways;
+    protected static Collection<VirtualGatewayInstance> virtualGatewayInstances;
     protected static Collection<VirtualSubnet> virtualSubnets;
 
     // flow-mod - for use in the cookie

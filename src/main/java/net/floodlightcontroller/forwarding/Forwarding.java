@@ -195,7 +195,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         Ethernet eth = IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
 
         //TODO:  Assume single gateway and single gateway MAC now, consider multiple gateways or multiple interfaces latter
-        VirtualGateway vGateway = routingEngineService.getVirtualGateway("mininet-gateway-1").get();
+        VirtualGatewayInstance vGateway = routingEngineService.getVirtualGateway("mininet-gateway-1").get();
         MacAddress gatewayMac = vGateway.getGatewayMac();
 
         // We found a routing decision (i.e. Firewall is enabled... it's the only thing that makes RoutingDecisions)
@@ -332,7 +332,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         sw.write(pob.build());
     }
 
-    public IPv4Address findInterfaceIP(VirtualGateway gateway, IPv4Address dstIP) {
+    public IPv4Address findInterfaceIP(VirtualGatewayInstance gateway, IPv4Address dstIP) {
         Optional<VirtualGatewayInterface> intf = gateway.findGatewayInft(dstIP);
         if (intf.isPresent()) {
             return intf.get().getIp();
@@ -498,7 +498,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
     }
 
     // L3 ARP Handling
-    protected void doL3Flood(VirtualGateway gateway, IOFSwitch sw, OFPacketIn pi,
+    protected void doL3Flood(VirtualGatewayInstance gateway, IOFSwitch sw, OFPacketIn pi,
                              FloodlightContext cntx) {
         Ethernet eth = IFloodlightProviderService.bcStore.get(cntx,
                 IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
@@ -596,7 +596,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
     }
 
     protected void doForwardFlow(IOFSwitch sw, OFPacketIn pi, IRoutingDecision decision, FloodlightContext cntx,
-                                 VirtualGateway gateway, boolean requestFlowRemovedNotifn) {
+                                 VirtualGatewayInstance gateway, boolean requestFlowRemovedNotifn) {
         Ethernet eth = IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
         OFPort srcPort = OFMessageUtils.getInPort(pi);
 
@@ -786,9 +786,6 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         actions.add(factory.actions().setField(oxms.ethSrc(gatewayMac)));
         actions.add(factory.actions().setField(oxms.ethDst(hostMac)));
         actions.add(factory.actions().output(outPort, Integer.MAX_VALUE));
-
-//        FlowModUtils.setActions(flowAdd, actions, switchService.getSwitch(sw));
-
         flowAdd.setActions(actions);
 
         log.info("Pushing flowmod with srcMac={} dstMac={} " +
