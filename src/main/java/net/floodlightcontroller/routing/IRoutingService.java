@@ -100,7 +100,7 @@ public interface IRoutingService extends IFloodlightService {
      * @param name
      * @param newMac
      */
-    void updateVirtualGateway(String name, MacAddress newMac);
+    VirtualGatewayInstance updateVirtualGateway(String name, MacAddress newMac);
 
     /**
      * Update a specific virtual interface

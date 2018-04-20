@@ -96,9 +96,9 @@ public class RoutingManager implements IFloodlightModule, IRoutingService {
     }
 
     @Override
-    public void updateVirtualGateway(String name, MacAddress newMac) {
+    public VirtualGatewayInstance updateVirtualGateway(String name, MacAddress newMac) {
         log.info("Virtual gateway {} updated", name);
-        l3manager.updateVirtualGateway(name, newMac);
+        return l3manager.updateVirtualGateway(name, newMac);
     }
 
     @Override

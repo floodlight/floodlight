@@ -38,7 +38,6 @@ public class VirtualGatewayInstance {
     private Set<NodePortTuple> nptMembers = null;
     private Set<IPv4AddressWithMask> subsetMembers = null;
 
-
     public String getName() {
         return name;
     }
@@ -49,26 +48,51 @@ public class VirtualGatewayInstance {
     public Set<DatapathId> getSwitchMembers() { return switchMembers; }
     public Set<NodePortTuple> getNptMembers() { return nptMembers; }
     public Set<IPv4AddressWithMask> getSubsetMembers() { return subsetMembers; }
-
     public Optional<VirtualGatewayInterface> getInterface(String name) {
         return interfaces.stream()
                 .filter(intf -> intf.getInterfaceName().equals(name))
                 .findAny();
     }
-
     public VirtualGatewayInstanceBuilder getBuilder() { return builder; }
 
-
-    public void setGatewayMac(MacAddress mac) {
-        this.gatewayMac = mac;
-    }
+    public boolean isSwitchAMember(DatapathId dpid) { return switchMembers.contains(dpid); }
+    public boolean isNptAMember(NodePortTuple npt) { return nptMembers.contains(npt); }
+    public boolean isSubnetAMember(IPv4AddressWithMask subnet) { return subsetMembers.contains(subnet); }
 
     public void addInterface(VirtualGatewayInterface vInterface) {
+        if (!vInterface.getGatewayName().equals(name)) {
+            return;
+        }
+
         if (!interfaces.contains(vInterface)) {
             interfaces.add(vInterface);
         }else {
             interfaces.set(interfaces.indexOf(vInterface), vInterface);
         }
+    }
+
+    public void updateInterface(VirtualGatewayInterface vInterface) {
+        if (!vInterface.getGatewayName().equals(name)) {
+            return;
+        }
+
+        if (getInterface(vInterface.getInterfaceName()).isPresent()) {
+            VirtualGatewayInterface intf = getInterface(vInterface.getInterfaceName()).get();
+            intf.setIp(vInterface.getIp());
+            intf.setMask(vInterface.getMask());
+        }
+    }
+
+    public void removeInterface(String interfaceName) {
+        if (!getInterface(interfaceName).isPresent()) {
+            return;
+        }
+        // TODO: updated to map
+        interfaces.remove(name);
+    }
+
+    public void clearInterfaces() {
+        this.interfaces.clear();
     }
 
     public void addSwitchMember(DatapathId dpid) { this.switchMembers.add(dpid); }
@@ -125,20 +149,22 @@ public class VirtualGatewayInstance {
         }
     }
 
-
-    public void removeInterface(VirtualGatewayInterface vInterface) {
-        interfaces.remove(vInterface);
+    public void clearSwitchMembers() {
+        if (!this.switchMembers.isEmpty()) {
+            this.switchMembers.clear();
+        }
     }
 
-    public void clearInterfaces() {
-        this.interfaces.clear();
+    public void clearNptMembers() {
+        if (!this.nptMembers.isEmpty()) {
+            this.nptMembers.clear();
+        }
     }
 
-    public void updateInterface(VirtualGatewayInterface vInterface) {
-        VirtualGatewayInterface intf = getInterface(vInterface.getInterfaceName()).get();
-        intf.setIp(vInterface.getIp());
-        intf.setMac(vInterface.getMac());
-        intf.setMask(vInterface.getMask());
+    public void clearSubnetMembers() {
+        if (!this.subsetMembers.isEmpty()) {
+            this.subsetMembers.clear();
+        }
     }
 
     public boolean isAGatewayInft(IPv4Address ip) {
@@ -159,7 +185,6 @@ public class VirtualGatewayInstance {
         this.switchMembers = builder.switchMembers;
         this.nptMembers = builder.nptMembers;
         this.subsetMembers = builder.subsetMembers;
-
         this.builder = builder;
     }
 
@@ -195,6 +220,10 @@ public class VirtualGatewayInstance {
         }
 
         public VirtualGatewayInstanceBuilder(final String name) {
+            if (name.isEmpty()) {
+                throw new IllegalArgumentException("Build gateway instance failed : virtual gateway name can not be empty");
+            }
+
             this.name = name;
         }
 
@@ -233,6 +262,10 @@ public class VirtualGatewayInstance {
 
             if (gatewayMac == null || gatewayMac.equals(MacAddress.NONE)) {
                 throw new IllegalArgumentException("Build gateway instance failed: Gateway instance MAC address can not be null or empty");
+            }
+
+            if (this.interfaces == null) {
+                this.interfaces = new ArrayList<>();
             }
 
             if (this.switchMembers == null) {

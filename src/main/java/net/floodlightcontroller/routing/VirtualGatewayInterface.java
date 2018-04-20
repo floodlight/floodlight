@@ -15,25 +15,18 @@ import org.projectfloodlight.openflow.types.MacAddress;
 public class VirtualGatewayInterface {
     private final String name;
     private final String gatewayName;
-    private MacAddress mac;
     private IPv4Address ip;
     private IPv4AddressWithMask iPv4AddressWithMask;
 
     @JsonCreator
     public VirtualGatewayInterface(@JsonProperty("gateway-name") String gatewayName,
                                       @JsonProperty("interface-name") String name,
-                                      @JsonProperty("interface-mac") String mac,
                                       @JsonProperty("interface-ip") String ip,
                                       @JsonProperty("interface-mask") String mask) {
         this.gatewayName = gatewayName;
         this.name = name;
-        this.mac = MacAddress.of(mac);
         this.ip = IPv4Address.of(ip);
         this.iPv4AddressWithMask = IPv4AddressWithMask.of(IPv4Address.of(ip), IPv4Address.of(mask));
-    }
-
-    public MacAddress getMac() {
-        return mac;
     }
 
     public IPv4Address getIp() { return ip; }
@@ -43,10 +36,6 @@ public class VirtualGatewayInterface {
     public String getInterfaceName() { return name; }
 
     public String getGatewayName() { return gatewayName; }
-
-    public void setMac(MacAddress mac) {
-        this.mac = mac;
-    }
 
     public void setIp(IPv4Address ip) {
         this.ip = ip;

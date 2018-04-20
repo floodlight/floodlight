@@ -52,9 +52,9 @@ public class L3RoutingManager {
         virtualGateways.put(gateway.getName(), gateway);
     }
 
-    public void updateVirtualGateway(String name, MacAddress newMac) {
+    public VirtualGatewayInstance updateVirtualGateway(String name, MacAddress newMac) {
        VirtualGatewayInstance gateway = virtualGateways.get(name);
-       gateway.setGatewayMac(newMac);
+       return gateway.getBuilder().setGatewayMac(newMac).build();
     }
 
 
@@ -72,7 +72,7 @@ public class L3RoutingManager {
 
     public boolean removeVirtualInterface(String interfaceName, VirtualGatewayInstance gateway) {
         if (gateway.getInterface(interfaceName).isPresent()) {
-            gateway.removeInterface(gateway.getInterface(interfaceName).get());
+            gateway.removeInterface(interfaceName);
             return true;
         }
         else {
