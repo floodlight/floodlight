@@ -53,6 +53,8 @@ import net.floodlightcontroller.packet.IPacket;
 import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.packet.IPv6;
 import net.floodlightcontroller.packet.UDP;
+import net.floodlightcontroller.restserver.IRestApiService;
+import net.floodlightcontroller.restserver.RestApiServer;
 import net.floodlightcontroller.routing.IRoutingDecision.RoutingAction;
 import net.floodlightcontroller.routing.IRoutingService;
 import net.floodlightcontroller.routing.Path;
@@ -107,6 +109,7 @@ public class ForwardingTest extends FloodlightTestCase {
 	protected ITopologyService topology;
 	protected LinkDiscoveryManager linkService;
 	protected MockThreadPoolService threadPool;
+	protected RestApiServer restApi;
 	protected IOFSwitch sw1, sw2;
 	protected OFFeaturesReply swFeatures;
 	protected OFDescStatsReply swDescription;
@@ -142,6 +145,7 @@ public class ForwardingTest extends FloodlightTestCase {
 		topology = createMock(ITopologyService.class);
 		mockSyncService = new MockSyncService();
 		linkService = new LinkDiscoveryManager();
+		restApi = new RestApiServer();
 		DefaultEntityClassifier entityClassifier = new DefaultEntityClassifier();
 
 		FloodlightModuleContext fmc = new FloodlightModuleContext();
@@ -156,6 +160,7 @@ public class ForwardingTest extends FloodlightTestCase {
 		fmc.addService(IDebugCounterService.class, new MockDebugCounterService());
 		fmc.addService(IOFSwitchService.class, getMockSwitchService());
 		fmc.addService(ILinkDiscoveryService.class, linkService);
+		fmc.addService(IRestApiService.class, restApi);
 
 		topology.addListener(anyObject(ITopologyListener.class));
 		expectLastCall().anyTimes();
@@ -166,6 +171,7 @@ public class ForwardingTest extends FloodlightTestCase {
 		mockSyncService.init(fmc);
 		linkService.init(fmc);
 		deviceManager.init(fmc);
+		restApi.init(fmc);
 		forwarding.init(fmc);
 		entityClassifier.init(fmc);
 		threadPool.startUp(fmc);

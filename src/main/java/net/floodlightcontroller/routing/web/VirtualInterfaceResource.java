@@ -98,13 +98,11 @@ public class VirtualInterfaceResource extends ServerResource {
         VirtualGatewayInstance gateway = routingService.getVirtualGateway(gatewayName).get();
         try{
             ObjectMapper mapper = new ObjectMapper();
-            JsonNode gatewayNameNode = mapper.readTree(jsonData).get("gateway-name");
             JsonNode interfaceNameNode = mapper.readTree(jsonData).get("interface-name");
             JsonNode interfaceIPNode = mapper.readTree(jsonData).get("interface-ip");
             JsonNode interfaceMaskNode = mapper.readTree(jsonData).get("interface-mask");
 
-            if (gatewayNameNode == null || interfaceNameNode == null || interfaceIPNode == null
-                    || interfaceMaskNode == null) {
+            if (interfaceNameNode == null || interfaceIPNode == null || interfaceMaskNode == null) {
                 return Collections.singletonMap("INFO: ", "some fields missing");
             }
 

@@ -72,8 +72,7 @@ public class L3RoutingManager {
 
     public boolean removeVirtualInterface(String interfaceName, VirtualGatewayInstance gateway) {
         if (gateway.getInterface(interfaceName).isPresent()) {
-            gateway.removeInterface(interfaceName);
-            return true;
+            return gateway.removeInterface(interfaceName);
         }
         else {
             return false;
@@ -85,7 +84,7 @@ public class L3RoutingManager {
     }
 
     public void updateVirtualInterface(VirtualGatewayInstance gateway, VirtualGatewayInterface intf) {
-        gateway.updateInterface(intf);
+        gateway.addInterface(intf);
     }
 
     public SubnetMode getCurrentSubnetMode() {

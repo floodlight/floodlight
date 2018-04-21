@@ -21,7 +21,6 @@ public class VirtualGatewaySerializer extends JsonSerializer<VirtualGatewayInsta
         jsonGen.writeStartObject();
         jsonGen.writeStringField("gateway-name", gateway.getName());
         jsonGen.writeStringField("gateway-mac", gateway.getGatewayMac().toString());
-//        jsonGen.writeObjectField("interfaces", gateway.getInterfaces());
 
         if (gateway.getInterfaces() != null) {
             jsonGen.writeArrayFieldStart("virtual-interfaces");

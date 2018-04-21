@@ -13,10 +13,8 @@ import org.projectfloodlight.openflow.types.IPv4Address;
 import org.projectfloodlight.openflow.types.IPv4AddressWithMask;
 import org.projectfloodlight.openflow.types.MacAddress;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,7 +30,8 @@ public class VirtualGatewayInstance {
 
     private final String name;
     private volatile MacAddress gatewayMac = MacAddress.NONE;
-    private volatile List<VirtualGatewayInterface> interfaces = null;
+    private volatile Map<String, VirtualGatewayInterface> interfaces = null;
+
     private volatile VirtualGatewayInstanceBuilder builder = null;
     private Set<DatapathId> switchMembers = null;
     private Set<NodePortTuple> nptMembers = null;
@@ -44,51 +43,41 @@ public class VirtualGatewayInstance {
     public MacAddress getGatewayMac() {
         return gatewayMac;
     }
-    public List<VirtualGatewayInterface> getInterfaces() { return interfaces; }
+    public Collection<VirtualGatewayInterface> getInterfaces() { return interfaces.values(); }
     public Set<DatapathId> getSwitchMembers() { return switchMembers; }
     public Set<NodePortTuple> getNptMembers() { return nptMembers; }
     public Set<IPv4AddressWithMask> getSubsetMembers() { return subsetMembers; }
-    public Optional<VirtualGatewayInterface> getInterface(String name) {
-        return interfaces.stream()
-                .filter(intf -> intf.getInterfaceName().equals(name))
-                .findAny();
-    }
     public VirtualGatewayInstanceBuilder getBuilder() { return builder; }
 
     public boolean isSwitchAMember(DatapathId dpid) { return switchMembers.contains(dpid); }
     public boolean isNptAMember(NodePortTuple npt) { return nptMembers.contains(npt); }
     public boolean isSubnetAMember(IPv4AddressWithMask subnet) { return subsetMembers.contains(subnet); }
 
+    // add or update interface
     public void addInterface(VirtualGatewayInterface vInterface) {
-        if (!vInterface.getGatewayName().equals(name)) {
-            return;
-        }
-
-        if (!interfaces.contains(vInterface)) {
-            interfaces.add(vInterface);
-        }else {
-            interfaces.set(interfaces.indexOf(vInterface), vInterface);
-        }
+        interfaces.put(vInterface.getInterfaceName(), vInterface);
     }
 
-    public void updateInterface(VirtualGatewayInterface vInterface) {
-        if (!vInterface.getGatewayName().equals(name)) {
-            return;
-        }
+    public Optional<VirtualGatewayInterface> getInterface(String name) {
+        return interfaces.values().stream()
+                .filter(intf -> intf.getInterfaceName().equals(name))
+                .findAny();
 
-        if (getInterface(vInterface.getInterfaceName()).isPresent()) {
-            VirtualGatewayInterface intf = getInterface(vInterface.getInterfaceName()).get();
-            intf.setIp(vInterface.getIp());
-            intf.setMask(vInterface.getMask());
-        }
     }
 
-    public void removeInterface(String interfaceName) {
+    public boolean isInterfaceBelongsGateway(String name) {
+        return interfaces.values().stream()
+                .anyMatch(inft -> inft.getInterfaceName().equals(name));
+    }
+
+    public boolean removeInterface(String interfaceName) {
         if (!getInterface(interfaceName).isPresent()) {
-            return;
+            return false;
         }
-        // TODO: updated to map
-        interfaces.remove(name);
+        else {
+            interfaces.remove(interfaceName);
+            return true;
+        }
     }
 
     public void clearInterfaces() {
@@ -168,12 +157,12 @@ public class VirtualGatewayInstance {
     }
 
     public boolean isAGatewayInft(IPv4Address ip) {
-        return interfaces.stream()
+        return interfaces.values().stream()
                 .anyMatch(intf -> intf.getIp().equals(ip));
     }
 
     public Optional<VirtualGatewayInterface> findGatewayInft(IPv4Address ip) {
-        return interfaces.stream()
+        return interfaces.values().stream()
                 .filter(intf -> intf.containsIP(ip))
                 .findAny();
     }
@@ -202,7 +191,7 @@ public class VirtualGatewayInstance {
     public static class VirtualGatewayInstanceBuilder {
         private final String name;
         private MacAddress gatewayMac = MacAddress.NONE;
-        private List<VirtualGatewayInterface> interfaces;
+        private Map<String, VirtualGatewayInterface> interfaces;
         private Set<DatapathId> switchMembers;
         private Set<NodePortTuple> nptMembers;
         private Set<IPv4AddressWithMask> subsetMembers;
@@ -213,7 +202,7 @@ public class VirtualGatewayInstance {
         private VirtualGatewayInstanceBuilder(@JsonProperty("gateway-name") String name, @JsonProperty("gateway-mac") String mac) {
             this.name = name;
             this.gatewayMac = MacAddress.of(mac);
-            this.interfaces = new ArrayList<>();
+            this.interfaces = new ConcurrentHashMap<>();
             this.switchMembers = new ConcurrentSet<>();
             this.nptMembers = new ConcurrentSet<>();
             this.subsetMembers = new ConcurrentSet<>();
@@ -235,7 +224,7 @@ public class VirtualGatewayInstance {
             return this;
         }
 
-        public VirtualGatewayInstanceBuilder setInterfaces(@Nonnull List<VirtualGatewayInterface> interfaces) {
+        public VirtualGatewayInstanceBuilder setInterfaces(@Nonnull Map<String, VirtualGatewayInterface> interfaces) {
             this.interfaces = interfaces;
             return this;
         }
@@ -265,7 +254,7 @@ public class VirtualGatewayInstance {
             }
 
             if (this.interfaces == null) {
-                this.interfaces = new ArrayList<>();
+                this.interfaces = new ConcurrentHashMap<>();
             }
 
             if (this.switchMembers == null) {

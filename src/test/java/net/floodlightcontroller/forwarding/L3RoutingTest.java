@@ -110,13 +110,13 @@ public class L3RoutingTest extends FloodlightTestCase {
         VirtualGatewayInstance instance;
         VirtualGatewayInstance.VirtualGatewayInstanceBuilder builder = VirtualGatewayInstance.createInstance("gateway-1");
 
-        List<VirtualGatewayInterface> interfaces = new ArrayList<>();
-        VirtualGatewayInterface interface1 = new VirtualGatewayInterface("gateway-1", "interface-1",
+        Map<String, VirtualGatewayInterface> interfaces = new HashMap<>();
+        VirtualGatewayInterface interface1 = new VirtualGatewayInterface("interface-1",
                 "10.0.0.1", "255.255.255.0");
-        VirtualGatewayInterface interface2 = new VirtualGatewayInterface("gateway-1", "interface-2",
+        VirtualGatewayInterface interface2 = new VirtualGatewayInterface("interface-2",
                 "20.0.0.1", "255.255.255.0");
-        interfaces.add(interface1);
-        interfaces.add(interface2);
+        interfaces.put(interface1.getInterfaceName(), interface1);
+        interfaces.put(interface2.getInterfaceName(), interface2);
 
         builder.setGatewayMac(MacAddress.of("aa:bb:cc:dd:ee:ff"));
         builder.setInterfaces(interfaces);
@@ -207,14 +207,8 @@ public class L3RoutingTest extends FloodlightTestCase {
         VirtualGatewayInstance instance = VirtualGatewayInstance.createInstance("gateway-1")
                 .setGatewayMac(MacAddress.of("aa:bb:cc:dd:ee:ff")).build();
 
-        // interface-2 should not be correctly added since there is no existing gateway called "gateway-2"
-        VirtualGatewayInterface interface2 = new VirtualGatewayInterface("gateway-2", "interface-2",
-                "20.0.0.1", "255.255.255.0");
-        instance.addInterface(interface2);
-        assertEquals(0, instance.getInterfaces().size());
-
         // interface-1 should be correctly added
-        VirtualGatewayInterface interface1 = new VirtualGatewayInterface("gateway-1", "interface-1",
+        VirtualGatewayInterface interface1 = new VirtualGatewayInterface("interface-1",
                 "10.0.0.1", "255.255.255.0");
         instance.addInterface(interface1);
 
@@ -228,11 +222,11 @@ public class L3RoutingTest extends FloodlightTestCase {
         VirtualGatewayInstance gatewayInstance = initGateway();
 
         // Interface-2 will not be removed because it haven't be added to gateway instance yet
-        gatewayInstance.removeInterface("interface-3");
+        assertFalse(gatewayInstance.removeInterface("interface-3"));
         assertEquals(2, gatewayInstance.getInterfaces().size());
 
         // Interface-1 will be removed
-        gatewayInstance.removeInterface("interface-1");
+        assertTrue(gatewayInstance.removeInterface("interface-1"));
         assertEquals(1, gatewayInstance.getInterfaces().size());
 
     }
@@ -240,7 +234,11 @@ public class L3RoutingTest extends FloodlightTestCase {
 
     @Test
     public void testClearInterface() throws Exception {
+        VirtualGatewayInstance instance = initGateway();
 
+        // All interface should be removed
+        instance.clearInterfaces();
+        assertEquals(0, instance.getInterfaces().size());
 
     }
 
@@ -252,28 +250,16 @@ public class L3RoutingTest extends FloodlightTestCase {
         instance = instance.getBuilder().setGatewayMac(MacAddress.of("ff:ee:dd:cc:bb:aa")).build();
         assertEquals(MacAddress.of("ff:ee:dd:cc:bb:aa"), instance.getGatewayMac());
 
-
         // interface-1 ip should be updated correctly to "30.0.0.1"
-        VirtualGatewayInterface newInterface = new VirtualGatewayInterface("gateway-1", "interface-1",
+        VirtualGatewayInterface newInterface = new VirtualGatewayInterface("interface-1",
                 "30.0.0.1", "255.255.255.0");
-        instance.updateInterface(newInterface);
+        instance.addInterface(newInterface);
         assertEquals(IPv4Address.of("30.0.0.1"), instance.getInterface("interface-1").get().getIp());
 
         // interface-3 ip shouldn't be updated as there is no "interface-3" added to gateway yet
-        VirtualGatewayInterface newInterface1 = new VirtualGatewayInterface("gateway-1", "interface-3",
-                "30.0.0.1", "255.255.255.0");
-        instance.updateInterface(newInterface1);
         assertFalse(instance.getInterface("interface-3").isPresent());
         assertEquals(IPv4Address.of("30.0.0.1"), instance.getInterface("interface-1").get().getIp());
         assertEquals(2, instance.getInterfaces().size());
-
-
-        // interface-1 ip shouldn't be updated as no existing gateway called "gateway-2"
-        VirtualGatewayInterface newInterface2 = new VirtualGatewayInterface("gateway-2", "interface-1",
-                "50.0.0.1", "255.255.255.0");
-        instance.updateInterface(newInterface2);
-        assertNotEquals((IPv4Address.of("50.0.0.1")), instance.getInterface("interface-1").get().getIp());
-        assertEquals(IPv4Address.of("30.0.0.1"), instance.getInterface("interface-1").get().getIp());
 
     }
 
@@ -282,16 +268,16 @@ public class L3RoutingTest extends FloodlightTestCase {
         VirtualGatewayInstance instance = initGateway();
 
         // New interface list should replace old interface list when use builder to rebuild instance
-        List<VirtualGatewayInterface> interfaces = new ArrayList<>();
-        VirtualGatewayInterface newInterface3 = new VirtualGatewayInterface("gateway-1", "interface-3",
+        Map<String, VirtualGatewayInterface> interfaces = new HashMap<>();
+        VirtualGatewayInterface newInterface3 = new VirtualGatewayInterface("interface-3",
                 "30.0.0.1", "255.255.255.0");
-        VirtualGatewayInterface newInterface4 = new VirtualGatewayInterface("gateway-1", "interface-4",
+        VirtualGatewayInterface newInterface4 = new VirtualGatewayInterface("interface-4",
                 "40.0.0.1", "255.255.255.0");
-        VirtualGatewayInterface newInterface5 = new VirtualGatewayInterface("gateway-1", "interface-5",
+        VirtualGatewayInterface newInterface5 = new VirtualGatewayInterface("interface-5",
                 "50.0.0.1", "255.255.255.0");
-        interfaces.add(newInterface3);
-        interfaces.add(newInterface4);
-        interfaces.add(newInterface5);
+        interfaces.put(newInterface3.getInterfaceName(), newInterface3);
+        interfaces.put(newInterface4.getInterfaceName(), newInterface4);
+        interfaces.put(newInterface5.getInterfaceName(), newInterface5);
 
         instance = instance.getBuilder().setInterfaces(interfaces).build();
         assertEquals(3, instance.getInterfaces().size());
@@ -394,7 +380,6 @@ public class L3RoutingTest extends FloodlightTestCase {
         assertEquals(2, instance.getNptMembers().size());
 
     }
-
 
 
 
