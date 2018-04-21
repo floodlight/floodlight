@@ -194,8 +194,8 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
     public Command processPacketInMessage(IOFSwitch sw, OFPacketIn pi, IRoutingDecision decision, FloodlightContext cntx) {
         Ethernet eth = IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
 
-        //TODO:  Assume single gateway and single gateway MAC now, consider multiple gateways or multiple interfaces latter
-        VirtualGatewayInstance vGateway = routingEngineService.getVirtualGateway("mininet-gateway-1").get();
+        //TODO:  hardcode gateway now
+        VirtualGatewayInstance vGateway = routingEngineService.getGatewayInstance("mininet-gateway-1").get();
         MacAddress gatewayMac = vGateway.getGatewayMac();
 
         // We found a routing decision (i.e. Firewall is enabled... it's the only thing that makes RoutingDecisions)

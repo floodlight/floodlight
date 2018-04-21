@@ -58,21 +58,21 @@ public interface IRoutingService extends IFloodlightService {
      * Get all virtual gateway instances
      * @return
      */
-    Optional<Collection<VirtualGatewayInstance>> getAllVirtualGateways();
+    Collection<VirtualGatewayInstance> getGatewayInstances();
 
     /**
      * Get a specific virtual gateway instance based on its name
      * @param name
      * @return
      */
-    Optional<VirtualGatewayInstance> getVirtualGateway(String name);
+    Optional<VirtualGatewayInstance> getGatewayInstance(String name);
 
     /**
      * Get all virtual interfaces associated with a given gateway
      * @param gateway
      * @return
      */
-    Optional<Collection<VirtualGatewayInterface>> getAllGatewayInterfaces(VirtualGatewayInstance gateway);
+    Optional<Collection<VirtualGatewayInterface>> getGatewayInterfaces(VirtualGatewayInstance gateway);
 
     /**
      * Get a specific virtual interface with a given gateway
@@ -86,7 +86,7 @@ public interface IRoutingService extends IFloodlightService {
      * Add a virtual gateway instance
      * @param gateway
      */
-    void addVirtualGatewayInstance(VirtualGatewayInstance gateway);
+    void addGatewayInstance(VirtualGatewayInstance gateway);
 
     /**
      * Add a virtual interface onto gateway
@@ -112,14 +112,14 @@ public interface IRoutingService extends IFloodlightService {
     /**
      * Delete all existing virtual gateway instances
      */
-    void removeAllVirtualGateways();
+    void deleteGatewayInstances();
 
     /**
      * Delete a specific virtual gateway instance
      * @param name
      * @return
      */
-    boolean removeVirtualGateway(String name);
+    boolean deleteGatewayInstance(String name);
 
     /**
      * Delete all virtual interfaces on gateway

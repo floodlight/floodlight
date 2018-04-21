@@ -53,6 +53,10 @@ public class VirtualGatewayInstance {
     public boolean isNptAMember(NodePortTuple npt) { return nptMembers.contains(npt); }
     public boolean isSubnetAMember(IPv4AddressWithMask subnet) { return subsetMembers.contains(subnet); }
 
+    public void updateGatewayMac(@Nonnull MacAddress mac) {
+        this.gatewayMac = mac;
+    }
+
     // add or update interface
     public void addInterface(VirtualGatewayInterface vInterface) {
         interfaces.put(vInterface.getInterfaceName(), vInterface);

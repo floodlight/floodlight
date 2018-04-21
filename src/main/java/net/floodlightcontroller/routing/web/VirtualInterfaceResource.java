@@ -25,18 +25,18 @@ public class VirtualInterfaceResource extends ServerResource {
         String gatewayName = (String) getRequestAttributes().get("gateway-name");
         String interfaceName = (String) getRequestAttributes().get("interface-name");
 
-        if (!routingService.getVirtualGateway(gatewayName).isPresent()) {
+        if (!routingService.getGatewayInstance(gatewayName).isPresent()) {
             return Collections.singletonMap("INFO: ", "Virtual gateway '" + gatewayName + "' not found");
         }
 
-        VirtualGatewayInstance gateway = routingService.getVirtualGateway(gatewayName).get();
+        VirtualGatewayInstance gateway = routingService.getGatewayInstance(gatewayName).get();
 
-        if (routingService.getAllGatewayInterfaces(gateway).get().isEmpty()) {
+        if (routingService.getGatewayInterfaces(gateway).get().isEmpty()) {
             return Collections.singletonMap("INFO: ", "No virtual interface exists on '" + gatewayName + "' yet");
         }
 
         if (interfaceName.equals("all")) {
-            return routingService.getAllGatewayInterfaces(gateway).get();
+            return routingService.getGatewayInterfaces(gateway).get();
         }
         else {
             Optional<VirtualGatewayInterface> vInterface = routingService.getGatewayInterface(interfaceName, gateway);
@@ -56,13 +56,13 @@ public class VirtualInterfaceResource extends ServerResource {
         String gatewayName = (String) getRequestAttributes().get("gateway-name");
         String interfaceName = (String) getRequestAttributes().get("interface-name");
 
-        if (!routingService.getVirtualGateway(gatewayName).isPresent()) {
+        if (!routingService.getGatewayInstance(gatewayName).isPresent()) {
             return Collections.singletonMap("INFO: ", "Virtual gateway '" + gatewayName + "' not found");
         }
 
-        VirtualGatewayInstance gateway = routingService.getVirtualGateway(gatewayName).get();
+        VirtualGatewayInstance gateway = routingService.getGatewayInstance(gatewayName).get();
 
-        if (routingService.getAllGatewayInterfaces(gateway).get().isEmpty()) {
+        if (routingService.getGatewayInterfaces(gateway).get().isEmpty()) {
             return Collections.singletonMap("INFO: ", "No virtual interface exists on '" + gatewayName + "' yet");
         }
 
@@ -91,11 +91,11 @@ public class VirtualInterfaceResource extends ServerResource {
 
         String gatewayName = (String) getRequestAttributes().get("gateway-name");
 
-        if (!routingService.getVirtualGateway(gatewayName).isPresent()) {
+        if (!routingService.getGatewayInstance(gatewayName).isPresent()) {
             return Collections.singletonMap("INFO: ", "Virtual gateway '" + gatewayName + "' not found");
         }
 
-        VirtualGatewayInstance gateway = routingService.getVirtualGateway(gatewayName).get();
+        VirtualGatewayInstance gateway = routingService.getGatewayInstance(gatewayName).get();
         try{
             ObjectMapper mapper = new ObjectMapper();
             JsonNode interfaceNameNode = mapper.readTree(jsonData).get("interface-name");

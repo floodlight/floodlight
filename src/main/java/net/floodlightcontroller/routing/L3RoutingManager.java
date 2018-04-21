@@ -14,7 +14,7 @@ import java.util.*;
  */
 public class L3RoutingManager {
 
-    private static Map<String, VirtualGatewayInstance> virtualGateways = new HashMap<>();
+    private static Map<String, VirtualGatewayInstance> gatewayInstancesMap = new HashMap<>();
 
     private static Map<String, VirtualSubnet> virtualSubnets = new HashMap<>();
 
@@ -24,23 +24,23 @@ public class L3RoutingManager {
         // Do nothing
     }
 
-    public Optional<Collection<VirtualGatewayInstance>> getAllVirtualGateways() {
-        return Optional.of(virtualGateways.values());
+    public Collection<VirtualGatewayInstance> getAllVirtualGateways() {
+        return gatewayInstancesMap.values();
     }
 
     public Optional<VirtualGatewayInstance> getVirtualGateway(String name) {
-        return virtualGateways.values().stream()
+        return gatewayInstancesMap.values().stream()
                 .filter(gateways -> gateways.getName().equals(name))
                 .findAny();
     }
 
     public void removeAllVirtualGateways() {
-        virtualGateways.clear();
+        gatewayInstancesMap.clear();
     }
 
     public boolean removeVirtualGateway(String name) {
         if (getVirtualGateway(name).isPresent()) {
-            virtualGateways.remove(name);
+            gatewayInstancesMap.remove(name);
             return true;
         }
         else {
@@ -49,11 +49,11 @@ public class L3RoutingManager {
     }
 
     public void addVirtualGateway(VirtualGatewayInstance gateway) {
-        virtualGateways.put(gateway.getName(), gateway);
+        gatewayInstancesMap.put(gateway.getName(), gateway);
     }
 
     public VirtualGatewayInstance updateVirtualGateway(String name, MacAddress newMac) {
-       VirtualGatewayInstance gateway = virtualGateways.get(name);
+       VirtualGatewayInstance gateway = gatewayInstancesMap.get(name);
        return gateway.getBuilder().setGatewayMac(newMac).build();
     }
 

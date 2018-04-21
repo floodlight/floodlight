@@ -72,25 +72,25 @@ public class RoutingManager implements IFloodlightModule, IRoutingService {
 
     // L3 Routing APIs
     @Override
-    public Optional<Collection<VirtualGatewayInstance>> getAllVirtualGateways() { return l3manager.getAllVirtualGateways(); }
+    public Collection<VirtualGatewayInstance> getGatewayInstances() { return l3manager.getAllVirtualGateways(); }
 
     @Override
-    public Optional<VirtualGatewayInstance> getVirtualGateway(String name) { return l3manager.getVirtualGateway(name); }
+    public Optional<VirtualGatewayInstance> getGatewayInstance(String name) { return l3manager.getVirtualGateway(name); }
 
     @Override
-    public void removeAllVirtualGateways() {
-        log.info("All virtual gateways removed");
+    public void deleteGatewayInstances() {
+        log.info("All virtual gateways deleted");
         l3manager.removeAllVirtualGateways();
     }
 
     @Override
-    public boolean removeVirtualGateway(String name) {
-        log.info("Virtual gateway {} removed", name);
+    public boolean deleteGatewayInstance(String name) {
+        log.info("Virtual gateway {} deleted", name);
         return l3manager.removeVirtualGateway(name);
     }
 
     @Override
-    public void addVirtualGatewayInstance(VirtualGatewayInstance gateway) {
+    public void addGatewayInstance(VirtualGatewayInstance gateway) {
         log.info("A new virtual gateway {} created", gateway.getName());
         l3manager.addVirtualGateway(gateway);
     }
@@ -102,7 +102,7 @@ public class RoutingManager implements IFloodlightModule, IRoutingService {
     }
 
     @Override
-    public Optional<Collection<VirtualGatewayInterface>> getAllGatewayInterfaces(VirtualGatewayInstance gateway) {
+    public Optional<Collection<VirtualGatewayInterface>> getGatewayInterfaces(VirtualGatewayInstance gateway) {
         return l3manager.getGatewayInterfaces(gateway);
     }
 
