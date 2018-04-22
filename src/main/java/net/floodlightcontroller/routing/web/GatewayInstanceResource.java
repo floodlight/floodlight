@@ -6,6 +6,7 @@ import com.google.common.collect.ImmutableMap;
 import net.floodlightcontroller.core.types.NodePortTuple;
 import net.floodlightcontroller.routing.IRoutingService;
 import net.floodlightcontroller.routing.VirtualGatewayInstance;
+import net.floodlightcontroller.routing.VirtualGatewayInterface;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.IPv4AddressWithMask;
 import org.projectfloodlight.openflow.types.MacAddress;
@@ -72,6 +73,20 @@ public class GatewayInstanceResource extends ServerResource {
             JsonNode gatewayMacNode = jsonNode.get("gateway-mac");
             if (gatewayMacNode != null) {
                 gatewayInstance.updateGatewayMac(MacAddress.of(gatewayMacNode.asText()));
+            }
+
+            JsonNode interfacesNode = jsonNode.get("interfaces");
+            if (interfacesNode != null) {
+                for (JsonNode intf : interfacesNode) {
+                    JsonNode nameNode = intf.get("interface-name");
+                    JsonNode ipNode = intf.get("interface-ip");
+                    JsonNode maskNode = intf.get("interface-mask");
+
+                    if (nameNode != null && ipNode != null && maskNode != null) {
+                        gatewayInstance.addInterface(nameNode.asText(), ipNode.asText(), maskNode.asText());
+                    }
+
+                }
             }
 
             JsonNode switchMembersNode = jsonNode.get("switches");

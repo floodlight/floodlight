@@ -76,23 +76,30 @@ def addVirtualGateway(name):
         "gateway-name" : name,
         "gateway-mac" : "aa:bb:cc:dd:ee:ff"
     }
-    ret = rest_call('/wm/routing/gateway/json', data, 'POST')
+    ret = rest_call('/wm/routing/gateway', data, 'POST')
     return ret
 
 
-def addInterfaceToVirtualGateway(name, intfName, intfIP, inftMask):
+def addInterfaceToGateway(name):
     data = {
-        "gateway-name" : name,
-        "interface-name" : intfName,
-        "interface-ip" : intfIP,
-        "interface-mask" : inftMask,
-        "interface-mac" : "aa:bb:cc:dd:ee:ff"
+        "interfaces" : [
+            {
+                "interface-name" : "interface-1",
+                "interface-ip" : "10.0.0.1",
+                "interface-mask" : "255.255.255.0"
+            },
+            {
+                "interface-name" : "interface-2",
+                "interface-ip" : "20.0.0.1",
+                "interface-mask" : "255.255.255.0"
+            }
+        ]
     }
-    ret = rest_call('/wm/routing/gateway/' + name + '/interface/json', data, 'POST')
+    ret = rest_call('/wm/routing/gateway/' + name, data, 'POST')
     return ret
 
 
-def addSwitchToGateway1(name):
+def addSwitchToGateway(name):
     data = {
         "subnet-name" : name,
         "gateway-ip" : "127.0.0.1",
@@ -102,7 +109,7 @@ def addSwitchToGateway1(name):
             }
         ]
     }
-    ret = rest_call('/wm/routing/subnet/switches/json', data, 'POST')
+    ret = rest_call('/wm/routing/gateway/' + name, data, 'POST')
     return ret
 
 
@@ -127,11 +134,10 @@ def startNetworkWithLinearTopo( hostCount ):
     ret = addVirtualGateway('mininet-gateway-1')
     print (ret)
 
-    addInterfaceToVirtualGateway('mininet-gateway-1', "interface-1", "10.0.0.1", "255.255.255.0")
-    ret = addInterfaceToVirtualGateway('mininet-gateway-1', "interface-2", "20.0.0.1", "255.255.255.0")
+    ret = addInterfaceToGateway('mininet-gateway-1')
     print (ret)
 
-    ret = addSwitchToGateway1('mininet-gateway-1')
+    ret = addSwitchToGateway('mininet-gateway-1')
     print (ret)
 
     # Need to configure default gw for host

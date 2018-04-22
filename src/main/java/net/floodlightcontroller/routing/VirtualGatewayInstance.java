@@ -3,6 +3,7 @@ package net.floodlightcontroller.routing;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import io.netty.util.internal.ConcurrentSet;
@@ -25,6 +26,7 @@ import javax.annotation.Nonnull;
  * @author Qing Wang (qw@g.clemson.edu) at 12/20/17
  */
 @JsonSerialize(using = VirtualGatewaySerializer.class)
+@JsonDeserialize(builder = VirtualGatewayInstance.VirtualGatewayInstanceBuilder.class)
 public class VirtualGatewayInstance {
     protected static final Logger log = LoggerFactory.getLogger(VirtualGatewayInstance.class);
 
@@ -60,6 +62,10 @@ public class VirtualGatewayInstance {
     // add or update interface
     public void addInterface(VirtualGatewayInterface vInterface) {
         interfaces.put(vInterface.getInterfaceName(), vInterface);
+    }
+
+    public void addInterface(String name, String ip, String mask) {
+        interfaces.put(name, new VirtualGatewayInterface(name, ip, mask));
     }
 
     public Optional<VirtualGatewayInterface> getInterface(String name) {

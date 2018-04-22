@@ -4,8 +4,11 @@ import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonSerializer;
 import com.fasterxml.jackson.databind.SerializerProvider;
+import net.floodlightcontroller.core.types.NodePortTuple;
 import net.floodlightcontroller.routing.VirtualGatewayInstance;
 import net.floodlightcontroller.routing.VirtualGatewayInterface;
+import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.IPv4AddressWithMask;
 
 import java.io.IOException;
 
@@ -32,7 +35,30 @@ public class VirtualGatewaySerializer extends JsonSerializer<VirtualGatewayInsta
             jsonGen.writeEndArray();
         }
 
-//        jsonGen.writeObjectField("subnets", gateway.getSubnets());
+        if (gateway.getSwitchMembers() != null) {
+            jsonGen.writeArrayFieldStart("switch-id");
+            for (DatapathId dpid : gateway.getSwitchMembers()) {
+                jsonGen.writeString(dpid.toString());
+            }
+            jsonGen.writeEndArray();
+        }
+
+        if (gateway.getNptMembers() != null) {
+            jsonGen.writeArrayFieldStart("node-port-tuples");
+            for (NodePortTuple npt : gateway.getNptMembers()) {
+                jsonGen.writeString(npt.toString());
+            }
+            jsonGen.writeEndArray();
+        }
+
+        if (gateway.getSubsetMembers() != null) {
+            jsonGen.writeArrayFieldStart("subnets");
+            for (IPv4AddressWithMask subnet : gateway.getSubsetMembers()) {
+                jsonGen.writeString(subnet.toString());
+            }
+            jsonGen.writeEndArray();
+        }
+
         jsonGen.writeEndObject();
 
     }

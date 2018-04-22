@@ -16,7 +16,6 @@
 
 package net.floodlightcontroller.routing.web;
 
-import net.floodlightcontroller.routing.VirtualSubnetNPTResource;
 import org.restlet.Context;
 import org.restlet.routing.Router;
 
@@ -40,17 +39,6 @@ public class RoutingWebRoutable implements RestletRoutable {
 
         router.attach("/gateway", GatewayInstancesResource.class);
         router.attach("/gateway/{gateway-name}", GatewayInstanceResource.class);
-
-
-        router.attach("/gateway/{gateway-name}/list/{interface-name}/json", VirtualInterfaceResource.class);
-        router.attach("/gateway/{gateway-name}/clear/{interface-name}/json", VirtualInterfaceResource.class);
-        router.attach("/gateway/{gateway-name}/interface/json", VirtualInterfaceResource.class);
-
-        router.attach("/subnet/list/{subnet-name}/json", VirtualSubnetInfoResource.class);
-        router.attach("/subnet/switches/json", VirtualSubnetSwitchResource.class);
-        router.attach("/subnet/switches/clear/{subnet-name}/json", RemoveVirtualSubnetResource.class);
-        router.attach("/subnet/node-port-tuples/json", VirtualSubnetNPTResource.class);
-        router.attach("/subnet/node-port-tuples/clear/{subnet-name}/json", RemoveVirtualSubnetResource.class);
 
         return router;
     }
