@@ -27,8 +27,8 @@ import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.FloodlightModuleLoader;
 import net.floodlightcontroller.core.module.IFloodlightModuleContext;
 import net.floodlightcontroller.restserver.IRestApiService;
+import net.floodlightcontroller.sparkapi.LvapApi;
 
-import static spark.Spark.*;
 
 /**
  * Host for the Floodlight main method
@@ -44,7 +44,6 @@ public class Main {
 	 */
 	public static void main(String[] args) throws FloodlightModuleException {
 		try {
-			get("/hello", (req, res) -> "Hello World");
 			// Setup logger
 			System.setProperty("org.restlet.engine.loggerFacadeClass",
 					"org.restlet.ext.slf4j.Slf4jLoggerFacade");
@@ -72,9 +71,10 @@ public class Main {
 			try {
                 fml.runModules(); // run the controller module and all modules
             } catch (FloodlightModuleException e) {
-                logger.error("Failed to run controller modules", e);
-                System.exit(1);
-            }
+				logger.error("Failed to run controller modules", e);
+				System.exit(1);
+			}
+            new LvapApi();
 		} catch (Exception e) {
 			logger.error("Exception in main", e);
 			System.exit(1);
