@@ -40,7 +40,6 @@ public class RoutingManager implements IFloodlightModule, IRoutingService {
     private Logger log = LoggerFactory.getLogger(RoutingManager.class);
     
     private static ITopologyManagerBackend tm;
-    private static L3RoutingManager l3manager;
     
     private List<IRoutingDecisionChangedListener> decisionChangedListeners;
     
@@ -63,138 +62,11 @@ public class RoutingManager implements IFloodlightModule, IRoutingService {
     public void init(FloodlightModuleContext context) throws FloodlightModuleException {
         log.debug("RoutingManager starting up");
         tm = (ITopologyManagerBackend) context.getServiceImpl(ITopologyService.class);
-        l3manager = new L3RoutingManager();
         decisionChangedListeners = new ArrayList<IRoutingDecisionChangedListener>();
     }
 
     @Override
     public void startUp(FloodlightModuleContext context) throws FloodlightModuleException { }
-
-    // L3 Routing APIs
-    @Override
-    public Collection<VirtualGatewayInstance> getGatewayInstances() { return l3manager.getAllVirtualGateways(); }
-
-    @Override
-    public Optional<VirtualGatewayInstance> getGatewayInstance(String name) { return l3manager.getVirtualGateway(name); }
-
-    @Override
-    public void deleteGatewayInstances() {
-        log.info("All virtual gateways deleted");
-        l3manager.removeAllVirtualGateways();
-    }
-
-    @Override
-    public boolean deleteGatewayInstance(String name) {
-        log.info("Virtual gateway {} deleted", name);
-        return l3manager.removeVirtualGateway(name);
-    }
-
-    @Override
-    public void addGatewayInstance(VirtualGatewayInstance gateway) {
-        log.info("A new virtual gateway {} created", gateway.getName());
-        l3manager.addVirtualGateway(gateway);
-    }
-
-    @Override
-    public VirtualGatewayInstance updateVirtualGateway(String name, MacAddress newMac) {
-        log.info("Virtual gateway {} updated", name);
-        return l3manager.updateVirtualGateway(name, newMac);
-    }
-
-    @Override
-    public Optional<Collection<VirtualGatewayInterface>> getGatewayInterfaces(VirtualGatewayInstance gateway) {
-        return l3manager.getGatewayInterfaces(gateway);
-    }
-
-    @Override
-    public Optional<VirtualGatewayInterface> getGatewayInterface(String name, VirtualGatewayInstance gateway) {
-        return l3manager.getGatewayInterface(name, gateway);
-    }
-
-    @Override
-    public void removeAllVirtualInterfaces(VirtualGatewayInstance gateway) {
-        log.info("All virtual interfaces removed from gateway {}", gateway.getName());
-        l3manager.removeAllVirtualInterfaces(gateway);
-    }
-
-    @Override
-    public boolean removeVirtualInterface(String interfaceName, VirtualGatewayInstance gateway) {
-        log.info("Virtual gateway {} removed from gateway {}", interfaceName, gateway.getName());
-        return l3manager.removeVirtualInterface(interfaceName, gateway);
-    }
-
-    @Override
-    public void addVirtualInterface(VirtualGatewayInstance gateway, VirtualGatewayInterface intf) {
-        log.info("A new virtual interface {} created for gateway {}", intf.getInterfaceName(), gateway.getName());
-        l3manager.addVirtualInterface(gateway, intf);
-    }
-
-    @Override
-    public void updateVirtualInterface(VirtualGatewayInstance gateway, VirtualGatewayInterface intf) {
-        log.info("Virtual interface {} in gateway {} updated ", intf.getInterfaceName(), gateway.getName());
-        l3manager.updateVirtualInterface(gateway, intf);
-    }
-
-    @Override
-    public Optional<Collection<VirtualSubnet>> getAllVirtualSubnets() {
-        return l3manager.getAllVirtualSubnets();
-    }
-
-    @Override
-    public Optional<VirtualSubnet> getVirtualSubnet(String name) {
-        return l3manager.getVirtualSubnet(name);
-    }
-
-    @Override
-    public SubnetMode getCurrentSubnetMode() {
-        return l3manager.getCurrentSubnetMode();
-    }
-
-    @Override
-    public boolean checkDPIDExist(DatapathId dpid) { return l3manager.checkDPIDExist(dpid); }
-
-    @Override
-    public boolean checkNPTExist(NodePortTuple nodePortTuple) { return l3manager.checkNPTExist(nodePortTuple); }
-
-    @Override
-    public void createVirtualSubnet(String name, IPv4Address gatewayIP, DatapathId dpid) {
-        l3manager.createVirtualSubnet(name, gatewayIP, dpid);
-    }
-
-    @Override
-    public void createVirtualSubnet(String name, IPv4Address gatewayIP, NodePortTuple npt) {
-        l3manager.createVirtualSubnet(name, gatewayIP, npt);
-    }
-
-    @Override
-    public void removeAllVirtualSubnets() {
-        l3manager.removeAllVirtualSubnets();
-    }
-
-    @Override
-    public boolean removeVirtualSubnet(String name) { return l3manager.removeVirtualSubnet(name); }
-
-    @Override
-    public void updateVirtualSubnet(String name, IPv4Address gatewayIP, DatapathId dpid) {
-        l3manager.updateVirtualSubnet(name, gatewayIP, dpid);
-    }
-
-    @Override
-    public void updateVirtualSubnet(String name, IPv4Address gatewayIP, NodePortTuple npt) {
-        l3manager.updateVirtualSubnet(name, gatewayIP, npt);
-    }
-
-    @Override
-    public boolean isSameSubnet(IOFSwitch sw1, IOFSwitch sw2) {
-        return l3manager.isSameSubnet(sw1, sw2);
-    }
-
-    @Override
-    public boolean isSameSubnet(NodePortTuple npt1, NodePortTuple npt2) {
-        return l3manager.isSameSubnet(npt1, npt2);
-    }
-
-    // Ends here
 
     @Override
     public void setPathMetric(PATH_METRIC metric) {

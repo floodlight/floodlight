@@ -4,6 +4,7 @@ import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.types.NodePortTuple;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.IPv4Address;
+import org.projectfloodlight.openflow.types.IPv4AddressWithMask;
 import org.projectfloodlight.openflow.types.MacAddress;
 import net.floodlightcontroller.routing.VirtualSubnet.SwitchSubnetBuilder;
 import net.floodlightcontroller.routing.VirtualSubnet.NptSubnetBuilder;
@@ -31,6 +32,24 @@ public class L3RoutingManager {
     public Optional<VirtualGatewayInstance> getVirtualGateway(String name) {
         return gatewayInstancesMap.values().stream()
                 .filter(gateways -> gateways.getName().equals(name))
+                .findAny();
+    }
+
+    public Optional<VirtualGatewayInstance> getVirtualGateway(DatapathId dpid) {
+        return gatewayInstancesMap.values().stream()
+                .filter(gateways -> gateways.getSwitchMembers().contains(dpid))
+                .findAny();
+    }
+
+    public Optional<VirtualGatewayInstance> getVirtualGateway(NodePortTuple npt) {
+        return gatewayInstancesMap.values().stream()
+                .filter(gateways -> gateways.getNptMembers().contains(npt))
+                .findAny();
+    }
+
+    public Optional<VirtualGatewayInstance> getVirtualGateway(IPv4AddressWithMask subnet) {
+        return gatewayInstancesMap.values().stream()
+                .filter(gateways -> gateways.getSubsetMembers().contains(subnet))
                 .findAny();
     }
 

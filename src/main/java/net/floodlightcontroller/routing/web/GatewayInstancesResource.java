@@ -3,6 +3,8 @@ package net.floodlightcontroller.routing.web;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableMap;
+import net.floodlightcontroller.dhcpserver.IDHCPService;
+import net.floodlightcontroller.routing.IGatewayService;
 import net.floodlightcontroller.routing.IRoutingService;
 import net.floodlightcontroller.routing.VirtualGatewayInstance;
 import org.projectfloodlight.openflow.types.MacAddress;
@@ -20,11 +22,11 @@ public class GatewayInstancesResource extends ServerResource {
 
     @Get
     public Object getInstances() {
-        IRoutingService routingService =
-                (IRoutingService) getContext().getAttributes().
-                        get(IRoutingService.class.getCanonicalName());
+        IGatewayService gatewayService =
+                (IGatewayService) getContext().getAttributes().
+                        get(IGatewayService.class.getCanonicalName());
 
-        return routingService.getGatewayInstances();
+        return gatewayService.getGatewayInstances();
 
     }
 
@@ -32,9 +34,11 @@ public class GatewayInstancesResource extends ServerResource {
     @Put
     @Post
     public Object addInstance(String json) {
-        IRoutingService routingService =
-                (IRoutingService) getContext().getAttributes().
-                        get(IRoutingService.class.getCanonicalName());
+        IGatewayService gatewayService = (IGatewayService) getContext().getAttributes()
+                .get(IGatewayService.class.getCanonicalName());
+
+        IDHCPService dhcpService = (IDHCPService) getContext().getAttributes()
+                .get(IDHCPService.class.getCanonicalName());
 
         if (json == null) {
             setStatus(org.restlet.data.Status.CLIENT_ERROR_BAD_REQUEST, "One or more required fields missing.");
@@ -52,14 +56,14 @@ public class GatewayInstancesResource extends ServerResource {
             }
 
             VirtualGatewayInstance vGateway = mapper.reader(VirtualGatewayInstance.class).readValue(json);
-            if (!routingService.getGatewayInstance(vGateway.getName()).isPresent()) {
+            if (!gatewayService.getGatewayInstance(vGateway.getName()).isPresent()) {
                 // Create new virtual gateway
-                routingService.addGatewayInstance(vGateway);
+                gatewayService.addGatewayInstance(vGateway);
                 return vGateway;
             }
             else {
                 // Update existing virtual gateway
-                routingService.updateVirtualGateway(nameNode.asText(), MacAddress.of(macNode.asText()));
+                gatewayService.updateVirtualGateway(nameNode.asText(), MacAddress.of(macNode.asText()));
                 return vGateway;
             }
 
@@ -73,12 +77,12 @@ public class GatewayInstancesResource extends ServerResource {
 
     @Delete
     public Object deleteInstances() {
-        IRoutingService routingService =
-                (IRoutingService) getContext().getAttributes().
-                        get(IRoutingService.class.getCanonicalName());
+        IGatewayService gatewayService =
+                (IGatewayService) getContext().getAttributes().
+                        get(IGatewayService.class.getCanonicalName());
 
-        Collection<VirtualGatewayInstance> instances = routingService.getGatewayInstances();
-        routingService.deleteGatewayInstances();
+        Collection<VirtualGatewayInstance> instances = gatewayService.getGatewayInstances();
+        gatewayService.deleteGatewayInstances();
 
         return ImmutableMap.of("deleted", instances);
 

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableMap;
 import net.floodlightcontroller.core.types.NodePortTuple;
+import net.floodlightcontroller.routing.IGatewayService;
 import net.floodlightcontroller.routing.IRoutingService;
 import net.floodlightcontroller.routing.VirtualGatewayInstance;
 import net.floodlightcontroller.routing.VirtualGatewayInterface;
@@ -26,13 +27,13 @@ public class GatewayInstanceResource extends ServerResource {
 
     @Get
     public Object getInstance() {
-        IRoutingService routingService =
-                (IRoutingService) getContext().getAttributes().
-                        get(IRoutingService.class.getCanonicalName());
+        IGatewayService gatewayService =
+                (IGatewayService) getContext().getAttributes().
+                        get(IGatewayService.class.getCanonicalName());
 
         String whichInstance = (String) getRequestAttributes().get("gateway-name");
 
-        Optional<VirtualGatewayInstance> instance = routingService.getGatewayInstance(whichInstance);
+        Optional<VirtualGatewayInstance> instance = gatewayService.getGatewayInstance(whichInstance);
 
         if (instance.isPresent()) {
             return instance.get();
@@ -48,13 +49,13 @@ public class GatewayInstanceResource extends ServerResource {
     @Put
     @Post
     public Object updateInstance(String json) {
-        IRoutingService routingService =
-                (IRoutingService) getContext().getAttributes().
-                        get(IRoutingService.class.getCanonicalName());
+        IGatewayService gatewayService =
+                (IGatewayService) getContext().getAttributes().
+                        get(IGatewayService.class.getCanonicalName());
 
         String whichInstance = (String) getRequestAttributes().get("gateway-name");
 
-        Optional<VirtualGatewayInstance> instance = routingService.getGatewayInstance(whichInstance);
+        Optional<VirtualGatewayInstance> instance = gatewayService.getGatewayInstance(whichInstance);
 
         if (!instance.isPresent()) {
             setStatus(Status.CLIENT_ERROR_NOT_FOUND, INSTANCE_NOT_FOUND_MESSAGE);
@@ -135,13 +136,13 @@ public class GatewayInstanceResource extends ServerResource {
 
     @Delete
     public Object deleteInstance() {
-        IRoutingService routingService =
-                (IRoutingService) getContext().getAttributes().
-                        get(IRoutingService.class.getCanonicalName());
+        IGatewayService gatewayService =
+                (IGatewayService) getContext().getAttributes().
+                        get(IGatewayService.class.getCanonicalName());
 
         String whichInstance = (String) getRequestAttributes().get("gateway-name");
 
-        if (routingService.deleteGatewayInstance(whichInstance)) {
+        if (gatewayService.deleteGatewayInstance(whichInstance)) {
             return ImmutableMap.of("deleted", whichInstance);
         }
         else {

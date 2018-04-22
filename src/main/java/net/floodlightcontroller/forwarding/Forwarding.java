@@ -59,7 +59,8 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
 
-public class Forwarding extends ForwardingBase implements IFloodlightModule, IOFSwitchListener, ILinkDiscoveryListener, IRoutingDecisionChangedListener {
+public class Forwarding extends ForwardingBase implements IFloodlightModule, IOFSwitchListener, ILinkDiscoveryListener,
+        IRoutingDecisionChangedListener, IGatewayService {
     protected static final Logger log = LoggerFactory.getLogger(Forwarding.class);
 
     /*
@@ -94,6 +95,8 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
     private static final long FLOWSET_MAX = (long) (Math.pow(2, FLOWSET_BITS) - 1);
     protected static FlowSetIdRegistry flowSetIdRegistry;
     private static RewriteField rewriteField = RewriteField.REQUEST;
+
+    private static L3RoutingManager l3manager;
 
     protected static class FlowSetIdRegistry {
         private volatile Map<NodePortTuple, Set<U64>> nptToFlowSetIds;
@@ -194,9 +197,22 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
     public Command processPacketInMessage(IOFSwitch sw, OFPacketIn pi, IRoutingDecision decision, FloodlightContext cntx) {
         Ethernet eth = IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
 
-        //TODO:  hardcode gateway now
-        VirtualGatewayInstance vGateway = routingEngineService.getGatewayInstance("mininet-gateway-1").get();
-        MacAddress gatewayMac = vGateway.getGatewayMac();
+        OFPort inPort = OFMessageUtils.getInPort(pi);
+        NodePortTuple npt = new NodePortTuple(sw.getId(), inPort);
+
+        if (!getGatewayInstance(npt).isPresent() && !getGatewayInstance(sw.getId()).isPresent()) {
+            log.warn("Could not locate virtual gateway instance for DPID {}, port {}", new Object[] {sw.getId(), inPort});
+        }
+
+        VirtualGatewayInstance gatewayInstance = null;
+        if (getGatewayInstance(sw.getId()).isPresent()) {
+            gatewayInstance = getGatewayInstance(sw.getId()).get();
+        }
+        else {
+            gatewayInstance = getGatewayInstance(npt).get();
+        }
+
+        MacAddress gatewayMac = gatewayInstance.getGatewayMac();
 
         // We found a routing decision (i.e. Firewall is enabled... it's the only thing that makes RoutingDecisions)
         if (decision != null) {
@@ -210,7 +226,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                 return Command.CONTINUE;
             case FORWARD_OR_FLOOD:
             case FORWARD:
-                doForwardFlow(sw, pi, decision, cntx, vGateway, false);
+                doForwardFlow(sw, pi, decision, cntx, gatewayInstance, false);
                 return Command.CONTINUE;
             case MULTICAST:
                 // treat as broadcast
@@ -232,7 +248,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
             if (isBroadcastOrMulticast(eth)) {
                 // When cross-subnet, host send ARP request to gateway. Gateway need to generate ARP response to host
                 if (eth.getPayload() instanceof ARP && ((ARP) eth.getPayload()).getOpCode().equals(ARP.OP_REQUEST)
-                        && vGateway.isAGatewayInft(((ARP) eth.getPayload()).getTargetProtocolAddress())) {
+                        && gatewayInstance.isAGatewayInft(((ARP) eth.getPayload()).getTargetProtocolAddress())) {
                         IPacket arpReply = gatewayArpReply(cntx, gatewayMac);
                         pushArpReply(arpReply, sw, OFBufferId.NO_BUFFER, OFPort.ANY, OFMessageUtils.getInPort(pi));
                 }
@@ -241,7 +257,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                 }
             }
             else {
-                doForwardFlow(sw, pi, decision, cntx, vGateway, false);
+                doForwardFlow(sw, pi, decision, cntx, gatewayInstance, false);
             }
 
         }
@@ -817,15 +833,15 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
     private boolean isSameSubnet(IOFSwitch srcSw, IOFSwitch dstSw,
                                  NodePortTuple srcNpt, NodePortTuple dstNpt) {
         boolean same = false;
-        switch (routingEngineService.getCurrentSubnetMode()) {
+        switch (getCurrentSubnetMode()) {
             case SWITCH:
-                if (routingEngineService.isSameSubnet(srcSw, dstSw)) {
+                if (isSameSubnet(srcSw, dstSw)) {
                     same = true;
                 }
                 break;
 
             case NodePortTuple:
-                if (routingEngineService.isSameSubnet(srcNpt, dstNpt)){
+                if (isSameSubnet(srcNpt, dstNpt)){
                     same = true;
                 }
                 break;
@@ -1058,14 +1074,18 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleServices() {
-        // We don't export any services
-        return null;
+        Collection<Class<? extends IFloodlightService>> s =
+                new HashSet<Class<? extends IFloodlightService>>();
+        s.add(IGatewayService.class);
+        return s;
     }
 
     @Override
     public Map<Class<? extends IFloodlightService>, IFloodlightService> getServiceImpls() {
-        // We don't have any services
-        return null;
+        Map<Class<? extends IFloodlightService>, IFloodlightService> m =
+                new HashMap<Class<? extends IFloodlightService>, IFloodlightService>();
+        m.put(IGatewayService.class, this);
+        return m;
     }
 
     @Override
@@ -1093,6 +1113,8 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         this.debugCounterService = context.getServiceImpl(IDebugCounterService.class);
         this.switchService = context.getServiceImpl(IOFSwitchService.class);
         this.linkService = context.getServiceImpl(ILinkDiscoveryService.class);
+
+        l3manager = new L3RoutingManager();
 
         flowSetIdRegistry = FlowSetIdRegistry.getInstance();
 
@@ -1406,5 +1428,142 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         return msgs;
 
     }
+
+    // L3 Routing APIs
+    @Override
+    public Collection<VirtualGatewayInstance> getGatewayInstances() { return l3manager.getAllVirtualGateways(); }
+
+    @Override
+    public Optional<VirtualGatewayInstance> getGatewayInstance(String name) { return l3manager.getVirtualGateway(name); }
+
+    @Override
+    public Optional<VirtualGatewayInstance> getGatewayInstance(DatapathId dpid) {
+        return l3manager.getVirtualGateway(dpid);
+    }
+
+    @Override
+    public Optional<VirtualGatewayInstance> getGatewayInstance(NodePortTuple npt) {
+        return l3manager.getVirtualGateway(npt);
+    }
+
+    @Override
+    public void deleteGatewayInstances() {
+        log.info("All virtual gateways deleted");
+        l3manager.removeAllVirtualGateways();
+    }
+
+    @Override
+    public boolean deleteGatewayInstance(String name) {
+        log.info("Virtual gateway {} deleted", name);
+        return l3manager.removeVirtualGateway(name);
+    }
+
+    @Override
+    public void addGatewayInstance(VirtualGatewayInstance gateway) {
+        log.info("A new virtual gateway {} created", gateway.getName());
+        l3manager.addVirtualGateway(gateway);
+    }
+
+    @Override
+    public VirtualGatewayInstance updateVirtualGateway(String name, MacAddress newMac) {
+        log.info("Virtual gateway {} updated", name);
+        return l3manager.updateVirtualGateway(name, newMac);
+    }
+
+    @Override
+    public Optional<Collection<VirtualGatewayInterface>> getGatewayInterfaces(VirtualGatewayInstance gateway) {
+        return l3manager.getGatewayInterfaces(gateway);
+    }
+
+    @Override
+    public Optional<VirtualGatewayInterface> getGatewayInterface(String name, VirtualGatewayInstance gateway) {
+        return l3manager.getGatewayInterface(name, gateway);
+    }
+
+    @Override
+    public void removeAllVirtualInterfaces(VirtualGatewayInstance gateway) {
+        log.info("All virtual interfaces removed from gateway {}", gateway.getName());
+        l3manager.removeAllVirtualInterfaces(gateway);
+    }
+
+    @Override
+    public boolean removeVirtualInterface(String interfaceName, VirtualGatewayInstance gateway) {
+        log.info("Virtual gateway {} removed from gateway {}", interfaceName, gateway.getName());
+        return l3manager.removeVirtualInterface(interfaceName, gateway);
+    }
+
+    @Override
+    public void addVirtualInterface(VirtualGatewayInstance gateway, VirtualGatewayInterface intf) {
+        log.info("A new virtual interface {} created for gateway {}", intf.getInterfaceName(), gateway.getName());
+        l3manager.addVirtualInterface(gateway, intf);
+    }
+
+    @Override
+    public void updateVirtualInterface(VirtualGatewayInstance gateway, VirtualGatewayInterface intf) {
+        log.info("Virtual interface {} in gateway {} updated ", intf.getInterfaceName(), gateway.getName());
+        l3manager.updateVirtualInterface(gateway, intf);
+    }
+
+    @Override
+    public Optional<Collection<VirtualSubnet>> getAllVirtualSubnets() {
+        return l3manager.getAllVirtualSubnets();
+    }
+
+    @Override
+    public Optional<VirtualSubnet> getVirtualSubnet(String name) {
+        return l3manager.getVirtualSubnet(name);
+    }
+
+    @Override
+    public SubnetMode getCurrentSubnetMode() {
+        return l3manager.getCurrentSubnetMode();
+    }
+
+    @Override
+    public boolean checkDPIDExist(DatapathId dpid) { return l3manager.checkDPIDExist(dpid); }
+
+    @Override
+    public boolean checkNPTExist(NodePortTuple nodePortTuple) { return l3manager.checkNPTExist(nodePortTuple); }
+
+    @Override
+    public void createVirtualSubnet(String name, IPv4Address gatewayIP, DatapathId dpid) {
+        l3manager.createVirtualSubnet(name, gatewayIP, dpid);
+    }
+
+    @Override
+    public void createVirtualSubnet(String name, IPv4Address gatewayIP, NodePortTuple npt) {
+        l3manager.createVirtualSubnet(name, gatewayIP, npt);
+    }
+
+    @Override
+    public void removeAllVirtualSubnets() {
+        l3manager.removeAllVirtualSubnets();
+    }
+
+    @Override
+    public boolean removeVirtualSubnet(String name) { return l3manager.removeVirtualSubnet(name); }
+
+    @Override
+    public void updateVirtualSubnet(String name, IPv4Address gatewayIP, DatapathId dpid) {
+        l3manager.updateVirtualSubnet(name, gatewayIP, dpid);
+    }
+
+    @Override
+    public void updateVirtualSubnet(String name, IPv4Address gatewayIP, NodePortTuple npt) {
+        l3manager.updateVirtualSubnet(name, gatewayIP, npt);
+    }
+
+    @Override
+    public boolean isSameSubnet(IOFSwitch sw1, IOFSwitch sw2) {
+        return l3manager.isSameSubnet(sw1, sw2);
+    }
+
+    @Override
+    public boolean isSameSubnet(NodePortTuple npt1, NodePortTuple npt2) {
+        return l3manager.isSameSubnet(npt1, npt2);
+    }
+
+    // Ends here
+
 
 }
