@@ -201,7 +201,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         NodePortTuple npt = new NodePortTuple(sw.getId(), inPort);
 
         if (!getGatewayInstance(npt).isPresent() && !getGatewayInstance(sw.getId()).isPresent()) {
-            log.warn("Could not locate virtual gateway instance for DPID {}, port {}", new Object[] {sw.getId(), inPort});
+            log.info("Could not locate virtual gateway instance for DPID {}, port {}", new Object[] {sw.getId(), inPort});
         }
 
         VirtualGatewayInstance gatewayInstance = null;
@@ -245,14 +245,18 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                 log.trace("No decision was made for PacketIn={}, forwarding", pi);
             }
 
+            // TODO: IPv6 not consider L3 routing for now
             if (isBroadcastOrMulticast(eth)) {
                 // When cross-subnet, host send ARP request to gateway. Gateway need to generate ARP response to host
                 if (eth.getPayload() instanceof ARP && ((ARP) eth.getPayload()).getOpCode().equals(ARP.OP_REQUEST)
                         && gatewayInstance.isAGatewayInft(((ARP) eth.getPayload()).getTargetProtocolAddress())) {
-                        IPacket arpReply = gatewayArpReply(cntx, gatewayMac);
-                        pushArpReply(arpReply, sw, OFBufferId.NO_BUFFER, OFPort.ANY, OFMessageUtils.getInPort(pi));
+
+
+
+                    IPacket arpReply = gatewayArpReply(cntx, gatewayMac);
+                    pushArpReply(arpReply, sw, OFBufferId.NO_BUFFER, OFPort.ANY, inPort);
                 }
-                else { // TODO: IPv6 packet not consider L3 routing for now
+                else {
                     doFlood(sw, pi, decision, cntx);
                 }
             }
@@ -314,7 +318,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
      */
     public void pushArpReply(IPacket packet, IOFSwitch sw, OFBufferId bufferId, OFPort inPort, OFPort outPort) {
         if (log.isTraceEnabled()) {
-            log.trace("PacketOut srcSwitch={} inPort={} outPort={}",
+            log.trace("Push ar PacketOut srcSwitch={} inPort={} outPort={}",
                     new Object[] {sw, inPort, outPort});
         }
 
@@ -481,7 +485,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         OFPort inPort = OFMessageUtils.getInPort(pi);
         Match m = createMatchFromPacket(sw, inPort, pi, cntx);
         OFFlowMod.Builder fmb = sw.getOFFactory().buildFlowAdd();
-        List<OFAction> actions = new ArrayList<OFAction>(); // set no action to drop
+        List<OFAction> actions = new ArrayList<>(); // set no action to drop
         U64 flowSetId = flowSetIdRegistry.generateFlowSetId();
         U64 cookie = makeForwardingCookie(decision, flowSetId); 
 
@@ -568,8 +572,6 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
             if (p.equals(inPort)) continue;
             actions.add(factory.actions().output(p, Integer.MAX_VALUE));
         }
-//        actions.add(factory.actions().buildSetField().setField(factory.oxms().arpSha(gatewayMac)).build());
-//        actions.add(factory.actions().buildSetField().setField(factory.oxms().arpTha(MacAddress.BROADCAST)).build());
         packetOut.setActions(actions);
 
         // set buffer-id, in-port and packet-data based on packet-in
@@ -635,7 +637,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                 }
                 // Normal L2 traffic
                 else {
-                    log.info("Destination device unknown. Flooding packet");
+                    log.debug("Destination device unknown. Flooding packet");
                     doFlood(sw, pi, decision, cntx);
                 }
 
@@ -658,7 +660,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         }
 
         /* This packet-in is from a switch in the path before its flow was installed along the path */
-        if (!topologyService.isEdge(srcSw, srcPort)) {  
+        if (!topologyService.isEdge(srcSw, srcPort)) {
             log.debug("Packet destination is known, but packet was not received on an edge port (rx on {}/{}). Flooding packet", srcSw, srcPort);
             doFlood(sw, pi, decision, cntx);
             return; 
@@ -680,7 +682,14 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                 dstAp = ap;
                 break;
             }
-        }	
+        }
+
+        // Try L3 ARP again, in case destination attachment point not learned correctly
+        if (eth.getDestinationMACAddress().equals(virtualGatewayMac) && dstAp == null) {
+            log.info("Virtual gateway handles L3 traffic. Create arp request packet to destination host and flooding");
+            doL3Flood(gateway, sw, pi, cntx);
+            return;
+        }
 
         /* 
          * This should only happen (perhaps) when the controller is
@@ -695,9 +704,10 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
             return; 
         }
 
+
         /* Validate that the source and destination are not on the same switch port */
         if (sw.getId().equals(dstAp.getNodeId()) && srcPort.equals(dstAp.getPortId())) {
-            log.info("Both source and destination are on the same switch/port {}/{}. Dropping packet", sw.toString(), srcPort);
+            log.debug("Both source and destination are on the same switch/port {}/{}. Dropping packet", sw.toString(), srcPort);
             return;
         }			
 
@@ -710,10 +720,10 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                 dstAp.getPortId());
 
 
-        boolean sameSubnet = isSameSubnet(switchService.getSwitch(srcSw), switchService.getSwitch(dstAp.getNodeId()),
-                new NodePortTuple(srcSw, srcPort), new NodePortTuple(dstAp.getNodeId(), dstAp.getPortId()));
+//        boolean sameSubnet = isSameSubnet(switchService.getSwitch(srcSw), switchService.getSwitch(dstAp.getNodeId()),
+//                new NodePortTuple(srcSw, srcPort), new NodePortTuple(dstAp.getNodeId(), dstAp.getPortId()));
 
-        if (sameSubnet) { // Same subnet, normal L2 forwarding
+        if (!eth.getDestinationMACAddress().equals(virtualGatewayMac)) { // Normal L2 forwarding
             Match m = createMatchFromPacket(sw, srcPort, pi, cntx);
 
             if (! path.getPath().isEmpty()) {
@@ -724,7 +734,6 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                                     dstAp.getNodeId(),
                                     dstAp.getPortId()});
                     log.debug("Creating flow rules on the route, match rule: {}", m);
-                    log.info("Creating flow rules on the route, match rule: {}", m);
                 }
 
                 pushRoute(path, m, pi, sw.getId(), cookie,
@@ -745,15 +754,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
             // L3 rewrite on first hop (in bi-direction)
             IOFSwitch firstHop = switchService.getSwitch(srcSw);
             Match match = createMatchFromPacket(firstHop, srcPort, pi, cntx);
-            OFPort outPort = path.getPath().get(path.getPath().size()-2).getPortId();
-
-            // Just for now, hardcode
-            if (srcPort.equals(OFPort.of(1))) {
-                outPort = OFPort.of(2);
-            }
-            else if (srcPort.equals(OFPort.of(2))) {
-                outPort = OFPort.of(1);
-            }
+            OFPort outPort = path.getPath().get(path.getPath().size()-1).getPortId();
 
             buildRewriteFlows(pi, match, srcSw, outPort, cookie,
                     virtualGatewayMac, dstDevice.getMACAddress(), requestFlowRemovedNotifn);
@@ -781,8 +782,6 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         List<OFAction> actions = new ArrayList<>();
         OFFlowAdd.Builder flowAdd = factory.buildFlowAdd();
 
-        log.info("match is {}", match);
-
         flowAdd.setXid(pi.getXid())
                 .setBufferId(OFBufferId.NO_BUFFER)
                 .setIdleTimeout(FLOWMOD_DEFAULT_IDLE_TIMEOUT)
@@ -798,18 +797,12 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
             flags.add(OFFlowModFlags.SEND_FLOW_REM);
             flowAdd.setFlags(flags);
         }
+
         // TODO: handle different OpenFlow version
         actions.add(factory.actions().setField(oxms.ethSrc(gatewayMac)));
         actions.add(factory.actions().setField(oxms.ethDst(hostMac)));
         actions.add(factory.actions().output(outPort, Integer.MAX_VALUE));
         flowAdd.setActions(actions);
-
-        log.info("Pushing flowmod with srcMac={} dstMac={} " +
-                        "sw={} inPort={} outPort={} with actions {}",
-                new Object[] { gatewayMac, hostMac,
-                        sw,
-                        flowAdd.getMatch().get(MatchField.IN_PORT),
-                        outPort, actions.toString() });
 
         if (log.isTraceEnabled()) {
             log.trace("Pushing flowmod with srcMac={} dstMac={} " +
@@ -828,33 +821,6 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         oldPath.getPath().remove(oldPath.getPath().get(oldPath.getPath().size()-1));
         oldPath.getPath().remove(oldPath.getPath().get(oldPath.getPath().size()-1));
         return oldPath;
-    }
-
-    private boolean isSameSubnet(IOFSwitch srcSw, IOFSwitch dstSw,
-                                 NodePortTuple srcNpt, NodePortTuple dstNpt) {
-        boolean same = false;
-        switch (getCurrentSubnetMode()) {
-            case SWITCH:
-                if (isSameSubnet(srcSw, dstSw)) {
-                    same = true;
-                }
-                break;
-
-            case NodePortTuple:
-                if (isSameSubnet(srcNpt, dstNpt)){
-                    same = true;
-                }
-                break;
-
-            case IP:
-                //TODO: need check IP same subnet?
-                break;
-
-            default:
-                break;
-        }
-
-        return same;
     }
 
 
@@ -1054,7 +1020,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
             actions.add(sw.getOFFactory().actions().output(p, Integer.MAX_VALUE));
         }
         pob.setActions(actions);
-        // log.info("actions {}",actions);
+
         // set buffer-id, in-port and packet-data based on packet-in
         pob.setBufferId(OFBufferId.NO_BUFFER);
         OFMessageUtils.setInPort(pob, inPort);
