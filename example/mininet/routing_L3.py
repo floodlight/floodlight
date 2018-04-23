@@ -29,7 +29,7 @@ class LinearTopo(Topo):
         hosts = [ self.addHost( 'h%s' % h )
                   for h in irange( 1, N ) ]
 
-        switches = [ self.addSwitch( 's%s' % s )
+        switches = [ self.addSwitch( 's%s' % s, protocols=["OpenFlow13"] )
                      for s in irange( 1, N - 1 ) ]
 
         # Wire up switches

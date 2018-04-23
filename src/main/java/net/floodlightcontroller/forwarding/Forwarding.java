@@ -798,9 +798,27 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
             flowAdd.setFlags(flags);
         }
 
-        // TODO: handle different OpenFlow version
-        actions.add(factory.actions().setField(oxms.ethSrc(gatewayMac)));
-        actions.add(factory.actions().setField(oxms.ethDst(hostMac)));
+        OFVersion switchVersion = switchService.getSwitch(sw).getOFFactory().getVersion();
+        switch (switchVersion) {
+            case OF_10:
+            case OF_11:
+                actions.add(factory.actions().setDlSrc(gatewayMac));
+                actions.add(factory.actions().setDlDst(hostMac));
+                break;
+
+            case OF_12:
+            case OF_13:
+            case OF_14:
+            case OF_15:
+                actions.add(factory.actions().setField(oxms.ethSrc(gatewayMac)));
+                actions.add(factory.actions().setField(oxms.ethDst(hostMac)));
+                break;
+
+            default:
+                break;
+
+        }
+
         actions.add(factory.actions().output(outPort, Integer.MAX_VALUE));
         flowAdd.setActions(actions);
 
