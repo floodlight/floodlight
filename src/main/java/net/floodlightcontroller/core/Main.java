@@ -48,6 +48,8 @@ public class Main {
 			System.setProperty("org.restlet.engine.loggerFacadeClass",
 					"org.restlet.ext.slf4j.Slf4jLoggerFacade");
 
+			LvapApi lvap = new LvapApi();
+
 			CmdLineSettings settings = new CmdLineSettings();
 			CmdLineParser parser = new CmdLineParser(settings);
 			try {
@@ -74,7 +76,7 @@ public class Main {
 				logger.error("Failed to run controller modules", e);
 				System.exit(1);
 			}
-            new LvapApi();
+
 		} catch (Exception e) {
 			logger.error("Exception in main", e);
 			System.exit(1);

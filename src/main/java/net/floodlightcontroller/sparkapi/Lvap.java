@@ -17,6 +17,10 @@ public class Lvap {
         this.wtp = wtp;
     }
 
+    public String toJson(){
+        return new com.google.gson.Gson().toJson(this);
+    }
+
     public String getMac() {
         return mac;
     }
