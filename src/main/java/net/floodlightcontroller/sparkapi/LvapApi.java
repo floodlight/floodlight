@@ -38,7 +38,7 @@ public class LvapApi {
 
                 if (!this.lvapDb.containsKey(requestObject.getMac())) {
                     // generate BSSID
-                    requestObject.setBssid("11:11:11:11:11:11");
+                    requestObject.setBssid( BSSIDGenerator.getUniqueBSSID(requestObject.getMac()));
                     this.lvapDb.put(requestObject.getMac(), requestObject);
                     response.body(requestObject.toJson());
                     response.status(200);
