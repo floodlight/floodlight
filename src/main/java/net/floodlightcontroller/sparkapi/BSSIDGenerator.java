@@ -19,6 +19,12 @@ public class BSSIDGenerator {
         return new String(hexChars);
     }
 
+    public static String insertChars(String s, char c){
+        for (int i = 2; i < s.length(); i+=3)
+            s = s.substring(0, i) + c + s.substring(i, s.length());
+        return s;
+    }
+
     public static String getUniqueBSSID(String m) {
 
         //will be needed later for byte overwrite
@@ -54,10 +60,6 @@ public class BSSIDGenerator {
             e.printStackTrace();
         }
 
-        //control print
-        //System.out.println("Povodna MAC je : "+ toStr(m));
-        //System.out.println("BSSID MAC je : "+ toStr(BSSID));
-
-        return BSSID;
+        return insertChars(BSSID, ':');
     }
 }
