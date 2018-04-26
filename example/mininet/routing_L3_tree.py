@@ -10,40 +10,10 @@ from mininet.log import setLogLevel, info
 from mininet.net import Mininet
 from mininet.node import RemoteController
 from mininet.topo import Topo
+from mininet.topolib import TreeTopo
 from mininet.util import irange
 
 HOME_FOLDER = os.getenv('HOME')
-
-
-class LinearTopo(Topo):
-    """
-    construct a network of N hosts and N-1 switches, connected as follows:
-    h1 <-> s1 <-> s2 .. sN-1
-           |       |    |
-           h2      h3   hN
-
-    """
-    def __init__(self, N, **params):
-        Topo.__init__(self, **params)
-
-        hosts = [ self.addHost( 'h%s' % h )
-                  for h in irange( 1, N ) ]
-
-        switches = [ self.addSwitch( 's%s' % s, protocols=["OpenFlow13"] )
-                     for s in irange( 1, N - 1 ) ]
-
-        # Wire up switches
-        last = None
-        for switch in switches:
-            if last:
-                self.addLink( last, switch )
-            last = switch
-
-
-        # Wire up hosts
-        self.addLink( hosts[ 0 ], switches[ 0 ] )
-        for host, switch in zip( hosts[ 1: ], switches ):
-            self.addLink( host, switch )
 
 
 
@@ -128,9 +98,10 @@ def configureDefaultGatewayForHost(host, defaultGatewayIP):
     host.cmd('route add default gw ' + defaultGatewayIP);
 
 
-def startNetworkWithLinearTopo( hostCount ):
+def startNetworkWithLinearTopo():
     global net
-    net = Mininet(topo=LinearTopo(hostCount), build=False)
+    topo = TreeTopo( depth=2, fanout=2 )
+    net = Mininet(topo=topo, build=False)
 
     remote_ip = getControllerIP()
     info('** Adding Floodlight Controller\n')
@@ -167,6 +138,12 @@ def startNetworkWithLinearTopo( hostCount ):
     defaultGatewayIP3 = "30.0.0.1"
     configureDefaultGatewayForHost(host3, defaultGatewayIP3)
 
+    # Set switch to OpenFlow 1.3 (Can change to any OpenFlow version)
+    # switches = net.switches
+    # for sw in switches:
+    #     cmdStr = 'ovs-vsctl set bridge %s protocols=OpenFlow13' %sw
+    #     sw.cmd(cmdStr)
+
 
 def stopNetwork():
     if net is not None:
@@ -176,7 +153,7 @@ def stopNetwork():
 
 if __name__ == '__main__':
     setLogLevel('info')
-    startNetworkWithLinearTopo(4)
+    startNetworkWithLinearTopo()
     CLI(net)
     stopNetwork()
 

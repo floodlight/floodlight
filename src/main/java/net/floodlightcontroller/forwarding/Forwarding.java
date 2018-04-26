@@ -250,9 +250,6 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                 // When cross-subnet, host send ARP request to gateway. Gateway need to generate ARP response to host
                 if (eth.getPayload() instanceof ARP && ((ARP) eth.getPayload()).getOpCode().equals(ARP.OP_REQUEST)
                         && gatewayInstance.isAGatewayInft(((ARP) eth.getPayload()).getTargetProtocolAddress())) {
-
-
-
                     IPacket arpReply = gatewayArpReply(cntx, gatewayMac);
                     pushArpReply(arpReply, sw, OFBufferId.NO_BUFFER, OFPort.ANY, inPort);
                 }
@@ -564,7 +561,8 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 
         Set<OFPort> broadcastPorts = this.topologyService.getSwitchBroadcastPorts(sw.getId());
         if (broadcastPorts.isEmpty()) {
-            log.debug("No broadcast ports found. Using FLOOD output action");
+            // FIXME : DEBUG
+            log.info("No broadcast ports found. Using FLOOD output action");
             broadcastPorts = Collections.singleton(OFPort.FLOOD);
         }
 
@@ -578,6 +576,10 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         packetOut.setBufferId(OFBufferId.NO_BUFFER);
         OFMessageUtils.setInPort(packetOut, inPort);
         packetOut.setData(data);
+
+        // FIXME: DEBUG
+        log.info("Writing flood PacketOut switch={} packet-in={} packet-out={}",
+                new Object[] {sw, pi, packetOut.build()});
 
         if (log.isTraceEnabled()) {
             log.trace("Writing flood PacketOut switch={} packet-in={} packet-out={}",

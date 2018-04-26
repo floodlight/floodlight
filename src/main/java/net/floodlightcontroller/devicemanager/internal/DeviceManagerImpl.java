@@ -1402,6 +1402,11 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 	 * @return The {@link Device} object if found
 	 */
 	protected Device learnDeviceByEntity(Entity entity) {
+		//FIXME
+//		if (entity.getMacAddress().equals(MacAddress.of("aa:bb:cc:dd:ee:ff"))) {
+//			logger.info("Catch L3 entity now");
+//		}
+
 		ArrayList<Long> deleteQueue = null;
 		LinkedList<DeviceUpdate> deviceUpdates = null;
 		Device device = null;
@@ -1456,7 +1461,14 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 				// create a new Device object containing the entity, and
 				// generate a new device ID if the the entity is on an
 				// attachment point port. Otherwise ignore.
+				//FIXME
+				if (entity.getMacAddress().equals(MacAddress.of("aa:bb:cc:dd:ee:ff"))) {
+					logger.info("Catch L3 entity now");
+				}
 				if (entity.hasSwitchPort() && !topology.isAttachmentPointPort(entity.getSwitchDPID(), entity.getSwitchPort())) {
+					// FIXME
+					logger.info("Not learning new device on internal"
+							+ " link: {}", entity);
 					cntDeviceOnInternalPortNotLearned.increment();
 					if (logger.isDebugEnabled()) {
 						logger.debug("Not learning new device on internal"
