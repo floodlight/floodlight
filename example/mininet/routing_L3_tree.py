@@ -67,6 +67,31 @@ def addInterfaceToGateway(name):
                 "interface-name" : "interface-3",
                 "interface-ip" : "30.0.0.1",
                 "interface-mask" : "255.255.255.0"
+            },
+            {
+                "interface-name" : "interface-4",
+                "interface-ip" : "40.0.0.1",
+                "interface-mask" : "255.255.255.0"
+            },
+            {
+                "interface-name" : "interface-5",
+                "interface-ip" : "50.0.0.1",
+                "interface-mask" : "255.255.255.0"
+            },
+            {
+                "interface-name" : "interface-6",
+                "interface-ip" : "60.0.0.1",
+                "interface-mask" : "255.255.255.0"
+            },
+            {
+                "interface-name" : "interface-7",
+                "interface-ip" : "70.0.0.1",
+                "interface-mask" : "255.255.255.0"
+            },
+            {
+                "interface-name" : "interface-8",
+                "interface-ip" : "80.0.0.1",
+                "interface-mask" : "255.255.255.0"
             }
         ]
     }
@@ -87,6 +112,9 @@ def addSwitchToGateway(name):
             },
             {
                 "dpid": "3"
+            },
+            {
+                "dpid": "4"
             }
         ]
     }
@@ -98,9 +126,9 @@ def configureDefaultGatewayForHost(host, defaultGatewayIP):
     host.cmd('route add default gw ' + defaultGatewayIP);
 
 
-def startNetworkWithLinearTopo():
+def startNetworkWithTreeTopo():
     global net
-    topo = TreeTopo( depth=2, fanout=2 )
+    topo = TreeTopo( depth=2, fanout=3 )
     net = Mininet(topo=topo, build=False)
 
     remote_ip = getControllerIP()
@@ -138,6 +166,26 @@ def startNetworkWithLinearTopo():
     defaultGatewayIP3 = "30.0.0.1"
     configureDefaultGatewayForHost(host3, defaultGatewayIP3)
 
+    host4 = net.getNodeByName('h4')
+    host4.setIP('40.0.0.10', prefixLen=24)
+    defaultGatewayIP4 = "40.0.0.1"
+    configureDefaultGatewayForHost(host4, defaultGatewayIP4)
+
+    host5 = net.getNodeByName('h5')
+    host5.setIP('50.0.0.10', prefixLen=24)
+    defaultGatewayIP5 = "50.0.0.1"
+    configureDefaultGatewayForHost(host5, defaultGatewayIP5)
+
+    host6 = net.getNodeByName('h6')
+    host6.setIP('60.0.0.10', prefixLen=24)
+    defaultGatewayIP6 = "60.0.0.1"
+    configureDefaultGatewayForHost(host6, defaultGatewayIP6)
+
+    host7 = net.getNodeByName('h7')
+    host7.setIP('70.0.0.10', prefixLen=24)
+    defaultGatewayIP7 = "70.0.0.1"
+    configureDefaultGatewayForHost(host7, defaultGatewayIP7)
+
     # Set switch to OpenFlow 1.3 (Can change to any OpenFlow version)
     # switches = net.switches
     # for sw in switches:
@@ -153,7 +201,7 @@ def stopNetwork():
 
 if __name__ == '__main__':
     setLogLevel('info')
-    startNetworkWithLinearTopo()
+    startNetworkWithTreeTopo()
     CLI(net)
     stopNetwork()
 

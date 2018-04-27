@@ -97,6 +97,16 @@ def addInterfaceToGateway(name):
                 "interface-name" : "interface-3",
                 "interface-ip" : "30.0.0.1",
                 "interface-mask" : "255.255.255.0"
+            },
+            {
+                "interface-name" : "interface-4",
+                "interface-ip" : "40.0.0.1",
+                "interface-mask" : "255.255.255.0"
+            },
+            {
+                "interface-name" : "interface-5",
+                "interface-ip" : "50.0.0.1",
+                "interface-mask" : "255.255.255.0"
             }
         ]
     }
@@ -117,6 +127,12 @@ def addSwitchToGateway(name):
             },
             {
                 "dpid": "3"
+            },
+            {
+                "dpid": "4"
+            },
+            {
+                "dpid": "5"
             }
         ]
     }
@@ -167,6 +183,15 @@ def startNetworkWithLinearTopo( hostCount ):
     defaultGatewayIP3 = "30.0.0.1"
     configureDefaultGatewayForHost(host3, defaultGatewayIP3)
 
+    host4 = net.getNodeByName('h4')
+    host4.setIP('40.0.0.10', prefixLen=24)
+    defaultGatewayIP4 = "40.0.0.1"
+    configureDefaultGatewayForHost(host4, defaultGatewayIP4)
+
+    host5 = net.getNodeByName('h5')
+    host5.setIP('50.0.0.10', prefixLen=24)
+    defaultGatewayIP5 = "50.0.0.1"
+    configureDefaultGatewayForHost(host5, defaultGatewayIP5)
 
 def stopNetwork():
     if net is not None:
@@ -176,7 +201,7 @@ def stopNetwork():
 
 if __name__ == '__main__':
     setLogLevel('info')
-    startNetworkWithLinearTopo(4)
+    startNetworkWithLinearTopo(6)
     CLI(net)
     stopNetwork()
 

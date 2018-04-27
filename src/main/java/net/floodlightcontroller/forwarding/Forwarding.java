@@ -750,7 +750,11 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
             // L3 rewrite on first hop (in bi-direction)
             IOFSwitch firstHop = switchService.getSwitch(srcSw);
             Match match = createMatchFromPacket(firstHop, srcPort, pi, cntx);
-            log.info("L3 path is {}", path.getPath());
+
+            if (!path.getPath().isEmpty()){
+                log.info("L3 path is {}", path.getPath());
+            }
+
             OFPort outPort = path.getPath().get(path.getPath().size()-1).getPortId();
 
             buildRewriteFlows(pi, match, srcSw, outPort, cookie,
