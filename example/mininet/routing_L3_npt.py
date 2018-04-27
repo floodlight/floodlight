@@ -114,55 +114,67 @@ def addInterfaceToGateway(name):
     return ret
 
 
-def updateInterfaceToGateway(name):
-    data = {
-        "interfaces" : [
-            {
-                "interface-name" : "interface-1",
-                "interface-ip" : "10.0.0.1",
-                "interface-mask" : "255.255.255.0"
-            },
-            {
-                "interface-name" : "interface-2",
-                "interface-ip" : "20.0.0.1",
-                "interface-mask" : "255.255.255.0"
-            },
-            {
-                "interface-name" : "interface-3",
-                "interface-ip" : "30.0.0.1",
-                "interface-mask" : "255.255.255.0"
-            },
-            {
-                "interface-name" : "interface-4",
-                "interface-ip" : "40.0.0.1",
-                "interface-mask" : "255.255.255.0"
-            }
-        ]
-    }
-    ret = rest_call('/wm/routing/gateway/' + name, data, 'POST')
-    return ret
-
-
-def addSwitchToGateway(name):
+def addNodePortTupleToGateway(name):
     data = {
         "gateway-name" : name,
         "gateway-ip" : "127.0.0.1",
-        "switches": [
+        "switchports": [
             {
-                "dpid": "1"
+                "dpid": "1",
+                "port": "1"
             },
             {
-                "dpid": "2"
+                "dpid": "1",
+                "port": "2"
             },
             {
-                "dpid": "3"
+                "dpid": "1",
+                "port": "3"
             },
             {
-                "dpid": "4"
+                "dpid": "2",
+                "port": "1"
             },
             {
-                "dpid": "5"
-            }
+                "dpid": "2",
+                "port": "2"
+            },
+            {
+                "dpid": "2",
+                "port": "3"
+            },
+            {
+                "dpid": "3",
+                "port": "1"
+            },
+            {
+                "dpid": "3",
+                "port": "2"
+            },
+            {
+                "dpid": "3",
+                "port": "3"
+            },
+            {
+                "dpid": "4",
+                "port": "1"
+            },
+            {
+                "dpid": "4",
+                "port": "2"
+            },
+            {
+                "dpid": "4",
+                "port": "3"
+            },
+            {
+                "dpid": "5",
+                "port": "1"
+            },
+            {
+                "dpid": "5",
+                "port": "2"
+            },
         ]
     }
     ret = rest_call('/wm/routing/gateway/' + name, data, 'POST')
@@ -191,10 +203,9 @@ def startNetworkWithLinearTopo( hostCount ):
     print (ret)
 
     ret = addInterfaceToGateway('mininet-gateway-1')
-    # ret = updateInterfaceToGateway('mininet-gateway-1')   # Just for test if gateway interface update correctly
     print (ret)
 
-    ret = addSwitchToGateway('mininet-gateway-1')
+    ret = addNodePortTupleToGateway('mininet-gateway-1')
     print (ret)
 
     # Need to configure default gw for host

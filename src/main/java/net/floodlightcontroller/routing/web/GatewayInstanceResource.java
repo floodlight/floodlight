@@ -106,9 +106,9 @@ public class GatewayInstanceResource extends ServerResource {
 
             JsonNode switchportsNode = jsonNode.get("switchports");
             if (switchportsNode != null) {
-                for (JsonNode swpt : switchportsNode) {
-                    gatewayInstance.clearNptMembers();
+                gatewayInstance.clearNptMembers();
 
+                for (JsonNode swpt : switchportsNode) {
                     JsonNode dpidNode = swpt.get("dpid");
                     JsonNode portNode = swpt.get("port");
                     if (dpidNode != null && portNode != null) {

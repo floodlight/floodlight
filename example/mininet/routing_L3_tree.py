@@ -101,7 +101,7 @@ def addInterfaceToGateway(name):
 
 def addSwitchToGateway(name):
     data = {
-        "subnet-name" : name,
+        "gateway-name" : name,
         "gateway-ip" : "127.0.0.1",
         "switches": [
             {
