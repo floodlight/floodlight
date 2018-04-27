@@ -114,6 +114,35 @@ def addInterfaceToGateway(name):
     return ret
 
 
+def updateInterfaceToGateway(name):
+    data = {
+        "interfaces" : [
+            {
+                "interface-name" : "interface-1",
+                "interface-ip" : "10.0.0.1",
+                "interface-mask" : "255.255.255.0"
+            },
+            {
+                "interface-name" : "interface-2",
+                "interface-ip" : "20.0.0.1",
+                "interface-mask" : "255.255.255.0"
+            },
+            {
+                "interface-name" : "interface-3",
+                "interface-ip" : "30.0.0.1",
+                "interface-mask" : "255.255.255.0"
+            },
+            {
+                "interface-name" : "interface-4",
+                "interface-ip" : "40.0.0.1",
+                "interface-mask" : "255.255.255.0"
+            }
+        ]
+    }
+    ret = rest_call('/wm/routing/gateway/' + name, data, 'POST')
+    return ret
+
+
 def addSwitchToGateway(name):
     data = {
         "subnet-name" : name,
@@ -162,6 +191,7 @@ def startNetworkWithLinearTopo( hostCount ):
     print (ret)
 
     ret = addInterfaceToGateway('mininet-gateway-1')
+    # ret = updateInterfaceToGateway('mininet-gateway-1')   # Just for test if gateway interface update correctly
     print (ret)
 
     ret = addSwitchToGateway('mininet-gateway-1')
@@ -193,9 +223,17 @@ def startNetworkWithLinearTopo( hostCount ):
     defaultGatewayIP5 = "50.0.0.1"
     configureDefaultGatewayForHost(host5, defaultGatewayIP5)
 
+
+def clearGatewayInstance(name):
+    data = {}
+    ret = rest_call('/wm/routing/gateway/' + name, data, 'DELETE')
+    return ret
+
+
 def stopNetwork():
     if net is not None:
         info('** Tearing down network\n')
+        clearGatewayInstance('mininet-gateway-1')
         net.stop()
 
 

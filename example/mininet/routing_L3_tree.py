@@ -193,9 +193,16 @@ def startNetworkWithTreeTopo():
     #     sw.cmd(cmdStr)
 
 
+def clearGatewayInstance(name):
+    data = {}
+    ret = rest_call('/wm/routing/gateway/' + name, data, 'DELETE')
+    return ret
+
+
 def stopNetwork():
     if net is not None:
         info('** Tearing down network\n')
+        clearGatewayInstance('mininet-gateway-1')
         net.stop()
 
 

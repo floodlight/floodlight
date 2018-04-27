@@ -94,7 +94,6 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
     private static final long FLOWSET_MASK = ((1L << FLOWSET_BITS) - 1) << FLOWSET_SHIFT;
     private static final long FLOWSET_MAX = (long) (Math.pow(2, FLOWSET_BITS) - 1);
     protected static FlowSetIdRegistry flowSetIdRegistry;
-    private static RewriteField rewriteField = RewriteField.REQUEST;
 
     private static L3RoutingManager l3manager;
 
@@ -1226,7 +1225,10 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
     }
 
     @Override
-    public void switchRemoved(DatapathId switchId) {		
+    public void switchRemoved(DatapathId switchId) {
+        l3manager.getAllVirtualGateways().stream()
+                .forEach(instance -> instance.removeSwitchFromInstance(switchId));
+        log.info("Handle switchRemoved. Switch {} removed from virtual gateway instance", switchId.toString());
     }
 
     @Override

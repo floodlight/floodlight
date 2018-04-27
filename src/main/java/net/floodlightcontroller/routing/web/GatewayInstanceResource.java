@@ -78,6 +78,8 @@ public class GatewayInstanceResource extends ServerResource {
 
             JsonNode interfacesNode = jsonNode.get("interfaces");
             if (interfacesNode != null) {
+                gatewayInstance.clearInterfaces();
+
                 for (JsonNode intf : interfacesNode) {
                     JsonNode nameNode = intf.get("interface-name");
                     JsonNode ipNode = intf.get("interface-ip");
@@ -92,6 +94,8 @@ public class GatewayInstanceResource extends ServerResource {
 
             JsonNode switchMembersNode = jsonNode.get("switches");
             if (switchMembersNode != null) {
+                gatewayInstance.clearSwitchMembers();
+
                 for (JsonNode sw : switchMembersNode) {
                     JsonNode dpidNode = sw.get("dpid");
                     if (dpidNode != null) {
@@ -103,6 +107,8 @@ public class GatewayInstanceResource extends ServerResource {
             JsonNode switchportsNode = jsonNode.get("switchports");
             if (switchportsNode != null) {
                 for (JsonNode swpt : switchportsNode) {
+                    gatewayInstance.clearNptMembers();
+
                     JsonNode dpidNode = swpt.get("dpid");
                     JsonNode portNode = swpt.get("port");
                     if (dpidNode != null && portNode != null) {
@@ -114,6 +120,8 @@ public class GatewayInstanceResource extends ServerResource {
 
             JsonNode subnetsNode = jsonNode.get("subnets");
             if (subnetsNode != null) {
+                gatewayInstance.clearSubnetMembers();
+
                 for (JsonNode subnet : subnetsNode) {
                     JsonNode subnetNode = subnet.get("subnet");
                     if (subnetNode != null) {
