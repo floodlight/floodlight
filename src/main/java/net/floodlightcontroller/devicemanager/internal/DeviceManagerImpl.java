@@ -52,6 +52,7 @@ import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
+import net.floodlightcontroller.core.types.NodePortTuple;
 import net.floodlightcontroller.core.util.ListenerDispatcher;
 import net.floodlightcontroller.core.util.SingletonTask;
 import net.floodlightcontroller.debugcounter.IDebugCounter;
@@ -75,6 +76,8 @@ import net.floodlightcontroller.packet.IPv6;
 import net.floodlightcontroller.packet.UDP;
 import net.floodlightcontroller.packet.DHCP.DHCPOptionCode;
 import net.floodlightcontroller.restserver.IRestApiService;
+import net.floodlightcontroller.routing.IGatewayService;
+import net.floodlightcontroller.routing.VirtualGatewayInstance;
 import net.floodlightcontroller.storage.IStorageSourceService;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
 import net.floodlightcontroller.topology.ITopologyListener;
@@ -118,6 +121,7 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 	protected IRestApiService restApi;
 	protected IThreadPoolService threadPool;
 	protected IDebugCounterService debugCounters;
+	protected IGatewayService gatewayService;
 	private ISyncService syncService;
 	private IStoreClient<String, DeviceSyncRepresentation> storeClient;
 	private DeviceSyncManager deviceSyncManager;
@@ -845,6 +849,7 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 		this.syncService = fmc.getServiceImpl(ISyncService.class);
 		this.deviceSyncManager = new DeviceSyncManager();
 		this.haListenerDelegate = new HAListenerDelegate();
+		this.gatewayService = fmc.getServiceImpl(IGatewayService.class);
 		registerDeviceManagerDebugCounters();
 	}
 
@@ -1074,11 +1079,33 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 	protected Command processPacketInMessage(IOFSwitch sw, OFPacketIn pi, FloodlightContext cntx) {
 		Ethernet eth = IFloodlightProviderService.bcStore.get(cntx,IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
 		OFPort inPort = (pi.getVersion().compareTo(OFVersion.OF_12) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT));
+
+		NodePortTuple npt = new NodePortTuple(sw.getId(), inPort);
+		VirtualGatewayInstance instance = null;
+		MacAddress gatewayMac = null;
+		if (gatewayService.getGatewayInstance(npt).isPresent() || gatewayService.getGatewayInstance(sw.getId()).isPresent()) {
+			if (gatewayService.getGatewayInstance(sw.getId()).isPresent()) {
+				instance = gatewayService.getGatewayInstance(sw.getId()).get();
+			}
+			else {
+				instance = gatewayService.getGatewayInstance(npt).get();
+			}
+		}
+
+		if (instance != null) {
+			gatewayMac = instance.getGatewayMac();
+		}
+
 		// Extract source entity information
 		Entity srcEntity = getSourceEntityFromPacket(eth, sw.getId(), inPort);
 		if (srcEntity == null) {
 			cntInvalidSource.increment();
 			return Command.STOP;
+		}
+
+		// Ignore keep processing entity for L3 virtual router as we don't need to
+		if (gatewayMac != null && srcEntity.getMacAddress().equals(gatewayMac)) {
+			return Command.CONTINUE;
 		}
 
 		// Learn from ARP packet for special VRRP settings.
@@ -1402,11 +1429,6 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 	 * @return The {@link Device} object if found
 	 */
 	protected Device learnDeviceByEntity(Entity entity) {
-		//FIXME
-//		if (entity.getMacAddress().equals(MacAddress.of("aa:bb:cc:dd:ee:ff"))) {
-//			logger.info("Catch L3 entity now");
-//		}
-
 		ArrayList<Long> deleteQueue = null;
 		LinkedList<DeviceUpdate> deviceUpdates = null;
 		Device device = null;
@@ -1461,14 +1483,7 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 				// create a new Device object containing the entity, and
 				// generate a new device ID if the the entity is on an
 				// attachment point port. Otherwise ignore.
-				//FIXME
-				if (entity.getMacAddress().equals(MacAddress.of("aa:bb:cc:dd:ee:ff"))) {
-					logger.info("Catch L3 entity now");
-				}
 				if (entity.hasSwitchPort() && !topology.isAttachmentPointPort(entity.getSwitchDPID(), entity.getSwitchPort())) {
-					// FIXME
-					logger.info("Not learning new device on internal"
-							+ " link: {}", entity);
 					cntDeviceOnInternalPortNotLearned.increment();
 					if (logger.isDebugEnabled()) {
 						logger.debug("Not learning new device on internal"
