@@ -42,6 +42,8 @@ public class RoutingManager implements IFloodlightModule, IRoutingService {
     private static ITopologyManagerBackend tm;
     
     private List<IRoutingDecisionChangedListener> decisionChangedListeners;
+
+    private static volatile boolean enableL3RoutingService = false;
     
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleServices() {
@@ -157,5 +159,20 @@ public class RoutingManager implements IFloodlightModule, IRoutingService {
         for (IRoutingDecisionChangedListener listener : decisionChangedListeners) {
             listener.routingDecisionChanged(changedDecisions);
         }
+    }
+
+    @Override
+    public void enableL3Routing() {
+        enableL3RoutingService = true;
+    }
+
+    @Override
+    public void disableL3Routing() {
+        enableL3RoutingService = false;
+    }
+
+    @Override
+    public boolean isL3RoutingEnabled() {
+        return enableL3RoutingService;
     }
 }

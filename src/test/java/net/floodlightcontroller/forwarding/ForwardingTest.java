@@ -662,6 +662,7 @@ public class ForwardingTest extends FloodlightTestCase {
 
 		// Reset mocks, trigger the packet in, and validate results
 		reset(routingEngine);
+//		routingEngine.disableL3Routing();
 		expect(routingEngine.getPath(DatapathId.of(1L), OFPort.of(1), DatapathId.of(1L), OFPort.of(3))).andReturn(route).atLeastOnce();
 		replay(sw1, sw2, routingEngine, topology);
 		forwarding.receive(sw1, this.packetIn, cntx);

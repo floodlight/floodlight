@@ -13,7 +13,7 @@ import java.util.*;
 /**
  * @author Qing Wang (qw@g.clemson.edu) at 12/26/17
  */
-public class L3RoutingManager {
+public class L3RoutingManager extends RoutingManager {
 
     private static Map<String, VirtualGatewayInstance> gatewayInstancesMap = new HashMap<>();
 

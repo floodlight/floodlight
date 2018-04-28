@@ -34,7 +34,7 @@ public interface IRoutingService extends IFloodlightService {
      * 
      * @author rizard
      */
-    public enum PATH_METRIC { 
+    enum PATH_METRIC {
         LATENCY("latency"), 
         HOPCOUNT("hopcount"), 
         HOPCOUNT_AVOID_TUNNELS("hopcount_avoid_tunnels"), 
@@ -51,6 +51,27 @@ public interface IRoutingService extends IFloodlightService {
             return name;
         }
     }
+
+
+    enum RoutingType {
+        FORWARDING, ROUTING
+    }
+
+
+    /**
+     * Enable L3 routing service
+     */
+    void enableL3Routing();
+
+    /**
+     * Disable L3 routing service
+     */
+    void disableL3Routing();
+
+    /**
+     * Check if L3 routing service is enabled
+     */
+    boolean isL3RoutingEnabled();
 
     /**
      * Set the metric used when computing paths
