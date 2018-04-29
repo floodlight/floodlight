@@ -30,45 +30,7 @@ import java.util.concurrent.TimeUnit;
  * @author Ryan Izard, rizard@g.clemson.edu, ryan.izard@bigswitch.com
  * @edited Qing Wang, qw@g.clemson.edu on 1/3/2018
  * 
- * The Floodlight Module implementing a DHCP DHCPServer.
- * This module uses {@code DHCPPool} to manage DHCP leases.
- * It intercepts any DHCP/BOOTP requests from connected hosts and
- * handles the replies. The configuration file:
- * 
- * 		floodlight/src/main/resources/floodlightdefault.properties
- * 
- * contains the DHCP options and parameters that can be set for a single
- * subnet. Multiple subnets can be configured with the REST API.
- * 
- * To allow all DHCP request messages to be sent to the controller,
- * the DHCPSwitchFlowSetter module (in this same package) and the
- * Forwarding module (loaded by default) should also be loaded in
- * Floodlight. When the first DHCP request is received on a particular
- * port of an OpenFlow switch, the request will by default be sent to
- * the control plane to the controller for processing. The DHCPServer
- * module will intercept the message before it makes it to the Forwarding
- * module and process the packet. Now, because we don't want to hog all
- * the DHCP messages (in case there is another module that is using them)
- * we forward the packets down to other modules using Command.CONTINUE.
- * As a side effect, the forwarding module will insert flows in the OF
- * switch for our DHCP traffic even though we've already processed it.
- * In order to allow all future DHCP messages from that same port to be
- * sent to the controller (and not follow the Forwarding module's flows),
- * we need to proactively insert flows for all DHCP client traffic on
- * UDP port 67 to the controller. These flows will allow all DHCP traffic
- * to be intercepted on that same port and sent to the DHCP server running
- * on the Floodlight controller.
- * 
- * On a traditional DHCP server, the machine is configured with different 
- * NICs, each with their own statically-assigned IP address/subnet/mask. 
- * The DHCP server matches the network information of each NIC with the DHCP 
- * server's configured subnets and answers the requests accordingly. To 
- * mirror this behavior on a OF network, we can differentiate between subnets 
- * based on a device's attachment point. We can assign subnets for a device
- * per OpenFlow switch or per port per switch.
- *
- * I welcome any feedback or suggestions for improvement!
- * 
+ * This module implementing a DHCP DHCPServer. The module can be configured with the REST API.
  * 
  */
 public class DHCPServer implements IOFMessageListener, IOFSwitchListener, IFloodlightModule, IDHCPService {
@@ -98,7 +60,7 @@ public class DHCPServer implements IOFMessageListener, IOFSwitchListener, IFlood
         VlanVid vid = DHCPServerUtils.getVlanVid((OFPacketIn) msg, eth);
 
         if (!getInstance(npt).isPresent() && !getInstance(sw.getId()).isPresent() && !getInstance(vid).isPresent()) {
-            log.error("Could not locate DHCP instance for DPID {}, port {} or VLAN {}", new Object[] {sw.getId(), inPort, vid});
+            log.warn("Could not locate DHCP instance for DPID {}, port {} or VLAN {}", new Object[] {sw.getId(), inPort, vid});
             return Command.CONTINUE;
         }
 
@@ -380,7 +342,6 @@ public class DHCPServer implements IOFMessageListener, IOFSwitchListener, IFlood
         dhcpInstanceMap.values().stream()
                 .forEach(instance -> instance.removeSwitchFromInstance(switchId));
         log.info("Handle switchRemoved. Switch {} removed from dhcp instance", switchId.toString());
-        return;
     }
 
     @Override
