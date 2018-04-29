@@ -88,9 +88,6 @@ public abstract class ForwardingBase implements IOFMessageListener {
     protected ILinkDiscoveryService linkService;
     protected IRestApiService restApiService;
 
-    protected static Collection<VirtualGatewayInstance> virtualGatewayInstances;
-    protected static Collection<VirtualSubnet> virtualSubnets;
-
     // flow-mod - for use in the cookie
     public static final int FORWARDING_APP_ID = 2;
     static {

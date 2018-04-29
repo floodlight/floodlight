@@ -104,28 +104,4 @@ public interface IGatewayService extends IFloodlightService {
     boolean removeVirtualInterface(String interfaceName, VirtualGatewayInstance gateway);
 
 
-
-    Optional<Collection<VirtualSubnet>> getAllVirtualSubnets();
-    Optional<VirtualSubnet> getVirtualSubnet(String name);
-
-    SubnetMode getCurrentSubnetMode();
-
-    void createVirtualSubnet(String name, IPv4Address gatewayIP, DatapathId dpid);
-    void createVirtualSubnet(String name, IPv4Address gatewayIP, NodePortTuple npt);
-
-    boolean checkDPIDExist(DatapathId dpid);
-    boolean checkNPTExist(NodePortTuple nodePortTuple);
-
-    void updateVirtualSubnet(String name, IPv4Address gatewayIP, DatapathId dpid);
-    void updateVirtualSubnet(String name, IPv4Address gatewayIP, NodePortTuple npt);
-
-    void removeAllVirtualSubnets();
-    boolean removeVirtualSubnet(String name);
-
-//    boolean isSameSubnet(IPv4AddressWithMask ip1, IPv4AddressWithMask ip2);
-    boolean isSameSubnet(IOFSwitch sw1, IOFSwitch sw2);
-    boolean isSameSubnet(NodePortTuple npt1, NodePortTuple npt2);
-
-
-
 }

@@ -156,12 +156,6 @@ def addSwitchToGateway(name):
             },
             {
                 "dpid": "3"
-            },
-            {
-                "dpid": "4"
-            },
-            {
-                "dpid": "5"
             }
         ]
     }

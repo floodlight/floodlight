@@ -200,6 +200,9 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         OFPort inPort = OFMessageUtils.getInPort(pi);
         NodePortTuple npt = new NodePortTuple(sw.getId(), inPort);
 
+        // FIXME
+        log.debug("Incoming packet-in on switch {}", sw.getId());
+
         if (decision != null) {
             if (log.isTraceEnabled()) {
                 log.trace("Forwarding decision={} was made for PacketIn={}", decision.getRoutingAction().toString(), pi);
@@ -252,7 +255,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                 case ROUTING:
                     // TODO: IPv6 not consider L3 routing for now
                     //FIXME
-//                    log.debug("do L3 routing", pi);
+                    log.debug("do L3 routing", pi);
                     if (log.isTraceEnabled()) {
                         log.trace("No decision was made for PacketIn={}, do L3 routing", pi);
                     }
@@ -282,9 +285,11 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 
     }
 
+
     private boolean isBroadcastOrMulticast(Ethernet eth) {
         return eth.isBroadcast() || eth.isMulticast();
     }
+
 
     private void doL3Routing(Ethernet eth, IOFSwitch sw, OFPacketIn pi, IRoutingDecision decision,
                              FloodlightContext cntx, @Nonnull VirtualGatewayInstance gatewayInstance, OFPort inPort) {
@@ -309,6 +314,18 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 
     }
 
+
+    /**
+     * L3 routing processing -- it supports routing across subnet by using "virtual gateway". It also keeps L2 forwarding
+     * as Floodlight original does
+     *
+     * @param sw
+     * @param pi
+     * @param decision
+     * @param cntx
+     * @param gateway
+     * @param requestFlowRemovedNotifn
+     */
     protected void doL3ForwardFlow(IOFSwitch sw, OFPacketIn pi, IRoutingDecision decision, FloodlightContext cntx,
                                    VirtualGatewayInstance gateway, boolean requestFlowRemovedNotifn) {
         Ethernet eth = IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
@@ -333,6 +350,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                 }
                 // Normal L2 traffic
                 else {
+                    //FIXME
                     log.debug("Destination device unknown. Flooding packet");
                     doFlood(sw, pi, decision, cntx);
                 }
@@ -350,6 +368,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         if (FLOOD_ALL_ARP_PACKETS &&
                 IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD).getEtherType()
                         == EthType.ARP) {
+            //FIXME
             log.debug("ARP flows disabled in Forwarding. Flooding ARP packet");
             doFlood(sw, pi, decision, cntx);
             return;
@@ -357,6 +376,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 
         /* This packet-in is from a switch in the path before its flow was installed along the path */
         if (!topologyService.isEdge(srcSw, srcPort) && !eth.getDestinationMACAddress().equals(virtualGatewayMac)) {
+            // FIXME
             log.debug("Packet destination is known, but packet was not received on an edge port (rx on {}/{}). Flooding packet", srcSw, srcPort);
             doFlood(sw, pi, decision, cntx);
             return;
@@ -389,10 +409,12 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
          */
         if (dstAp == null) {
             if (eth.getDestinationMACAddress().equals(virtualGatewayMac)) { // Try L3 Flood again
-                log.debug("Virtual gateway handles L3 traffic. Create arp request packet to destination host and flooding");
+                // FIXME
+                log.info("Virtual gateway handles L3 traffic. Create arp request packet to destination host and flooding");
                 doL3Flood(gateway, sw, pi, cntx);
             }
             else { // Try L2 Flood again
+                // FIXME
                 log.debug("Could not locate edge attachment point for destination device {}. Flooding packet");
                 doFlood(sw, pi, decision, cntx);
             }
@@ -401,6 +423,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 
         /* Validate that the source and destination are not on the same switch port */
         if (sw.getId().equals(dstAp.getNodeId()) && srcPort.equals(dstAp.getPortId())) {
+            // FIXME
             log.debug("Both source and destination are on the same switch/port {}/{}. Dropping packet", sw.toString(), srcPort);
             return;
         }
@@ -414,11 +437,11 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                 dstAp.getPortId());
 
 
-//        boolean sameSubnet = isSameSubnet(switchService.getSwitch(srcSw), switchService.getSwitch(dstAp.getNodeId()),
-//                new NodePortTuple(srcSw, srcPort), new NodePortTuple(dstAp.getNodeId(), dstAp.getPortId()));
-
         if (!eth.getDestinationMACAddress().equals(virtualGatewayMac)) { // Normal L2 forwarding
             Match m = createMatchFromPacket(sw, srcPort, pi, cntx);
+
+            // FIXME
+            log.info("Creating flow rules on the route, match rule: {}", m);
 
             if (! path.getPath().isEmpty()) {
                 if (log.isDebugEnabled()) {
@@ -449,6 +472,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
             IOFSwitch firstHop = switchService.getSwitch(srcSw);
             Match match = createMatchFromPacket(firstHop, srcPort, pi, cntx);
 
+            // FIXME
             if (!path.getPath().isEmpty()){
                 log.info("L3 path is {}", path.getPath());
             }
@@ -472,7 +496,19 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         }
     }
 
-    // L3 Rewrite Flows
+    /**
+     * Virtual gateway insert flows on switch to rewrite source MAC to gateway MAC, also rewrite destination MAC
+     * to destination host.
+     *
+     * @param pi
+     * @param match
+     * @param sw
+     * @param outPort
+     * @param cookie
+     * @param gatewayMac
+     * @param hostMac
+     * @param requestFlowRemovedNotification
+     */
     protected void buildRewriteFlows(@Nonnull OFPacketIn pi, @Nonnull Match match, @Nonnull DatapathId sw,
                                      @Nonnull OFPort outPort, @Nonnull U64 cookie, @Nonnull MacAddress gatewayMac,
                                      @Nonnull MacAddress hostMac, boolean requestFlowRemovedNotification) {
@@ -541,8 +577,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
     }
 
 
-
-    private void doL2Forwarding(Ethernet eth, IOFSwitch sw, OFPacketIn pi, IRoutingDecision decision, FloodlightContext cntx) {
+    protected void doL2Forwarding(Ethernet eth, IOFSwitch sw, OFPacketIn pi, IRoutingDecision decision, FloodlightContext cntx) {
         if (isBroadcastOrMulticast(eth)) {
             doFlood(sw, pi, decision, cntx);
         } else {
@@ -550,6 +585,15 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         }
     }
 
+    /**
+     * L2 forwarding processing -- it only handles L2 forwarding, no L3 logic involved.
+     *
+     * @param sw
+     * @param pi
+     * @param decision
+     * @param cntx
+     * @param requestFlowRemovedNotifn
+     */
     protected void doL2ForwardFlow(IOFSwitch sw, OFPacketIn pi, IRoutingDecision decision, FloodlightContext cntx, boolean requestFlowRemovedNotifn) {
         OFPort srcPort = OFMessageUtils.getInPort(pi);
         DatapathId srcSw = sw.getId();
@@ -898,7 +942,14 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         log.debug("OFMessage dampened: {}", dampened);
     }
 
-    // L3 ARP Handling
+    /**
+     * Virtual gateway generate & flood ARP request packets for the destination host
+     *
+     * @param gateway
+     * @param sw
+     * @param pi
+     * @param cntx
+     */
     protected void doL3Flood(VirtualGatewayInstance gateway, IOFSwitch sw, OFPacketIn pi,
                              FloodlightContext cntx) {
         Ethernet eth = IFloodlightProviderService.bcStore.get(cntx,
@@ -911,6 +962,8 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         IPv4Address intfIpAddress = findInterfaceIP(gateway, dstIP);
 
         if (intfIpAddress == null) {
+            // FIXME
+            log.info("Can not locate corresponding interface for gateway {}, check its interface configuration", gateway.getName());
             return;
         }
 
@@ -1568,7 +1621,6 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 
     }
 
-    // L3 Routing APIs
     @Override
     public Collection<VirtualGatewayInstance> getGatewayInstances() { return l3manager.getAllVirtualGateways(); }
 
@@ -1642,67 +1694,5 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         log.info("Virtual interface {} in gateway {} updated ", intf.getInterfaceName(), gateway.getName());
         l3manager.updateVirtualInterface(gateway, intf);
     }
-
-    @Override
-    public Optional<Collection<VirtualSubnet>> getAllVirtualSubnets() {
-        return l3manager.getAllVirtualSubnets();
-    }
-
-    @Override
-    public Optional<VirtualSubnet> getVirtualSubnet(String name) {
-        return l3manager.getVirtualSubnet(name);
-    }
-
-    @Override
-    public SubnetMode getCurrentSubnetMode() {
-        return l3manager.getCurrentSubnetMode();
-    }
-
-    @Override
-    public boolean checkDPIDExist(DatapathId dpid) { return l3manager.checkDPIDExist(dpid); }
-
-    @Override
-    public boolean checkNPTExist(NodePortTuple nodePortTuple) { return l3manager.checkNPTExist(nodePortTuple); }
-
-    @Override
-    public void createVirtualSubnet(String name, IPv4Address gatewayIP, DatapathId dpid) {
-        l3manager.createVirtualSubnet(name, gatewayIP, dpid);
-    }
-
-    @Override
-    public void createVirtualSubnet(String name, IPv4Address gatewayIP, NodePortTuple npt) {
-        l3manager.createVirtualSubnet(name, gatewayIP, npt);
-    }
-
-    @Override
-    public void removeAllVirtualSubnets() {
-        l3manager.removeAllVirtualSubnets();
-    }
-
-    @Override
-    public boolean removeVirtualSubnet(String name) { return l3manager.removeVirtualSubnet(name); }
-
-    @Override
-    public void updateVirtualSubnet(String name, IPv4Address gatewayIP, DatapathId dpid) {
-        l3manager.updateVirtualSubnet(name, gatewayIP, dpid);
-    }
-
-    @Override
-    public void updateVirtualSubnet(String name, IPv4Address gatewayIP, NodePortTuple npt) {
-        l3manager.updateVirtualSubnet(name, gatewayIP, npt);
-    }
-
-    @Override
-    public boolean isSameSubnet(IOFSwitch sw1, IOFSwitch sw2) {
-        return l3manager.isSameSubnet(sw1, sw2);
-    }
-
-    @Override
-    public boolean isSameSubnet(NodePortTuple npt1, NodePortTuple npt2) {
-        return l3manager.isSameSubnet(npt1, npt2);
-    }
-
-    // Ends here
-
 
 }

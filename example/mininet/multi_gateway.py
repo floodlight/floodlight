@@ -46,6 +46,7 @@ class LinearTopo(Topo):
             self.addLink( host, switch )
 
 
+
 def getControllerIP():
     guest_ip = subprocess.check_output("/sbin/ifconfig eth1 | grep 'inet addr:' | cut -d: -f2 | awk '{ print $1}'",
                                        shell=True)
@@ -79,7 +80,7 @@ def addVirtualGateway(name):
     return ret
 
 
-def addInterfaceToGateway(name):
+def addInterfaceToGateway1(name):
     data = {
         "interfaces" : [
             {
@@ -96,7 +97,16 @@ def addInterfaceToGateway(name):
                 "interface-name" : "interface-3",
                 "interface-ip" : "30.0.0.1",
                 "interface-mask" : "255.255.255.0"
-            },
+            }
+        ]
+    }
+    ret = rest_call('/wm/routing/gateway/' + name, data, 'POST')
+    return ret
+
+
+def addInterfaceToGateway2(name):
+    data = {
+        "interfaces" : [
             {
                 "interface-name" : "interface-4",
                 "interface-ip" : "40.0.0.1",
@@ -106,6 +116,11 @@ def addInterfaceToGateway(name):
                 "interface-name" : "interface-5",
                 "interface-ip" : "50.0.0.1",
                 "interface-mask" : "255.255.255.0"
+            },
+            {
+                "interface-name" : "interface-6",
+                "interface-ip" : "60.0.0.1",
+                "interface-mask" : "255.255.255.0"
             }
         ]
     }
@@ -113,7 +128,7 @@ def addInterfaceToGateway(name):
     return ret
 
 
-def addSwitchToGateway(name):
+def addSwitchToGateway1(name):
     data = {
         "gateway-name" : name,
         "gateway-ip" : "127.0.0.1",
@@ -123,7 +138,18 @@ def addSwitchToGateway(name):
             },
             {
                 "dpid": "2"
-            },
+            }
+        ]
+    }
+    ret = rest_call('/wm/routing/gateway/' + name, data, 'POST')
+    return ret
+
+
+def addSwitchToGateway2(name):
+    data = {
+        "gateway-name" : name,
+        "gateway-ip" : "127.0.0.1",
+        "switches": [
             {
                 "dpid": "3"
             },
@@ -137,130 +163,6 @@ def addSwitchToGateway(name):
     }
     ret = rest_call('/wm/routing/gateway/' + name, data, 'POST')
     return ret
-
-
-def addDHCPInstance1(name):
-    data = {
-        "name"         : name,
-        "start-ip"     : "10.0.0.101",
-        "end-ip"       : "10.0.0.200",
-        "server-id"    : "10.0.0.2",
-        "server-mac"   : "aa:bb:cc:dd:ee:ff",
-        "router-ip"    : "10.0.0.1",
-        "broadcast-ip" : "10.0.0.255",
-        "subnet-mask"  : "255.255.255.0",
-        "lease-time"   : "60",
-        "ip-forwarding": "true",
-        "domain-name"  : "mininet-domain-name"
-    }
-    ret = rest_call('/wm/dhcp/instance', data, 'POST')
-    return ret
-
-
-def addDHCPInstance2(name):
-    data = {
-        "name"         : name,
-        "start-ip"     : "20.0.0.101",
-        "end-ip"       : "20.0.0.200",
-        "server-id"    : "20.0.0.2",
-        "server-mac"   : "aa:bb:cc:dd:ee:ff",
-        "router-ip"    : "20.0.0.1",
-        "broadcast-ip" : "20.0.0.255",
-        "subnet-mask"  : "255.255.255.0",
-        "lease-time"   : "60",
-        "ip-forwarding": "true",
-        "domain-name"  : "mininet-domain-name"
-    }
-    ret = rest_call('/wm/dhcp/instance', data, 'POST')
-    return ret
-
-
-def addSwitchToDHCPInstance1(name):
-    data = {
-        "switches": [
-            {
-                "dpid": "1"
-            },
-            {
-                "dpid": "2"
-            }
-        ]
-    }
-    ret = rest_call('/wm/dhcp/instance/' + name, data, 'POST')
-    return ret
-
-
-def addSwitchToDHCPInstance2(name):
-    data = {
-        "switches": [
-            {
-                "dpid": "3"
-            },
-            {
-                "dpid": "4"
-            },
-            {
-                "dpid": "5"
-            }
-        ]
-    }
-    ret = rest_call('/wm/dhcp/instance/' + name, data, 'POST')
-    return ret
-
-
-def enableDHCPServer():
-    data = {
-        "enable" : "true",
-        "lease-gc-period" : "10",
-        "dynamic-lease" : "false"
-    }
-    ret = rest_call('/wm/dhcp/config', data, 'POST')
-    return ret
-
-
-# DHCP client functions
-def startDHCPclient(host):
-    "Start DHCP client on host"
-    intf = host.defaultIntf()
-    host.cmd('dhclient -v -d -r', intf)
-    host.cmd('dhclient -v -d 1> /tmp/dhclient.log 2>&1', intf, '&')
-
-
-def stopDHCPclient(host):
-    host.cmd('kill %dhclient')
-
-
-def waitForIP(host):
-    "Wait for an IP address"
-    info('*', host, 'waiting for IP address')
-    while True:
-        host.defaultIntf().updateIP()
-        if host.IP():
-            break
-        info('.')
-        time.sleep(1)
-    info('\n')
-    info('*', host, 'is now using',
-         host.cmd('grep nameserver /etcresolv.conf'))
-
-
-def mountPrivateResolvconf(host):
-    "Create/mount private /etc/resolv.conf for host"
-    etc = '/tmp/etc-%s' % host
-    host.cmd('mkdir -p', etc)
-    host.cmd('mount --bind /etc', etc)
-    host.cmd('mount -n -t tmpfs tmpfs /etc')
-    host.cmd('ln -s %s/* /etc/' % etc)
-    host.cmd('rm /etc/resolv.conf')
-    host.cmd('cp %s/resolv.conf /etc/' % etc)
-
-
-def unmountPrivateResolvconf(host):
-    "Unmount private /etc dir for host"
-    etc = '/tmp/etc-%s' % host
-    host.cmd('umount /etc')
-    host.cmd('umount', etc)
-    host.cmd('rmdir', etc)
 
 
 def configureDefaultGatewayForHost(host, defaultGatewayIP):
@@ -283,7 +185,6 @@ def disableL3Routing():
     return ret
 
 
-
 def startNetworkWithLinearTopo( hostCount ):
     global net
     net = Mininet(topo=LinearTopo(hostCount), build=False)
@@ -297,40 +198,51 @@ def startNetworkWithLinearTopo( hostCount ):
     net.build()
     net.start()
 
-    # Start DHCP Service
-    ret = enableDHCPServer()
-    print(ret)
-
-    addDHCPInstance1('mininet-dhcp-1')
-    ret = addSwitchToDHCPInstance1('mininet-dhcp-1')
-    print(ret)
-
-    addDHCPInstance2('mininet-dhcp-2')
-    ret = addSwitchToDHCPInstance2('mininet-dhcp-2')
-    print(ret)
-
-    time.sleep(3)
-
-    hosts = net.hosts
-    for host in hosts:
-        mountPrivateResolvconf(host)
-        startDHCPclient(host)
-        waitForIP(host)
-        time.sleep(2)
-
-
-    # Start L3 Service
-    ret = addVirtualGateway('mininet-gateway-1')
-    print (ret)
-
-    ret = addInterfaceToGateway('mininet-gateway-1')
-    print (ret)
-
-    ret = addSwitchToGateway('mininet-gateway-1')
-    print (ret)
-
+    # Start L3 Routing
     ret = enableL3Routing()
     print (ret)
+
+    addVirtualGateway('mininet-gateway-1')
+    addInterfaceToGateway1('mininet-gateway-1')
+    ret = addSwitchToGateway1('mininet-gateway-1')
+    print (ret)
+
+    addVirtualGateway('mininet-gateway-2')
+    addInterfaceToGateway2('mininet-gateway-2')
+    ret = addSwitchToGateway2('mininet-gateway-2')
+    print (ret)
+
+    # Need to configure default gw for host
+    host1 = net.getNodeByName('h1')
+    host1.setIP('10.0.0.10', prefixLen=24)
+    defaultGatewayIP1 = "10.0.0.1"
+    configureDefaultGatewayForHost(host1, defaultGatewayIP1)
+
+    host2 = net.getNodeByName('h2')
+    host2.setIP('20.0.0.10', prefixLen=24)
+    defaultGatewayIP2 = "20.0.0.1"
+    configureDefaultGatewayForHost(host2, defaultGatewayIP2)
+
+    host3 = net.getNodeByName('h3')
+    host3.setIP('30.0.0.10', prefixLen=24)
+    defaultGatewayIP3 = "30.0.0.1"
+    configureDefaultGatewayForHost(host3, defaultGatewayIP3)
+
+    host4 = net.getNodeByName('h4')
+    host4.setIP('40.0.0.10', prefixLen=24)
+    defaultGatewayIP4 = "40.0.0.1"
+    configureDefaultGatewayForHost(host4, defaultGatewayIP4)
+
+    host5 = net.getNodeByName('h5')
+    host5.setIP('50.0.0.10', prefixLen=24)
+    defaultGatewayIP5 = "50.0.0.1"
+    configureDefaultGatewayForHost(host5, defaultGatewayIP5)
+
+    host6 = net.getNodeByName('h6')
+    host6.setIP('60.0.0.10', prefixLen=24)
+    defaultGatewayIP6 = "60.0.0.1"
+    configureDefaultGatewayForHost(host6, defaultGatewayIP6)
+
 
 
 def clearGatewayInstance(name):
@@ -351,4 +263,7 @@ if __name__ == '__main__':
     startNetworkWithLinearTopo(6)
     CLI(net)
     stopNetwork()
+
+
+
 
