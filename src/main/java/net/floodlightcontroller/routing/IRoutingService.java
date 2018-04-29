@@ -52,11 +52,12 @@ public interface IRoutingService extends IFloodlightService {
         }
     }
 
-
+    /**
+     * Forwarding Type : either L2 forwarding or L3 routing
+     */
     enum RoutingType {
         FORWARDING, ROUTING
     }
-
 
     /**
      * Enable L3 routing service
@@ -78,26 +79,26 @@ public interface IRoutingService extends IFloodlightService {
      * across the topology.
      * @param metric
      */
-    public void setPathMetric(PATH_METRIC metric);
+    void setPathMetric(PATH_METRIC metric);
     
     /**
      * Get the metric being used to compute paths
      * across the topology.
      * @return
      */
-    public PATH_METRIC getPathMetric();
+    PATH_METRIC getPathMetric();
     
     /** 
      * Register the RDCListener 
      * @param listener - The module that wants to listen for events
      */
-    public void addRoutingDecisionChangedListener(IRoutingDecisionChangedListener listener);
+    void addRoutingDecisionChangedListener(IRoutingDecisionChangedListener listener);
     
     /** 
      * Remove the RDCListener
      * @param listener - The module that wants to stop listening for events
      */
-    public void removeRoutingDecisionChangedListener(IRoutingDecisionChangedListener listener);
+    void removeRoutingDecisionChangedListener(IRoutingDecisionChangedListener listener);
     
     /** 
      * Notifies listeners that routing logic has changed, requiring certain past routing decisions
@@ -108,19 +109,19 @@ public interface IRoutingService extends IFloodlightService {
      * 
      * @param changedDecisions Masked descriptors identifying routing decisions that are now obsolete or invalid  
      */
-    public void handleRoutingDecisionChange(Iterable<Masked<U64>> changedDecisions);
+    void handleRoutingDecisionChange(Iterable<Masked<U64>> changedDecisions);
 
     /**
      * Do not compute more than max paths by default (fast).
      * @param max
      */
-    public void setMaxPathsToCompute(int max);
+    void setMaxPathsToCompute(int max);
 
     /**
      * Get the max paths that are computed by default (fast).
      * @return
      */
-    public int getMaxPathsToCompute();
+    int getMaxPathsToCompute();
     
     /** 
      * Check if a path exists between src and dst
@@ -128,7 +129,7 @@ public interface IRoutingService extends IFloodlightService {
      * @param dst destination switch
      * @return true if a path exists; false otherwise
      */
-    public boolean pathExists(DatapathId src, DatapathId dst);
+    boolean pathExists(DatapathId src, DatapathId dst);
 
     /**
      * Locates a path between src and dst
@@ -136,7 +137,7 @@ public interface IRoutingService extends IFloodlightService {
      * @param dst destination switch
      * @return the lowest cost path
      */
-    public Path getPath(DatapathId src, DatapathId dst);
+    Path getPath(DatapathId src, DatapathId dst);
 
     /**
      * Provides a path between srcPort on src and dstPort on dst.
@@ -146,7 +147,7 @@ public interface IRoutingService extends IFloodlightService {
      * @param dstPort destination port on destination switch
      * @return the lowest cost path
      */
-    public Path getPath(DatapathId src, OFPort srcPort, DatapathId dst, OFPort dstPort);
+    Path getPath(DatapathId src, OFPort srcPort, DatapathId dst, OFPort dstPort);
 
     /**
      * Return all possible paths up to quantity of the globally configured max.
@@ -154,7 +155,7 @@ public interface IRoutingService extends IFloodlightService {
      * @param dst destination switch
      * @return list of paths ordered least to greatest cost
      */
-    public List<Path> getPathsFast(DatapathId src, DatapathId dst);
+    List<Path> getPathsFast(DatapathId src, DatapathId dst);
 
     /**
      * This function returns K number of paths between a source and destination 
@@ -172,7 +173,7 @@ public interface IRoutingService extends IFloodlightService {
      * @param numReqPaths the requested quantity of paths
      * @return list of paths ordered least to greatest cost
      */
-    public List<Path> getPathsFast(DatapathId src, DatapathId dst, int numReqPaths);
+    List<Path> getPathsFast(DatapathId src, DatapathId dst, int numReqPaths);
 
     /**
      * This function returns K number of paths between a source and destination.
@@ -193,7 +194,7 @@ public interface IRoutingService extends IFloodlightService {
      * @param numReqPaths the requested quantity of paths
      * @return list of paths ordered least to greatest cost
      */
-    public List<Path> getPathsSlow(DatapathId src, DatapathId dst, int numReqPaths);
+    List<Path> getPathsSlow(DatapathId src, DatapathId dst, int numReqPaths);
     
     /**
      * Recompute paths now, regardless of whether or not there was a change in the
@@ -209,5 +210,5 @@ public interface IRoutingService extends IFloodlightService {
      * 
      * @return true upon success; false otherwise
      */
-    public boolean forceRecompute();
+    boolean forceRecompute();
 }

@@ -241,7 +241,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
             switch(routingType) {
                 case FORWARDING:
                     //FIXME
-                    log.info("do L2 forwarding", pi);
+//                    log.info("do L2 forwarding", pi);
                     // L2 Forward to destination or flood if bcast or mcast
                     if (log.isTraceEnabled()) {
                         log.trace("No decision was made for PacketIn={}, do L2 forwarding", pi);
@@ -252,7 +252,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                 case ROUTING:
                     // TODO: IPv6 not consider L3 routing for now
                     //FIXME
-                    log.debug("do L3 routing", pi);
+//                    log.debug("do L3 routing", pi);
                     if (log.isTraceEnabled()) {
                         log.trace("No decision was made for PacketIn={}, do L3 routing", pi);
                     }
