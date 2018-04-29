@@ -88,29 +88,43 @@ public class DHCPInstance {
 		this.ntpServers.add(ns);
 	}
 
+	public void clearNtpServer() { this.ntpServers.clear(); }
+
 	public void addDnsServer(IPv4Address ds) {
 		this.dnsServers.add(ds);
 	}
+
+	public void clearDnsServer() { this.dnsServers.clear(); }
 
 	public void addNptMember(NodePortTuple npt) {
 		this.nptMembers.add(npt);
 	}
 
+	public void clearNptMember() { this.nptMembers.clear(); }
+
 	public void addSwitchMember(DatapathId dpid) { this.switchMembers.add(dpid); }
+
+	public void clearSwitchMember() { this.switchMembers.clear(); }
 
 	public void addVlanMember(VlanVid vid) {
 		this.vlanMembers.add(vid);
 	}
 
+	public void clearVlanMember() { this.vlanMembers.clear(); }
+
 	public void addClientMember(MacAddress cm) {
 		this.clientMembers.add(cm);
 	}
+
+	public void clearClientMemer() { this.clientMembers.clear(); }
 
 	// add or update static addresses
 	public void addStaticAddress(@Nonnull MacAddress staticAddressMac, @Nonnull IPv4Address staticAddressIP) {
 		this.staticAddresseses.put(staticAddressMac, staticAddressIP);
 		this.dhcpPool.assignPermanentLeaseToClientWithRequestIP(staticAddressIP, staticAddressMac);
 	}
+
+	public void clearStaticAddress() { this.staticAddresseses.clear(); }
 
 	public void updateDefaultGateway(@Nonnull IPv4Address defaultGatewayIP) {
 		this.routerIP = defaultGatewayIP;

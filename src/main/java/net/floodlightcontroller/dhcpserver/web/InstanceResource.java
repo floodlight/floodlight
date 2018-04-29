@@ -61,6 +61,8 @@ public class InstanceResource extends ServerResource {
 
         JsonNode switchportsNode = jsonNode.get("switchports");
         if (switchportsNode != null) {
+            dhcpInstance.get().clearNptMember();
+
             for (JsonNode swpt : switchportsNode) {
                 JsonNode dpidNode = swpt.get("dpid");
                 JsonNode portNode = swpt.get("port");
@@ -73,6 +75,8 @@ public class InstanceResource extends ServerResource {
 
         JsonNode switchesNode = jsonNode.get("switches");
         if (switchesNode != null) {
+            dhcpInstance.get().clearSwitchMember();
+
             for (JsonNode sw : switchesNode) {
                 JsonNode dpidNode = sw.get("dpid");
                 if (dpidNode != null) {
@@ -83,6 +87,8 @@ public class InstanceResource extends ServerResource {
 
         JsonNode vlansNode = jsonNode.get("vlans");
         if (vlansNode != null) {
+            dhcpInstance.get().clearVlanMember();
+
             for (JsonNode vlan : vlansNode) {
                 VlanVid vid = VlanVid.ofVlan(vlan.get("vlan").asInt());
                 dhcpInstance.get().addVlanMember(vid);
@@ -91,6 +97,8 @@ public class InstanceResource extends ServerResource {
 
         JsonNode staticAddressesNode = jsonNode.get("staticaddresses");
         if (staticAddressesNode != null) {
+            dhcpInstance.get().clearStaticAddress();
+
             for (JsonNode staticAddress : staticAddressesNode) {
                 JsonNode macNode = staticAddress.get("mac");
                 JsonNode ipNode = staticAddress.get("ip");
@@ -102,6 +110,8 @@ public class InstanceResource extends ServerResource {
 
         JsonNode clientMembersNode = jsonNode.get("clientmembers");
         if (clientMembersNode != null) {
+            dhcpInstance.get().clearClientMemer();
+
             for (JsonNode clientmember : clientMembersNode) {
                 MacAddress cm = MacAddress.of(clientmember.asText());
                 dhcpInstance.get().addClientMember(cm);
@@ -110,6 +120,8 @@ public class InstanceResource extends ServerResource {
 
         JsonNode dnsServersNode = jsonNode.get("dnsservers");
         if (dnsServersNode != null) {
+            dhcpInstance.get().clearDnsServer();
+
             for (JsonNode dnsServer : dnsServersNode) {
                 IPv4Address ds = IPv4Address.of(dnsServer.asText());
                 dhcpInstance.get().addDnsServer(ds);
@@ -118,6 +130,8 @@ public class InstanceResource extends ServerResource {
 
         JsonNode ntpServersNode = jsonNode.get("ntpservers");
         if (ntpServersNode != null) {
+            dhcpInstance.get().clearNtpServer();
+
             for (JsonNode ntpServer : ntpServersNode) {
                 IPv4Address ns = IPv4Address.of(ntpServer.asText());
                 dhcpInstance.get().addNtpServer(ns);
