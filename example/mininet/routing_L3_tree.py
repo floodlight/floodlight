@@ -126,6 +126,22 @@ def configureDefaultGatewayForHost(host, defaultGatewayIP):
     host.cmd('route add default gw ' + defaultGatewayIP);
 
 
+def enableL3Routing():
+    data = {
+        "enable" : "true"
+    }
+    ret = rest_call('/wm/routing/config', data, 'POST')
+    return ret
+
+
+def disableL3Routing():
+    data = {
+        "enable" : "false"
+    }
+    ret = rest_call('/wm/routing/config', data, 'POST')
+    return ret
+
+
 def startNetworkWithTreeTopo():
     global net
     topo = TreeTopo( depth=2, fanout=3 )
@@ -141,6 +157,9 @@ def startNetworkWithTreeTopo():
     net.start()
 
     # Start L3 Routing
+    ret = enableL3Routing()
+    print (ret)
+
     ret = addVirtualGateway('mininet-gateway-1')
     print (ret)
 

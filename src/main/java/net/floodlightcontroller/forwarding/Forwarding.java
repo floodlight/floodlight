@@ -96,6 +96,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
     protected static FlowSetIdRegistry flowSetIdRegistry;
 
     private static L3RoutingManager l3manager;
+    private static volatile IRoutingService.RoutingType routingType = IRoutingService.RoutingType.FORWARDING;
 
     protected static class FlowSetIdRegistry {
         private volatile Map<NodePortTuple, Set<U64>> nptToFlowSetIds;
@@ -199,7 +200,6 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         OFPort inPort = OFMessageUtils.getInPort(pi);
         NodePortTuple npt = new NodePortTuple(sw.getId(), inPort);
 
-        /* Change below */
         if (decision != null) {
             if (log.isTraceEnabled()) {
                 log.trace("Forwarding decision={} was made for PacketIn={}", decision.getRoutingAction().toString(), pi);
@@ -231,8 +231,6 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
             }
         }
         else { // No routing decision was found
-
-            IRoutingService.RoutingType routingType = null;
             if (routingEngineService.isL3RoutingEnabled()) {
                 routingType = IRoutingService.RoutingType.ROUTING;
             }
@@ -242,6 +240,8 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 
             switch(routingType) {
                 case FORWARDING:
+                    //FIXME
+                    log.info("do L2 forwarding", pi);
                     // L2 Forward to destination or flood if bcast or mcast
                     if (log.isTraceEnabled()) {
                         log.trace("No decision was made for PacketIn={}, do L2 forwarding", pi);
@@ -251,6 +251,8 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 
                 case ROUTING:
                     // TODO: IPv6 not consider L3 routing for now
+                    //FIXME
+                    log.debug("do L3 routing", pi);
                     if (log.isTraceEnabled()) {
                         log.trace("No decision was made for PacketIn={}, do L3 routing", pi);
                     }
@@ -277,59 +279,6 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         }
 
         return Command.CONTINUE;
-
-        // Change ends here
-
-        // We found a routing decision (i.e. Firewall is enabled... it's the only thing that makes RoutingDecisions)
-//        if (decision != null) {
-//            if (log.isTraceEnabled()) {
-//                log.trace("Forwarding decision={} was made for PacketIn={}", decision.getRoutingAction().toString(), pi);
-//            }
-//
-//            switch(decision.getRoutingAction()) {
-//            case NONE:
-//                // don't do anything
-//                return Command.CONTINUE;
-//            case FORWARD_OR_FLOOD:
-//            case FORWARD:
-//                doForwardFlow(sw, pi, decision, cntx, gatewayInstance, false);
-//                return Command.CONTINUE;
-//            case MULTICAST:
-//                // treat as broadcast
-//                doFlood(sw, pi, decision, cntx);
-//                return Command.CONTINUE;
-//            case DROP:
-//                doDropFlow(sw, pi, decision, cntx);
-//                return Command.CONTINUE;
-//            default:
-//                log.error("Unexpected decision made for this packet-in={}", pi, decision.getRoutingAction());
-//                return Command.CONTINUE;
-//            }
-//        }
-//        else { // No routing decision was found. Forward to destination or flood if bcast or mcast.
-//            if (log.isTraceEnabled()) {
-//                log.trace("No decision was made for PacketIn={}, forwarding", pi);
-//            }
-//
-//            // TODO: IPv6 not consider L3 routing for now
-//            if (isBroadcastOrMulticast(eth)) {
-//                // When cross-subnet, host send ARP request to gateway. Gateway need to generate ARP response to host
-//                if (eth.getPayload() instanceof ARP && ((ARP) eth.getPayload()).getOpCode().equals(ARP.OP_REQUEST)
-//                        && gatewayInstance.isAGatewayInft(((ARP) eth.getPayload()).getTargetProtocolAddress())) {
-//                    IPacket arpReply = gatewayArpReply(cntx, gatewayMac);
-//                    pushArpReply(arpReply, sw, OFBufferId.NO_BUFFER, OFPort.ANY, inPort);
-//                }
-//                else {
-//                    doFlood(sw, pi, decision, cntx);
-//                }
-//            }
-//            else {
-//                doForwardFlow(sw, pi, decision, cntx, gatewayInstance, false);
-//            }
-//
-//        }
-//
-//        return Command.CONTINUE;
 
     }
 
@@ -408,7 +357,6 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 
         /* This packet-in is from a switch in the path before its flow was installed along the path */
         if (!topologyService.isEdge(srcSw, srcPort) && !eth.getDestinationMACAddress().equals(virtualGatewayMac)) {
-            // FIXME & Comments
             log.debug("Packet destination is known, but packet was not received on an edge port (rx on {}/{}). Flooding packet", srcSw, srcPort);
             doFlood(sw, pi, decision, cntx);
             return;
@@ -450,7 +398,6 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
             }
             return;
         }
-
 
         /* Validate that the source and destination are not on the same switch port */
         if (sw.getId().equals(dstAp.getNodeId()) && srcPort.equals(dstAp.getPortId())) {

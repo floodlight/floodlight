@@ -185,6 +185,22 @@ def configureDefaultGatewayForHost(host, defaultGatewayIP):
     host.cmd('route add default gw ' + defaultGatewayIP);
 
 
+def enableL3Routing():
+    data = {
+        "enable" : "true"
+    }
+    ret = rest_call('/wm/routing/config', data, 'POST')
+    return ret
+
+
+def disableL3Routing():
+    data = {
+        "enable" : "false"
+    }
+    ret = rest_call('/wm/routing/config', data, 'POST')
+    return ret
+
+
 def startNetworkWithLinearTopo( hostCount ):
     global net
     net = Mininet(topo=LinearTopo(hostCount), build=False)
@@ -199,6 +215,9 @@ def startNetworkWithLinearTopo( hostCount ):
     net.start()
 
     # Start L3 Routing
+    ret = enableL3Routing()
+    print (ret)
+
     ret = addVirtualGateway('mininet-gateway-1')
     print (ret)
 
