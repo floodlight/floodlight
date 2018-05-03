@@ -368,8 +368,18 @@ public class Controller implements IFloodlightProviderService, IStorageSourceLis
                 }
 
                 if (alwaysDecodeEth) {
-                    eth = new Ethernet();
-                    eth.deserialize(pi.getData(), 0, pi.getData().length);
+                    try {
+                        eth = new Ethernet();
+                        eth.deserialize(pi.getData(), 0, pi.getData().length);
+                    }
+                    catch (RuntimeException e) {
+                        if (log.isDebugEnabled()) {
+                            log.debug("Failed to deserialize ethernet packet {} -> {}",
+                                    eth.getSourceMACAddress(), eth.getDestinationMACAddress());
+                        }
+                        throw new RuntimeException("Error in deserialize ethernet packet", e);
+                    }
+
                 }
                 // fall through to default case...
 
