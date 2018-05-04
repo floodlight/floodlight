@@ -4,9 +4,11 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
@@ -1337,6 +1339,8 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 	 */
 	public class MasterState extends OFSwitchHandshakeState {
 
+		private final Set<Long> pendingBarrierXid = new HashSet<>();
+
 		MasterState() {
 			super(true);
 		}
@@ -1347,6 +1351,7 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 					.setXid(xid)
 					.build();
 			sw.write(barrier); /* don't use ListenableFuture here; we receive via barrier reply OR error (barrier unsupported) */
+			pendingBarrierXid.add(xid);
 			return xid;
 		}
 
@@ -1372,6 +1377,13 @@ public class OFSwitchHandshakeHandler implements IOFConnectionListener {
 			sendBarrier();
 
 			setSwitchStatus(SwitchStatus.MASTER);
+		}
+
+		@Override
+		void processOFBarrierReply(OFBarrierReply m) {
+			if (!pendingBarrierXid.remove(m.getXid())) {
+				dispatchMessage(m);
+			}
 		}
 
 		@Override

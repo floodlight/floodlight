@@ -551,11 +551,6 @@ public abstract class OFSwitchHandlerTestBase {
 		replay(sw, switchManager);
 		
 		switchHandler.sendRoleRequest(role);
-		
-		/* Now, trigger transition to master */
-		OFBarrierReply br = getFactory().buildBarrierReply()
-				.build();
-		switchHandler.processOFMessage(br);
 
 		verify(sw, switchManager);
 	}
@@ -1031,6 +1026,16 @@ public abstract class OFSwitchHandlerTestBase {
 		expectLastCall().once();
 		replay(switchManager);
 		switchHandler.processOFMessage(pi);
+		verify(switchManager);
+
+		// Sent barrier reply
+		OFBarrierReply barrierReply = factory.buildBarrierReply().build();
+		reset(switchManager);
+		switchManager.handleMessage(sw, barrierReply, null);
+		expectLastCall().once();
+		replay(switchManager);
+		switchHandler.processOFMessage(barrierReply);
+		verify(switchManager);
 
 		// TODO: many more to go
 	}
