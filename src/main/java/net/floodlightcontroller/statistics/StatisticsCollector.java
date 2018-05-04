@@ -108,7 +108,7 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
 								txBytesCounted = pse.getTxBytes().subtract(spb.getPriorByteValueTx());
 							}
 							long speed = getSpeed(npt);
-							long timeDifSec = (System.currentTimeMillis() - spb.getUpdateTime()) / MILLIS_PER_SEC;
+							long timeDifSec = ((System.nanoTime() - spb.getStartTime_ns()) / 1000000) / MILLIS_PER_SEC;
 							portStats.put(npt, SwitchPortBandwidth.of(npt.getNodeId(), npt.getPortId(), 
 									U64.ofRaw(speed),
 									U64.ofRaw((rxBytesCounted.getValue() * BITS_PER_BYTE) / timeDifSec), 
