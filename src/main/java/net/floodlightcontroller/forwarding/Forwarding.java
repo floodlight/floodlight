@@ -235,17 +235,8 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
             }
         }
         else { // No routing decision was found
-            if (routingEngineService.isL3RoutingEnabled()) {
-                routingType = IRoutingService.RoutingType.ROUTING;
-            }
-            else {
-                routingType = IRoutingService.RoutingType.FORWARDING;
-            }
-
-            switch(routingType) {
+            switch(determineRoutingType()) {
                 case FORWARDING:
-                    //FIXME
-                    log.debug("do L2 forwarding", pi);
                     // L2 Forward to destination or flood if bcast or mcast
                     if (log.isTraceEnabled()) {
                         log.trace("No decision was made for PacketIn={}, do L2 forwarding", pi);
@@ -254,9 +245,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                     break;
 
                 case ROUTING:
-                    // TODO: IPv6 not consider L3 routing for now
-                    //FIXME
-                    log.debug("do L3 routing", pi);
+                    // TODO: IPv6 not consider for now
                     if (log.isTraceEnabled()) {
                         log.trace("No decision was made for PacketIn={}, do L3 routing", pi);
                     }
@@ -282,30 +271,53 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 
         }
 
-//        return Command.CONTINUE;
-        return Command.STOP;
+        return Command.CONTINUE;
     }
 
+    /**
+     * Determine the Routing Type
+     *
+     * @return
+     */
+    private IRoutingService.RoutingType determineRoutingType() {
+        if (routingEngineService.isL3RoutingEnabled()) {
+            return IRoutingService.RoutingType.ROUTING;
+        }
+        else {
+            return IRoutingService.RoutingType.FORWARDING;
+        }
+    }
 
+    /**
+     * Determine if the message is broadcast or multicast
+     *
+     * @param eth Ethernet Frame that associated with this OFPacketIn
+     * @return
+     */
     private boolean isBroadcastOrMulticast(Ethernet eth) {
         return eth.isBroadcast() || eth.isMulticast();
     }
 
-
-    private void doL3Routing(Ethernet eth, IOFSwitch sw, OFPacketIn pi, IRoutingDecision decision,
+    /**
+     * L3 routing block -- it supports routing across subnet by using "virtual gateway". It also keeps L2 forwarding
+     * as Floodlight original does
+     *
+     * @param eth Ethernet Frame that associated with this OFPacketIn
+     * @param sw Switch on which the packet was received
+     * @param pi FPacketIn that came to the switch
+     * @param decision Decision that caused flooding, or null
+     * @param cntx FloodlightContext associated with this OFPacketIn
+     * @param gatewayInstance Virtual gateway instance
+     * @param inPort Ingress switch port on which the packet was received
+     */
+    protected void doL3Routing(Ethernet eth, IOFSwitch sw, OFPacketIn pi, IRoutingDecision decision,
                              FloodlightContext cntx, @Nonnull VirtualGatewayInstance gatewayInstance, OFPort inPort) {
 
         MacAddress gatewayMac = gatewayInstance.getGatewayMac();
 
-        if (eth.getPayload().getPayload() instanceof ICMP) {
-            //FIXME
-            log.debug("Incoming new ICMP packet-in on switch {} and port {} in doL3Routing", sw.getId(), inPort);
-        }
-
         if (eth.getPayload() instanceof IPv4) {
             IPv4Address intfIpAddress = findInterfaceIP(gatewayInstance, ((IPv4) eth.getPayload()).getDestinationAddress());
             if (intfIpAddress == null) {
-                // FIXME
                 log.info("Can not locate corresponding interface for gateway {}, check its interface configuration",
                         gatewayInstance.getName());
                 return;
@@ -318,8 +330,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                     && gatewayInstance.isAGatewayInft(((ARP) eth.getPayload()).getTargetProtocolAddress())) {
                 IPacket arpReply = gatewayArpReply(cntx, gatewayMac);
                 pushArpReply(arpReply, sw, OFBufferId.NO_BUFFER, OFPort.ANY, inPort);
-                // FIXME
-                log.debug("Push ARP to destination");
+                log.debug("Virtual gateway pushing ARP reply message to source host");
             }
             else {
                 doFlood(sw, pi, decision, cntx);
@@ -334,8 +345,8 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 
 
     /**
-     * L3 routing processing -- it supports routing across subnet by using "virtual gateway". It also keeps L2 forwarding
-     * as Floodlight original does
+     * This function retrieves a patch from source device to destination device and then install flows(L3/L2) over the path.
+     * In L3 case, virtual router caches the packet-in while it sends the ARP message to learn destination device
      *
      * @param sw
      * @param pi
@@ -354,9 +365,6 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         IDevice dstDevice = IDeviceService.fcStore.get(cntx, IDeviceService.CONTEXT_DST_DEVICE);
         IDevice srcDevice = IDeviceService.fcStore.get(cntx, IDeviceService.CONTEXT_SRC_DEVICE);
 
-        // FIXME
-        log.debug("Incoming switch {} for L3 Forwarding", sw.getId());
-
         if (dstDevice == null) {
             // Try one more time to retrieve dst device
             if (eth.getPayload() instanceof IPv4 && eth.getDestinationMACAddress().equals(virtualGatewayMac)) {
@@ -366,16 +374,15 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
             if (dstDevice == null) {
                 // L3 traffic at 1st hop, virtual gateway creates & floods ARP to learn destination device
                 if (eth.getPayload() instanceof IPv4 && eth.getDestinationMACAddress().equals(virtualGatewayMac)) {
-                    log.info("Virtual gateway creates arp request packet to destination host and flooding");
+                    log.debug("Virtual gateway creates and flood arp request packet for destination host");
                     doL3Flood(gateway, sw, pi, cntx);
 
                     l3cache.put(pi, eth);
-                    log.info("Add new packet-in associate with packet source {} and destination {} to cache",
+                    log.debug("Add new packet-in associate with packet source {} and destination {} to cache",
                             ((IPv4) eth.getPayload()).getSourceAddress(), ((IPv4) eth.getPayload()).getDestinationAddress());
                 }
                 // Normal L2 traffic
                 else {
-                    //FIXME
                     log.debug("Destination device unknown. Flooding packet");
                     doFlood(sw, pi, decision, cntx);
                 }
@@ -393,7 +400,6 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         if (FLOOD_ALL_ARP_PACKETS &&
                 IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD).getEtherType()
                         == EthType.ARP) {
-            //FIXME
             log.debug("ARP flows disabled in Forwarding. Flooding ARP packet");
             doFlood(sw, pi, decision, cntx);
             return;
@@ -401,7 +407,6 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 
         /* This packet-in is from a switch in the path before its flow was installed along the path */
         if (!topologyService.isEdge(srcSw, srcPort) && !eth.getDestinationMACAddress().equals(virtualGatewayMac)) {
-            // FIXME
             log.debug("Packet destination is known, but packet was not received on an edge port (rx on {}/{}). Flooding packet", srcSw, srcPort);
             doFlood(sw, pi, decision, cntx);
             return;
@@ -434,12 +439,10 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
          */
         if (dstAp == null) {
             if (eth.getDestinationMACAddress().equals(virtualGatewayMac)) { // Try L3 Flood again
-                // FIXME
                 log.debug("Virtual gateway creates arp request packet to destination host and flooding");
                 doL3Flood(gateway, sw, pi, cntx);
             }
             else { // Try L2 Flood again
-                // FIXME
                 log.debug("Could not locate edge attachment point for destination device {}. Flooding packet");
                 doFlood(sw, pi, decision, cntx);
             }
@@ -448,7 +451,6 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 
         /* Validate that the source and destination are not on the same switch port */
         if (sw.getId().equals(dstAp.getNodeId()) && srcPort.equals(dstAp.getPortId())) {
-            // FIXME
             log.debug("Both source and destination are on the same switch/port {}/{}. Dropping packet", sw.toString(), srcPort);
             return;
         }
@@ -464,9 +466,6 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 
         if (!eth.getDestinationMACAddress().equals(virtualGatewayMac)) { // Normal L2 forwarding
             Match m = createMatchFromPacket(sw, srcPort, pi, cntx);
-
-            // FIXME
-            log.debug("Creating flow rules on the route, match rule: {}", m);
 
             if (! path.getPath().isEmpty()) {
                 if (log.isDebugEnabled()) {
@@ -493,16 +492,14 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
             } /* else no path was found */
         }
         else {
-            log.info("Destination Device IP is {}", dstDevice.getIPv4Addresses());
             boolean packetOutSent = sendPacketToLastHop(eth, dstDevice);
 
             // L3 rewrite on first hop (in bi-direction)
             IOFSwitch firstHop = switchService.getSwitch(srcSw);
             Match match = createMatchFromPacket(firstHop, srcPort, pi, cntx);
 
-            // FIXME
             if (!path.getPath().isEmpty()){
-                log.info("L3 path is {}", path.getPath());
+                log.debug("L3 path is {}", path.getPath());
             }
 
             OFPort outPort = path.getPath().get(path.getPath().size()-1).getPortId();
@@ -516,6 +513,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                     cntx, requestFlowRemovedNotifn,
                     OFFlowModCommand.ADD, packetOutSent);
 
+            /* Register flow sets */
             for (NodePortTuple npt : path.getPath()) {
                 flowSetIdRegistry.registerFlowSetId(npt, flowSetId);
             }
@@ -527,14 +525,14 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
      * Virtual gateway insert flows on switch to rewrite source MAC to gateway MAC, also rewrite destination MAC
      * to destination host.
      *
-     * @param pi
-     * @param match
-     * @param sw
-     * @param outPort
-     * @param cookie
-     * @param gatewayMac
-     * @param hostMac
-     * @param requestFlowRemovedNotification
+     * @param pi The OFPacketIn that came to the switch
+     * @param match The OpenFlow Match
+     * @param sw The switch that receives the OFPacketIn
+     * @param outPort The outgoing port number
+     * @param cookie The OpenFlow cookie
+     * @param gatewayMac The Virtual Gateway MAC address
+     * @param hostMac The host MAC address
+     * @param requestFlowRemovedNotification The OpenFlow "flow remove flag"
      */
     protected void buildRewriteFlows(@Nonnull OFPacketIn pi, @Nonnull Match match, @Nonnull DatapathId sw,
                                      @Nonnull OFPort outPort, @Nonnull U64 cookie, @Nonnull MacAddress gatewayMac,
@@ -604,6 +602,15 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
     }
 
 
+    /**
+     * L3 forwarding block -- it supports L2 forwarding from a source to a destination. No L3 functionality involved.
+     *
+     * @param eth Ethernet frame associated with this OFPacketIn
+     * @param sw The switch that receives the OFPacketIn
+     * @param pi The OFPacketIn that came to the switch
+     * @param decision The decision that caused floodlight, or null
+     * @param cntx The FloodlightContext associated with this OFPacketIn
+     */
     protected void doL2Forwarding(Ethernet eth, IOFSwitch sw, OFPacketIn pi, IRoutingDecision decision, FloodlightContext cntx) {
         if (isBroadcastOrMulticast(eth)) {
             doFlood(sw, pi, decision, cntx);
@@ -613,13 +620,13 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
     }
 
     /**
-     * L2 forwarding processing -- it only handles L2 forwarding, no L3 logic involved.
+     * This function retrieves a patch from source device to destination device and then install L2 flows over the path.
      *
-     * @param sw
-     * @param pi
-     * @param decision
-     * @param cntx
-     * @param requestFlowRemovedNotifn
+     * @param sw The switch on which the packet was received
+     * @param pi The OFPacketIn that came to the switch
+     * @param decision The decision that caused flooding, or null
+     * @param cntx The FloodlightContext associated with this OFPacketIn
+     * @param requestFlowRemovedNotifn The OpenFlow "flow remove flag"
      */
     protected void doL2ForwardFlow(IOFSwitch sw, OFPacketIn pi, IRoutingDecision decision, FloodlightContext cntx, boolean requestFlowRemovedNotifn) {
         OFPort srcPort = OFMessageUtils.getInPort(pi);
@@ -728,8 +735,8 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
     /**
      * Generate arp reply packet so virtual gateway can use it to response the cross-subnet ARP request sent from host
      *
-     * @param cntx
-     * @param gatewayMac
+     * @param cntx The FloodlightContext associated with this OFPacketIn
+     * @param gatewayMac virtual gatwway MAC address
      * @return
      */
     public IPacket gatewayArpReply(FloodlightContext cntx, MacAddress gatewayMac) {
@@ -762,11 +769,11 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
     /**
      * Push arp packet to the network when virtual gateway needs to response arp request from host
      *
-     * @param packet
-     * @param sw
-     * @param bufferId
-     * @param inPort
-     * @param outPort
+     * @param packet Packet will be pushed to the network as OFPacketOut
+     * @param sw The switch on which the packet was received
+     * @param bufferId OpenFlow BufferID
+     * @param inPort incoming port number
+     * @param outPort outgoing port number
      */
     public void pushArpReply(IPacket packet, IOFSwitch sw, OFBufferId bufferId, OFPort inPort, OFPort outPort) {
         if (log.isTraceEnabled()) {
@@ -804,6 +811,14 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         sw.write(pob.build());
     }
 
+
+    /**
+     * Find corresponding virtual gateway interface based on the destination IP address
+     *
+     * @param gateway virtual gateway
+     * @param dstIP packet destination IP
+     * @return
+     */
     public IPv4Address findInterfaceIP(VirtualGatewayInstance gateway, IPv4Address dstIP) {
         Optional<VirtualGatewayInterface> intf = gateway.findGatewayInft(dstIP);
         if (intf.isPresent()) {
@@ -813,6 +828,32 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
             return null;
         }
     }
+
+
+    /**
+     * Query device based on packet destination IP address, rather than based on MAC address
+     * This is because in L3 case, the MAC address is Virtual Router MAC, which is not exist in device map
+     *
+     * @param dstIP packet destination IP
+     * @return
+     */
+    private IDevice findDstDeviceForL3Routing(IPv4Address dstIP) {
+        // Fetch all known devices
+        Collection<? extends IDevice> allDevices = deviceManagerService.getAllDevices();
+
+        IDevice dstDevice = null;
+        for (IDevice d : allDevices) {
+            for (int i = 0; i < d.getIPv4Addresses().length; ++i) {
+                if (d.getIPv4Addresses()[i].equals(dstIP)) {
+                    dstDevice = d;
+                    break;
+                }
+            }
+        }
+
+        return dstDevice;
+    }
+
 
     /**
      * Builds a cookie that includes routing decision information.
@@ -932,7 +973,14 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         }
     }
 
-
+    /**
+     * Write FlowMod to switch to drop the flow
+     *
+     * @param sw The switch on which the packet was received
+     * @param pi The packet-in came from that switch
+     * @param decision The decision that cause drop flow, or null
+     * @param cntx The FloodlightContext associated with this OFPacketIn
+     */
     protected void doDropFlow(IOFSwitch sw, OFPacketIn pi, IRoutingDecision decision, FloodlightContext cntx) {
         OFPort inPort = OFMessageUtils.getInPort(pi);
         Match m = createMatchFromPacket(sw, inPort, pi, cntx);
@@ -969,104 +1017,6 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         log.debug("OFMessage dampened: {}", dampened);
     }
 
-    /**
-     * Virtual gateway generate & flood ARP request packets for the destination host
-     *
-     * @param gateway
-     * @param sw
-     * @param pi
-     * @param cntx
-     */
-    protected void doL3Flood(VirtualGatewayInstance gateway, IOFSwitch sw, OFPacketIn pi,
-                             FloodlightContext cntx) {
-        Ethernet eth = IFloodlightProviderService.bcStore.get(cntx,
-                IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
-
-        MacAddress gatewayMac = gateway.getGatewayMac();
-
-        // generate ARP request to destination host
-        IPv4Address dstIP = ((IPv4) eth.getPayload()).getDestinationAddress();
-        IPv4Address intfIpAddress = findInterfaceIP(gateway, dstIP);
-
-        // Set src MAC to virtual gateway MAC, set dst MAC to broadcast
-        IPacket arpPacket = new Ethernet()
-                .setSourceMACAddress(gatewayMac)
-                .setDestinationMACAddress(MacAddress.BROADCAST)
-                .setEtherType(EthType.ARP)
-                .setVlanID(eth.getVlanID())
-                .setPriorityCode(eth.getPriorityCode())
-                .setPayload(
-                        new ARP()
-                                .setHardwareType(ARP.HW_TYPE_ETHERNET)
-                                .setProtocolType(ARP.PROTO_TYPE_IP)
-                                .setOpCode(ARP.OP_REQUEST)
-                                .setHardwareAddressLength((byte) 6)
-                                .setProtocolAddressLength((byte) 4)
-                                .setSenderHardwareAddress(gatewayMac)
-                                .setSenderProtocolAddress(intfIpAddress)
-                                .setTargetHardwareAddress(MacAddress.BROADCAST)
-                                .setTargetProtocolAddress(((IPv4) eth.getPayload()).getDestinationAddress()));
-
-        byte[] data = arpPacket.serialize();
-
-        OFPort inPort = OFMessageUtils.getInPort(pi);
-
-        OFFactory factory = sw.getOFFactory();
-        OFPacketOut.Builder packetOut = factory.buildPacketOut();
-
-        // Set Actions
-        List<OFAction> actions = new ArrayList<>();
-
-        Set<OFPort> broadcastPorts = this.topologyService.getSwitchBroadcastPorts(sw.getId());
-        if (broadcastPorts.isEmpty()) {
-            log.debug("No broadcast ports found. Using FLOOD output action");
-            broadcastPorts = Collections.singleton(OFPort.FLOOD);
-        }
-
-        for (OFPort p : broadcastPorts) {
-            if (p.equals(inPort)) continue;
-            actions.add(factory.actions().output(p, Integer.MAX_VALUE));
-        }
-        packetOut.setActions(actions);
-
-        // set buffer-id, in-port and packet-data based on packet-in
-        packetOut.setBufferId(OFBufferId.NO_BUFFER);
-        OFMessageUtils.setInPort(packetOut, inPort);
-        packetOut.setData(data);
-
-        if (log.isTraceEnabled()) {
-            log.trace("Writing flood PacketOut switch={} packet-in={} packet-out={}",
-                    new Object[] {sw, pi, packetOut.build()});
-        }
-        messageDamper.write(sw, packetOut.build());
-
-        return;
-    }
-
-    /**
-     * Query device based on L3 traffic's destination IP address, rather than based on L2 MAC address
-     *
-     * This is because in L3 case, the L2 MAC address is Virtual Router MAC, which is not exist in device map
-     *
-     * @param dstIP
-     * @return
-     */
-    private IDevice findDstDeviceForL3Routing(IPv4Address dstIP) {
-        // Fetch all known devices
-        Collection<? extends IDevice> allDevices = deviceManagerService.getAllDevices();
-
-        IDevice dstDevice = null;
-        for (IDevice d : allDevices) {
-            for (int i = 0; i < d.getIPv4Addresses().length; ++i) {
-                if (d.getIPv4Addresses()[i].equals(dstIP)) {
-                    dstDevice = d;
-                    break;
-                }
-            }
-        }
-
-        return dstDevice;
-    }
 
     /**
      * Instead of using the Firewall's routing decision Match, which might be as general
@@ -1249,9 +1199,6 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
      * @param cntx The FloodlightContext associated with this OFPacketIn
      */
     protected void doFlood(IOFSwitch sw, OFPacketIn pi, IRoutingDecision decision, FloodlightContext cntx) {
-        // FIXME
-        log.debug("Do Flood for packet");
-
         OFPort inPort = OFMessageUtils.getInPort(pi);
         OFPacketOut.Builder pob = sw.getOFFactory().buildPacketOut();
         List<OFAction> actions = new ArrayList<>();
@@ -1278,6 +1225,81 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                     new Object[] {sw, pi, pob.build()});
         }
         messageDamper.write(sw, pob.build());
+
+        return;
+    }
+
+    /**
+     * Virtual gateway creates OFPacketOut with ARP request message and flood it to network,
+     * for learning destination host purpose
+     *
+     * @param gateway The virtual gateway
+     * @param sw The switch that receives OFPacketIn
+     * @param pi The OFPacketIn that came to the switch
+     * @param cntx The FloodlightContext associated with this OFPacketIn
+     */
+    protected void doL3Flood(VirtualGatewayInstance gateway, IOFSwitch sw, OFPacketIn pi,
+                             FloodlightContext cntx) {
+        Ethernet eth = IFloodlightProviderService.bcStore.get(cntx,
+                IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
+
+        MacAddress gatewayMac = gateway.getGatewayMac();
+
+        // generate ARP request to destination host
+        IPv4Address dstIP = ((IPv4) eth.getPayload()).getDestinationAddress();
+        IPv4Address intfIpAddress = findInterfaceIP(gateway, dstIP);
+
+        // Set src MAC to virtual gateway MAC, set dst MAC to broadcast
+        IPacket arpPacket = new Ethernet()
+                .setSourceMACAddress(gatewayMac)
+                .setDestinationMACAddress(MacAddress.BROADCAST)
+                .setEtherType(EthType.ARP)
+                .setVlanID(eth.getVlanID())
+                .setPriorityCode(eth.getPriorityCode())
+                .setPayload(
+                        new ARP()
+                                .setHardwareType(ARP.HW_TYPE_ETHERNET)
+                                .setProtocolType(ARP.PROTO_TYPE_IP)
+                                .setOpCode(ARP.OP_REQUEST)
+                                .setHardwareAddressLength((byte) 6)
+                                .setProtocolAddressLength((byte) 4)
+                                .setSenderHardwareAddress(gatewayMac)
+                                .setSenderProtocolAddress(intfIpAddress)
+                                .setTargetHardwareAddress(MacAddress.BROADCAST)
+                                .setTargetProtocolAddress(((IPv4) eth.getPayload()).getDestinationAddress()));
+
+        byte[] data = arpPacket.serialize();
+
+        OFPort inPort = OFMessageUtils.getInPort(pi);
+
+        OFFactory factory = sw.getOFFactory();
+        OFPacketOut.Builder packetOut = factory.buildPacketOut();
+
+        // Set Actions
+        List<OFAction> actions = new ArrayList<>();
+
+        Set<OFPort> broadcastPorts = this.topologyService.getSwitchBroadcastPorts(sw.getId());
+        if (broadcastPorts.isEmpty()) {
+            log.debug("No broadcast ports found. Using FLOOD output action");
+            broadcastPorts = Collections.singleton(OFPort.FLOOD);
+        }
+
+        for (OFPort p : broadcastPorts) {
+            if (p.equals(inPort)) continue;
+            actions.add(factory.actions().output(p, Integer.MAX_VALUE));
+        }
+        packetOut.setActions(actions);
+
+        // set buffer-id, in-port and packet-data based on packet-in
+        packetOut.setBufferId(OFBufferId.NO_BUFFER);
+        OFMessageUtils.setInPort(packetOut, inPort);
+        packetOut.setData(data);
+
+        if (log.isTraceEnabled()) {
+            log.trace("Writing flood PacketOut switch={} packet-in={} packet-out={}",
+                    new Object[] {sw, pi, packetOut.build()});
+        }
+        messageDamper.write(sw, packetOut.build());
 
         return;
     }
@@ -1805,11 +1827,8 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
     }
 
     private boolean sendPacketToLastHop(Ethernet eth, IDevice destDevice) {
-
         SwitchPort trueAp = findTrueAttachmentPoint(destDevice.getAttachmentPoints());
         if (trueAp == null) {
-            // FIXME
-            log.info("Could not locate true attachment point for destination device");
             return false;
         }
 
@@ -1848,15 +1867,12 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 
         packetOut.setData(outPacket.serialize());
 
-        // FIXME
-        log.debug("Writing PacketOut, switch={}, output port={}",
-                new Object[] {sw, outputPort});
-
         if (log.isTraceEnabled()) {
             log.trace("Writing PacketOut, switch={}, output port={}, packet-out={}",
                     new Object[] {sw, outputPort, packetOut.build()});
         }
         messageDamper.write(sw, packetOut.build());
+        log.debug("Push packet out the last hop switch (true attachment point)");
 
         return true;
     }
@@ -1882,9 +1898,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 		/* This will catch case aps=null, empty, or no-true-ap */
         log.error("Could not locate a 'true' attachment point in {}", aps);
         return null;
-
     }
-
 
 
 }

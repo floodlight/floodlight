@@ -27,10 +27,8 @@ import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.types.NodePortTuple;
 import net.floodlightcontroller.core.util.AppCookie;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
-import net.floodlightcontroller.devicemanager.IDevice;
 import net.floodlightcontroller.devicemanager.IDeviceService;
 import net.floodlightcontroller.devicemanager.SwitchPort;
-import net.floodlightcontroller.devicemanager.internal.Device;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryService;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPacket;
@@ -133,9 +131,7 @@ public abstract class ForwardingBase implements IOFMessageListener {
 
     @Override
     public Command receive(IOFSwitch sw, OFMessage msg, FloodlightContext cntx) {
-        // FIXME
         Ethernet eth = IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
-        log.debug("Incoming ether-type {} packet-in on switch {} in ForwardingBase", eth.getEtherType(), sw.getId());
 
         switch (msg.getType()) {
         case PACKET_IN:
@@ -265,8 +261,7 @@ public abstract class ForwardingBase implements IOFMessageListener {
                     !fmb.getCommand().equals(OFFlowModCommand.DELETE) &&
                     !fmb.getCommand().equals(OFFlowModCommand.DELETE_STRICT)) {
                 /* Use the buffered packet at the switch, if there's one stored */
-                //FIXME
-                log.info("Push packet out the first hop switch");
+                log.debug("Push packet out the first hop switch");
                 pushPacket(sw, pi, outPort, true, cntx);
             }
 

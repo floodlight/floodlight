@@ -1091,6 +1091,9 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 				instance = gatewayService.getGatewayInstance(npt).get();
 			}
 		}
+		else {
+			logger.info("Could not locate virtual gateway instance for DPID {}, port {}", sw.getId(), inPort);
+		}
 
 		if (instance != null) {
 			gatewayMac = instance.getGatewayMac();
@@ -1103,10 +1106,8 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 			return Command.STOP;
 		}
 
-		// Ignore keep processing entity for L3 virtual router as we don't need to
-		if (gatewayMac != null && srcEntity.getMacAddress().equals(gatewayMac)) {
-			return Command.CONTINUE;
-		}
+		// Skip processing entity for L3 virtual router as we don't need to
+		if (gatewayMac != null && srcEntity.getMacAddress().equals(gatewayMac)) return Command.CONTINUE;
 
 		// Learn from ARP packet for special VRRP settings.
 		// In VRRP settings, the source MAC address and sender MAC
@@ -1118,11 +1119,12 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 
 		// Learn/lookup device information
 		Device srcDevice = learnDeviceByEntity(srcEntity);
+//		logger.info("source device is {}", srcDevice);
 		if (srcDevice == null) {
 			cntNoSource.increment();
 			return Command.STOP;
 		}
-
+//		logger.info("run here for sw {}", sw);
 		// Store the source device in the context
 		fcStore.put(cntx, CONTEXT_SRC_DEVICE, srcDevice);
 
@@ -1132,6 +1134,7 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 			cntInvalidDest.increment();
 			return Command.STOP;
 		}
+//		logger.info("run here for sw {}", sw);
 		Entity dstEntity = getDestEntityFromPacket(eth);
 		Device dstDevice = null;
 		if (dstEntity != null) {
