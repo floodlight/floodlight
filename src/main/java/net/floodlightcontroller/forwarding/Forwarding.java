@@ -35,6 +35,7 @@ import net.floodlightcontroller.core.types.NodePortTuple;
 import net.floodlightcontroller.core.util.AppCookie;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
 import net.floodlightcontroller.devicemanager.IDevice;
+import net.floodlightcontroller.devicemanager.IDeviceListener;
 import net.floodlightcontroller.devicemanager.IDeviceService;
 import net.floodlightcontroller.devicemanager.SwitchPort;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryListener;
@@ -98,6 +99,9 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
     private static L3RoutingManager l3manager;
     private static volatile IRoutingService.RoutingType routingType = IRoutingService.RoutingType.FORWARDING;
 
+    private Map<OFPacketIn, Ethernet> l3cache;
+    private DeviceListenerImpl deviceListener;
+
     protected static class FlowSetIdRegistry {
         private volatile Map<NodePortTuple, Set<U64>> nptToFlowSetIds;
         private volatile Map<U64, Set<NodePortTuple>> flowSetIdToNpts;
@@ -107,8 +111,8 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         private static volatile FlowSetIdRegistry instance;
 
         private FlowSetIdRegistry() {
-            nptToFlowSetIds = new ConcurrentHashMap<NodePortTuple, Set<U64>>();
-            flowSetIdToNpts = new ConcurrentHashMap<U64, Set<NodePortTuple>>();
+            nptToFlowSetIds = new ConcurrentHashMap<>();
+            flowSetIdToNpts = new ConcurrentHashMap<>();
         }
 
         protected static FlowSetIdRegistry getInstance() {
@@ -142,7 +146,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                 Set<U64> ids = nptToFlowSetIds.get(npt);
                 ids.add(flowSetId);
             } else {
-                Set<U64> ids = new HashSet<U64>();
+                Set<U64> ids = new HashSet<>();
                 ids.add(flowSetId);
                 nptToFlowSetIds.put(npt, ids);
             }  
@@ -151,7 +155,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                 Set<NodePortTuple> npts = flowSetIdToNpts.get(flowSetId);
                 npts.add(npt);
             } else {
-                Set<NodePortTuple> npts = new HashSet<NodePortTuple>();
+                Set<NodePortTuple> npts = new HashSet<>();
                 npts.add(npt);
                 flowSetIdToNpts.put(flowSetId, npts);
             }
@@ -200,9 +204,6 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         OFPort inPort = OFMessageUtils.getInPort(pi);
         NodePortTuple npt = new NodePortTuple(sw.getId(), inPort);
 
-        // FIXME
-        log.debug("Incoming packet-in on switch {}", sw.getId());
-
         if (decision != null) {
             if (log.isTraceEnabled()) {
                 log.trace("Forwarding decision={} was made for PacketIn={}", decision.getRoutingAction().toString(), pi);
@@ -244,7 +245,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
             switch(routingType) {
                 case FORWARDING:
                     //FIXME
-//                    log.info("do L2 forwarding", pi);
+                    log.debug("do L2 forwarding", pi);
                     // L2 Forward to destination or flood if bcast or mcast
                     if (log.isTraceEnabled()) {
                         log.trace("No decision was made for PacketIn={}, do L2 forwarding", pi);
@@ -281,8 +282,8 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 
         }
 
-        return Command.CONTINUE;
-
+//        return Command.CONTINUE;
+        return Command.STOP;
     }
 
 
@@ -296,12 +297,29 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 
         MacAddress gatewayMac = gatewayInstance.getGatewayMac();
 
+        if (eth.getPayload().getPayload() instanceof ICMP) {
+            //FIXME
+            log.debug("Incoming new ICMP packet-in on switch {} and port {} in doL3Routing", sw.getId(), inPort);
+        }
+
+        if (eth.getPayload() instanceof IPv4) {
+            IPv4Address intfIpAddress = findInterfaceIP(gatewayInstance, ((IPv4) eth.getPayload()).getDestinationAddress());
+            if (intfIpAddress == null) {
+                // FIXME
+                log.info("Can not locate corresponding interface for gateway {}, check its interface configuration",
+                        gatewayInstance.getName());
+                return;
+            }
+        }
+
         if (isBroadcastOrMulticast(eth)) {
             // When cross-subnet, host send ARP request to gateway. Gateway need to generate ARP response to host
             if (eth.getPayload() instanceof ARP && ((ARP) eth.getPayload()).getOpCode().equals(ARP.OP_REQUEST)
                     && gatewayInstance.isAGatewayInft(((ARP) eth.getPayload()).getTargetProtocolAddress())) {
                 IPacket arpReply = gatewayArpReply(cntx, gatewayMac);
                 pushArpReply(arpReply, sw, OFBufferId.NO_BUFFER, OFPort.ANY, inPort);
+                // FIXME
+                log.debug("Push ARP to destination");
             }
             else {
                 doFlood(sw, pi, decision, cntx);
@@ -336,6 +354,9 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         IDevice dstDevice = IDeviceService.fcStore.get(cntx, IDeviceService.CONTEXT_DST_DEVICE);
         IDevice srcDevice = IDeviceService.fcStore.get(cntx, IDeviceService.CONTEXT_SRC_DEVICE);
 
+        // FIXME
+        log.debug("Incoming switch {} for L3 Forwarding", sw.getId());
+
         if (dstDevice == null) {
             // Try one more time to retrieve dst device
             if (eth.getPayload() instanceof IPv4 && eth.getDestinationMACAddress().equals(virtualGatewayMac)) {
@@ -345,8 +366,12 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
             if (dstDevice == null) {
                 // L3 traffic at 1st hop, virtual gateway creates & floods ARP to learn destination device
                 if (eth.getPayload() instanceof IPv4 && eth.getDestinationMACAddress().equals(virtualGatewayMac)) {
-                    log.info("Virtual gateway handles L3 traffic. Create arp request packet to destination host and flooding");
+                    log.info("Virtual gateway creates arp request packet to destination host and flooding");
                     doL3Flood(gateway, sw, pi, cntx);
+
+                    l3cache.put(pi, eth);
+                    log.info("Add new packet-in associate with packet source {} and destination {} to cache",
+                            ((IPv4) eth.getPayload()).getSourceAddress(), ((IPv4) eth.getPayload()).getDestinationAddress());
                 }
                 // Normal L2 traffic
                 else {
@@ -410,7 +435,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         if (dstAp == null) {
             if (eth.getDestinationMACAddress().equals(virtualGatewayMac)) { // Try L3 Flood again
                 // FIXME
-                log.info("Virtual gateway handles L3 traffic. Create arp request packet to destination host and flooding");
+                log.debug("Virtual gateway creates arp request packet to destination host and flooding");
                 doL3Flood(gateway, sw, pi, cntx);
             }
             else { // Try L2 Flood again
@@ -441,7 +466,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
             Match m = createMatchFromPacket(sw, srcPort, pi, cntx);
 
             // FIXME
-            log.info("Creating flow rules on the route, match rule: {}", m);
+            log.debug("Creating flow rules on the route, match rule: {}", m);
 
             if (! path.getPath().isEmpty()) {
                 if (log.isDebugEnabled()) {
@@ -455,7 +480,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 
                 pushRoute(path, m, pi, sw.getId(), cookie,
                         cntx, requestFlowRemovedNotifn,
-                        OFFlowModCommand.ADD);
+                        OFFlowModCommand.ADD, false);
 
                 /*
                  * Register this flowset with ingress and egress ports for link down
@@ -468,6 +493,9 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
             } /* else no path was found */
         }
         else {
+            log.info("Destination Device IP is {}", dstDevice.getIPv4Addresses());
+            boolean packetOutSent = sendPacketToLastHop(eth, dstDevice);
+
             // L3 rewrite on first hop (in bi-direction)
             IOFSwitch firstHop = switchService.getSwitch(srcSw);
             Match match = createMatchFromPacket(firstHop, srcPort, pi, cntx);
@@ -486,9 +514,8 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
             Path newPath = getNewPath(path);
             pushRoute(newPath, match, pi, sw.getId(), cookie,
                     cntx, requestFlowRemovedNotifn,
-                    OFFlowModCommand.ADD);
+                    OFFlowModCommand.ADD, packetOutSent);
 
-            // TODO: need this?
             for (NodePortTuple npt : path.getPath()) {
                 flowSetIdRegistry.registerFlowSetId(npt, flowSetId);
             }
@@ -685,7 +712,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 
             pushRoute(path, m, pi, sw.getId(), cookie,
                     cntx, requestFlowRemovedNotifn,
-                    OFFlowModCommand.ADD);
+                    OFFlowModCommand.ADD, false);
 
             /*
              * Register this flowset with ingress and egress ports for link down
@@ -961,18 +988,12 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         IPv4Address dstIP = ((IPv4) eth.getPayload()).getDestinationAddress();
         IPv4Address intfIpAddress = findInterfaceIP(gateway, dstIP);
 
-        if (intfIpAddress == null) {
-            // FIXME
-            log.info("Can not locate corresponding interface for gateway {}, check its interface configuration", gateway.getName());
-            return;
-        }
-
         // Set src MAC to virtual gateway MAC, set dst MAC to broadcast
         IPacket arpPacket = new Ethernet()
                 .setSourceMACAddress(gatewayMac)
                 .setDestinationMACAddress(MacAddress.BROADCAST)
                 .setEtherType(EthType.ARP)
-                .setVlanID(eth.getVlanID()) // TODO: Correct? Should be same VLAN ID as output port
+                .setVlanID(eth.getVlanID())
                 .setPriorityCode(eth.getPriorityCode())
                 .setPayload(
                         new ARP()
@@ -1228,9 +1249,12 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
      * @param cntx The FloodlightContext associated with this OFPacketIn
      */
     protected void doFlood(IOFSwitch sw, OFPacketIn pi, IRoutingDecision decision, FloodlightContext cntx) {
+        // FIXME
+        log.debug("Do Flood for packet");
+
         OFPort inPort = OFMessageUtils.getInPort(pi);
         OFPacketOut.Builder pob = sw.getOFFactory().buildPacketOut();
-        List<OFAction> actions = new ArrayList<OFAction>();
+        List<OFAction> actions = new ArrayList<>();
         Set<OFPort> broadcastPorts = this.topologyService.getSwitchBroadcastPorts(sw.getId());
 
         if (broadcastPorts.isEmpty()) {
@@ -1304,6 +1328,8 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         this.linkService = context.getServiceImpl(ILinkDiscoveryService.class);
 
         l3manager = new L3RoutingManager();
+        l3cache = new ConcurrentHashMap<>();
+        deviceListener = new DeviceListenerImpl();
 
         flowSetIdRegistry = FlowSetIdRegistry.getInstance();
 
@@ -1418,6 +1444,8 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         switchService.addOFSwitchListener(this);
         routingEngineService.addRoutingDecisionChangedListener(this);
         restApiService.addRestletRoutable(new RoutingWebRoutable());
+
+        deviceManagerService.addListener(this.deviceListener);
 
         /* Register only if we want to remove stale flows */
         if (REMOVE_FLOWS_ON_LINK_OR_PORT_DOWN) {
@@ -1694,5 +1722,169 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         log.info("Virtual interface {} in gateway {} updated ", intf.getInterfaceName(), gateway.getName());
         l3manager.updateVirtualInterface(gateway, intf);
     }
+
+    // IDeviceListener
+    class DeviceListenerImpl implements IDeviceListener {
+        @Override
+        public void deviceAdded(IDevice device) {
+            // Ignore
+        }
+
+        @Override
+        public void deviceRemoved(IDevice device) {
+            // Ignore
+        }
+
+        @Override
+        public void deviceMoved(IDevice device) {
+            // Ignore
+        }
+
+        @Override
+        public void deviceIPV4AddrChanged(IDevice device) {
+            // If the device updated IP associated with the packet in the cache, release that packet
+            if (device.getIPv4Addresses() == null) return;
+
+            for (IPv4Address ip : device.getIPv4Addresses()) {
+                while (findPacketInCache(l3cache, ip).isPresent()) {
+                    // send all associated packets to the destination
+                    Ethernet eth = findPacketInCache(l3cache, ip).get();
+                    sendPacketToLastHop(eth, device);
+                    l3cache.values().remove(eth);
+                }
+            }
+        }
+
+        @Override
+        public void deviceIPV6AddrChanged(IDevice device) {
+            // Ignore
+        }
+
+        @Override
+        public void deviceVlanChanged(IDevice device) {
+            // Ignore
+        }
+
+        @Override
+        public String getName() {
+            return null;
+        }
+
+        @Override
+        public boolean isCallbackOrderingPrereq(String type, String name) {
+            return false;
+        }
+
+        @Override
+        public boolean isCallbackOrderingPostreq(String type, String name) {
+            return false;
+        }
+    }
+
+    private Optional<Ethernet> findPacketInCache(Map<OFPacketIn, Ethernet> l3cache, IPv4Address ip) {
+        return l3cache.values().stream()
+                .filter(packet -> ((IPv4) packet.getPayload()).getDestinationAddress().equals(ip))
+                .findAny();
+    }
+
+    private void pushL3Packet(IOFSwitch sw, OFPacketIn pi, FloodlightContext cntx, IDevice dstDevice) {
+        Ethernet eth = IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
+        OFPort inPort = OFMessageUtils.getInPort(pi);
+
+        if (pi.getBufferId().equals(OFBufferId.NO_BUFFER)) {
+            sendPacketToLastHop(eth, dstDevice);
+        }
+        else {
+            log.error("BufferId configured on switch. " +
+                            "Cannot send packetOut. " +
+                            "srcSwitch={} inPort={}",
+                    new Object[] {sw, inPort});
+            return;
+        }
+
+    }
+
+    private boolean sendPacketToLastHop(Ethernet eth, IDevice destDevice) {
+
+        SwitchPort trueAp = findTrueAttachmentPoint(destDevice.getAttachmentPoints());
+        if (trueAp == null) {
+            // FIXME
+            log.info("Could not locate true attachment point for destination device");
+            return false;
+        }
+
+        IOFSwitch sw = switchService.getSwitch(trueAp.getNodeId());
+        OFPort outputPort = trueAp.getPortId();
+
+
+        if (!getGatewayInstance(new NodePortTuple(trueAp.getNodeId(), trueAp.getPortId())).isPresent() &&
+                !getGatewayInstance(trueAp.getNodeId()).isPresent()) {
+            log.info("Could not locate virtual gateway instance for DPID {}, port {}", sw.getId(), outputPort);
+            return false;
+        }
+
+        MacAddress gatewayMac = null;
+        if (getGatewayInstance(trueAp.getNodeId()).isPresent()) {
+            gatewayMac = getGatewayInstance(trueAp.getNodeId()).get().getGatewayMac();
+        }
+        else {
+            gatewayMac = getGatewayInstance(new NodePortTuple(trueAp.getNodeId(), trueAp.getPortId())).get().getGatewayMac();
+        }
+
+        IPacket outPacket = new Ethernet()
+                .setSourceMACAddress(gatewayMac)
+                .setDestinationMACAddress(destDevice.getMACAddress())
+                .setEtherType(eth.getEtherType())
+                .setVlanID(eth.getVlanID())
+                .setPayload(eth.getPayload());
+
+
+        OFFactory factory = sw.getOFFactory();
+        OFPacketOut.Builder packetOut = factory.buildPacketOut();
+
+        List<OFAction> actions = new ArrayList<>();
+        actions.add(factory.actions().output(outputPort, Integer.MAX_VALUE));
+        packetOut.setActions(actions);
+
+        packetOut.setData(outPacket.serialize());
+
+        // FIXME
+        log.debug("Writing PacketOut, switch={}, output port={}",
+                new Object[] {sw, outputPort});
+
+        if (log.isTraceEnabled()) {
+            log.trace("Writing PacketOut, switch={}, output port={}, packet-out={}",
+                    new Object[] {sw, outputPort, packetOut.build()});
+        }
+        messageDamper.write(sw, packetOut.build());
+
+        return true;
+    }
+
+
+    private SwitchPort findTrueAttachmentPoint(SwitchPort[] aps) {
+        if (aps != null) {
+            for (SwitchPort ap : aps) {
+                Set<OFPort> portsOnLinks = topologyService.getPortsWithLinks(ap.getNodeId());
+                if (portsOnLinks == null) {
+                    log.error("Error looking up ports with links from topology service for switch {}", ap.getNodeId());
+                    continue;
+                }
+
+                if (!portsOnLinks.contains(ap.getPortId())) {
+                    log.debug("Found 'true' attachment point of {}", ap);
+                    return ap;
+                } else {
+                    log.trace("Attachment point {} was not the 'true' attachment point", ap);
+                }
+            }
+        }
+		/* This will catch case aps=null, empty, or no-true-ap */
+        log.error("Could not locate a 'true' attachment point in {}", aps);
+        return null;
+
+    }
+
+
 
 }

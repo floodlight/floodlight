@@ -92,6 +92,11 @@ def addInterfaceToGateway(name):
                 "interface-name" : "interface-8",
                 "interface-ip" : "80.0.0.1",
                 "interface-mask" : "255.255.255.0"
+            },
+            {
+                "interface-name" : "interface-9",
+                "interface-ip" : "90.0.0.1",
+                "interface-mask" : "255.255.255.0"
             }
         ]
     }
@@ -115,6 +120,18 @@ def addSwitchToGateway(name):
             },
             {
                 "dpid": "4"
+            },
+            {
+                "dpid": "5"
+            },
+            {
+                "dpid": "6"
+            },
+            {
+                "dpid": "7"
+            },
+            {
+                "dpid": "8"
             }
         ]
     }
@@ -204,6 +221,17 @@ def startNetworkWithTreeTopo():
     host7.setIP('70.0.0.10', prefixLen=24)
     defaultGatewayIP7 = "70.0.0.1"
     configureDefaultGatewayForHost(host7, defaultGatewayIP7)
+
+    host8 = net.getNodeByName('h8')
+    host8.setIP('80.0.0.10', prefixLen=24)
+    defaultGatewayIP8 = "80.0.0.1"
+    configureDefaultGatewayForHost(host8, defaultGatewayIP8)
+
+
+    host9 = net.getNodeByName('h9')
+    host9.setIP('90.0.0.10', prefixLen=24)
+    defaultGatewayIP9 = "90.0.0.1"
+    configureDefaultGatewayForHost(host9, defaultGatewayIP9)
 
     # Set switch to OpenFlow 1.3 (Can change to any OpenFlow version)
     # switches = net.switches

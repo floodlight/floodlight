@@ -27,9 +27,12 @@ import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.types.NodePortTuple;
 import net.floodlightcontroller.core.util.AppCookie;
 import net.floodlightcontroller.debugcounter.IDebugCounterService;
+import net.floodlightcontroller.devicemanager.IDevice;
 import net.floodlightcontroller.devicemanager.IDeviceService;
 import net.floodlightcontroller.devicemanager.SwitchPort;
+import net.floodlightcontroller.devicemanager.internal.Device;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryService;
+import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPacket;
 import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.topology.ITopologyService;
@@ -130,6 +133,10 @@ public abstract class ForwardingBase implements IOFMessageListener {
 
     @Override
     public Command receive(IOFSwitch sw, OFMessage msg, FloodlightContext cntx) {
+        // FIXME
+        Ethernet eth = IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
+        log.debug("Incoming ether-type {} packet-in on switch {} in ForwardingBase", eth.getEtherType(), sw.getId());
+
         switch (msg.getType()) {
         case PACKET_IN:
             IRoutingDecision decision = null;
@@ -159,9 +166,7 @@ public abstract class ForwardingBase implements IOFMessageListener {
      */
     public boolean pushRoute(Path route, Match match, OFPacketIn pi,
             DatapathId pinSwitch, U64 cookie, FloodlightContext cntx,
-            boolean requestFlowRemovedNotification, OFFlowModCommand flowModCommand) {
-
-        boolean packetOutSent = false;
+            boolean requestFlowRemovedNotification, OFFlowModCommand flowModCommand, boolean packetOutSent) {
 
         List<NodePortTuple> switchPortList = route.getPath();
 
@@ -174,7 +179,7 @@ public abstract class ForwardingBase implements IOFMessageListener {
                 if (log.isWarnEnabled()) {
                     log.warn("Unable to push route, switch at DPID {} " + "not available", switchDPID);
                 }
-                return packetOutSent;
+                return false;
             }
 
             // need to build flow mod based on what type it is. Cannot set command later
@@ -200,7 +205,7 @@ public abstract class ForwardingBase implements IOFMessageListener {
             }
 
             OFActionOutput.Builder aob = sw.getOFFactory().actions().buildOutput();
-            List<OFAction> actions = new ArrayList<OFAction>();	
+            List<OFAction> actions = new ArrayList<>();
             Match.Builder mb = MatchUtils.convertToVersion(match, sw.getOFFactory().getVersion());
 
             // set input and output ports on the switch
@@ -256,17 +261,18 @@ public abstract class ForwardingBase implements IOFMessageListener {
             }
 
             /* Push the packet out the first hop switch */
-            if (sw.getId().equals(pinSwitch) &&
+            if (!packetOutSent && sw.getId().equals(pinSwitch) &&
                     !fmb.getCommand().equals(OFFlowModCommand.DELETE) &&
                     !fmb.getCommand().equals(OFFlowModCommand.DELETE_STRICT)) {
                 /* Use the buffered packet at the switch, if there's one stored */
+                //FIXME
+                log.info("Push packet out the first hop switch");
                 pushPacket(sw, pi, outPort, true, cntx);
-                packetOutSent = true;
             }
 
         }
 
-        return packetOutSent;
+        return true;
     }
 
     /**
@@ -304,7 +310,7 @@ public abstract class ForwardingBase implements IOFMessageListener {
         }
 
         OFPacketOut.Builder pob = sw.getOFFactory().buildPacketOut();
-        List<OFAction> actions = new ArrayList<OFAction>();
+        List<OFAction> actions = new ArrayList<>();
         actions.add(sw.getOFFactory().actions().output(outport, Integer.MAX_VALUE));
         pob.setActions(actions);
 
@@ -336,7 +342,7 @@ public abstract class ForwardingBase implements IOFMessageListener {
     public void packetOutMultiPort(byte[] packetData, IOFSwitch sw, 
             OFPort inPort, Set<OFPort> outPorts, FloodlightContext cntx) {
         //setting actions
-        List<OFAction> actions = new ArrayList<OFAction>();
+        List<OFAction> actions = new ArrayList<>();
 
         Iterator<OFPort> j = outPorts.iterator();
 

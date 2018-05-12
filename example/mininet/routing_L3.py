@@ -107,6 +107,11 @@ def addInterfaceToGateway(name):
                 "interface-name" : "interface-5",
                 "interface-ip" : "50.0.0.1",
                 "interface-mask" : "255.255.255.0"
+            },
+            {
+                "interface-name" : "interface-6",
+                "interface-ip" : "60.0.0.1",
+                "interface-mask" : "255.255.255.0"
             }
         ]
     }
@@ -156,6 +161,12 @@ def addSwitchToGateway(name):
             },
             {
                 "dpid": "3"
+            },
+            {
+                "dpid": "4"
+            },
+            {
+                "dpid": "5"
             }
         ]
     }
@@ -235,6 +246,11 @@ def startNetworkWithLinearTopo( hostCount ):
     host5.setIP('50.0.0.10', prefixLen=24)
     defaultGatewayIP5 = "50.0.0.1"
     configureDefaultGatewayForHost(host5, defaultGatewayIP5)
+
+    host6 = net.getNodeByName('h6')
+    host6.setIP('60.0.0.10', prefixLen=24)
+    defaultGatewayIP6 = "60.0.0.1"
+    configureDefaultGatewayForHost(host6, defaultGatewayIP6)
 
 
 def clearGatewayInstance(name):
