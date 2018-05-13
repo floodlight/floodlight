@@ -228,13 +228,13 @@ def startNetworkWithLinearTopo( hostCount ):
     configureDefaultGatewayForHost(host1, defaultGatewayIP1)
 
     host2 = net.getNodeByName('h2')
-    host2.setIP('20.0.0.10', prefixLen=24)
-    defaultGatewayIP2 = "20.0.0.1"
+    host2.setIP('10.0.0.20', prefixLen=24)
+    defaultGatewayIP2 = "10.0.0.1"
     configureDefaultGatewayForHost(host2, defaultGatewayIP2)
 
     host3 = net.getNodeByName('h3')
-    host3.setIP('30.0.0.10', prefixLen=24)
-    defaultGatewayIP3 = "30.0.0.1"
+    host3.setIP('10.0.0.30', prefixLen=24)
+    defaultGatewayIP3 = "10.0.0.1"
     configureDefaultGatewayForHost(host3, defaultGatewayIP3)
 
     host4 = net.getNodeByName('h4')

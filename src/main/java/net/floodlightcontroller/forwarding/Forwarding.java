@@ -318,7 +318,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         if (eth.getPayload() instanceof IPv4) {
             IPv4Address intfIpAddress = findInterfaceIP(gatewayInstance, ((IPv4) eth.getPayload()).getDestinationAddress());
             if (intfIpAddress == null) {
-                log.info("Can not locate corresponding interface for gateway {}, check its interface configuration",
+                log.debug("Can not locate corresponding interface for gateway {}, check its interface configuration",
                         gatewayInstance.getName());
                 return;
             }
@@ -491,7 +491,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 
             } /* else no path was found */
         }
-        else {
+        else { // L3 Routing
             boolean packetOutSent = sendPacketToLastHop(eth, dstDevice);
 
             // L3 rewrite on first hop (in bi-direction)
@@ -694,7 +694,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 
         /* Validate that the source and destination are not on the same switch port */
         if (sw.getId().equals(dstAp.getNodeId()) && srcPort.equals(dstAp.getPortId())) {
-            log.info("Both source and destination are on the same switch/port {}/{}. Dropping packet", sw.toString(), srcPort);
+            log.debug("Both source and destination are on the same switch/port {}/{}. Dropping packet", sw.toString(), srcPort);
             return;
         }
 
@@ -994,7 +994,6 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
             flowSetIdRegistry.registerFlowSetId(new NodePortTuple(sw.getId(), m.get(MatchField.IN_PORT)), flowSetId);
         }
 
-        log.info("Dropping");
         fmb.setCookie(cookie)
         .setHardTimeout(FLOWMOD_DEFAULT_HARD_TIMEOUT)
         .setIdleTimeout(FLOWMOD_DEFAULT_IDLE_TIMEOUT)
@@ -1306,7 +1305,6 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 
 
     // IFloodlightModule methods
-
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleServices() {
         Collection<Class<? extends IFloodlightService>> s =
