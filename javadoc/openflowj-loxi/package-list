@@ -10,11 +10,14 @@ org.projectfloodlight.openflow.protocol.instructionid
 org.projectfloodlight.openflow.protocol.match
 org.projectfloodlight.openflow.protocol.meterband
 org.projectfloodlight.openflow.protocol.oxm
+org.projectfloodlight.openflow.protocol.oxs
 org.projectfloodlight.openflow.protocol.queueprop
+org.projectfloodlight.openflow.protocol.stat
 org.projectfloodlight.openflow.protocol.ver10
 org.projectfloodlight.openflow.protocol.ver11
 org.projectfloodlight.openflow.protocol.ver12
 org.projectfloodlight.openflow.protocol.ver13
 org.projectfloodlight.openflow.protocol.ver14
+org.projectfloodlight.openflow.protocol.ver15
 org.projectfloodlight.openflow.types
 org.projectfloodlight.openflow.util
