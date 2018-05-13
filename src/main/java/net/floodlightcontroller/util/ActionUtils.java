@@ -43,6 +43,9 @@ import org.projectfloodlight.openflow.protocol.action.OFActionSetTpSrc;
 import org.projectfloodlight.openflow.protocol.action.OFActionSetVlanPcp;
 import org.projectfloodlight.openflow.protocol.action.OFActionSetVlanVid;
 import org.projectfloodlight.openflow.protocol.oxm.OFOxm;
+
+import org.projectfloodlight.openflow.protocol.oxm.OFOxmTunnelId;
+
 import org.projectfloodlight.openflow.protocol.oxm.OFOxmActsetOutput;
 import org.projectfloodlight.openflow.protocol.oxm.OFOxmArpOp;
 import org.projectfloodlight.openflow.protocol.oxm.OFOxmArpSha;
@@ -298,19 +301,34 @@ public class ActionUtils {
                     sb.append(STR_FIELD_SET).append("=").append(MatchUtils.STR_ARP_DPA)
                     .append(MatchUtils.SET_FIELD_DELIM)
                     .append(((OFOxmArpTpa) ((OFActionSetField) a).getField()).getValue().toString()); 
-                } else if (((OFActionSetField)a).getField() instanceof OFOxmIpv6NdSll) {                		
+                } else if (((OFActionSetField)a).getField() instanceof OFOxmIpv6NdSll) {                        
                     sb.append(STR_FIELD_SET).append("=").append(MatchUtils.STR_IPV6_ND_SLL)
                     .append(MatchUtils.SET_FIELD_DELIM)
                     .append(((OFOxmIpv6NdSll) ((OFActionSetField) a).getField()).getValue().toString()); // macaddress formats string already
-                } else if (((OFActionSetField)a).getField() instanceof OFOxmIpv6NdTll) {                		
+                } else if (((OFActionSetField)a).getField() instanceof OFOxmIpv6NdTll) {                        
                     sb.append(STR_FIELD_SET).append("=").append(MatchUtils.STR_IPV6_ND_TLL)
                     .append(MatchUtils.SET_FIELD_DELIM)
                     .append(((OFOxmIpv6NdTll) ((OFActionSetField) a).getField()).getValue().toString()); // macaddress formats string already
-                } else if (((OFActionSetField)a).getField() instanceof OFOxmIpv6NdTarget) {                		
+                } else if (((OFActionSetField)a).getField() instanceof OFOxmIpv6NdTarget) {                     
                     sb.append(STR_FIELD_SET).append("=").append(MatchUtils.STR_IPV6_ND_TARGET)
                     .append(MatchUtils.SET_FIELD_DELIM)
                     .append(((OFOxmIpv6NdTarget) ((OFActionSetField) a).getField()).getValue().toString()); 
                 }
+
+
+                
+
+                /* TUNNEL ID */
+                else if (((OFActionSetField)a).getField() instanceof OFOxmTunnelId) {
+                    sb.append(STR_FIELD_SET).append("=").append(MatchUtils.STR_TUNNEL_ID)
+                    .append(MatchUtils.SET_FIELD_DELIM)
+                    .append(Long.toString(((OFOxmTunnelId) ((OFActionSetField) a).getField()).getValue().getValue())); 
+                } 
+
+
+
+
+
                 /* DATA LAYER */
                 else if (((OFActionSetField)a).getField() instanceof OFOxmEthType) {
                     sb.append(STR_FIELD_SET).append("=").append(MatchUtils.STR_DL_TYPE)
@@ -342,11 +360,11 @@ public class ActionUtils {
                     sb.append(STR_FIELD_SET).append("=").append(MatchUtils.STR_ICMP_TYPE)
                     .append(MatchUtils.SET_FIELD_DELIM)
                     .append(Short.toString(((OFOxmIcmpv4Type) ((OFActionSetField) a).getField()).getValue().getType())); 
-                } else if (((OFActionSetField)a).getField() instanceof OFOxmIcmpv6Code) {                		
+                } else if (((OFActionSetField)a).getField() instanceof OFOxmIcmpv6Code) {                       
                     sb.append(STR_FIELD_SET).append("=").append(MatchUtils.STR_ICMPV6_CODE)
                     .append(MatchUtils.SET_FIELD_DELIM)
                     .append(Short.toString(((OFOxmIcmpv6Code) ((OFActionSetField) a).getField()).getValue().getRaw())); 
-                }  else if (((OFActionSetField)a).getField() instanceof OFOxmIcmpv6Type) {                		
+                }  else if (((OFActionSetField)a).getField() instanceof OFOxmIcmpv6Type) {                      
                     sb.append(STR_FIELD_SET).append("=").append(MatchUtils.STR_ICMPV6_TYPE)
                     .append(MatchUtils.SET_FIELD_DELIM)
                     .append(Short.toString(((OFOxmIcmpv6Type) ((OFActionSetField) a).getField()).getValue().getRaw())); 
@@ -364,19 +382,19 @@ public class ActionUtils {
                     sb.append(STR_FIELD_SET).append("=").append(MatchUtils.STR_NW_DST)
                     .append(MatchUtils.SET_FIELD_DELIM)
                     .append(((OFOxmIpv4Dst) ((OFActionSetField) a).getField()).getValue().toString()); 
-                } else if (((OFActionSetField)a).getField() instanceof OFOxmIpv6Src) {                		
+                } else if (((OFActionSetField)a).getField() instanceof OFOxmIpv6Src) {                      
                     sb.append(STR_FIELD_SET).append("=").append(MatchUtils.STR_IPV6_SRC)
                     .append(MatchUtils.SET_FIELD_DELIM)
                     .append(((OFOxmIpv6Src) ((OFActionSetField) a).getField()).getValue().toString()); 
-                } else if (((OFActionSetField)a).getField() instanceof OFOxmIpv6Dst) {                		
+                } else if (((OFActionSetField)a).getField() instanceof OFOxmIpv6Dst) {                      
                     sb.append(STR_FIELD_SET).append("=").append(MatchUtils.STR_IPV6_DST)
                     .append(MatchUtils.SET_FIELD_DELIM)
                     .append(((OFOxmIpv6Dst) ((OFActionSetField) a).getField()).getValue().toString()); 
-                } else if (((OFActionSetField)a).getField() instanceof OFOxmIpv6Flabel) {                		
+                } else if (((OFActionSetField)a).getField() instanceof OFOxmIpv6Flabel) {                       
                     sb.append(STR_FIELD_SET).append("=").append(MatchUtils.STR_IPV6_FLOW_LABEL)
                     .append(MatchUtils.SET_FIELD_DELIM)
                     .append(((OFOxmIpv6Flabel) ((OFActionSetField) a).getField()).getValue().toString()); 
-                } else if (((OFActionSetField)a).getField() instanceof OFOxmIpv6Exthdr) {                		
+                } else if (((OFActionSetField)a).getField() instanceof OFOxmIpv6Exthdr) {                       
                     sb.append(STR_FIELD_SET).append("=").append(MatchUtils.STR_IPV6_EXTHDR)
                     .append(MatchUtils.SET_FIELD_DELIM)
                     .append(((OFOxmIpv6Exthdr) ((OFActionSetField) a).getField()).getValue().toString()); 
@@ -487,7 +505,7 @@ public class ActionUtils {
                     log.debug("Token " + bigStringSplit[i] + " does not have form 'key=value' parsing " + s);
                 }
                 actionToDecode.add(tmp); // actionToDecode contains [key, value] pairs. Create a queue of pairs to process.
-            }	
+            }   
 
             while (!actionToDecode.isEmpty()) {
                 String[] keyPair = actionToDecode.pollFirst();
@@ -550,6 +568,15 @@ public class ActionUtils {
                             .setField(f.oxms().buildArpSpa().setValue(IPv4Address.of(actionData[1])).build())
                             .build();
                             break;
+                         /*Tunnel Id*/
+                         case MatchUtils.STR_TUNNEL_ID:
+                            a = f.actions().buildSetField()
+                            .setField(f.oxms().buildTunnelId()
+                                    .setValue(U64.of(ParseUtils.parseHexOrDecLong(actionData[1])))
+                                    .build())
+                            .build();
+                            break;
+
                         case MatchUtils.STR_ARP_DPA:
                             a = f.actions().buildSetField()
                             .setField(f.oxms().buildArpTpa().setValue(IPv4Address.of(actionData[1])).build())
@@ -639,29 +666,29 @@ public class ActionUtils {
                         case MatchUtils.STR_NW_SRC:
                             a = f.actions().buildSetField()
                             .setField(f.oxms().buildIpv4Src().setValue(IPv4Address.of(actionData[1])).build())
-                            .build();						
+                            .build();                       
                             break;
                         case MatchUtils.STR_NW_DST:
                             a = f.actions().buildSetField()
                             .setField(f.oxms().buildIpv4Dst().setValue(IPv4Address.of(actionData[1])).build())
-                            .build();						
+                            .build();                       
                             break;
                         case MatchUtils.STR_IPV6_SRC:
                             a = f.actions().buildSetField()
                             .setField(f.oxms().buildIpv6Src().setValue(IPv6Address.of(actionData[1])).build())
-                            .build();						
+                            .build();                       
                             break;
                         case MatchUtils.STR_IPV6_DST:
                             a = f.actions().buildSetField()
                             .setField(f.oxms().buildIpv6Dst().setValue(IPv6Address.of(actionData[1])).build())
-                            .build();						
+                            .build();                       
                             break;
                         case MatchUtils.STR_IPV6_FLOW_LABEL:
                             a = f.actions().buildSetField()
                             .setField(f.oxms().buildIpv6Flabel()
                                     .setValue(IPv6FlowLabel.of(ParseUtils.parseHexOrDecInt(actionData[1])))
                                     .build())
-                            .build();			
+                            .build();           
                             break;
                         case MatchUtils.STR_NW_ECN:
                             a = f.actions().buildSetField()
@@ -682,42 +709,42 @@ public class ActionUtils {
                             .setField(f.oxms().buildSctpSrc()
                                     .setValue(TransportPort.of(ParseUtils.parseHexOrDecInt(actionData[1])))
                                     .build())
-                            .build();	
+                            .build();   
                             break;
                         case MatchUtils.STR_SCTP_DST:
                             a = f.actions().buildSetField()
                             .setField(f.oxms().buildSctpDst()
                                     .setValue(TransportPort.of(ParseUtils.parseHexOrDecInt(actionData[1])))
                                     .build())
-                            .build();	
+                            .build();   
                             break;
                         case MatchUtils.STR_TCP_SRC:
                             a = f.actions().buildSetField()
                             .setField(f.oxms().buildTcpSrc()
                                     .setValue(TransportPort.of(ParseUtils.parseHexOrDecInt(actionData[1])))
                                     .build())
-                            .build();	
+                            .build();   
                             break;
                         case MatchUtils.STR_TCP_DST:
                             a = f.actions().buildSetField()
                             .setField(f.oxms().buildTcpDst()
                                     .setValue(TransportPort.of(ParseUtils.parseHexOrDecInt(actionData[1])))
                                     .build())
-                            .build();	
+                            .build();   
                             break;
                         case MatchUtils.STR_UDP_SRC:
                             a = f.actions().buildSetField()
                             .setField(f.oxms().buildUdpSrc()
                                     .setValue(TransportPort.of(ParseUtils.parseHexOrDecInt(actionData[1])))
                                     .build())
-                            .build();	
+                            .build();   
                             break;
                         case MatchUtils.STR_UDP_DST:
                             a = f.actions().buildSetField()
                             .setField(f.oxms().buildUdpDst()
                                     .setValue(TransportPort.of(ParseUtils.parseHexOrDecInt(actionData[1])))
                                     .build())
-                            .build();	
+                            .build();   
                             break;
                         case MatchUtils.STR_MPLS_LABEL:
                             a = f.actions().buildSetField()
@@ -765,17 +792,17 @@ public class ActionUtils {
                         default:
                             log.error("Unexpected OF1.2+ setfield '{}'", actionData);
                             break;
-                        }					
+                        }                   
                         break;
                     case STR_GROUP:
                         a = f.actions().buildGroup()
                         .setGroup(GroupUtils.groupIdFromString(pair))
-                        .build();	
+                        .build();   
                         break;
                     case STR_MPLS_LABEL_SET:
                         a = f.actions().buildSetMplsLabel()
                         .setMplsLabel(ParseUtils.parseHexOrDecLong(pair))
-                        .build();			
+                        .build();           
                         break;
                     case STR_MPLS_POP:
                         a = f.actions().buildPopMpls()
@@ -785,12 +812,12 @@ public class ActionUtils {
                     case STR_MPLS_PUSH:
                         a = f.actions().buildPushMpls()
                         .setEthertype(EthType.of(ParseUtils.parseHexOrDecInt(pair)))
-                        .build();		
+                        .build();       
                         break;
                     case STR_MPLS_TC_SET:
                         a = f.actions().buildSetMplsTc()
                         .setMplsTc(ParseUtils.parseHexOrDecShort(pair))
-                        .build();	
+                        .build();   
                         break;
                     case STR_MPLS_TTL_DEC:
                         a = f.actions().decMplsTtl();
@@ -798,7 +825,7 @@ public class ActionUtils {
                     case STR_MPLS_TTL_SET:
                         a = f.actions().buildSetMplsTtl()
                         .setMplsTtl(ParseUtils.parseHexOrDecShort(pair))
-                        .build();	
+                        .build();   
                         break;
                     case STR_NW_TOS_SET:
                         a = decode_set_tos_bits(pair, v); // should only be used by OF1.0
@@ -812,7 +839,7 @@ public class ActionUtils {
                     case STR_NW_ECN_SET: // loxi does not support DSCP set for OF1.1
                         a = f.actions().buildSetNwEcn() 
                         .setNwEcn(IpEcn.of(ParseUtils.parseHexOrDecByte(pair)))
-                        .build();		
+                        .build();       
                         break;
                     case STR_NW_TTL_DEC:
                         a = f.actions().decNwTtl();
@@ -828,12 +855,12 @@ public class ActionUtils {
                     case STR_PBB_PUSH:
                         a = f.actions().buildPushPbb()
                         .setEthertype(EthType.of(ParseUtils.parseHexOrDecInt(pair)))
-                        .build();				
+                        .build();               
                         break;
                     case STR_QUEUE_SET:
                         a = f.actions().buildSetQueue()
                         .setQueueId(ParseUtils.parseHexOrDecLong(pair))
-                        .build();	
+                        .build();   
                         break;
                     case STR_TP_SRC_SET:
                         a = decode_set_src_port(pair, v);
@@ -886,7 +913,7 @@ public class ActionUtils {
             }
         } else {
             log.debug("actions not found --> drop");
-        }	
+        }   
         return actions;
     }
 
