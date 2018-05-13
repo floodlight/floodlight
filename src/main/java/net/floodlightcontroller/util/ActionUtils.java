@@ -43,9 +43,7 @@ import org.projectfloodlight.openflow.protocol.action.OFActionSetTpSrc;
 import org.projectfloodlight.openflow.protocol.action.OFActionSetVlanPcp;
 import org.projectfloodlight.openflow.protocol.action.OFActionSetVlanVid;
 import org.projectfloodlight.openflow.protocol.oxm.OFOxm;
-
 import org.projectfloodlight.openflow.protocol.oxm.OFOxmTunnelId;
-
 import org.projectfloodlight.openflow.protocol.oxm.OFOxmActsetOutput;
 import org.projectfloodlight.openflow.protocol.oxm.OFOxmArpOp;
 import org.projectfloodlight.openflow.protocol.oxm.OFOxmArpSha;
@@ -314,21 +312,11 @@ public class ActionUtils {
                     .append(MatchUtils.SET_FIELD_DELIM)
                     .append(((OFOxmIpv6NdTarget) ((OFActionSetField) a).getField()).getValue().toString()); 
                 }
-
-
-                
-
-                /* TUNNEL ID */
                 else if (((OFActionSetField)a).getField() instanceof OFOxmTunnelId) {
                     sb.append(STR_FIELD_SET).append("=").append(MatchUtils.STR_TUNNEL_ID)
                     .append(MatchUtils.SET_FIELD_DELIM)
                     .append(Long.toString(((OFOxmTunnelId) ((OFActionSetField) a).getField()).getValue().getValue())); 
-                } 
-
-
-
-
-
+                }
                 /* DATA LAYER */
                 else if (((OFActionSetField)a).getField() instanceof OFOxmEthType) {
                     sb.append(STR_FIELD_SET).append("=").append(MatchUtils.STR_DL_TYPE)
@@ -568,7 +556,6 @@ public class ActionUtils {
                             .setField(f.oxms().buildArpSpa().setValue(IPv4Address.of(actionData[1])).build())
                             .build();
                             break;
-                         /*Tunnel Id*/
                          case MatchUtils.STR_TUNNEL_ID:
                             a = f.actions().buildSetField()
                             .setField(f.oxms().buildTunnelId()
@@ -576,7 +563,6 @@ public class ActionUtils {
                                     .build())
                             .build();
                             break;
-
                         case MatchUtils.STR_ARP_DPA:
                             a = f.actions().buildSetField()
                             .setField(f.oxms().buildArpTpa().setValue(IPv4Address.of(actionData[1])).build())
