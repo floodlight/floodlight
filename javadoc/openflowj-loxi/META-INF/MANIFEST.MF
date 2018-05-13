@@ -1,6 +1,5 @@
 Manifest-Version: 1.0
-Built-By: rizard
-Build-Jdk: 1.7.0_65
-Created-By: Apache Maven
 Archiver-Version: Plexus Archiver
-
+Built-By: qingwang
+Build-Jdk: 1.8.0_162
+Created-By: Apache Maven 3.5.0
