@@ -27,6 +27,8 @@ import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.FloodlightModuleLoader;
 import net.floodlightcontroller.core.module.IFloodlightModuleContext;
 import net.floodlightcontroller.restserver.IRestApiService;
+import net.floodlightcontroller.sparkapi.LvapApi;
+
 
 /**
  * Host for the Floodlight main method
@@ -38,13 +40,15 @@ public class Main {
 	/**
 	 * Main method to load configuration and modules
 	 * @param args
-	 * @throws FloodlightModuleException 
+	 * @throws FloodlightModuleException
 	 */
 	public static void main(String[] args) throws FloodlightModuleException {
 		try {
 			// Setup logger
-			System.setProperty("org.restlet.engine.loggerFacadeClass", 
+			System.setProperty("org.restlet.engine.loggerFacadeClass",
 					"org.restlet.ext.slf4j.Slf4jLoggerFacade");
+
+			LvapApi lvap = new LvapApi();
 
 			CmdLineSettings settings = new CmdLineSettings();
 			CmdLineParser parser = new CmdLineParser(settings);
@@ -60,7 +64,7 @@ public class Main {
 			try {
 				IFloodlightModuleContext moduleContext = fml.loadModulesFromConfig(settings.getModuleFile());
 				IRestApiService restApi = moduleContext.getServiceImpl(IRestApiService.class);
-				restApi.run(); 
+				restApi.run();
 			} catch (FloodlightModuleConfigFileNotFoundException e) {
 				// we really want to log the message, not the stack trace
 				logger.error("Could not read config file: {}", e.getMessage());
@@ -69,9 +73,10 @@ public class Main {
 			try {
                 fml.runModules(); // run the controller module and all modules
             } catch (FloodlightModuleException e) {
-                logger.error("Failed to run controller modules", e);
-                System.exit(1);
-            }
+				logger.error("Failed to run controller modules", e);
+				System.exit(1);
+			}
+
 		} catch (Exception e) {
 			logger.error("Exception in main", e);
 			System.exit(1);
