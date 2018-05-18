@@ -17,21 +17,7 @@
 
 package net.floodlightcontroller.devicemanager.internal;
 
-import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.Date;
-import java.util.EnumSet;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Queue;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -77,6 +63,7 @@ import net.floodlightcontroller.packet.UDP;
 import net.floodlightcontroller.packet.DHCP.DHCPOptionCode;
 import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.routing.IGatewayService;
+import net.floodlightcontroller.routing.IRoutingService;
 import net.floodlightcontroller.routing.VirtualGatewayInstance;
 import net.floodlightcontroller.storage.IStorageSourceService;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
@@ -122,6 +109,7 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 	protected IThreadPoolService threadPool;
 	protected IDebugCounterService debugCounters;
 	protected IGatewayService gatewayService;
+	protected IRoutingService routingService;
 	private ISyncService syncService;
 	private IStoreClient<String, DeviceSyncRepresentation> storeClient;
 	private DeviceSyncManager deviceSyncManager;
@@ -850,6 +838,7 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 		this.deviceSyncManager = new DeviceSyncManager();
 		this.haListenerDelegate = new HAListenerDelegate();
 		this.gatewayService = fmc.getServiceImpl(IGatewayService.class);
+		this.routingService = fmc.getServiceImpl(IRoutingService.class);
 		registerDeviceManagerDebugCounters();
 	}
 
@@ -1081,22 +1070,19 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 		OFPort inPort = (pi.getVersion().compareTo(OFVersion.OF_12) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT));
 
 		NodePortTuple npt = new NodePortTuple(sw.getId(), inPort);
-		VirtualGatewayInstance instance = null;
 		MacAddress gatewayMac = null;
-		if (gatewayService.getGatewayInstance(npt).isPresent() || gatewayService.getGatewayInstance(sw.getId()).isPresent()) {
-			if (gatewayService.getGatewayInstance(sw.getId()).isPresent()) {
-				instance = gatewayService.getGatewayInstance(sw.getId()).get();
+		if (routingService.isL3RoutingEnabled()) {
+			Optional<VirtualGatewayInstance> instance = gatewayService.getGatewayInstance(sw.getId());
+			if (!instance.isPresent()) {
+				instance = gatewayService.getGatewayInstance(npt);
+			}
+
+			if (!instance.isPresent()) {
+				logger.info("Could not locate virtual gateway instance for DPID {}, port {}", sw.getId(), inPort);
 			}
 			else {
-				instance = gatewayService.getGatewayInstance(npt).get();
+				gatewayMac = instance.get().getGatewayMac();
 			}
-		}
-		else {
-			logger.info("Could not locate virtual gateway instance for DPID {}, port {}", sw.getId(), inPort);
-		}
-
-		if (instance != null) {
-			gatewayMac = instance.getGatewayMac();
 		}
 
 		// Extract source entity information
@@ -1119,12 +1105,10 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 
 		// Learn/lookup device information
 		Device srcDevice = learnDeviceByEntity(srcEntity);
-//		logger.info("source device is {}", srcDevice);
 		if (srcDevice == null) {
 			cntNoSource.increment();
 			return Command.STOP;
 		}
-//		logger.info("run here for sw {}", sw);
 		// Store the source device in the context
 		fcStore.put(cntx, CONTEXT_SRC_DEVICE, srcDevice);
 
@@ -1134,7 +1118,6 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 			cntInvalidDest.increment();
 			return Command.STOP;
 		}
-//		logger.info("run here for sw {}", sw);
 		Entity dstEntity = getDestEntityFromPacket(eth);
 		Device dstDevice = null;
 		if (dstEntity != null) {

@@ -15,6 +15,10 @@ from mininet.util import irange
 
 HOME_FOLDER = os.getenv('HOME')
 
+"""
+Tjos script tests L2 forwarding with tree topology
+
+"""
 
 def getControllerIP():
     guest_ip = subprocess.check_output("/sbin/ifconfig eth1 | grep 'inet addr:' | cut -d: -f2 | awk '{ print $1}'",

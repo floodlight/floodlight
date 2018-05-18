@@ -14,6 +14,16 @@ from mininet.util import irange
 
 HOME_FOLDER = os.getenv('HOME')
 
+"""
+This script tests L3 routing functionality with linear topology 
+
+1) Configure a virtual router with corresponding virtual interfaces 
+2) Configure OVSes as switch members of that virtual router 
+3) h1, h2, h3 belonds to same subnet, h4, h5, h6 belongs to separate subnet
+
+Testing: hosts are reachable with each other 
+
+"""
 
 class LinearTopo(Topo):
     """

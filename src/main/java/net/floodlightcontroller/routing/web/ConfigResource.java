@@ -38,7 +38,7 @@ public class ConfigResource extends ServerResource {
                 .getAttributes().get(IRoutingService.class.getCanonicalName());
 
         if (json == null) {
-            setStatus(org.restlet.data.Status.CLIENT_ERROR_BAD_REQUEST, "One or more required fields missing.");
+            setStatus(org.restlet.data.Status.CLIENT_ERROR_BAD_REQUEST, "Field missing to enable/disable L3 routing.");
             return null;
         }
 

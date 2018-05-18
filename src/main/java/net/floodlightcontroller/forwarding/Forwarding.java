@@ -250,18 +250,17 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                         log.trace("No decision was made for PacketIn={}, do L3 routing", pi);
                     }
 
-                    if (!getGatewayInstance(npt).isPresent() && !getGatewayInstance(sw.getId()).isPresent()) {
+                    Optional<VirtualGatewayInstance> instance = getGatewayInstance(sw.getId());
+                    if (!instance.isPresent()) {
+                        instance = getGatewayInstance(npt);
+                    }
+
+                    if (!instance.isPresent()) {
                         log.info("Could not locate virtual gateway instance for DPID {}, port {}", sw.getId(), inPort);
                         break;
                     }
 
-                    if (getGatewayInstance(sw.getId()).isPresent()) {
-                        doL3Routing(eth, sw, pi, decision, cntx, getGatewayInstance(sw.getId()).get(), inPort);
-                    }
-                    else {
-                        doL3Routing(eth, sw, pi, decision, cntx, getGatewayInstance(npt).get(), inPort);
-                    }
-
+                    doL3Routing(eth, sw, pi, decision, cntx, instance.get(), inPort);
                     break;
 
                 default:
@@ -315,7 +314,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 
         MacAddress gatewayMac = gatewayInstance.getGatewayMac();
 
-        if (eth.getPayload() instanceof IPv4) {
+        if (eth.getEtherType() == EthType.IPv4) {
             IPv4Address intfIpAddress = findInterfaceIP(gatewayInstance, ((IPv4) eth.getPayload()).getDestinationAddress());
             if (intfIpAddress == null) {
                 log.debug("Can not locate corresponding interface for gateway {}, check its interface configuration",
@@ -326,8 +325,8 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 
         if (isBroadcastOrMulticast(eth)) {
             // When cross-subnet, host send ARP request to gateway. Gateway need to generate ARP response to host
-            if (eth.getPayload() instanceof ARP && ((ARP) eth.getPayload()).getOpCode().equals(ARP.OP_REQUEST)
-                    && gatewayInstance.isAGatewayInft(((ARP) eth.getPayload()).getTargetProtocolAddress())) {
+            if (eth.getEtherType() == EthType.ARP && ((ARP) eth.getPayload()).getOpCode().equals(ARP.OP_REQUEST)
+                    && gatewayInstance.isAGatewayIntf(((ARP) eth.getPayload()).getTargetProtocolAddress())) {
                 IPacket arpReply = gatewayArpReply(cntx, gatewayMac);
                 pushArpReply(arpReply, sw, OFBufferId.NO_BUFFER, OFPort.ANY, inPort);
                 log.debug("Virtual gateway pushing ARP reply message to source host");
@@ -367,13 +366,13 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 
         if (dstDevice == null) {
             // Try one more time to retrieve dst device
-            if (eth.getPayload() instanceof IPv4 && eth.getDestinationMACAddress().equals(virtualGatewayMac)) {
+            if (eth.getEtherType() == EthType.IPv4 && eth.getDestinationMACAddress().equals(virtualGatewayMac)) {
                 dstDevice = findDstDeviceForL3Routing(((IPv4) eth.getPayload()).getDestinationAddress());
             }
 
             if (dstDevice == null) {
                 // L3 traffic at 1st hop, virtual gateway creates & floods ARP to learn destination device
-                if (eth.getPayload() instanceof IPv4 && eth.getDestinationMACAddress().equals(virtualGatewayMac)) {
+                if (eth.getEtherType() == EthType.IPv4 && eth.getDestinationMACAddress().equals(virtualGatewayMac)) {
                     log.debug("Virtual gateway creates and flood arp request packet for destination host");
                     doL3Flood(gateway, sw, pi, cntx);
 
@@ -1710,7 +1709,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
     }
 
     @Override
-    public Optional<Collection<VirtualGatewayInterface>> getGatewayInterfaces(VirtualGatewayInstance gateway) {
+    public Collection<VirtualGatewayInterface> getGatewayInterfaces(VirtualGatewayInstance gateway) {
         return l3manager.getGatewayInterfaces(gateway);
     }
 
@@ -1773,6 +1772,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                     l3cache.values().remove(eth);
                 }
             }
+
         }
 
         @Override
@@ -1833,20 +1833,17 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         IOFSwitch sw = switchService.getSwitch(trueAp.getNodeId());
         OFPort outputPort = trueAp.getPortId();
 
+        Optional<VirtualGatewayInstance> instance = getGatewayInstance(trueAp.getNodeId());
+        if (!instance.isPresent()) {
+            instance = getGatewayInstance(new NodePortTuple(trueAp.getNodeId(), trueAp.getPortId()));
+        }
 
-        if (!getGatewayInstance(new NodePortTuple(trueAp.getNodeId(), trueAp.getPortId())).isPresent() &&
-                !getGatewayInstance(trueAp.getNodeId()).isPresent()) {
+        if (!instance.isPresent()) {
             log.info("Could not locate virtual gateway instance for DPID {}, port {}", sw.getId(), outputPort);
             return false;
         }
 
-        MacAddress gatewayMac = null;
-        if (getGatewayInstance(trueAp.getNodeId()).isPresent()) {
-            gatewayMac = getGatewayInstance(trueAp.getNodeId()).get().getGatewayMac();
-        }
-        else {
-            gatewayMac = getGatewayInstance(new NodePortTuple(trueAp.getNodeId(), trueAp.getPortId())).get().getGatewayMac();
-        }
+        MacAddress gatewayMac = instance.get().getGatewayMac();
 
         IPacket outPacket = new Ethernet()
                 .setSourceMACAddress(gatewayMac)

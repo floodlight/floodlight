@@ -75,13 +75,15 @@ public class VirtualGatewayInstance {
 
     }
 
-    public boolean isInterfaceBelongsGateway(String name) {
+    public boolean interfaceBelongsToGateway(String name) {
         return interfaces.values().stream()
                 .anyMatch(inft -> inft.getInterfaceName().equals(name));
     }
 
     public boolean removeInterface(String interfaceName) {
-        if (!getInterface(interfaceName).isPresent()) {
+        Optional<VirtualGatewayInterface> vInterface = getInterface(interfaceName);
+
+        if (!vInterface.isPresent()) {
             return false;
         }
         else {
@@ -166,7 +168,7 @@ public class VirtualGatewayInstance {
         }
     }
 
-    public boolean isAGatewayInft(IPv4Address ip) {
+    public boolean isAGatewayIntf(IPv4Address ip) {
         return interfaces.values().stream()
                 .anyMatch(intf -> intf.getIp().equals(ip));
     }

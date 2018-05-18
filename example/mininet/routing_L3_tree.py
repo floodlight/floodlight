@@ -15,7 +15,16 @@ from mininet.util import irange
 
 HOME_FOLDER = os.getenv('HOME')
 
+"""
+This script tests L3 routing functionality with tree topology 
 
+1) Configure a virtual router with corresponding virtual interfaces 
+2) Configure OVSes as switch members of that virtual router 
+3) Configure hosts' interface with different subnet
+
+Testing: host is reachable with each other across subnet
+
+"""
 
 def getControllerIP():
     guest_ip = subprocess.check_output("/sbin/ifconfig eth1 | grep 'inet addr:' | cut -d: -f2 | awk '{ print $1}'",
@@ -120,18 +129,6 @@ def addSwitchToGateway(name):
             },
             {
                 "dpid": "4"
-            },
-            {
-                "dpid": "5"
-            },
-            {
-                "dpid": "6"
-            },
-            {
-                "dpid": "7"
-            },
-            {
-                "dpid": "8"
             }
         ]
     }

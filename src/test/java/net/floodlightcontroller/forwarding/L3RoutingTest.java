@@ -15,9 +15,7 @@ import org.projectfloodlight.openflow.protocol.*;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.types.*;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 import static org.easymock.EasyMock.expect;
@@ -133,10 +131,10 @@ public class L3RoutingTest extends FloodlightTestCase {
     @Test
     public void testGatewayInterfaceIPSelection() throws Exception {
         // "30.0.0.1" is not a configured gateway interface IP address
-        assertFalse(gateway.isAGatewayInft(IPv4Address.of("30.0.0.1")));
+        assertFalse(gateway.isAGatewayIntf(IPv4Address.of("30.0.0.1")));
 
         // "10.0.0.1" is a configured gateway interface IP address
-        assertTrue(gateway.isAGatewayInft(IPv4Address.of("10.0.0.1")));
+        assertTrue(gateway.isAGatewayIntf(IPv4Address.of("10.0.0.1")));
 
         // If destination IP is "10.0.0.25", the packet should select gateway interface "10.0.0.1" to go
         IPv4Address dstIP = IPv4Address.of("10.0.0.25");

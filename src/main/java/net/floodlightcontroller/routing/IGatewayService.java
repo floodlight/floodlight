@@ -40,7 +40,7 @@ public interface IGatewayService extends IFloodlightService {
      * @param gateway
      * @return
      */
-    Optional<Collection<VirtualGatewayInterface>> getGatewayInterfaces(VirtualGatewayInstance gateway);
+    Collection<VirtualGatewayInterface> getGatewayInterfaces(VirtualGatewayInstance gateway);
 
     /**
      * Get a specific virtual interface with a given gateway

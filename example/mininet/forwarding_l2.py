@@ -14,6 +14,10 @@ from mininet.util import irange
 
 HOME_FOLDER = os.getenv('HOME')
 
+"""
+This script tests L2 forwarding with linear topology
+
+"""
 
 class LinearTopo(Topo):
     """

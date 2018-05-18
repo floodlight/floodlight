@@ -45,12 +45,11 @@ public class L3RoutingManager extends RoutingManager {
                 .findAny();
     }
 
-    public void removeAllVirtualGateways() {
-        gatewayInstancesMap.clear();
-    }
+    public void removeAllVirtualGateways() { gatewayInstancesMap.clear(); }
 
     public boolean removeVirtualGateway(String name) {
-        if (getVirtualGateway(name).isPresent()) {
+        Optional<VirtualGatewayInstance> instance = getVirtualGateway(name);
+        if (instance.isPresent()) {
             gatewayInstancesMap.remove(name);
             return true;
         }
@@ -69,8 +68,8 @@ public class L3RoutingManager extends RoutingManager {
     }
 
 
-    public Optional<Collection<VirtualGatewayInterface>> getGatewayInterfaces(VirtualGatewayInstance gateway) {
-        return Optional.of(gateway.getInterfaces());
+    public Collection<VirtualGatewayInterface> getGatewayInterfaces(VirtualGatewayInstance gateway) {
+        return gateway.getInterfaces();
     }
 
     public Optional<VirtualGatewayInterface> getGatewayInterface(String interfaceName, VirtualGatewayInstance gateway) {
@@ -82,7 +81,8 @@ public class L3RoutingManager extends RoutingManager {
     }
 
     public boolean removeVirtualInterface(String interfaceName, VirtualGatewayInstance gateway) {
-        if (gateway.getInterface(interfaceName).isPresent()) {
+        Optional<VirtualGatewayInterface> vInterface = gateway.getInterface(interfaceName);
+        if (vInterface.isPresent()) {
             return gateway.removeInterface(interfaceName);
         }
         else {

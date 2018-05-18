@@ -14,6 +14,11 @@ from mininet.util import irange
 
 HOME_FOLDER = os.getenv('HOME')
 
+"""
+This script tests L3 routing functionality with multiple virtual gateways
+
+"""
+
 
 class LinearTopo(Topo):
     """
