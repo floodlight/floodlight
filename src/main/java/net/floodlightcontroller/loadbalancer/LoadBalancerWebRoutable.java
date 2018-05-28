@@ -51,7 +51,7 @@ public class LoadBalancerWebRoutable implements RestletRoutable {
         router.attach("/health_monitors/all/{" + DISABLE_STR + "}/", ConfigResource.class); //PUT, POST
         router.attach("/health_monitors/monitors/{period}/", ConfigResource.class); //PUT, POST
         router.attach("/health_monitors/monitors/{" + PERIOD_STR + "}/", ConfigResource.class); //GET
-        router.attach("/clear/", ConfigResource.class); //PUT, POST
+        router.attach("/clear/", ConfigResource.class); // DELETE
         router.attachDefault(NoOp.class);
         return router;
      }

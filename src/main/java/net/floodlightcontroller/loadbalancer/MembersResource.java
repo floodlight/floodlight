@@ -26,7 +26,6 @@ import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.databind.MappingJsonFactory;
 
-import org.restlet.data.Status;
 import org.restlet.resource.Delete;
 import org.restlet.resource.Get;
 import org.restlet.resource.Post;
@@ -39,9 +38,7 @@ import org.slf4j.LoggerFactory;
 public class MembersResource extends ServerResource {
 
 	protected static Logger log = LoggerFactory.getLogger(MembersResource.class);
-	private static final int NOT_FOUND = 404;
 	private static final int BAD_REQUEST = 400;
-	private static final int SUCCESS = 200;
 
 	@Get("json")
 	public Collection <LBMember> retrieve() {
@@ -80,7 +77,7 @@ public class MembersResource extends ServerResource {
 	}
 
 	@Delete
-	public int removeMember() {
+	public String removeMember() {
 
 		String memberId = (String) getRequestAttributes().get("member");
 
@@ -90,11 +87,10 @@ public class MembersResource extends ServerResource {
 
 		int status = lbs.removeMember(memberId);
 		if(status == -1){
-			setStatus(Status.CLIENT_ERROR_NOT_FOUND, "Member was not found.");
-			return 0;
-		} else
-			throw new ResourceException(SUCCESS);
-
+			return "{\"status\" : \"Error: Member cannot be deleted!\"}";
+		} else{
+			return "{\"status\" : \"200 OK!\"}";
+		}
 	}
 
 	protected LBMember jsonToMember(String json) throws IOException {

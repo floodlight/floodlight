@@ -31,7 +31,6 @@ import org.restlet.resource.Delete;
 import org.restlet.resource.Get;
 import org.restlet.resource.Post;
 import org.restlet.resource.Put;
-import org.restlet.data.Status;
 import org.restlet.resource.ResourceException;
 import org.restlet.resource.ServerResource;
 import org.slf4j.Logger;
@@ -41,7 +40,6 @@ public class VipsResource extends ServerResource {
     protected static Logger log = LoggerFactory.getLogger(VipsResource.class);
     
     private static final int BAD_REQUEST = 400;
-    private static final int SUCCESS = 200;
     
     @Get("json")
     public Collection <LBVip> retrieve() {
@@ -80,7 +78,7 @@ public class VipsResource extends ServerResource {
     }
     
     @Delete
-    public int removeVip() {
+    public String removeVip() {
         
         String vipId = (String) getRequestAttributes().get("vip");
         
@@ -90,10 +88,10 @@ public class VipsResource extends ServerResource {
 
         int status = lbs.removeVip(vipId);
         if(status == -1){
-        	setStatus(Status.CLIENT_ERROR_NOT_FOUND, "Vip not found.");
-        	return 0;
-        } else
-        	throw new ResourceException(SUCCESS);
+			return "{\"status\" : \"Error: VIP cannot be deleted!\"}";
+		} else{
+			return "{\"status\" : \"200 OK!\"}";
+		}
     }
 
     protected LBVip jsonToVip(String json) throws IOException {

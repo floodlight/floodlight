@@ -76,20 +76,20 @@ public class PoolsResource extends ServerResource {
 	}
 
 	@Delete
-	public int removePool() {
+	public String removePool() {
 
 		String poolId = (String) getRequestAttributes().get("pool");
 
 		ILoadBalancerService lbs =
 				(ILoadBalancerService)getContext().getAttributes().
 				get(ILoadBalancerService.class.getCanonicalName());
-
+		
 		int status = lbs.removePool(poolId);
 		if(status == -1){
-			setStatus(Status.CLIENT_ERROR_NOT_FOUND, "Pool was not found.");
-			return 0;
-		} else
-			return status;
+			return "{\"status\" : \"Error: Pool cannot be deleted!\"}";
+		} else{
+			return "{\"status\" : \"200 OK!\"}";
+		}
 	}
 
 	protected LBPool jsonToPool(String json) throws IOException {

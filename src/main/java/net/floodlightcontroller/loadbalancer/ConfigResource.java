@@ -18,6 +18,7 @@ package net.floodlightcontroller.loadbalancer;
 
 import java.util.Collections;
 
+import org.restlet.resource.Delete;
 import org.restlet.resource.Get;
 import org.restlet.resource.Post;
 import org.restlet.resource.Put;
@@ -63,10 +64,17 @@ public class ConfigResource extends ServerResource{
 			}	
 		}
 		
-		if (getReference().getPath().contains(LoadBalancerWebRoutable.CLEAR_STR)) {
-			lbs.clearAllLb();
-		}
-		
 		return Collections.singletonMap("ERROR", "Unimplemented configuration option.");
+	}
+	
+	@Delete
+	public Object clearLbData() {
+		ILoadBalancerService lbs = (ILoadBalancerService) getContext().getAttributes().get(ILoadBalancerService.class.getCanonicalName());
+		
+		if (getReference().getPath().contains(LoadBalancerWebRoutable.CLEAR_STR)) {
+			return lbs.clearAllLb();
+
+		} else
+			return Collections.singletonMap("ERROR", "Unimplemented configuration option.");
 	}
 }

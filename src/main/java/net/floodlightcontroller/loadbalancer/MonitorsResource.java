@@ -27,7 +27,6 @@ import com.fasterxml.jackson.databind.MappingJsonFactory;
 import net.floodlightcontroller.packet.IPv4;
 
 import org.projectfloodlight.openflow.types.IpProtocol;
-import org.restlet.data.Status;
 import org.restlet.resource.Delete;
 import org.restlet.resource.Get;
 import org.restlet.resource.Post;
@@ -40,7 +39,6 @@ import org.slf4j.LoggerFactory;
 public class MonitorsResource extends ServerResource {
 	protected static Logger log = LoggerFactory.getLogger(MonitorsResource.class);
 	private static final int BAD_REQUEST = 400;
-	private static final int SUCCESS = 200;
 
 	@Get("json")
 	public Collection <LBMonitor> retrieve() {
@@ -81,7 +79,7 @@ public class MonitorsResource extends ServerResource {
 
 
 	@Delete
-	public int removeMonitor() {
+	public String removeMonitor() {
 
 		String monitorId = (String) getRequestAttributes().get("monitor");
 
@@ -91,10 +89,10 @@ public class MonitorsResource extends ServerResource {
 
 		int status = lbs.removeMonitor(monitorId);
 		if(status == -1){
-			setStatus(Status.CLIENT_ERROR_NOT_FOUND, "Monitor was not found.");
-			return 0;
-		} else
-			throw new ResourceException(SUCCESS);
+			return "{\"status\" : \"Error: Monitor cannot be deleted!\"}";
+		} else{
+			return "{\"status\" : \"200 OK!\"}";
+		}
 
 	}
 
