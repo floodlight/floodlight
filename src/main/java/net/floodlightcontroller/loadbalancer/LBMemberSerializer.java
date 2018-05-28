@@ -39,7 +39,15 @@ public class LBMemberSerializer extends JsonSerializer<LBMember>{
         jGen.writeStringField("poolId", member.poolId);
         jGen.writeStringField("vipId", member.vipId);
         jGen.writeStringField("weight", Short.toString(member.weight));
-        jGen.writeStringField("status", Short.toString(member.status));
+        if(member.status == 0){
+        	jGen.writeStringField("status", "Alive");
+        }
+        if(member.status == 1){
+        	jGen.writeStringField("status", "Active");
+        }
+        if(member.status == -1){
+        	jGen.writeStringField("status", "Inactive");
+        }
         
         jGen.writeEndObject();
     }

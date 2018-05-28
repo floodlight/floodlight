@@ -40,7 +40,6 @@ import org.slf4j.LoggerFactory;
 public class VipsResource extends ServerResource {
     protected static Logger log = LoggerFactory.getLogger(VipsResource.class);
     
-    private static final int NOT_FOUND = 404;
     private static final int BAD_REQUEST = 400;
     private static final int SUCCESS = 200;
     

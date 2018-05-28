@@ -18,6 +18,7 @@ package net.floodlightcontroller.loadbalancer;
 
 import java.util.Collections;
 
+import org.restlet.resource.Get;
 import org.restlet.resource.Post;
 import org.restlet.resource.Put;
 import org.restlet.resource.ResourceException;
@@ -26,10 +27,11 @@ import org.restlet.resource.ServerResource;
 public class ConfigResource extends ServerResource{
 
 	@Post
+	@Get
 	@Put
 	public Object config() {
 		ILoadBalancerService lbs = (ILoadBalancerService) getContext().getAttributes().get(ILoadBalancerService.class.getCanonicalName());
-
+		
 		if (getReference().getPath().contains(LoadBalancerWebRoutable.ENABLE_STR)) {
 			int status = lbs.healthMonitoring(true);
 			if(status == -1){
@@ -52,17 +54,19 @@ public class ConfigResource extends ServerResource{
 				int val = Integer.valueOf(period);
 				return lbs.setMonitorsPeriod(val);
 			}catch(Exception e) {
-				throw new ResourceException(400);
+				if (getReference().getPath().contains(LoadBalancerWebRoutable.PERIOD_STR)) {
+					return lbs.getMonitorsPeriod();
+			
+				} else
+					throw new ResourceException(400);
 
 			}	
 		}
 		
 		if (getReference().getPath().contains(LoadBalancerWebRoutable.CLEAR_STR)) {
-			String status = lbs.removeAll();
-			return Collections.singletonMap("Load Balancer instances ", status);
+			lbs.clearAllLb();
 		}
 		
-		
-		return Collections.singletonMap("ERROR", "Unimplemented configuration option");
+		return Collections.singletonMap("ERROR", "Unimplemented configuration option.");
 	}
 }

@@ -289,7 +289,11 @@ ILoadBalancerService, IOFMessageListener {
 											member.status =-1;
 										
 										memberStatus.put(member.id, member.status);
-										log.info("Member: " + member.id + " status: " + member.status);
+										if(member.status == -1){
+											log.info("Member: " + member.id + " status: Pending Response...");	
+										} else {
+											log.info("Member: " + member.id + " status: Active");	
+										}
 									}
 									return Command.STOP; // switches will not have a flow rule, so members ICMP reply will come as packet-in
 								
@@ -345,6 +349,7 @@ ILoadBalancerService, IOFMessageListener {
 					if(member == null)			//fix dereference violations
 						return Command.CONTINUE;
 
+					log.info("Member " + IPv4Address.of(member.address) + " has been picked by the load balancer.");
 					// for chosen member, check device manager and find and push routes, in both directions                    
 					pushBidirectionalVipRoutes(sw, pi, cntx, client, member);
 
@@ -1137,14 +1142,18 @@ ILoadBalancerService, IOFMessageListener {
 
 	@Override
 	public LBMonitor updateMonitor(LBMonitor monitor) {
-		for(LBMonitor allMonitors: monitors.values()){
-			if(monitor.poolId.equals(allMonitors.poolId)){
-				log.error("Pool already has monitor associated with");
-				return null;
+		if(!monitors.values().isEmpty()){
+			for(LBMonitor allMonitors: monitors.values()){
+				if(monitor.poolId.equals(allMonitors.poolId)){
+					log.error("Pool already has monitor associated with");
+					return null;
+				}
 			}
+			monitors.put(monitor.id, monitor);
+			return monitor;
 		}
-		monitors.put(monitor.id, monitor);
-		return monitor;
+		log.error("Monitor does not exist!");
+		return null;
 	}
 
 
@@ -1243,14 +1252,20 @@ ILoadBalancerService, IOFMessageListener {
 	}
 
 	@Override
-	public String setMonitorsPeriod(int period) {
-		healthMonitorsInterval = period;
-		return "{\"status\" : \"Monitors period changed to " + period + "\"}";
+	public String getMonitorsPeriod() {
+		return "{\"status\" : \"Monitors' period is " + healthMonitorsInterval + " seconds \"}";
 	}
 	
 	
 	@Override
-	public String removeAll() {
+	public String setMonitorsPeriod(int period) {
+		healthMonitorsInterval = period;
+		return "{\"status\" : \"Monitors period changed to " + period + " seconds \"}";
+	}
+	
+	
+	@Override
+	public String clearAllLb() {
 		// Clear all LB objects
 		monitors.clear();
 		members.clear();

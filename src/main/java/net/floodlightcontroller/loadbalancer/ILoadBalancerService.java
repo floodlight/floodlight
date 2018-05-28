@@ -208,6 +208,13 @@ public interface ILoadBalancerService extends IFloodlightService {
      */
     public int healthMonitoring(boolean monitor);
     
+    
+    /**
+     * Get health monitor thread period
+     * 
+     */
+    public String getMonitorsPeriod();
+    
     /**
      * Set health monitor thread period
      * @param period in seconds
@@ -218,6 +225,6 @@ public interface ILoadBalancerService extends IFloodlightService {
      * Remove VIPs,Pools,Members and Monitors
      * return Success or Failure message
      */
-    public String removeAll();
+    public String clearAllLb();
     
 }

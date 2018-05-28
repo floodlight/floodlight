@@ -30,7 +30,6 @@ import org.restlet.resource.Delete;
 import org.restlet.resource.Get;
 import org.restlet.resource.Post;
 import org.restlet.resource.Put;
-import org.restlet.resource.ResourceException;
 import org.restlet.resource.ServerResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,9 +37,7 @@ import org.slf4j.LoggerFactory;
 public class PoolsResource extends ServerResource {
 
 	protected static Logger log = LoggerFactory.getLogger(PoolsResource.class);
-	private static final int NOT_FOUND = 404;
-	private static final int BAD_REQUEST = 400;
-	private static final int SUCCESS = 200;
+
 
 	@Get("json")
 	public Collection <LBPool> retrieve() {
@@ -64,7 +61,7 @@ public class PoolsResource extends ServerResource {
 			pool=jsonToPool(postData);
 		} catch (IOException e) {
 			log.error("Could not parse JSON {}", e.getMessage());
-			throw new ResourceException(BAD_REQUEST); // Sends HTTP error message with code 400 (Bad Request).
+			setStatus(Status.CLIENT_ERROR_BAD_REQUEST, "One or more required fields missing.");
 		}
 
 		ILoadBalancerService lbs =
@@ -92,7 +89,7 @@ public class PoolsResource extends ServerResource {
 			setStatus(Status.CLIENT_ERROR_NOT_FOUND, "Pool was not found.");
 			return 0;
 		} else
-			throw new ResourceException(SUCCESS);
+			return status;
 	}
 
 	protected LBPool jsonToPool(String json) throws IOException {

@@ -21,8 +21,8 @@ public class SwitchStatisticsWebRoutable implements RestletRoutable {
         router.attach("/portdesc/{" + DPID_STR + "}/{" + PORT_STR + "}/", PortDescResource.class);
         router.attach("/config/{" + ENABLE_STR + "}/", ConfigResource.class);
         router.attach("/config/{" + DISABLE_STR + "}/", ConfigResource.class);
-        router.attach("/config/{" + PORT_STR + "}/{period}", ConfigResource.class);
-        router.attach("/config/{" + FLOW_STR + "}/{period}", ConfigResource.class);
+        router.attach("/config/{" + PORT_STR + "}/{period}/", ConfigResource.class);
+        router.attach("/config/{" + FLOW_STR + "}/{period}/", ConfigResource.class);
         return router;
     }
 
