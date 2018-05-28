@@ -103,7 +103,7 @@ class OFChannelHandler extends SimpleChannelInboundHandler<Iterable<OFMessage>> 
 		void processOFEchoReply(OFEchoReply m)
 				throws IOException {
 			/* Update the latency -- halve it for one-way time */
-			updateLatency(U64.of( (System.currentTimeMillis() - echoSendTime) / 2) );
+			updateLatency(U64.of( (System.nanoTime()/1000000 - echoSendTime) / 2) );
 		}
 
 		void processOFError(OFErrorMsg m) {
@@ -375,7 +375,7 @@ class OFChannelHandler extends SimpleChannelInboundHandler<Iterable<OFMessage>> 
 				throws IOException {
 			featuresReply = m;
 
-			featuresLatency = (System.currentTimeMillis() - featuresLatency) / 2;
+			featuresLatency = (System.nanoTime()/1000000 - featuresLatency) / 2;
 
 			// Mark handshake as completed
 			setState(new CompleteState());
@@ -415,7 +415,7 @@ class OFChannelHandler extends SimpleChannelInboundHandler<Iterable<OFMessage>> 
 		@Override
 		void enterState() throws IOException {
 			sendFeaturesRequest();
-			featuresLatency = System.currentTimeMillis();
+			featuresLatency = System.nanoTime()/1000000;	// in millis seconds
 		}
 
 		@Override
@@ -816,7 +816,7 @@ class OFChannelHandler extends SimpleChannelInboundHandler<Iterable<OFMessage>> 
 				.setXid(handshakeTransactionIds--)
 				.build();
 		/* Record for latency calculation */
-		echoSendTime = System.currentTimeMillis();
+		echoSendTime = System.nanoTime()/1000000;
 		write(request);
 	}
 

@@ -11,11 +11,13 @@ import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.types.*;
 
 import java.math.BigInteger;
-import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.List;
 
 /**
+ * DHCP server helper functions. Use it to converting data format, or get useful information from incoming packets,
+ * or can use it to determine the DHCP packet type.
+ *
  * @author Qing Wang (qw@g.clemson.edu) at 1/3/18
  */
 public class DHCPServerUtils {

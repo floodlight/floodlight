@@ -365,7 +365,7 @@ IFloodlightModule, IInfoProvider {
 		 * 
 		 * Note Long.SIZE is in bits (64).
 		 */
-		long time = System.currentTimeMillis();
+		long time = System.nanoTime() / 1000000;
 		long swLatency = iofSwitch.getLatency().getValue();
 		if (log.isTraceEnabled()) {
 			log.trace("SETTING LLDP LATENCY TLV: Current Time {}; {} control plane latency {}; sum {}", new Object[] { time, iofSwitch.getId(), swLatency, time + swLatency });
@@ -770,7 +770,7 @@ IFloodlightModule, IInfoProvider {
 
 		// Store the time of update to this link, and push it out to
 		// routingEngine
-		long time = System.currentTimeMillis();
+		long time = System.nanoTime() / 1000000;
 		U64 latency = (timestamp != 0 && (time - timestamp) > 0) ? U64.of(time - timestamp) : U64.ZERO;
 		if (log.isTraceEnabled()) {
 			log.trace("COMPUTING FINAL DATAPLANE LATENCY: Current time {}; Dataplane+{} latency {}; Overall latency from {} to {} is {}", 

@@ -170,7 +170,7 @@ public class SyncTorture implements IFloodlightModule {
             }
             int i = 0;
             while (iterations == 0 || i++ < iterations) {
-                long start = System.currentTimeMillis();
+                long start = System.nanoTime()/1000000;
                 try {
                     for (TortureValue v : values) {
                         Versioned<TortureValue> vv =
@@ -183,7 +183,7 @@ public class SyncTorture implements IFloodlightModule {
                 } catch (Exception e) {
                     logger.error("Error in worker: ", e);
                 }
-                long iterend = System.currentTimeMillis();
+                long iterend = System.nanoTime()/1000000;
                 logger.info("Completed iteration of {} values in {}ms" + 
                             " ({}/s)", 
                             new Object[]{values.size(), (iterend-start),

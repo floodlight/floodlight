@@ -56,9 +56,6 @@ public class DHCPMessageHandler {
          * --		(15) Domain Name
          * --		(6)  DNS
          **/
-
-        DHCPReturnMessage returnMessage = new DHCPReturnMessage();
-
         int xid = payload.getTransactionId();
         IPv4Address giaddr = payload.getGatewayIPAddress();    // Will have GW IP if a relay agent was used
         IPv4Address yiaddr = payload.getYourIPAddress();

@@ -22,7 +22,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * The class representing a DHCP instance. One DHCP instance is responsible for managing one subnet.
- * One DHCP instance contains a DHCP pool.
+ * Each DHCP instance contains a DHCP pool.
  *
  * @author Ryan Izard (rizard@g.clemson.edu)
  * @edited Qing Wang (qw@g.clemson.edu) on 1/3/2018.
@@ -88,29 +88,43 @@ public class DHCPInstance {
 		this.ntpServers.add(ns);
 	}
 
+	public void clearNtpServer() { this.ntpServers.clear(); }
+
 	public void addDnsServer(IPv4Address ds) {
 		this.dnsServers.add(ds);
 	}
+
+	public void clearDnsServer() { this.dnsServers.clear(); }
 
 	public void addNptMember(NodePortTuple npt) {
 		this.nptMembers.add(npt);
 	}
 
+	public void clearNptMember() { this.nptMembers.clear(); }
+
 	public void addSwitchMember(DatapathId dpid) { this.switchMembers.add(dpid); }
+
+	public void clearSwitchMember() { this.switchMembers.clear(); }
 
 	public void addVlanMember(VlanVid vid) {
 		this.vlanMembers.add(vid);
 	}
 
+	public void clearVlanMember() { this.vlanMembers.clear(); }
+
 	public void addClientMember(MacAddress cm) {
 		this.clientMembers.add(cm);
 	}
+
+	public void clearClientMemer() { this.clientMembers.clear(); }
 
 	// add or update static addresses
 	public void addStaticAddress(@Nonnull MacAddress staticAddressMac, @Nonnull IPv4Address staticAddressIP) {
 		this.staticAddresseses.put(staticAddressMac, staticAddressIP);
 		this.dhcpPool.assignPermanentLeaseToClientWithRequestIP(staticAddressIP, staticAddressMac);
 	}
+
+	public void clearStaticAddress() { this.staticAddresseses.clear(); }
 
 	public void updateDefaultGateway(@Nonnull IPv4Address defaultGatewayIP) {
 		this.routerIP = defaultGatewayIP;
@@ -249,7 +263,7 @@ public class DHCPInstance {
 		}
 
 		public DHCPInstanceBuilder setServerID(@Nonnull IPv4Address serverID) {
-			if(serverID == IPv4Address.NONE){
+			if(serverID.equals(IPv4Address.NONE)){
 				throw new IllegalArgumentException("Build DHCP instance failed : DHCP server IP address can not be empty");
 			}
 			this.serverID = serverID;
@@ -257,7 +271,7 @@ public class DHCPInstance {
 		}
 
 		public DHCPInstanceBuilder setServerMac(@Nonnull MacAddress serverMac) {
-			if(serverMac == MacAddress.NONE){
+			if(serverMac.equals(MacAddress.NONE)){
 				throw new IllegalArgumentException("Build DHCP instance failed : DHCP server Mac address can not be empty");
 			}
 			this.serverMac = serverMac;
@@ -265,7 +279,7 @@ public class DHCPInstance {
 		}
 
 		public DHCPInstanceBuilder setBroadcastIP(@Nonnull IPv4Address broadcastIP) {
-			if(broadcastIP == IPv4Address.NONE){
+			if(broadcastIP.equals(IPv4Address.NONE)){
 				throw new IllegalArgumentException("Build DHCP instance failed : Broadcast IP address can not be empty");
 			}
 			this.broadcastIP = broadcastIP;
@@ -283,7 +297,7 @@ public class DHCPInstance {
 		}
 
 		public DHCPInstanceBuilder setStartIP(@Nonnull IPv4Address start) {
-			if(start == IPv4Address.NONE){
+			if(start.equals(IPv4Address.NONE)){
 				throw new IllegalArgumentException("Build DHCP instance failed : DHCP Pool Starter IP address can not be empty");
 			}
 			this.startIPAddress = start;
@@ -291,7 +305,7 @@ public class DHCPInstance {
 		}
 
 		public DHCPInstanceBuilder setEndIP(@Nonnull IPv4Address end) {
-			if(end == IPv4Address.NONE){
+			if(end.equals(IPv4Address.NONE)){
 				throw  new IllegalArgumentException("Build DHCP instance failed : DHCP Pool Stopper IP address can not be empty");
 			}
 			this.endIPAddress = end;
@@ -330,7 +344,7 @@ public class DHCPInstance {
 		}
 
 		public DHCPInstanceBuilder setStaticAddresses(@Nonnull MacAddress mac, @Nonnull IPv4Address ip) {
-			if(mac == MacAddress.NONE || ip == IPv4Address.NONE){
+			if(mac.equals(MacAddress.NONE) || ip.equals(IPv4Address.NONE)){
 				throw new IllegalArgumentException("BUild DHCP instance faild : DHCP static address can not be empty");
 			}
 			// map structure naturally exclude same mac has multiple IP address entry

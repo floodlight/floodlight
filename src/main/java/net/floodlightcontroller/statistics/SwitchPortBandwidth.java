@@ -18,6 +18,7 @@ public class SwitchPortBandwidth {
 	private U64 rx;
 	private U64 tx;
 	private Date time;
+	private long starttime_ns;
 	private U64 rxValue;
 	private U64 txValue;
 	
@@ -29,6 +30,7 @@ public class SwitchPortBandwidth {
 		this.rx = rx;
 		this.tx = tx;
 		time = new Date();
+		starttime_ns = System.nanoTime();
 		this.rxValue = rxValue;
 		this.txValue = txValue;
 	}
@@ -89,7 +91,11 @@ public class SwitchPortBandwidth {
 	public long getUpdateTime() {
 		return time.getTime();
 	}
-		
+
+	public long getStartTime_ns() {
+		return starttime_ns;
+	}
+
 	@Override
 	public int hashCode() {
 		final int prime = 31;
