@@ -1507,7 +1507,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                     );
             messageDamper.write(sw, sw.getOFFactory().buildBarrierRequest().build());
 
-            List<OFPortModeTuple> portModes = new ArrayList<OFPortModeTuple>();
+            List<OFPortModeTuple> portModes = new ArrayList<>();
             for (OFPortDesc p : sw.getPorts()) {
                 portModes.add(OFPortModeTuple.of(p.getPortNo(), OFPortMode.ACCESS));
             }

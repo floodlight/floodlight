@@ -3,17 +3,13 @@ package net.floodlightcontroller.routing.web;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableMap;
-import net.floodlightcontroller.dhcpserver.IDHCPService;
 import net.floodlightcontroller.routing.IGatewayService;
-import net.floodlightcontroller.routing.IRoutingService;
 import net.floodlightcontroller.routing.VirtualGatewayInstance;
 import org.projectfloodlight.openflow.types.MacAddress;
 import org.restlet.resource.*;
 
 import java.io.IOException;
 import java.util.Collection;
-import java.util.Collections;
-import java.util.Optional;
 
 /**
  * @author Qing Wang (qw@g.clemson.edu) at 12/29/17
@@ -36,9 +32,6 @@ public class GatewayInstancesResource extends ServerResource {
     public Object addInstance(String json) {
         IGatewayService gatewayService = (IGatewayService) getContext().getAttributes()
                 .get(IGatewayService.class.getCanonicalName());
-
-        IDHCPService dhcpService = (IDHCPService) getContext().getAttributes()
-                .get(IDHCPService.class.getCanonicalName());
 
         if (json == null) {
             setStatus(org.restlet.data.Status.CLIENT_ERROR_BAD_REQUEST, "One or more required fields missing.");

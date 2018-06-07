@@ -33,20 +33,8 @@ import static org.easymock.EasyMock.reset;
 import static org.easymock.EasyMock.verify;
 import static org.junit.Assert.*;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Calendar;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Date;
-import java.util.EnumSet;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import net.floodlightcontroller.core.FloodlightContext;
@@ -81,6 +69,9 @@ import net.floodlightcontroller.packet.IPv6;
 import net.floodlightcontroller.packet.UDP;
 import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.restserver.RestApiServer;
+import net.floodlightcontroller.routing.IGatewayService;
+import net.floodlightcontroller.routing.IRoutingService;
+import net.floodlightcontroller.routing.VirtualGatewayInstance;
 import net.floodlightcontroller.storage.IStorageSourceService;
 import net.floodlightcontroller.storage.memory.MemoryStorageSource;
 import net.floodlightcontroller.test.FloodlightTestCase;
@@ -132,6 +123,8 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 	DeviceManagerImpl deviceManager;
 	MemoryStorageSource storageSource;
 	IDebugCounterService debugCounterService;
+	IGatewayService gatewayService;
+	IRoutingService routingService;
 
 	private IOFSwitch makeSwitchMock(DatapathId id) {
 		IOFSwitch mockSwitch = createMock(IOFSwitch.class);
@@ -184,6 +177,8 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 		mockFloodlightProvider = getMockFloodlightProvider();
 		mockFloodlightProvider.setRole(initialRole, "");
 		debugCounterService = new MockDebugCounterService();
+		gatewayService = createMock(IGatewayService.class);
+		routingService = createMock(IRoutingService.class);
 
 		deviceManager = new DeviceManagerImpl();
 		DefaultEntityClassifier entityClassifier = new DefaultEntityClassifier();
@@ -196,6 +191,8 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 		fmc.addService(ITopologyService.class, topology);
 		fmc.addService(ISyncService.class, syncService);
 		fmc.addService(IDebugCounterService.class, debugCounterService);
+		fmc.addService(IGatewayService.class, gatewayService);
+		fmc.addService(IRoutingService.class, routingService);
 		tp.init(fmc);
 		restApi.init(fmc);
 		storageSource.init(fmc);
@@ -1581,6 +1578,14 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 		replay(mockTopology);
 		FloodlightContext cntx = new FloodlightContext();
 
+		expect(routingService.isL3RoutingEnabled()).andReturn(true).atLeastOnce();
+		replay(routingService);
+
+		VirtualGatewayInstance instance = VirtualGatewayInstance.createInstance("gateway")
+				.setGatewayMac(MacAddress.of("aa:bb:cc:dd:ee:ff")).build();
+		expect(gatewayService.getGatewayInstance(DatapathId.of(1L))).andReturn(Optional.of(instance)).atLeastOnce();
+		replay(gatewayService);
+
 		testUDPPacket.setSourceMACAddress(Ethernet.toByteArray(0L));
 		updateUDPPacketIn();
 		Command cmd = dispatchPacketIn(1L, testUDPPacketIn, cntx);
@@ -1628,6 +1633,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 				IDeviceService.CONTEXT_DST_DEVICE);
 		assertNull(cntxDstDev);
 		verify(mockTopology);
+		verify(routingService, gatewayService);
 	}
 
 
@@ -1639,6 +1645,14 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 		mockTopologyForPacketInTests(mockTopology);
 		replay(mockTopology);
 		FloodlightContext cntx = new FloodlightContext();
+
+		expect(routingService.isL3RoutingEnabled()).andReturn(true).atLeastOnce();
+		replay(routingService);
+
+		VirtualGatewayInstance instance = VirtualGatewayInstance.createInstance("gateway")
+				.setGatewayMac(MacAddress.of("aa:bb:cc:dd:ee:ff")).build();
+		expect(gatewayService.getGatewayInstance(DatapathId.of(1L))).andReturn(Optional.of(instance)).atLeastOnce();
+		replay(gatewayService);
 
 		MacAddress srcMac = testUDPPacket.getSourceMACAddress();
 		MacAddress dstMac = testUDPPacket.getDestinationMACAddress();
@@ -1694,6 +1708,7 @@ public class DeviceManagerImplTest extends FloodlightTestCase {
 				IDeviceService.CONTEXT_DST_DEVICE);
 		assertEquals(expectedDstDev, cntxDstDev);
 
+		verify(routingService, gatewayService);
 		verify(mockTopology);
 	}
 
