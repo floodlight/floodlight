@@ -17,21 +17,7 @@
 
 package net.floodlightcontroller.devicemanager.internal;
 
-import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.Date;
-import java.util.EnumSet;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Queue;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -52,6 +38,7 @@ import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
+import net.floodlightcontroller.core.types.NodePortTuple;
 import net.floodlightcontroller.core.util.ListenerDispatcher;
 import net.floodlightcontroller.core.util.SingletonTask;
 import net.floodlightcontroller.debugcounter.IDebugCounter;
@@ -75,6 +62,9 @@ import net.floodlightcontroller.packet.IPv6;
 import net.floodlightcontroller.packet.UDP;
 import net.floodlightcontroller.packet.DHCP.DHCPOptionCode;
 import net.floodlightcontroller.restserver.IRestApiService;
+import net.floodlightcontroller.routing.IGatewayService;
+import net.floodlightcontroller.routing.IRoutingService;
+import net.floodlightcontroller.routing.VirtualGatewayInstance;
 import net.floodlightcontroller.storage.IStorageSourceService;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
 import net.floodlightcontroller.topology.ITopologyListener;
@@ -118,6 +108,8 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 	protected IRestApiService restApi;
 	protected IThreadPoolService threadPool;
 	protected IDebugCounterService debugCounters;
+	protected IGatewayService gatewayService;
+	protected IRoutingService routingService;
 	private ISyncService syncService;
 	private IStoreClient<String, DeviceSyncRepresentation> storeClient;
 	private DeviceSyncManager deviceSyncManager;
@@ -845,6 +837,8 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 		this.syncService = fmc.getServiceImpl(ISyncService.class);
 		this.deviceSyncManager = new DeviceSyncManager();
 		this.haListenerDelegate = new HAListenerDelegate();
+		this.gatewayService = fmc.getServiceImpl(IGatewayService.class);
+		this.routingService = fmc.getServiceImpl(IRoutingService.class);
 		registerDeviceManagerDebugCounters();
 	}
 
@@ -1074,12 +1068,32 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 	protected Command processPacketInMessage(IOFSwitch sw, OFPacketIn pi, FloodlightContext cntx) {
 		Ethernet eth = IFloodlightProviderService.bcStore.get(cntx,IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
 		OFPort inPort = (pi.getVersion().compareTo(OFVersion.OF_12) < 0 ? pi.getInPort() : pi.getMatch().get(MatchField.IN_PORT));
+
+		NodePortTuple npt = new NodePortTuple(sw.getId(), inPort);
+		MacAddress gatewayMac = null;
+		if (routingService.isL3RoutingEnabled()) {
+			Optional<VirtualGatewayInstance> instance = gatewayService.getGatewayInstance(sw.getId());
+			if (!instance.isPresent()) {
+				instance = gatewayService.getGatewayInstance(npt);
+			}
+
+			if (!instance.isPresent()) {
+				logger.info("Could not locate virtual gateway instance for DPID {}, port {}", sw.getId(), inPort);
+			}
+			else {
+				gatewayMac = instance.get().getGatewayMac();
+			}
+		}
+
 		// Extract source entity information
 		Entity srcEntity = getSourceEntityFromPacket(eth, sw.getId(), inPort);
 		if (srcEntity == null) {
 			cntInvalidSource.increment();
 			return Command.STOP;
 		}
+
+		// Skip processing entity for L3 virtual router as we don't need to
+		if (gatewayMac != null && srcEntity.getMacAddress().equals(gatewayMac)) return Command.CONTINUE;
 
 		// Learn from ARP packet for special VRRP settings.
 		// In VRRP settings, the source MAC address and sender MAC
@@ -1095,7 +1109,6 @@ public class DeviceManagerImpl implements IDeviceService, IOFMessageListener, IT
 			cntNoSource.increment();
 			return Command.STOP;
 		}
-
 		// Store the source device in the context
 		fcStore.put(cntx, CONTEXT_SRC_DEVICE, srcDevice);
 

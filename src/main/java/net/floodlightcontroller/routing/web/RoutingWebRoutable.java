@@ -20,9 +20,6 @@ import org.restlet.Context;
 import org.restlet.routing.Router;
 
 import net.floodlightcontroller.restserver.RestletRoutable;
-import net.floodlightcontroller.routing.web.PathMetricsResource;
-import net.floodlightcontroller.routing.web.PathResource;
-import net.floodlightcontroller.routing.web.PathsResource;
 
 public class RoutingWebRoutable implements RestletRoutable {
     /**
@@ -38,6 +35,11 @@ public class RoutingWebRoutable implements RestletRoutable {
         router.attach("/metric/json", PathMetricsResource.class);
         router.attach("/paths/force-recompute/json", ForceRecomputeResource.class);
         router.attach("/paths/max-fast-paths/json", MaxFastPathsResource.class);
+
+        router.attach("/config", ConfigResource.class);
+        router.attach("/gateway", GatewayInstancesResource.class);
+        router.attach("/gateway/{gateway-name}", GatewayInstanceResource.class);
+
         return router;
     }
 

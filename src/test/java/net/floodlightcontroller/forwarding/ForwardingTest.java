@@ -53,6 +53,8 @@ import net.floodlightcontroller.packet.IPacket;
 import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.packet.IPv6;
 import net.floodlightcontroller.packet.UDP;
+import net.floodlightcontroller.restserver.IRestApiService;
+import net.floodlightcontroller.restserver.RestApiServer;
 import net.floodlightcontroller.routing.IRoutingDecision.RoutingAction;
 import net.floodlightcontroller.routing.IRoutingService;
 import net.floodlightcontroller.routing.Path;
@@ -107,6 +109,7 @@ public class ForwardingTest extends FloodlightTestCase {
 	protected ITopologyService topology;
 	protected LinkDiscoveryManager linkService;
 	protected MockThreadPoolService threadPool;
+	protected RestApiServer restApi;
 	protected IOFSwitch sw1, sw2;
 	protected OFFeaturesReply swFeatures;
 	protected OFDescStatsReply swDescription;
@@ -142,6 +145,7 @@ public class ForwardingTest extends FloodlightTestCase {
 		topology = createMock(ITopologyService.class);
 		mockSyncService = new MockSyncService();
 		linkService = new LinkDiscoveryManager();
+		restApi = new RestApiServer();
 		DefaultEntityClassifier entityClassifier = new DefaultEntityClassifier();
 
 		FloodlightModuleContext fmc = new FloodlightModuleContext();
@@ -156,6 +160,7 @@ public class ForwardingTest extends FloodlightTestCase {
 		fmc.addService(IDebugCounterService.class, new MockDebugCounterService());
 		fmc.addService(IOFSwitchService.class, getMockSwitchService());
 		fmc.addService(ILinkDiscoveryService.class, linkService);
+		fmc.addService(IRestApiService.class, restApi);
 
 		topology.addListener(anyObject(ITopologyListener.class));
 		expectLastCall().anyTimes();
@@ -166,6 +171,7 @@ public class ForwardingTest extends FloodlightTestCase {
 		mockSyncService.init(fmc);
 		linkService.init(fmc);
 		deviceManager.init(fmc);
+		restApi.init(fmc);
 		forwarding.init(fmc);
 		entityClassifier.init(fmc);
 		threadPool.startUp(fmc);
@@ -517,6 +523,7 @@ public class ForwardingTest extends FloodlightTestCase {
 		expect(topology.isEdge(DatapathId.of(2L), OFPort.of(3))).andReturn(true).anyTimes();
 
 		// Reset mocks, trigger the packet in, and validate results
+		expect(routingEngine.isL3RoutingEnabled()).andReturn(false).atLeastOnce();
 		replay(sw1, sw2, routingEngine, topology);
 		forwarding.receive(sw1, this.packetIn, cntx);
 		verify(sw1, sw2, routingEngine);
@@ -588,6 +595,7 @@ public class ForwardingTest extends FloodlightTestCase {
 		expect(topology.isEdge(DatapathId.of(2L), OFPort.of(3))).andReturn(true).anyTimes();
 		
 		// Reset mocks, trigger the packet in, and validate results
+		expect(routingEngine.isL3RoutingEnabled()).andReturn(false).atLeastOnce();
 		replay(sw1, sw2, routingEngine, topology);
 		forwarding.receive(sw1, this.packetInIPv6, cntx);
 		verify(sw1, sw2, routingEngine);
@@ -657,6 +665,7 @@ public class ForwardingTest extends FloodlightTestCase {
 		// Reset mocks, trigger the packet in, and validate results
 		reset(routingEngine);
 		expect(routingEngine.getPath(DatapathId.of(1L), OFPort.of(1), DatapathId.of(1L), OFPort.of(3))).andReturn(route).atLeastOnce();
+		expect(routingEngine.isL3RoutingEnabled()).andReturn(false).atLeastOnce();
 		replay(sw1, sw2, routingEngine, topology);
 		forwarding.receive(sw1, this.packetIn, cntx);
 		verify(sw1, sw2, routingEngine);
@@ -712,6 +721,7 @@ public class ForwardingTest extends FloodlightTestCase {
 		expect(topology.isEdge(DatapathId.of(1L), OFPort.of(3))).andReturn(true).anyTimes();
 		
 		// Reset mocks, trigger the packet in, and validate results
+		expect(routingEngine.isL3RoutingEnabled()).andReturn(false).atLeastOnce();
 		replay(sw1, sw2, routingEngine, topology);
 		forwarding.receive(sw1, this.packetInIPv6, cntx);
 		verify(sw1, sw2, routingEngine);
@@ -804,6 +814,7 @@ public class ForwardingTest extends FloodlightTestCase {
 				.anyTimes();
 		expect(sw1.hasAttribute(IOFSwitch.PROP_SUPPORTS_OFPP_FLOOD)).andReturn(true).anyTimes();
 		expect(sw1.write(capture(wc1))).andReturn(true).once();
+		expect(routingEngine.isL3RoutingEnabled()).andReturn(false).atLeastOnce();
 		replay(sw1, sw2, routingEngine, topology);
 		forwarding.receive(sw1, this.packetIn, cntx);
 		verify(sw1, sw2, routingEngine);
@@ -839,6 +850,7 @@ public class ForwardingTest extends FloodlightTestCase {
 		.andReturn(true).anyTimes();
 		// Reset XID to expected (dependent on prior unit tests)
 		expect(sw1.write(capture(wc1))).andReturn(true).once();
+		expect(routingEngine.isL3RoutingEnabled()).andReturn(false).atLeastOnce();
 		replay(sw1, sw2, routingEngine, topology);
 		forwarding.receive(sw1, this.packetInIPv6, cntx);
 		verify(sw1, sw2, routingEngine);

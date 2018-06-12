@@ -41,7 +41,7 @@ public class TimedCache<K> {
 	public TimedCache(int capacity, int timeToLive) {
         cache = new ConcurrentLinkedHashMap.Builder<K, Long>()
         	    .maximumWeightedCapacity(capacity)
-            .build();
+                .build();
         this.timeoutInterval = timeToLive;
     }
     
@@ -61,16 +61,16 @@ public class TimedCache<K> {
      */
     public boolean update(K key)
     {
-        Long curr = new Long(System.currentTimeMillis());
+        Long curr = System.nanoTime()/1000000;
         Long prev = cache.putIfAbsent(key, curr);
         
         if (prev == null) {
-        		return false;
+            return false;
         }
 
         if (curr - prev > this.timeoutInterval) {
             if (cache.replace(key, prev, curr)) {
-            		return false;
+                return false;
             }
         }
         

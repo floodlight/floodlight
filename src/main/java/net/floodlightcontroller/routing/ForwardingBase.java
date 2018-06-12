@@ -17,12 +17,7 @@
 
 package net.floodlightcontroller.routing;
 
-import java.util.EnumSet;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
@@ -35,33 +30,21 @@ import net.floodlightcontroller.debugcounter.IDebugCounterService;
 import net.floodlightcontroller.devicemanager.IDeviceService;
 import net.floodlightcontroller.devicemanager.SwitchPort;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryService;
+import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPacket;
-import net.floodlightcontroller.routing.IRoutingService;
-import net.floodlightcontroller.routing.IRoutingDecision;
-import net.floodlightcontroller.routing.Path;
+import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.util.*;
 
-import org.projectfloodlight.openflow.protocol.OFFlowMod;
+import org.projectfloodlight.openflow.protocol.*;
 import org.projectfloodlight.openflow.protocol.match.Match;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
-import org.projectfloodlight.openflow.protocol.OFFlowModCommand;
-import org.projectfloodlight.openflow.protocol.OFFlowModFlags;
-import org.projectfloodlight.openflow.protocol.OFMessage;
-import org.projectfloodlight.openflow.protocol.OFPacketIn;
-import org.projectfloodlight.openflow.protocol.OFPacketOut;
-import org.projectfloodlight.openflow.protocol.OFType;
-import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.action.OFActionOutput;
-import org.projectfloodlight.openflow.types.DatapathId;
-import org.projectfloodlight.openflow.types.MacAddress;
-import org.projectfloodlight.openflow.types.OFBufferId;
-import org.projectfloodlight.openflow.types.OFPort;
-import org.projectfloodlight.openflow.types.TableId;
-import org.projectfloodlight.openflow.types.U64;
+import org.projectfloodlight.openflow.types.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 
 /**
  * Abstract base class for implementing a forwarding module.  Forwarding is
@@ -104,6 +87,7 @@ public abstract class ForwardingBase implements IOFMessageListener {
     protected ITopologyService topologyService;
     protected IDebugCounterService debugCounterService;
     protected ILinkDiscoveryService linkService;
+    protected IRestApiService restApiService;
 
     // flow-mod - for use in the cookie
     public static final int FORWARDING_APP_ID = 2;
@@ -147,13 +131,14 @@ public abstract class ForwardingBase implements IOFMessageListener {
 
     @Override
     public Command receive(IOFSwitch sw, OFMessage msg, FloodlightContext cntx) {
+        Ethernet eth = IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
+
         switch (msg.getType()) {
         case PACKET_IN:
             IRoutingDecision decision = null;
             if (cntx != null) {
                 decision = RoutingDecision.rtStore.get(cntx, IRoutingDecision.CONTEXT_DECISION);
             }
-
             return this.processPacketInMessage(sw, (OFPacketIn) msg, decision, cntx);
         default:
             break;
@@ -177,9 +162,7 @@ public abstract class ForwardingBase implements IOFMessageListener {
      */
     public boolean pushRoute(Path route, Match match, OFPacketIn pi,
             DatapathId pinSwitch, U64 cookie, FloodlightContext cntx,
-            boolean requestFlowRemovedNotification, OFFlowModCommand flowModCommand) {
-
-        boolean packetOutSent = false;
+            boolean requestFlowRemovedNotification, OFFlowModCommand flowModCommand, boolean packetOutSent) {
 
         List<NodePortTuple> switchPortList = route.getPath();
 
@@ -192,7 +175,7 @@ public abstract class ForwardingBase implements IOFMessageListener {
                 if (log.isWarnEnabled()) {
                     log.warn("Unable to push route, switch at DPID {} " + "not available", switchDPID);
                 }
-                return packetOutSent;
+                return false;
             }
 
             // need to build flow mod based on what type it is. Cannot set command later
@@ -218,7 +201,7 @@ public abstract class ForwardingBase implements IOFMessageListener {
             }
 
             OFActionOutput.Builder aob = sw.getOFFactory().actions().buildOutput();
-            List<OFAction> actions = new ArrayList<OFAction>();	
+            List<OFAction> actions = new ArrayList<>();
             Match.Builder mb = MatchUtils.convertToVersion(match, sw.getOFFactory().getVersion());
 
             // set input and output ports on the switch
@@ -274,16 +257,17 @@ public abstract class ForwardingBase implements IOFMessageListener {
             }
 
             /* Push the packet out the first hop switch */
-            if (sw.getId().equals(pinSwitch) &&
+            if (!packetOutSent && sw.getId().equals(pinSwitch) &&
                     !fmb.getCommand().equals(OFFlowModCommand.DELETE) &&
                     !fmb.getCommand().equals(OFFlowModCommand.DELETE_STRICT)) {
                 /* Use the buffered packet at the switch, if there's one stored */
+                log.debug("Push packet out the first hop switch");
                 pushPacket(sw, pi, outPort, true, cntx);
-                packetOutSent = true;
             }
+
         }
 
-        return packetOutSent;
+        return true;
     }
 
     /**
@@ -321,7 +305,7 @@ public abstract class ForwardingBase implements IOFMessageListener {
         }
 
         OFPacketOut.Builder pob = sw.getOFFactory().buildPacketOut();
-        List<OFAction> actions = new ArrayList<OFAction>();
+        List<OFAction> actions = new ArrayList<>();
         actions.add(sw.getOFFactory().actions().output(outport, Integer.MAX_VALUE));
         pob.setActions(actions);
 
@@ -353,7 +337,7 @@ public abstract class ForwardingBase implements IOFMessageListener {
     public void packetOutMultiPort(byte[] packetData, IOFSwitch sw, 
             OFPort inPort, Set<OFPort> outPorts, FloodlightContext cntx) {
         //setting actions
-        List<OFAction> actions = new ArrayList<OFAction>();
+        List<OFAction> actions = new ArrayList<>();
 
         Iterator<OFPort> j = outPorts.iterator();
 
@@ -453,4 +437,5 @@ public abstract class ForwardingBase implements IOFMessageListener {
     public boolean isCallbackOrderingPostreq(OFType type, String name) {
         return false;
     }
+
 }

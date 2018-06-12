@@ -1,14 +1,10 @@
 package net.floodlightcontroller.routing;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
-import org.projectfloodlight.openflow.types.DatapathId;
-import org.projectfloodlight.openflow.types.Masked;
-import org.projectfloodlight.openflow.types.OFPort;
-import org.projectfloodlight.openflow.types.U64;
+import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.core.types.NodePortTuple;
+import org.projectfloodlight.openflow.types.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,6 +42,8 @@ public class RoutingManager implements IFloodlightModule, IRoutingService {
     private static ITopologyManagerBackend tm;
     
     private List<IRoutingDecisionChangedListener> decisionChangedListeners;
+
+    private static volatile boolean enableL3RoutingService = false;
     
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleServices() {
@@ -161,5 +159,20 @@ public class RoutingManager implements IFloodlightModule, IRoutingService {
         for (IRoutingDecisionChangedListener listener : decisionChangedListeners) {
             listener.routingDecisionChanged(changedDecisions);
         }
+    }
+
+    @Override
+    public void enableL3Routing() {
+        enableL3RoutingService = true;
+    }
+
+    @Override
+    public void disableL3Routing() {
+        enableL3RoutingService = false;
+    }
+
+    @Override
+    public boolean isL3RoutingEnabled() {
+        return enableL3RoutingService;
     }
 }
