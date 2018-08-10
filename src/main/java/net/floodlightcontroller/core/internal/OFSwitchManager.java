@@ -116,6 +116,7 @@ IHAListener, IFloodlightModule, IOFSwitchService, IStoreListener<DatapathId> {
 
     protected static boolean clearTablesOnInitialConnectAsMaster = false;
     protected static boolean clearTablesOnEachTransitionToMaster = false;
+    protected static boolean setupTablesDefaultFlows = true;
 
     protected static Map<DatapathId, TableId> forwardToControllerFlowsUpToTableByDpid;
     protected static TableId forwardToControllerFlowsUpToTable = TableId.of(4); /* this should cover most HW switches that have a couple SW-based flow tables */
@@ -674,29 +675,21 @@ IHAListener, IFloodlightModule, IOFSwitchService, IStoreListener<DatapathId> {
          */
         String clearInitial = configParams.get("clearTablesOnInitialHandshakeAsMaster");
         String clearLater = configParams.get("clearTablesOnEachTransitionToMaster");
+        String setupDefault = configParams.get("setupTablesDefaultFlows");
 
-        if (clearInitial == null || clearInitial.isEmpty() || 
-                (!clearInitial.equalsIgnoreCase("yes") && !clearInitial.equalsIgnoreCase("true") &&
-                        !clearInitial.equalsIgnoreCase("yep") && !clearInitial.equalsIgnoreCase("ja") &&
-                        !clearInitial.equalsIgnoreCase("stimmt"))) {
-            log.info("Clear switch flow tables on initial handshake as master: FALSE");
-            OFSwitchManager.clearTablesOnInitialConnectAsMaster = false;
-        } else {
-            log.info("Clear switch flow tables on initial handshake as master: TRUE");
-            OFSwitchManager.clearTablesOnInitialConnectAsMaster = true;
-        }
+        OFSwitchManager.clearTablesOnInitialConnectAsMaster = parseConfigBooleanValue(
+                clearInitial, OFSwitchManager.clearTablesOnInitialConnectAsMaster);
+        log.info("Clear switch flow tables on initial handshake as master: {}",
+                OFSwitchManager.clearTablesOnInitialConnectAsMaster ? "TRUE" : "FALSE");
 
-        if (clearLater == null || clearLater.isEmpty() || 
-                (!clearLater.equalsIgnoreCase("yes") && !clearLater.equalsIgnoreCase("true") &&
-                        !clearLater.equalsIgnoreCase("yep") && !clearLater.equalsIgnoreCase("ja") &&
-                        !clearLater.equalsIgnoreCase("stimmt"))) {
-            log.info("Clear switch flow tables on each transition to master: FALSE");
-            OFSwitchManager.clearTablesOnEachTransitionToMaster = false;
-        } else {
-            log.info("Clear switch flow tables on each transition to master: TRUE");
-            OFSwitchManager.clearTablesOnEachTransitionToMaster = true;
-        }
+        OFSwitchManager.clearTablesOnEachTransitionToMaster = parseConfigBooleanValue(
+                clearLater, OFSwitchManager.clearTablesOnEachTransitionToMaster);
+        log.info("Clear switch flow tables on each transition to master: {}",
+                OFSwitchManager.clearTablesOnEachTransitionToMaster ? "TRUE" : "FALSE");
 
+        OFSwitchManager.setupTablesDefaultFlows = parseConfigBooleanValue(
+                setupDefault, OFSwitchManager.setupTablesDefaultFlows);
+        log.info("Setup default rules for all tables on switch connect: {}", OFSwitchManager.setupTablesDefaultFlows);
 
         //Define initial role per switch		
         String switchesInitialState = configParams.get("switchesInitialState");
@@ -1222,6 +1215,25 @@ IHAListener, IFloodlightModule, IOFSwitchService, IStoreListener<DatapathId> {
         }
     }
 
+
+    /**
+     * Get config option value and compare it with "common" true boolean string representations. Return corresponding
+     * boolean value. If value is empty or missing, return defaultValue, passed as second argument.
+     * @param configValue
+     * @param defaultValue
+     * @return boolean
+     */
+    private static boolean parseConfigBooleanValue(String configValue, boolean defaultValue) {
+        if (configValue == null || configValue.isEmpty()) {
+            return defaultValue;
+        }
+
+        return configValue.equalsIgnoreCase("yes")
+                || configValue.equalsIgnoreCase("true")
+                || configValue.equalsIgnoreCase("yep")
+                || configValue.equalsIgnoreCase("ja")
+                || configValue.equalsIgnoreCase("stimmt");
+    }
 
     /**
      * Tulio Ribeiro

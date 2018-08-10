@@ -486,7 +486,7 @@ public abstract class OFSwitchHandlerTestBase {
 	 * @param role The role to send
 	 * @throws IOException
 	 */
-	private long setupSwitchSendRoleRequestAndVerify(Boolean supportsNxRole,
+	protected long setupSwitchSendRoleRequestAndVerify(Boolean supportsNxRole,
 			OFControllerRole role) throws IOException {
 		assertTrue("This internal test helper method most not be called " +
 				"with supportsNxRole==false. Test setup broken",
