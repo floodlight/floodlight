@@ -10,9 +10,12 @@ import static org.easymock.EasyMock.verify;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.junit.Assert.assertThat;
 
+import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
 
+import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.core.IOFSwitch.SwitchStatus;
 import org.hamcrest.CoreMatchers;
 import org.hamcrest.Matchers;
 import org.junit.Test;
@@ -42,6 +45,7 @@ import org.projectfloodlight.openflow.types.OFAuxId;
 import org.projectfloodlight.openflow.types.OFPort;
 
 import com.google.common.collect.ImmutableList;
+import org.projectfloodlight.openflow.types.TableId;
 
 
 public class OFSwitchHandshakeHandlerVer13Test extends OFSwitchHandlerTestBase {
@@ -226,4 +230,76 @@ public class OFSwitchHandshakeHandlerVer13Test extends OFSwitchHandlerTestBase {
         verify(sw);
     }
 
+    @Test
+    public void testSetupDefaultRules() throws Exception {
+        OFMessage reply = switchToMasterStateTransition();
+        expect(sw.getTables()).andReturn(Collections.EMPTY_LIST).once();
+        expect(sw.getNumTables()).andReturn((short) 0).once();
+        replay(sw);
+
+        /* Go into the MasterState */
+        boolean setupDefaultFlowOption = OFSwitchManager.setupTablesDefaultFlows;
+        try {
+            OFSwitchManager.setupTablesDefaultFlows = true;
+            switchHandler.processOFMessage(reply);
+        } finally {
+            OFSwitchManager.setupTablesDefaultFlows = setupDefaultFlowOption;
+        }
+
+        assertThat(switchHandler.getStateForTesting(),
+                CoreMatchers.instanceOf(OFSwitchHandshakeHandler.MasterState.class));
+    }
+
+    @Test
+    public void testDoNotSetupDefaultRules() throws Exception {
+        OFMessage reply = switchToMasterStateTransition();
+        replay(sw);
+
+        /* Go into the MasterState */
+        boolean setupDefaultFlowOption = OFSwitchManager.setupTablesDefaultFlows;
+        try {
+            OFSwitchManager.setupTablesDefaultFlows = false;
+            switchHandler.processOFMessage(reply);
+        } finally {
+            OFSwitchManager.setupTablesDefaultFlows = setupDefaultFlowOption;
+        }
+
+        assertThat(switchHandler.getStateForTesting(),
+                CoreMatchers.instanceOf(OFSwitchHandshakeHandler.MasterState.class));
+    }
+
+    private OFMessage switchToMasterStateTransition() throws Exception {
+        // first, move us to WAIT_INITIAL_ROLE_STATE
+        moveToWaitInitialRole();
+
+        // Set the role
+        long xid = setupSwitchSendRoleRequestAndVerify(null, OFControllerRole.ROLE_MASTER);
+        assertThat(switchHandler.getStateForTesting(),
+                CoreMatchers.instanceOf(OFSwitchHandshakeHandler.WaitInitialRoleState.class));
+
+        // prepare mocks and inject the role reply message
+        reset(sw);
+        expect(sw.getOFFactory()).andReturn(factory).anyTimes();
+        expect(sw.write(anyObject(OFMessage.class))).andReturn(true).anyTimes();
+        expect(sw.write(anyObject(Iterable.class))).andReturn(Collections.EMPTY_LIST).anyTimes();
+        sw.setAttribute(IOFSwitch.SWITCH_SUPPORTS_NX_ROLE, true);
+        expectLastCall().once();
+        sw.setControllerRole(OFControllerRole.ROLE_MASTER);
+        expectLastCall().once();
+        expect(sw.getStatus()).andReturn(SwitchStatus.HANDSHAKE).once();
+        sw.setStatus(SwitchStatus.MASTER);
+        expectLastCall().once();
+
+        if (factory.getVersion().compareTo(OFVersion.OF_13) >= 0) {
+            //expect(sw.getMaxTableForTableMissFlow()).andReturn(TableId.ZERO).times(1);
+            expect(sw.getTableFeatures(TableId.ZERO))
+                    .andReturn(TableFeatures.of(createTableFeaturesStatsReply().getEntries().get(0))).anyTimes();
+        }
+
+        reset(switchManager);
+        switchManager.switchStatusChanged(sw, SwitchStatus.HANDSHAKE, SwitchStatus.MASTER);
+        expectLastCall().once();
+        replay(switchManager);
+        return getRoleReply(xid, OFControllerRole.ROLE_MASTER);
+    }
 }
