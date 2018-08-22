@@ -1,8 +1,13 @@
 Floodlight OpenFlow Controller (OSS)
 ====================================
 
-Build Status:
--------------
+Attention!
+----------
+
+As of August 2018, the Floodlight mailing list has moved! Please see **Documentation and Support** below for up-to-date support information.
+
+Build Status
+------------
 
 [![Build Status](https://travis-ci.org/floodlight/floodlight.svg?branch=master)](https://travis-ci.org/floodlight/floodlight)
 
