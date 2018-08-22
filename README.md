@@ -27,10 +27,15 @@ Releases and Source Code
 ------------------------
 
 [Floodlight master](http://github.com/floodlight/floodlight)
+
 [Floodlight v1.2](http://github.com/floodlight/floodlight/tree/v1.2)
+
 [Floodlight v1.1](http://github.com/floodlight/floodlight/tree/v1.1)
+
 [Floodlight v1.0](http://github.com/floodlight/floodlight/tree/v1.0)
+
 [Floodlight v0.91](http://github.com/floodlight/floodlight/tree/v0.91)
+
 [Floodlight v0.90](http://github.com/floodlight/floodlight/tree/v0.90)
 
 Authors and Contributors
