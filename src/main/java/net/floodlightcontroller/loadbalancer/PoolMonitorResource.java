@@ -19,13 +19,6 @@ package net.floodlightcontroller.loadbalancer;
 import java.io.IOException;
 import java.util.Collection;
 
-import com.fasterxml.jackson.core.JsonParseException;
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.core.JsonToken;
-import com.fasterxml.jackson.databind.MappingJsonFactory;
-
-import net.floodlightcontroller.packet.IPv4;
-
 import org.projectfloodlight.openflow.types.IpProtocol;
 import org.restlet.resource.Delete;
 import org.restlet.resource.Get;
@@ -36,66 +29,64 @@ import org.restlet.resource.ServerResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class MonitorsResource extends ServerResource {
-	protected static Logger log = LoggerFactory.getLogger(MonitorsResource.class);
-	private static final int BAD_REQUEST = 400;
+import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonToken;
+import com.fasterxml.jackson.databind.MappingJsonFactory;
 
+import net.floodlightcontroller.packet.IPv4;
+
+public class PoolMonitorResource extends ServerResource {
+	protected static Logger log = LoggerFactory.getLogger(PoolMonitorResource.class);
+	
+	
 	@Get("json")
-	public Collection <LBMonitor> retrieve() {
-		ILoadBalancerService lbs =
-				(ILoadBalancerService)getContext().getAttributes().
-				get(ILoadBalancerService.class.getCanonicalName());
-
-		String monitorId = (String) getRequestAttributes().get("monitor");
-		if (monitorId!=null)
-			return lbs.listMonitor(monitorId);
-		else
-			return lbs.listMonitors();
-	}
+    public Collection <LBMonitor> retrieve() {
+        ILoadBalancerService lbs =
+                (ILoadBalancerService)getContext().getAttributes().
+                    get(ILoadBalancerService.class.getCanonicalName());
+        
+        String poolId = (String) getRequestAttributes().get("pool");
+        if (poolId!=null)
+            return lbs.listMonitorsByPool(poolId);
+        else
+            return null;
+    }
 
 	@Put
 	@Post
-	public LBMonitor createMonitor(String postData) {
+	public Collection<LBMonitor> associateMonitor(String postData) {
 
 		LBMonitor monitor=null;
 		try {
 			monitor=jsonToMonitor(postData);
 		} catch (IOException e) {
 			log.error("Could not parse JSON {}", e.getMessage());
-			throw new ResourceException(BAD_REQUEST); // Sends HTTP error message with code 400 (Bad Request).
+			throw new ResourceException(400); // Sends HTTP error message with code 400 (Bad Request).
 		}
 
 		ILoadBalancerService lbs =
 				(ILoadBalancerService)getContext().getAttributes().
 				get(ILoadBalancerService.class.getCanonicalName());
 
-		String monitorId = (String) getRequestAttributes().get("monitor");
-		if (monitorId != null)
-			return lbs.updateMonitor(monitor);
-		else
+		String poolId = (String) getRequestAttributes().get("pool");
+        
+		return lbs.associateMonitorWithPool(poolId,monitor);
 
-			return lbs.createMonitor(monitor);
 	}
-
 
 	@Delete
-	public String removeMonitor() {
-
-		String monitorId = (String) getRequestAttributes().get("monitor");
+	public int dissociateMonitor(String postData) {
 
 		ILoadBalancerService lbs =
 				(ILoadBalancerService)getContext().getAttributes().
 				get(ILoadBalancerService.class.getCanonicalName());
 
-		int status = lbs.removeMonitor(monitorId);
-		if(status == -1){
-			return "{\"status\" : \"Error: Monitor cannot be deleted!\"}";
-		} else{
-			return "{\"status\" : \"200 OK!\"}";
-		}
-
+		String monitorId = (String) getRequestAttributes().get("monitor");
+		String poolId = (String) getRequestAttributes().get("pool");
+       
+		return lbs.dissociateMonitorWithPool(poolId,monitorId);
 	}
-
 
 	protected LBMonitor jsonToMonitor(String json) throws IOException {
 		if (json==null) return null;
@@ -164,7 +155,7 @@ public class MonitorsResource extends ServerResource {
 				continue;
 			}
 			if (n.equals("address")) {
-				monitor.address = IPv4.toIPv4Address(jp.getText());
+				 monitor.address = IPv4.toIPv4Address(jp.getText());
 				continue;
 			}
 			if (n.equals("protocol")) {
@@ -185,7 +176,7 @@ public class MonitorsResource extends ServerResource {
 			}
 
 			log.warn("Unrecognized field {} in " +
-					"parsing Monitors", 
+					"parsing Pool Monitors Resource", 
 					jp.getText());
 		}
 		jp.close();

@@ -33,6 +33,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+
 import org.easymock.Capture;
 import org.easymock.CaptureType;
 import org.easymock.EasyMock;
@@ -110,11 +111,13 @@ public class LoadBalancerTest extends FloodlightTestCase {
 	protected WRRResource wrrResource;
 	protected PoolMemberResource poolMemberResource;
 	protected MembersResource membersResource;
+	protected MonitorsResource monitorsResource;
 	private MockSyncService mockSyncService;
 	protected IDebugCounterService debugCounterService;
 	protected LBVip vip1, vip2;
 	protected LBPool pool1, pool2, pool3;
 	protected LBMember member1, member2, member3, member4, member5, member6;
+	protected LBMonitor monitor1, monitor2, monitor3;
 	private OFFactory factory;
 
 	@Override
@@ -184,6 +187,7 @@ public class LoadBalancerTest extends FloodlightTestCase {
 		membersResource = new MembersResource();
 		wrrResource = new WRRResource();
 		poolMemberResource = new PoolMemberResource();
+		monitorsResource = new MonitorsResource();
 
 		vip1=null;
 		vip2=null;
@@ -324,6 +328,125 @@ public class LoadBalancerTest extends FloodlightTestCase {
 	}
 
 	@Test
+	public void testCreateMonitor(){
+		String postData1, postData2,postData3;
+		IOException error = null;
+
+		postData1 = "{\"id\":\"1\",\"name\":\"monitor1\",\"type\":\"tcp\"}";
+		postData2 = "{\"id\":\"2\",\"name\":\"monitor2\",\"type\":\"tcp\"}";
+		postData3 = "{\"id\":\"3\",\"name\":\"monitor3\",\"type\":\"udp\"}";
+
+		try {
+			monitor1 = monitorsResource.jsonToMonitor(postData1);
+		} catch (IOException e) {
+			error = e;
+		}
+		try {
+			monitor2 = monitorsResource.jsonToMonitor(postData2);
+		} catch (IOException e) {
+			error = e;
+		}
+		try {
+			monitor3 = monitorsResource.jsonToMonitor(postData3);
+		} catch (IOException e) {
+			error = e;
+		}
+
+		// verify correct parsing
+		assertFalse(monitor1==null);
+		assertFalse(monitor2==null);
+		assertFalse(monitor3==null);
+		assertTrue(error==null);
+
+		lb.createMonitor(monitor1);
+		lb.createMonitor(monitor2);
+		lb.createMonitor(monitor3);
+
+		// verify correct creation
+		assertTrue(lb.monitors.containsKey(monitor1.id));
+		assertTrue(lb.monitors.containsKey(monitor2.id));
+		assertTrue(lb.monitors.containsKey(monitor3.id));
+	}
+
+	@Test
+	public void testRemoveMonitor(){
+		testCreateMonitor();
+
+		// verify correct initial condition
+		assertFalse(monitor1==null);
+		assertFalse(monitor2==null);
+		assertFalse(monitor3==null);
+
+		lb.removeMonitor(monitor1.id);
+		lb.removeMonitor(monitor2.id);
+		lb.removeMonitor(monitor3.id);
+
+		// verify correct removal
+		assertFalse(lb.monitors.containsKey(monitor1.id));
+		assertFalse(lb.monitors.containsKey(monitor2.id));
+		assertFalse(lb.monitors.containsKey(monitor3.id));
+	}
+
+	@Test
+	public void testDissociateMonitor(){
+		testCreateVip();
+		testCreatePool();
+		testCreateMonitor();
+
+		// verify correct initial condition
+		assertFalse(vip1==null);
+		assertFalse(vip2==null);
+		assertFalse(pool1==null);
+		assertFalse(pool2==null);
+		assertFalse(pool3==null);
+		assertFalse(monitor1==null);
+		assertFalse(monitor2==null);
+		assertFalse(monitor3==null);
+
+		lb.dissociateMonitorWithPool(pool1.id, monitor1.id);
+		lb.dissociateMonitorWithPool(pool2.id, monitor2.id);
+		lb.dissociateMonitorWithPool(pool3.id, monitor3.id);
+
+		// verify correct dissociation
+		assertFalse(lb.pools.get(pool1.id).monitors.contains(monitor1.id));
+		assertFalse(lb.pools.get(pool2.id).monitors.contains(monitor2.id));
+		assertFalse(lb.pools.get(pool3.id).monitors.contains(monitor3.id));
+
+		// verify monitors not removed
+		assertTrue(lb.monitors.containsKey(monitor1.id));
+		assertTrue(lb.monitors.containsKey(monitor2.id));
+		assertTrue(lb.monitors.containsKey(monitor3.id));
+
+		// verify monitor poolId is null
+		assertNull(lb.monitors.get(monitor1.id).poolId);
+		assertNull(lb.monitors.get(monitor2.id).poolId);
+		assertNull(lb.monitors.get(monitor3.id).poolId);
+	}
+
+	@Test
+	public void testAssociateMonitor(){
+		testCreatePool();
+		testCreateMonitor();
+
+		// verify correct initial condition
+		assertFalse(pool1==null);
+		assertFalse(pool2==null);
+		assertFalse(pool3==null);
+		assertFalse(monitor1==null);
+		assertFalse(monitor2==null);
+		assertFalse(monitor3==null);
+
+		lb.associateMonitorWithPool(pool1.id, monitor1);
+		lb.associateMonitorWithPool(pool2.id, monitor2);
+		lb.associateMonitorWithPool(pool3.id, monitor3);
+
+		// verify correct association
+		assertTrue(lb.pools.get(pool1.id).monitors.contains(monitor1.id));
+		assertTrue(lb.pools.get(pool2.id).monitors.contains(monitor2.id));
+		assertTrue(lb.pools.get(pool3.id).monitors.contains(monitor3.id));
+	}
+
+	@Test
 	public void testCreateMember() {
 		String postData1, postData2, postData3, postData4,postData5,postData6;
 		IOException error = null;
@@ -370,7 +493,6 @@ public class LoadBalancerTest extends FloodlightTestCase {
 			error = e;
 		}
 
-
 		// verify correct parsing
 		assertFalse(member1==null);
 		assertFalse(member2==null);
@@ -409,7 +531,7 @@ public class LoadBalancerTest extends FloodlightTestCase {
 		assertTrue(member3.weight==4);
 		assertTrue(member5.weight==5);
 		assertTrue(member6.weight==5);
-	
+
 		// default weight value
 		assertTrue(member4.weight==1);
 	}
@@ -435,20 +557,28 @@ public class LoadBalancerTest extends FloodlightTestCase {
 		lb.removeMember(member2.id);
 		lb.removeMember(member3.id);
 		lb.removeMember(member4.id);
+		lb.removeMember(member5.id);
+		lb.removeMember(member6.id);
 
 		// verify correct removal
 		assertFalse(lb.members.containsKey(member1.id));
 		assertFalse(lb.members.containsKey(member2.id));
 		assertFalse(lb.members.containsKey(member3.id));
 		assertFalse(lb.members.containsKey(member4.id));
+		assertFalse(lb.members.containsKey(member5.id));
+		assertFalse(lb.members.containsKey(member6.id));
 
 		//verify member cleanup from pool
 		assertFalse(lb.pools.get(member1.poolId).members.contains(member1.id));
 		assertFalse(lb.pools.get(member2.poolId).members.contains(member2.id));
 		assertFalse(lb.pools.get(member3.poolId).members.contains(member3.id));
 		assertFalse(lb.pools.get(member4.poolId).members.contains(member4.id));
+		assertFalse(lb.pools.get(member5.poolId).members.contains(member5.id));
+		assertFalse(lb.pools.get(member6.poolId).members.contains(member6.id));
 
 	}
+
+
 
 	@Test
 	public void testTwoSubsequentIcmpRequests() throws Exception {
@@ -775,17 +905,163 @@ public class LoadBalancerTest extends FloodlightTestCase {
 		membersBandwidth.put(member6.id,U64.of(1345));
 
 		HashMap<String, Short> membersWeight = new HashMap<String, Short>();
-		
-		String memberPickedStats = pool1.pickMember(client, membersBandwidth, membersWeight);
-		
-		String noMembers = pool3.pickMember(client, membersBandwidth, membersWeight);
+		HashMap<String, Short> membersStatus = new HashMap<String, Short>();
+
+		String memberPickedStats = pool1.pickMember(client, membersBandwidth, membersWeight,membersStatus);
+
+		String noMembers = pool3.pickMember(client, membersBandwidth, membersWeight,membersStatus);
 
 		membersBandwidth.clear();
-		String memberPickedNoData = pool1.pickMember(client, membersBandwidth, membersWeight);
-		
+		String memberPickedNoData = pool1.pickMember(client, membersBandwidth, membersWeight,membersStatus);
+
 		assertTrue(memberPickedStats.equals("2"));
 		assertTrue(memberPickedNoData.equals("1")); // simple round robin
-		
 		assertTrue(noMembers==null);
+	}
+
+	@Test
+	public void testPoolStats() {	
+		testCreateVip();
+		testCreatePool();
+		testCreateMember();
+
+		ArrayList<Long> bytesIn = new ArrayList<Long>();
+		bytesIn.add((long) 10);
+
+		ArrayList<Long> bytesOut = new ArrayList<Long>();
+		bytesOut.add((long) 20);
+
+		int activeFlows = 30;
+
+		pool1.setPoolStatistics(bytesIn, bytesOut, activeFlows);
+
+		assertTrue(pool1.poolStats.getBytesIn() == 10);
+		assertTrue(pool1.poolStats.getBytesOut() == 20);
+		assertTrue(pool1.poolStats.getActiveFlows() == 30);
+
+	}
+
+	@Test
+	public void testHealthMonitor(){
+		testCreateVip();
+		testCreatePool();
+		testCreateMonitor();
+		testAssociateMonitor();
+
+		// create members without changing pools 
+		String postData1, postData2, postData3, postData4,postData5,postData6;
+		IOException error = null;
+
+		postData1 = "{\"id\":\"1\",\"address\":\"10.0.0.3\",\"port\":\"8\",\"pool_id\":\"1\",\"weight\":\"2\"}";
+		postData2 = "{\"id\":\"2\",\"address\":\"10.0.0.4\",\"port\":\"8\",\"pool_id\":\"1\",\"weight\":\"3\"}";
+		postData3 = "{\"id\":\"3\",\"address\":\"10.0.0.5\",\"port\":\"100\",\"pool_id\":\"2\",\"weight\":\"4\"}";
+		postData4 = "{\"id\":\"4\",\"address\":\"10.0.0.6\",\"port\":\"100\",\"pool_id\":\"2\"}";
+		postData5 = "{\"id\":\"5\",\"address\":\"10.0.0.7\",\"port\":\"100\",\"pool_id\":\"1\",\"weight\":\"5\"}";
+		postData6 = "{\"id\":\"6\",\"address\":\"10.0.0.8\",\"port\":\"100\",\"pool_id\":\"1\",\"weight\":\"5\"}";
+
+
+		try {
+			member1 = membersResource.jsonToMember(postData1);
+		} catch (IOException e) {
+			error = e;
+		}
+		try {
+			member2 = membersResource.jsonToMember(postData2);
+		} catch (IOException e) {
+			error = e;
+		}
+		try {
+			member3 = membersResource.jsonToMember(postData3);
+		} catch (IOException e) {
+			error = e;
+		}
+		try {
+			member4 = membersResource.jsonToMember(postData4);
+		} catch (IOException e) {
+			error = e;
+		}
+		try {
+			member5= membersResource.jsonToMember(postData5);
+		} catch (IOException e) {
+			error = e;
+		}
+		try {
+			member6= membersResource.jsonToMember(postData6);
+		} catch (IOException e) {
+			error = e;
+		}
+
+		// verify correct parsing
+		assertFalse(member1==null);
+		assertFalse(member2==null);
+		assertFalse(member3==null);
+		assertFalse(member4==null);
+		assertFalse(member5==null);
+		assertFalse(member6==null);
+		assertTrue(error==null);
+
+		lb.createMember(member1);
+		lb.createMember(member2);
+		lb.createMember(member3);
+		lb.createMember(member4);
+		lb.createMember(member5);
+		lb.createMember(member6);
+
+		// verify successful creates
+		assertTrue(lb.members.containsKey(member1.id));
+		assertTrue(lb.members.containsKey(member2.id));
+		assertTrue(lb.members.containsKey(member3.id));
+		assertTrue(lb.members.containsKey(member4.id));
+		assertTrue(lb.members.containsKey(member5.id));
+		assertTrue(lb.members.containsKey(member6.id));
+
+		IPClient client = lb.new IPClient();
+		LoadBalancer.isMonitoringEnabled = true;
+
+		HashMap<String, U64> membersBandwidth = new HashMap<String, U64>();
+		membersBandwidth.put(member1.id,U64.of(5000));
+		membersBandwidth.put(member2.id,U64.of(1344));
+		membersBandwidth.put(member3.id,U64.ZERO);
+		membersBandwidth.put(member4.id,U64.of(230));
+		membersBandwidth.put(member5.id,U64.of(2002));
+		membersBandwidth.put(member6.id,U64.of(1345));
+
+		HashMap<String, Short> membersWeight = new HashMap<String, Short>();
+
+		HashMap<String, Short> membersStatus = new HashMap<String, Short>();
+		membersStatus.put(member1.id,(short) 1);
+		membersStatus.put(member2.id,(short) -1);
+		membersStatus.put(member3.id,(short) -1);
+		membersStatus.put(member4.id,(short) 1);
+		membersStatus.put(member5.id,(short) 1);
+		membersStatus.put(member6.id,(short) -1);
+
+		String memberPickedStats = pool1.pickMember(client, membersBandwidth, membersWeight,membersStatus);
+
+		String noMembers = pool3.pickMember(client, membersBandwidth, membersWeight,membersStatus);
+
+		membersBandwidth.clear();
+		String memberPickedNoData = pool1.pickMember(client, membersBandwidth, membersWeight,membersStatus);
+
+		membersWeight.put(member3.id,(short) 3);
+		membersWeight.put(member4.id,(short) 1);
+
+		String weightedPool = pool2.pickMember(client, membersBandwidth, membersWeight,membersStatus);
+
+		// verify pools associated with monitors
+		assertTrue(pool1.monitors.contains(monitor1.id));
+		assertTrue(pool2.monitors.contains(monitor2.id));
+		assertTrue(pool3.monitors.contains(monitor3.id));
+
+		// verify members connected to pool
+		assertTrue(!pool1.members.isEmpty());
+		assertTrue(!pool2.members.isEmpty());
+		assertTrue(pool3.members.isEmpty());
+
+		assertTrue(memberPickedStats.equals("5"));
+		assertTrue(memberPickedNoData.equals("1")); // simple round robin
+		assertTrue(weightedPool.equals("4"));
+		assertTrue(noMembers==null);
+
 	}
 }

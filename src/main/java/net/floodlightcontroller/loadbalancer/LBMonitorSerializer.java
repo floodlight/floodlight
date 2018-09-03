@@ -25,22 +25,19 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonSerializer;
 import com.fasterxml.jackson.databind.SerializerProvider;
 
-public class LBVipSerializer extends JsonSerializer<LBVip>{
+public class LBMonitorSerializer extends JsonSerializer<LBMonitor>{
+	
+	@Override
+	public void serialize(LBMonitor monitor, JsonGenerator jGen, SerializerProvider serializer)
+			throws IOException, JsonProcessingException {
+		jGen.writeStartObject();
 
-    @Override
-    public void serialize(LBVip vip, JsonGenerator jGen,
-                          SerializerProvider serializer) throws IOException,
-                                                  JsonProcessingException {
-        jGen.writeStartObject();
-        
-        jGen.writeStringField("name", vip.name);
-        jGen.writeStringField("id", vip.id);
-        jGen.writeStringField("address", String.valueOf(IPv4Address.of(vip.address)));
-        jGen.writeStringField("protocol", Byte.toString(vip.protocol));
-        jGen.writeStringField("port", Short.toString(vip.port));
-
-        jGen.writeEndObject();
-    }
-
-    
+		jGen.writeStringField("id", monitor.id);
+		jGen.writeStringField("address", String.valueOf(IPv4Address.of(monitor.address)));
+		jGen.writeStringField("name", monitor.name);
+		jGen.writeStringField("type", Short.toString(monitor.type));
+		jGen.writeStringField("poolId", monitor.poolId);
+		jGen.writeEndObject();
+		
+	}
 }

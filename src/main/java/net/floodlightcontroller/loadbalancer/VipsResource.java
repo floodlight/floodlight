@@ -31,12 +31,15 @@ import org.restlet.resource.Delete;
 import org.restlet.resource.Get;
 import org.restlet.resource.Post;
 import org.restlet.resource.Put;
+import org.restlet.resource.ResourceException;
 import org.restlet.resource.ServerResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class VipsResource extends ServerResource {
     protected static Logger log = LoggerFactory.getLogger(VipsResource.class);
+    
+    private static final int BAD_REQUEST = 400;
     
     @Get("json")
     public Collection <LBVip> retrieve() {
@@ -59,7 +62,8 @@ public class VipsResource extends ServerResource {
         try {
             vip=jsonToVip(postData);
         } catch (IOException e) {
-            log.error("Could not parse JSON {}", e.getMessage());
+        	log.error("Could not parse JSON {}", e.getMessage());
+        	throw new ResourceException(BAD_REQUEST); // Sends HTTP error message with code 400.
         }
         
         ILoadBalancerService lbs =
@@ -74,7 +78,7 @@ public class VipsResource extends ServerResource {
     }
     
     @Delete
-    public int removeVip() {
+    public String removeVip() {
         
         String vipId = (String) getRequestAttributes().get("vip");
         
@@ -82,7 +86,12 @@ public class VipsResource extends ServerResource {
                 (ILoadBalancerService)getContext().getAttributes().
                     get(ILoadBalancerService.class.getCanonicalName());
 
-        return lbs.removeVip(vipId);
+        int status = lbs.removeVip(vipId);
+        if(status == -1){
+			return "{\"status\" : \"Error: VIP cannot be deleted!\"}";
+		} else{
+			return "{\"status\" : \"200 OK!\"}";
+		}
     }
 
     protected LBVip jsonToVip(String json) throws IOException {
@@ -138,7 +147,11 @@ public class VipsResource extends ServerResource {
                     vip.protocol = (byte) IpProtocol.UDP.getIpProtocolNumber();
                 } else if (tmp.equalsIgnoreCase("ICMP")) {
                     vip.protocol = (byte) IpProtocol.ICMP.getIpProtocolNumber();
-                } 
+	            } else if (tmp.equalsIgnoreCase("TLS")) {
+	                vip.protocol = (byte) IpProtocol.TLSP.getIpProtocolNumber();
+	            } else {
+	            	log.info("Invalid Protocol, valid options are: TCP, UDP, ICMP or TLS");
+	            }
                 continue;
             }
             if (n.equals("address")) {

@@ -271,6 +271,7 @@ IFloodlightModule, IInfoProvider {
 	private IDebugCounter ctrIncoming;
 	private IDebugCounter ctrLinkLocalDrops;
 	private IDebugCounter ctrLldpEol;
+	private IDebugCounter counterPacketOut;
 
 	private final String PACKAGE = LinkDiscoveryManager.class.getPackage().getName();
 
@@ -1197,7 +1198,7 @@ IFloodlightModule, IInfoProvider {
 		if (iofSwitch == null) { // fix dereference violations in case race conditions
 			return false;
 		}
-
+		counterPacketOut.increment();
 		return iofSwitch.write(generateLLDPMessage(iofSwitch, port, isStandard, isReverse));
 	}
 
@@ -2140,6 +2141,8 @@ IFloodlightModule, IInfoProvider {
 				"All packets whose srcmac is configured to be dropped by this module");
 		ctrQuarantineDrops = debugCounterService.registerCounter(PACKAGE, "quarantine-drops",
 				"All packets arriving on quarantined ports dropped by this module", IDebugCounterService.MetaData.WARN);
+		counterPacketOut = debugCounterService.registerCounter(PACKAGE, "packet-outs-written",
+				"Packet outs written by the LinkDiscovery", IDebugCounterService.MetaData.WARN);
 	}
 
 	//*********************

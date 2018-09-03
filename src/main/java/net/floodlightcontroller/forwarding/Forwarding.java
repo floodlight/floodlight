@@ -1402,12 +1402,12 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                 FLOWMOD_DEFAULT_MATCH_IP = tmp.contains("ip") ? true : false;
                 FLOWMOD_DEFAULT_MATCH_TRANSPORT = tmp.contains("transport") ? true : false;
 				FLOWMOD_DEFAULT_MATCH_TCP_FLAG = tmp.contains("flag") ? true : false;
-            }
-        }
-        log.info("Default flow matches set to: IN_PORT=" + FLOWMOD_DEFAULT_MATCH_IN_PORT
-                + ", VLAN=" + FLOWMOD_DEFAULT_MATCH_VLAN
-                + ", MAC=" + FLOWMOD_DEFAULT_MATCH_MAC
-                + ", IP=" + FLOWMOD_DEFAULT_MATCH_IP
+			}
+		}
+		log.info("Default flow matches set to: IN_PORT=" + FLOWMOD_DEFAULT_MATCH_IN_PORT
+				+ ", VLAN=" + FLOWMOD_DEFAULT_MATCH_VLAN
+				+ ", MAC=" + FLOWMOD_DEFAULT_MATCH_MAC
+				+ ", IP=" + FLOWMOD_DEFAULT_MATCH_IP
 				+ ", FLAG=" + FLOWMOD_DEFAULT_MATCH_TCP_FLAG
                 + ", TPPT=" + FLOWMOD_DEFAULT_MATCH_TRANSPORT);
 
