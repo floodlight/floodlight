@@ -81,14 +81,13 @@ public class Archipelago {
         Archipelago that = (Archipelago) o;
 
         if (!id.equals(that.id)) return false;
-        return clusters.equals(that.clusters);
 
+        return true;
     }
 
     @Override
     public int hashCode() {
         int result = id.hashCode();
-        result = 31 * result + clusters.hashCode();
         return result;
     }
 

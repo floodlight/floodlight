@@ -76,7 +76,7 @@ public class TopologyInstance {
     private Map<DatapathId, Cluster>            clusterFromSwitch; /* cluster for each switch */
 
     /* Per-archipelago */
-    private List<Archipelago>                   archipelagos; /* connected clusters */
+    private Set<Archipelago>                    archipelagos; /* connected clusters */
     private Map<Cluster, Archipelago>           archipelagoFromCluster;
     private Map<DatapathId, Set<NodePortTuple>> portsBroadcastPerArchipelago; /* broadcast ports in each archipelago ID */
     private Map<PathId, List<Path>>             pathcache; /* contains computed paths ordered best to worst */
@@ -118,7 +118,7 @@ public class TopologyInstance {
         }
 
         this.linksNonExternalInterCluster = new HashSet<Link>();
-        this.archipelagos = new ArrayList<Archipelago>();
+        this.archipelagos = new HashSet<Archipelago>();
 
         this.portsWithMoreThanTwoLinks = new HashSet<NodePortTuple>(portsWithMoreThanTwoLinks);
         this.portsTunnel = new HashSet<NodePortTuple>(portsTunnel);
@@ -512,8 +512,12 @@ public class TopologyInstance {
         /* Base case of 1:1 mapping b/t clusters and archipelagos */
         if (links.isEmpty()) {
             if (!clusters.isEmpty()) {
-                clusters.forEach(c -> archipelagos.add(new Archipelago().add(c)));
-            }
+            	for (Cluster c: clusters) {
+            		Archipelago a = new Archipelago().add(c);
+            		archipelagos.add(a);
+            		archipelagoFromCluster.put(c, a);
+        		}
+        	}
         } else { /* Only for two or more adjacent clusters that form archipelagos */
             for (Link l : links) {
                 for (Cluster c : clusters) {
@@ -529,7 +533,9 @@ public class TopologyInstance {
 
                 // Are they both found in an archipelago? If so, then merge the two.
                 if (srcArchipelago != null && dstArchipelago != null && !srcArchipelago.equals(dstArchipelago)) {
+                	archipelagos.remove(srcArchipelago);
                     srcArchipelago.merge(dstArchipelago);
+                    archipelagos.add(srcArchipelago);
                     archipelagos.remove(dstArchipelago);
                     archipelagoFromCluster.put(dstCluster, srcArchipelago);
                 }
@@ -544,12 +550,16 @@ public class TopologyInstance {
 
                 // If only one is found in an existing, then add the one not found to the existing.
                 else if (srcArchipelago != null && dstArchipelago == null) {
+                	archipelagos.remove(srcArchipelago);
                     srcArchipelago.add(dstCluster);
+                    archipelagos.add(srcArchipelago);
                     archipelagoFromCluster.put(dstCluster, srcArchipelago);
                 }
 
                 else if (srcArchipelago == null && dstArchipelago != null) {
+                	archipelagos.remove(dstArchipelago);
                     dstArchipelago.add(srcCluster);
+                    archipelagos.add(dstArchipelago);
                     archipelagoFromCluster.put(srcCluster, dstArchipelago);
                 }
 
@@ -788,7 +798,7 @@ public class TopologyInstance {
                 for (DatapathId dst : dstSws) {
                     log.debug("Calling Yens {} {}", src, dst);
                     paths = yens(src, dst, TopologyManager.getMaxPathsToComputeInternal(),
-                            getArchipelago(src), getArchipelago(dst));
+                            a, a);
                     pathId = new PathId(src, dst);
                     pathcache.put(pathId, paths);
                     log.debug("Adding paths {}", paths);
@@ -845,7 +855,7 @@ public class TopologyInstance {
     public boolean pathExists(DatapathId srcId, DatapathId dstId) {
         Archipelago srcA = getArchipelago(srcId);
         Archipelago dstA = getArchipelago(dstId);
-        if (!srcA.getId().equals(dstA.getId())) {
+        if (srcA == null || dstA == null || !srcA.equals(dstA)) {
             return false;
         }
 
@@ -938,11 +948,14 @@ public class TopologyInstance {
         }
     }
 
+    /*
+     * In this, the parameter 'd' can be a switchId, or clusterId or archipelagoId
+     * as each of them represents a switch in the archipelago it belongs to.
+     */
     private Archipelago getArchipelago(DatapathId d) {
-        for (Archipelago a : archipelagos) {
-            if (a.getSwitches().contains(d)) {
-                return a;
-            }
+        Cluster c = clusterFromSwitch.get(d);
+        if (c != null) {
+        	return archipelagoFromCluster.get(c);
         }
         return null;
     }
@@ -1265,9 +1278,9 @@ public class TopologyInstance {
     }
 
     public DatapathId getArchipelagoId(DatapathId switchId) {
-        Cluster c = clusterFromSwitch.get(switchId);
-        if (c != null) {
-            return archipelagoFromCluster.get(c).getId();
+        Archipelago a = getArchipelago(switchId);
+        if (a != null) {
+            return a.getId();
         }
         return switchId;
     }
@@ -1313,10 +1326,13 @@ public class TopologyInstance {
     }
 
     public boolean isInSameArchipelago(DatapathId s1, DatapathId s2) {
-        for (Archipelago a : archipelagos) {
-            if (a.getSwitches().contains(s1) && a.getSwitches().contains(s2)) {
-                return true;
-            }
+    	if (s1.equals(s2)) {
+    		return true;
+    	}
+    	Archipelago a1 = getArchipelago(s1);
+    	Archipelago a2 = getArchipelago(s2);
+        if (a1 != null && a2 != null && a1.equals(a2)) {
+        	return true;
         }
         return false;
     }
@@ -1399,7 +1415,7 @@ public class TopologyInstance {
                 NodePortTuple npt = new NodePortTuple(sw, p);
                 if (isEdge(sw, p)) {
                     /* Add to per-archipelago NPT map */
-                    DatapathId aId = getArchipelago(sw).getId();
+                    DatapathId aId = getArchipelagoId(sw);
                     if (portsBroadcastPerArchipelago.containsKey(aId)) {
                         portsBroadcastPerArchipelago.get(aId).add(npt);
                     } else {
