@@ -14,21 +14,23 @@ import java.util.Set;
 
 public interface IStatisticsService extends IFloodlightService {
 	
-	public String setFlowStatsPeriod(int period);
+	String setFlowStatsPeriod(int period);
 	
-	public String setPortStatsPeriod(int period);
+	String setPortStatsPeriod(int period);
 	
-	public Map<NodePortTuple, PortDesc> getPortDesc();
+	Map<NodePortTuple, PortDesc> getPortDesc();
 	
-	public PortDesc getPortDesc(DatapathId dpid, OFPort p);
+	PortDesc getPortDesc(DatapathId dpid, OFPort p);
 	
-	public Map<Pair<Match,DatapathId>, FlowRuleStats> getFlowStats();
+	Map<Pair<Match,DatapathId>, FlowRuleStats> getFlowStats();
 	
-	public Set<FlowRuleStats> getFlowStats(DatapathId dpid);
+	Set<FlowRuleStats> getFlowStats(DatapathId dpid);
 
-	public SwitchPortBandwidth getBandwidthConsumption(DatapathId dpid, OFPort p);
+	SwitchPortBandwidth getBandwidthConsumption(DatapathId dpid, OFPort p);
 		
-	public Map<NodePortTuple, SwitchPortBandwidth> getBandwidthConsumption();
+	Map<NodePortTuple, SwitchPortBandwidth> getBandwidthConsumption();
 	
-	public void collectStatistics(boolean collect);
+	void collectStatistics(boolean collect);
+
+	boolean isStatisticsCollectionEnabled();
 }

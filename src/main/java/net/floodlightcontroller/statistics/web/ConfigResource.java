@@ -4,11 +4,19 @@ import java.util.Collections;
 
 import net.floodlightcontroller.statistics.IStatisticsService;
 
+import org.restlet.resource.Get;
 import org.restlet.resource.Post;
 import org.restlet.resource.Put;
 import org.restlet.resource.ServerResource;
 
 public class ConfigResource extends ServerResource {
+
+	@Get
+	public Object getStatisticsConfig() {
+		IStatisticsService statisticsService = (IStatisticsService) getContext().getAttributes().get(IStatisticsService.class.getCanonicalName());
+
+		return Collections.singletonMap("statistics-collection", statisticsService.isStatisticsCollectionEnabled());
+	}
 
 	@Post
 	@Put
@@ -17,12 +25,12 @@ public class ConfigResource extends ServerResource {
 
 		if (getReference().getPath().contains(SwitchStatisticsWebRoutable.ENABLE_STR)) {
 			statisticsService.collectStatistics(true);
-			return Collections.singletonMap("statistics-collection", "enabled");
+			return getStatisticsConfig();
 		}
 
 		if (getReference().getPath().contains(SwitchStatisticsWebRoutable.DISABLE_STR)) {
 			statisticsService.collectStatistics(false);
-			return Collections.singletonMap("statistics-collection", "disabled");
+			return getStatisticsConfig();
 		}
 
 
@@ -33,7 +41,6 @@ public class ConfigResource extends ServerResource {
 				return statisticsService.setPortStatsPeriod(val);
 			}catch(Exception e) {
 				return "{\"status\" : \"Failed! " + e.getMessage() + "\"}";
-				
 			}
 			
 		}
@@ -45,7 +52,6 @@ public class ConfigResource extends ServerResource {
 				return statisticsService.setFlowStatsPeriod(val);
 			}catch(Exception e) {
 				return "{\"status\" : \"Failed! " + e.getMessage() + "\"}";
-				
 			}
 		}
 
