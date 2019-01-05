@@ -409,6 +409,11 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
 		/* otherwise, state is not changing; no-op */
 	}
 
+	@Override
+	public boolean isStatisticsCollectionEnabled() {
+		return isEnabled;
+	}
+
 	/*
 	 * Helper functions
 	 */
