@@ -198,7 +198,7 @@
 		<dependency>
 			<groupId>org.apache.thrift</groupId>
 			<artifactId>libthrift</artifactId>
-			<version>0.9.0</version>
+			<version>0.12.0</version>
 		</dependency>
 		<dependency>
 			<groupId>junit</groupId>
@@ -274,7 +274,7 @@
 		</dependency>
 	</dependencies>
 	<properties>
-		<lib-restlet-version>2.3.2</lib-restlet-version>
+		<lib-restlet-version>2.3.12</lib-restlet-version>
 		<lib-jackson-version>2.4.4</lib-jackson-version>
 		<lib-hamcrest-version>1.3</lib-hamcrest-version>
 	</properties>
