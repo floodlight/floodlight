@@ -3,27 +3,53 @@
 # Add steps that analyze code, save build artifacts, deploy, and more:
 # https://docs.microsoft.com/azure/devops/pipelines/languages/java
 
-trigger:
-- master
+trigger: 
+  - master
+  
 
-pool:
-  vmImage: 'ubuntu-latest'
+jobs:
+  - job: InstallJava8
+    pool:
+      vmImage: 'ubuntu-latest'
+    variables:
+      JAVA8: 'true'
+    steps:
+      - script: sudo ./installOracleJdk8.sh 
+        displayName: Download & Install Java 8 
+      - task: Maven@3
+        inputs:
+          mavenPomFile: 'pom.xml'
+          mavenOptions: '-Xmx3072m'
+          javaHomeOption: 'JDKVersion'
+          jdkVersionOption: '1.8'
+          jdkArchitectureOption: 'x64'
+          publishJUnitResults: false
+          testResultsFiles: '**/surefire-reports/TEST-*.xml'
+          goals: 'package'      
 
-steps:
-- task: JavaToolInstaller@0
-  inputs:
-    versionSpec: '8'
-    jdkArchitectureOption: 'x64'
-    jdkSourceOption: AzureStorage
-    jdkDestinationDirectory: 'usr/jdk'
 
-- task: Maven@3
-  inputs:
-    mavenPomFile: 'pom.xml'
-    mavenOptions: '-Xmx3072m'
-    javaHomeOption: 'JDKVersion'
-    jdkVersionOption: '1.8'
-    jdkArchitectureOption: 'x64'
-    publishJUnitResults: false
-    testResultsFiles: '**/surefire-reports/TEST-*.xml'
-    goals: 'package'
+# trigger:
+# - master
+
+# pool:
+#   vmImage: 'ubuntu-latest'
+
+
+# steps:
+# - task: JavaToolInstaller@0
+#   inputs:
+#     versionSpec: '8'
+#     jdkArchitectureOption: 'x64'
+#     jdkSourceOption: AzureStorage
+#     jdkDestinationDirectory: 'usr/jdk'
+
+# - task: Maven@3
+#   inputs:
+#     mavenPomFile: 'pom.xml'
+#     mavenOptions: '-Xmx3072m'
+#     javaHomeOption: 'JDKVersion'
+#     jdkVersionOption: '1.8'
+#     jdkArchitectureOption: 'x64'
+#     publishJUnitResults: false
+#     testResultsFiles: '**/surefire-reports/TEST-*.xml'
+#     goals: 'package'
