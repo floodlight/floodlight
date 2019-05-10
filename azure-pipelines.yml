@@ -15,7 +15,7 @@ steps:
     versionSpec: '8'
     jdkArchitectureOption: 'x64'
     jdkSourceOption: AzureStorage
-    jdkDestinationDirectory: 
+    jdkDestinationDirectory: 'usr/jdk'
 
 - task: Maven@3
   inputs:
