@@ -30,6 +30,7 @@ import net.floodlightcontroller.debugcounter.IDebugCounterService;
 import net.floodlightcontroller.devicemanager.IDeviceService;
 import net.floodlightcontroller.devicemanager.SwitchPort;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryService;
+import net.floodlightcontroller.multicasting.IMulticastService;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPacket;
 import net.floodlightcontroller.restserver.IRestApiService;
@@ -88,6 +89,7 @@ public abstract class ForwardingBase implements IOFMessageListener {
     protected IDebugCounterService debugCounterService;
     protected ILinkDiscoveryService linkService;
     protected IRestApiService restApiService;
+    protected IMulticastService multicastService;
 
     // flow-mod - for use in the cookie
     public static final int FORWARDING_APP_ID = 2;
@@ -108,6 +110,7 @@ public abstract class ForwardingBase implements IOFMessageListener {
 
     protected void startUp() {
         floodlightProviderService.addOFMessageListener(OFType.PACKET_IN, this);
+        floodlightProviderService.addOFMessageListener(OFType.FLOW_REMOVED, this);
     }
 
     @Override
@@ -129,6 +132,18 @@ public abstract class ForwardingBase implements IOFMessageListener {
     public abstract Command processPacketInMessage(IOFSwitch sw, OFPacketIn pi, 
             IRoutingDecision decision, FloodlightContext cntx);
 
+    /**
+     * All subclasses must define this function if they want any specific
+     * action when a flow is removed
+     *
+     * @param sw
+     *            Switch that the packet came in from
+     * @param fr
+     *            The packet that came in
+     */
+    public abstract Command processFlowRemovedMessage(IOFSwitch sw, OFFlowRemoved fr, 
+            FloodlightContext cntx);
+
     @Override
     public Command receive(IOFSwitch sw, OFMessage msg, FloodlightContext cntx) {
         Ethernet eth = IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
@@ -140,6 +155,8 @@ public abstract class ForwardingBase implements IOFMessageListener {
                 decision = RoutingDecision.rtStore.get(cntx, IRoutingDecision.CONTEXT_DECISION);
             }
             return this.processPacketInMessage(sw, (OFPacketIn) msg, decision, cntx);
+        case FLOW_REMOVED:
+            return this.processFlowRemovedMessage(sw, (OFFlowRemoved) msg, cntx);
         default:
             break;
         }
@@ -197,7 +214,7 @@ public abstract class ForwardingBase implements IOFMessageListener {
                 log.error("Could not decode OFFlowModCommand. Using MODIFY_STRICT. (Should another be used as the default?)");        
             case MODIFY_STRICT:
                 fmb = sw.getOFFactory().buildFlowModifyStrict();
-                break;			
+                break;
             }
 
             OFActionOutput.Builder aob = sw.getOFFactory().actions().buildOutput();

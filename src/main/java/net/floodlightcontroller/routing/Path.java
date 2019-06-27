@@ -40,6 +40,7 @@ public class Path implements Comparable<Path> {
     protected int pathIndex;
     protected int hopCount;
     protected U64 latency;
+    protected int cost;
 
     public Path(PathId id, List<NodePortTuple> switchPorts) {
         super();
@@ -111,6 +112,14 @@ public class Path implements Comparable<Path> {
 
     public U64 getLatency() { 
         return this.latency; 
+    }
+    
+    public void setCost(int cost) {
+        this.cost = cost;
+    }
+    
+    public int getCost() {
+        return this.cost;
     }
     
     @Override

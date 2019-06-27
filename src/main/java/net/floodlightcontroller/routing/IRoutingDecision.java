@@ -26,6 +26,7 @@ import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.FloodlightContextStore;
 import net.floodlightcontroller.devicemanager.IDevice;
 import net.floodlightcontroller.devicemanager.SwitchPort;
+import net.floodlightcontroller.multicasting.internal.ParticipantGroupAddress;
 
 public interface IRoutingDecision {
     public enum RoutingAction {
@@ -66,5 +67,7 @@ public interface IRoutingDecision {
     public void setHardTimeout(short hardTimeout);
     public U64 getDescriptor();
     public void setDescriptor(U64 descriptor);
+    public ParticipantGroupAddress getParticipantGroupAddress();
+    public void setParticipantGroupAddress(ParticipantGroupAddress pgAddress);
     
 }

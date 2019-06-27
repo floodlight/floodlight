@@ -27,6 +27,8 @@ import net.floodlightcontroller.debugcounter.IDebugCounterService;
 import net.floodlightcontroller.debugcounter.MockDebugCounterService;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscovery;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryService;
+import net.floodlightcontroller.multicasting.IMulticastService;
+import net.floodlightcontroller.multicasting.internal.MulticastManager;
 import net.floodlightcontroller.routing.IRoutingService;
 import net.floodlightcontroller.routing.Path;
 import net.floodlightcontroller.routing.RoutingManager;
@@ -71,6 +73,7 @@ public class TopologyInstanceTest {
         fmc.addService(IOFSwitchService.class, new MockSwitchManager());
         fmc.addService(ILinkDiscoveryService.class, linkDiscovery);
         fmc.addService(IDebugCounterService.class, new MockDebugCounterService());
+        fmc.addService(IMulticastService.class, new MulticastManager());
         MockThreadPoolService tp = new MockThreadPoolService();
         topologyManager = new TopologyManager();
         routingManager = new RoutingManager();
