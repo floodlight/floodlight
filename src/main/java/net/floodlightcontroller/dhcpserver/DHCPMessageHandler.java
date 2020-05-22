@@ -32,7 +32,7 @@ public class DHCPMessageHandler {
      * @return
      */
     public OFPacketOut handleDHCPDiscover(@Nonnull IOFSwitch sw, @Nonnull OFPort inPort, @Nonnull DHCPInstance instance,
-                                          @Nonnull IPv4Address clientIP, @Nonnull DHCP payload, @Nonnull Boolean dynamicLease) {
+                                          @Nonnull IPv4Address clientIP, @Nonnull DHCP payload, @Nonnull Boolean dynamicLease,short vid) {
         /**  DHCP Discover Message
          * -- UDP src port = 68
          * -- UDP dst port = 67
@@ -94,7 +94,7 @@ public class DHCPMessageHandler {
 
         yiaddr = ipLease;
         DHCP dhcpOffer = buildDHCPOfferMessage(instance, chaddr, yiaddr, giaddr, xid, requestOrder);
-        OFPacketOut dhcpPacketOut = buildDHCPOfferPacketOut(instance, sw, inPort, clientIP, dhcpOffer);
+        OFPacketOut dhcpPacketOut = buildDHCPOfferPacketOut(instance, sw, inPort, clientIP, dhcpOffer,vid);
         return dhcpPacketOut;
 
     }
@@ -298,7 +298,7 @@ public class DHCPMessageHandler {
 
 
     public OFPacketOut buildDHCPOfferPacketOut(@Nonnull DHCPInstance instance, @Nonnull IOFSwitch sw, @Nonnull OFPort inPort,
-                                               @Nonnull IPv4Address clientIPAddress, @Nonnull DHCP dhcpOfferPacket) {
+                                               @Nonnull IPv4Address clientIPAddress, @Nonnull DHCP dhcpOfferPacket,short vid) {
 
         if (clientIPAddress.equals(IPv4Address.NONE)) {
             clientIPAddress = IPv4Address.NO_MASK;      // Broadcast IP
@@ -308,6 +308,7 @@ public class DHCPMessageHandler {
                 .setSourceMACAddress(instance.getServerMac())
                 .setDestinationMACAddress(dhcpOfferPacket.getClientHardwareAddress())
                 .setEtherType(EthType.IPv4)
+		.setVlanID(vid)
                 .setPayload(
                         new IPv4()
 
@@ -352,7 +353,7 @@ public class DHCPMessageHandler {
      * @return
      */
     public OFPacketOut handleDHCPRequest(@Nonnull IOFSwitch sw, @Nonnull OFPort inPort, @Nonnull DHCPInstance instance,
-                                         @Nonnull IPv4Address dstAddr, @Nonnull DHCP payload) {
+                                         @Nonnull IPv4Address dstAddr, @Nonnull DHCP payload,short vid) {
 
         /** DHCP Request Message
          * -- UDP src port = 68
@@ -430,9 +431,9 @@ public class DHCPMessageHandler {
 
         if (sendACK) {
             yiaddr = instance.getDHCPPool().getLeaseIP(chaddr).get();
-            return createDHCPAck(instance, sw, inPort, chaddr, dstAddr, yiaddr, giaddr, xid, requestOrder);
+            return createDHCPAck(instance, sw, inPort, chaddr, dstAddr, yiaddr, giaddr, xid, requestOrder,vid);
         } else {
-            return createDHCPNak(instance, sw, inPort, chaddr, giaddr, xid);
+            return createDHCPNak(instance, sw, inPort, chaddr, giaddr, xid,vid);
         }
 
     }
@@ -483,14 +484,14 @@ public class DHCPMessageHandler {
      * @return
      */
     public OFPacketOut handleDHCPInform(@Nonnull IOFSwitch sw, @Nonnull OFPort inPort, @Nonnull DHCPInstance instance,
-                                        @Nonnull IPv4Address dstAddr, @Nonnull DHCP payload) {
+                                        @Nonnull IPv4Address dstAddr, @Nonnull DHCP payload,short vid) {
         int xid = payload.getTransactionId();
         IPv4Address yiaddr = IPv4Address.NONE;
         IPv4Address giaddr = payload.getGatewayIPAddress();    // Will have GW IP if a relay agent was used
         MacAddress chaddr = payload.getClientHardwareAddress();
         List<Byte> requestOrder = new ArrayList<>();
 
-        return createDHCPAck(instance, sw, inPort, chaddr, dstAddr, yiaddr, giaddr, xid, requestOrder);
+        return createDHCPAck(instance, sw, inPort, chaddr, dstAddr, yiaddr, giaddr, xid, requestOrder,vid);
     }
 
     public IDHCPService.ClientState determineClientState(@Nullable IPv4Address requstIP, @Nullable IPv4Address
@@ -643,7 +644,7 @@ public class DHCPMessageHandler {
 
     public OFPacketOut createDHCPAck(DHCPInstance instance, IOFSwitch sw, OFPort inPort, MacAddress chaddr,
                                      IPv4Address dstIPAddr, IPv4Address yiaddr, IPv4Address giaddr,
-                                     int xid, List<Byte> requestOrder) {
+                                     int xid, List<Byte> requestOrder,short vid) {
         /** DHCP ACK Message
          * -- UDP src port = 67
          * -- UDP dst port = 68
@@ -672,7 +673,8 @@ public class DHCPMessageHandler {
         Ethernet eth = new Ethernet()
                 .setSourceMACAddress(instance.getServerMac())
                 .setDestinationMACAddress(chaddr)
-                .setEtherType(EthType.IPv4);
+                .setEtherType(EthType.IPv4)
+		.setVlanID(vid);
 
         IPv4 ip = new IPv4()
                 .setSourceAddress(instance.getServerID())
@@ -803,7 +805,7 @@ public class DHCPMessageHandler {
     }
 
     public OFPacketOut createDHCPNak(DHCPInstance instance, IOFSwitch sw, OFPort inPort, MacAddress chaddr,
-                                     IPv4Address giaddr, int xid) {
+                                     IPv4Address giaddr, int xid,short vid) {
 
         OFPacketOut.Builder pob = sw.getOFFactory().buildPacketOut();
         pob.setBufferId(OFBufferId.NO_BUFFER);
@@ -811,7 +813,8 @@ public class DHCPMessageHandler {
         Ethernet eth = new Ethernet()
                 .setSourceMACAddress(instance.getServerMac())
                 .setDestinationMACAddress(chaddr)
-                .setEtherType(EthType.IPv4);
+                .setEtherType(EthType.IPv4)
+		.setVlanID(vid);
 
         IPv4 ip = new IPv4()
                 .setDestinationAddress(IPv4Address.NO_MASK)  // broadcast IP
