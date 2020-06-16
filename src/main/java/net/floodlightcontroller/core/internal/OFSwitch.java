@@ -39,19 +39,6 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import javax.annotation.Nonnull;
 
-import net.floodlightcontroller.core.IOFConnection;
-import net.floodlightcontroller.core.IOFConnectionBackend;
-import net.floodlightcontroller.core.IOFSwitchBackend;
-import net.floodlightcontroller.core.LogicalOFMessageCategory;
-import net.floodlightcontroller.core.PortChangeEvent;
-import net.floodlightcontroller.core.PortChangeType;
-import net.floodlightcontroller.core.SwitchDescription;
-import net.floodlightcontroller.core.SwitchDriverSubHandshakeAlreadyStarted;
-import net.floodlightcontroller.core.SwitchDriverSubHandshakeCompleted;
-import net.floodlightcontroller.core.SwitchDriverSubHandshakeNotStarted;
-import net.floodlightcontroller.core.util.AppCookie;
-import net.floodlightcontroller.core.util.URIUtil;
-
 import org.projectfloodlight.openflow.protocol.OFActionType;
 import org.projectfloodlight.openflow.protocol.OFBsnControllerConnection;
 import org.projectfloodlight.openflow.protocol.OFBsnControllerConnectionState;
@@ -80,11 +67,6 @@ import org.projectfloodlight.openflow.types.OFAuxId;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.TableId;
 import org.projectfloodlight.openflow.types.U64;
-
-import net.floodlightcontroller.util.IterableUtils;
-import net.floodlightcontroller.util.LinkedHashSetWrapper;
-import net.floodlightcontroller.util.OrderedCollection;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -94,6 +76,21 @@ import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.MoreExecutors;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import net.floodlightcontroller.core.IOFConnection;
+import net.floodlightcontroller.core.IOFConnectionBackend;
+import net.floodlightcontroller.core.IOFSwitchBackend;
+import net.floodlightcontroller.core.LogicalOFMessageCategory;
+import net.floodlightcontroller.core.PortChangeEvent;
+import net.floodlightcontroller.core.PortChangeType;
+import net.floodlightcontroller.core.SwitchDescription;
+import net.floodlightcontroller.core.SwitchDriverSubHandshakeAlreadyStarted;
+import net.floodlightcontroller.core.SwitchDriverSubHandshakeCompleted;
+import net.floodlightcontroller.core.SwitchDriverSubHandshakeNotStarted;
+import net.floodlightcontroller.core.util.AppCookie;
+import net.floodlightcontroller.core.util.URIUtil;
+import net.floodlightcontroller.util.IterableUtils;
+import net.floodlightcontroller.util.LinkedHashSetWrapper;
+import net.floodlightcontroller.util.OrderedCollection;
 
 /**
  * This is the internal representation of an openflow switch.
@@ -113,7 +110,7 @@ public class OFSwitch implements IOFSwitchBackend {
 	protected short nTables;
 	protected final DatapathId datapathId;
 
-	private Map<TableId, TableFeatures> tableFeaturesByTableId;
+	private final Map<TableId, TableFeatures> tableFeaturesByTableId;
 
 	private boolean startDriverHandshakeCalled = false;
 	private final Map<OFAuxId, IOFConnectionBackend> connections;
@@ -158,14 +155,14 @@ public class OFSwitch implements IOFSwitchBackend {
 		this.factory = factory;
 		this.switchManager = switchManager;
 		this.datapathId = datapathId;
-		this.attributes = new ConcurrentHashMap<Object, Object>();
+		this.attributes = new ConcurrentHashMap<>();
 		this.role = null;
 		this.description = new SwitchDescription();
 		this.portManager = new PortManager();
 		this.status = SwitchStatus.HANDSHAKE;
 
 		// Connections
-		this.connections = new ConcurrentHashMap<OFAuxId, IOFConnectionBackend>();
+		this.connections = new ConcurrentHashMap<>();
 		this.connections.put(connection.getAuxId(), connection);
 
 		// Switch's controller connection
@@ -176,8 +173,8 @@ public class OFSwitch implements IOFSwitchBackend {
 		this.setAttribute(PROP_SUPPORTS_OFPP_FLOOD, Boolean.TRUE);
 		this.setAttribute(PROP_SUPPORTS_OFPP_TABLE, Boolean.TRUE);
 
-		this.tableFeaturesByTableId = new HashMap<TableId, TableFeatures>();
-		this.tables = new ArrayList<TableId>();
+		this.tableFeaturesByTableId = new HashMap<>();
+		this.tables = new ArrayList<>();
 	}
 
 	private static int ident(int i) {
@@ -248,12 +245,12 @@ public class OFSwitch implements IOFSwitchBackend {
 						"holding writeLock");
 			}
 			Map<String,OFPortDesc> newPortsByName =
-					new HashMap<String, OFPortDesc>();
+					new HashMap<>();
 			List<OFPortDesc> newPortList =
-					new ArrayList<OFPortDesc>();
+					new ArrayList<>();
 			List<OFPortDesc> newEnabledPortList =
-					new ArrayList<OFPortDesc>();
-			List<OFPort> newEnabledPortNumbers = new ArrayList<OFPort>();
+					new ArrayList<>();
+			List<OFPort> newEnabledPortNumbers = new ArrayList<>();
 
 			for(OFPortDesc p: newPortsByNumber.values()) {
 				newPortList.add(p);
@@ -296,11 +293,11 @@ public class OFSwitch implements IOFSwitchBackend {
 		private OrderedCollection<PortChangeEvent>
 		handlePortStatusDelete(OFPortDesc delPort) {
 			OrderedCollection<PortChangeEvent> events =
-					new LinkedHashSetWrapper<PortChangeEvent>();
+					new LinkedHashSetWrapper<>();
 			lock.writeLock().lock();
 			try {
 				Map<OFPort,OFPortDesc> newPortByNumber =
-						new HashMap<OFPort, OFPortDesc>(portsByNumber);
+						new HashMap<>(portsByNumber);
 				OFPortDesc prevPort =
 						portsByNumber.get(delPort.getPortNo());
 				if (prevPort == null) {
@@ -375,7 +372,7 @@ public class OFSwitch implements IOFSwitchBackend {
 				// notion of ADD vs. MODIFY can also be hazy. So we just
 				// compare the new port to the existing ones.
 				Map<OFPort,OFPortDesc> newPortByNumber =
-						new HashMap<OFPort, OFPortDesc>(portsByNumber);
+						new HashMap<>(portsByNumber);
 				OrderedCollection<PortChangeEvent> events = getSinglePortChanges(port);
 				for (PortChangeEvent e: events) {
 					switch(e.type) {
@@ -422,7 +419,7 @@ public class OFSwitch implements IOFSwitchBackend {
 			lock.readLock().lock();
 			try {
 				OrderedCollection<PortChangeEvent> events =
-						new LinkedHashSetWrapper<PortChangeEvent>();
+						new LinkedHashSetWrapper<>();
 				// Check if we have a port by the same number in our
 				// old map.
 				OFPortDesc prevPort =
@@ -548,18 +545,18 @@ public class OFSwitch implements IOFSwitchBackend {
 			lock.writeLock().lock();
 			try {
 				OrderedCollection<PortChangeEvent> events =
-						new LinkedHashSetWrapper<PortChangeEvent>();
+						new LinkedHashSetWrapper<>();
 
 				Map<OFPort,OFPortDesc> newPortsByNumber =
-						new HashMap<OFPort, OFPortDesc>();
+						new HashMap<>();
 				Map<String,OFPortDesc> newPortsByName =
-						new HashMap<String, OFPortDesc>();
+						new HashMap<>();
 				List<OFPortDesc> newEnabledPortList =
-						new ArrayList<OFPortDesc>();
+						new ArrayList<>();
 				List<OFPort> newEnabledPortNumbers =
-						new ArrayList<OFPort>();
+						new ArrayList<>();
 				List<OFPortDesc> newPortsList =
-						new ArrayList<OFPortDesc>(newPorts);
+						new ArrayList<>(newPorts);
 
 				for (OFPortDesc p: newPortsList) {
 					if (p == null) {
@@ -684,8 +681,8 @@ public class OFSwitch implements IOFSwitchBackend {
 	protected static class SwitchRoleMessageValidator {
 		private static final Map<OFVersion, Set<OFType>> invalidSlaveMsgsByOFVersion;
 		static {
-			Map<OFVersion, Set<OFType>> m = new HashMap<OFVersion, Set<OFType>>();
-			Set<OFType> s = new HashSet<OFType>();
+			Map<OFVersion, Set<OFType>> m = new HashMap<>();
+			Set<OFType> s = new HashSet<>();
 			s.add(OFType.PACKET_OUT);
 			s.add(OFType.FLOW_MOD);
 			s.add(OFType.PORT_MOD);
@@ -693,22 +690,22 @@ public class OFSwitch implements IOFSwitchBackend {
 			s.add(OFType.BARRIER_REQUEST);
 			m.put(OFVersion.OF_10, Collections.unmodifiableSet(s));
 			
-			s = new HashSet<OFType>();
+			s = new HashSet<>();
 			s.addAll(m.get(OFVersion.OF_10));
 			s.add(OFType.GROUP_MOD);
 			s.add(OFType.TABLE_MOD);
 			m.put(OFVersion.OF_11, Collections.unmodifiableSet(s));
 			
-			s = new HashSet<OFType>();
+			s = new HashSet<>();
 			s.addAll(m.get(OFVersion.OF_11));
 			m.put(OFVersion.OF_12, Collections.unmodifiableSet(s));
 			
-			s = new HashSet<OFType>();
+			s = new HashSet<>();
 			s.addAll(m.get(OFVersion.OF_12));
 			s.add(OFType.METER_MOD);
 			m.put(OFVersion.OF_13, Collections.unmodifiableSet(s));
 			
-			s = new HashSet<OFType>();
+			s = new HashSet<>();
 			s.addAll(m.get(OFVersion.OF_13));
 			s.add(OFType.BUNDLE_ADD_MESSAGE);
 			s.add(OFType.BUNDLE_CONTROL);
@@ -735,7 +732,7 @@ public class OFSwitch implements IOFSwitchBackend {
 				return Collections.emptyList();
 			} else { /* slave */
 				Set<OFType> invalidSlaveMsgs = invalidSlaveMsgsByOFVersion.get(swVersion);
-				List<OFMessage> invalid = new ArrayList<OFMessage>();
+				List<OFMessage> invalid = new ArrayList<>();
 				Iterator<OFMessage> itr = msgList.iterator();
 				while (itr.hasNext()) {
 					OFMessage m = itr.next();
@@ -858,7 +855,7 @@ public class OFSwitch implements IOFSwitchBackend {
 	@Override
 	public Collection<OFMessage> write(Iterable<OFMessage> msgList, LogicalOFMessageCategory category) {
 		IOFConnection conn = this.getConnection(category); /* do first to check for supported category */
-		Collection<OFMessage> validMsgs = new ArrayList<OFMessage>();
+		Collection<OFMessage> validMsgs = new ArrayList<>();
 		Collection<OFMessage> invalidMsgs = SwitchRoleMessageValidator.pruneInvalidMessages(
 				msgList, validMsgs, this.getOFFactory().getVersion(), this.isActive());
 		if (log.isDebugEnabled()) {
@@ -996,7 +993,7 @@ public class OFSwitch implements IOFSwitchBackend {
 	@Override
 	public Collection<OFPortDesc> getSortedPorts() {
 		List<OFPortDesc> sortedPorts =
-				new ArrayList<OFPortDesc>(portManager.getPorts());
+				new ArrayList<>(portManager.getPorts());
 		Collections.sort(sortedPorts, new Comparator<OFPortDesc>() {
 			@Override
 			public int compare(OFPortDesc o1, OFPortDesc o2) {
@@ -1121,7 +1118,7 @@ public class OFSwitch implements IOFSwitchBackend {
 						e.printStackTrace();
 					}
 				}
-			}, MoreExecutors.sameThreadExecutor()); /* No need for another thread. */
+			}, MoreExecutors.directExecutor()); /* No need for another thread. */
 		default:
 			break;
 		}
@@ -1190,7 +1187,7 @@ public class OFSwitch implements IOFSwitchBackend {
 	 */
 	@Override
 	public Collection<TableId> getTables() {
-		return new ArrayList<TableId>(tables);
+		return new ArrayList<>(tables);
 	}
 
 	@Override
@@ -1256,7 +1253,7 @@ public class OFSwitch implements IOFSwitchBackend {
 	public void updateControllerConnections(OFBsnControllerConnectionsReply controllerCxnsReply) {
 
 		// Instantiate clean map, can't use a builder here since we need to call temp.get()
-		Map<URI,Map<OFAuxId, OFBsnControllerConnection>> temp = new ConcurrentHashMap<URI,Map<OFAuxId, OFBsnControllerConnection>>();
+		Map<URI,Map<OFAuxId, OFBsnControllerConnection>> temp = new ConcurrentHashMap<>();
 
 		List<OFBsnControllerConnection> controllerCxnUpdates = controllerCxnsReply.getConnections();
 		for(OFBsnControllerConnection update : controllerCxnUpdates) {
@@ -1268,7 +1265,7 @@ public class OFSwitch implements IOFSwitchBackend {
 			if(cxns != null){
 				cxns.put(update.getAuxiliaryId(), update);
 			} else{
-				cxns = new ConcurrentHashMap<OFAuxId, OFBsnControllerConnection>();
+				cxns = new ConcurrentHashMap<>();
 				cxns.put(update.getAuxiliaryId(), update);
 				temp.put(uri, cxns);
 			}

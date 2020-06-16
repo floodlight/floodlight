@@ -4,6 +4,16 @@ import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.sdnplatform.sync.error.SyncException;
+import org.sdnplatform.sync.internal.SyncManager;
+import org.sdnplatform.sync.internal.config.AuthScheme;
+import org.sdnplatform.sync.internal.config.Node;
+import org.sdnplatform.sync.internal.rpc.RPCService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.google.common.net.HostAndPort;
+
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
@@ -17,16 +27,6 @@ import io.netty.handler.timeout.TimeoutException;
 import io.netty.util.HashedWheelTimer;
 import io.netty.util.Timer;
 import io.netty.util.concurrent.GlobalEventExecutor;
-
-import org.sdnplatform.sync.error.SyncException;
-import org.sdnplatform.sync.internal.SyncManager;
-import org.sdnplatform.sync.internal.config.AuthScheme;
-import org.sdnplatform.sync.internal.config.Node;
-import org.sdnplatform.sync.internal.rpc.RPCService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.google.common.net.HostAndPort;
 
 /**
  * Makes an attempt to bootstrap the cluster based on seeds stored in the
@@ -119,7 +119,7 @@ public class BootstrapClient {
         this.localNode = localNode;
         succeeded = false;
         SocketAddress sa =
-                new InetSocketAddress(seed.getHostText(), seed.getPort());
+                new InetSocketAddress(seed.getHost(), seed.getPort());
         ChannelFuture future = bootstrap.connect(sa);
         future.awaitUninterruptibly();
         if (!future.isSuccess()) {
