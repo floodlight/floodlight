@@ -18,7 +18,7 @@ import java.util.NoSuchElementException;
 import javax.sql.ConnectionPoolDataSource;
 import javax.xml.bind.DatatypeConverter;
 
-import org.apache.derby.jdbc.BasicEmbeddedDataSource40;
+import org.apache.derby.jdbc.EmbeddedConnectionPoolDataSource;
 import org.sdnplatform.sync.IClosableIterator;
 import org.sdnplatform.sync.IVersion;
 import org.sdnplatform.sync.IVersion.Occurred;
@@ -312,8 +312,8 @@ public class JavaDBStorageEngine implements IStorageEngine<ByteArray, byte[]> {
     public static ConnectionPoolDataSource getDataSource(String dbPath, 
                                                          boolean memory) {
 
-        BasicEmbeddedDataSource40 ds =
-                new BasicEmbeddedDataSource40();
+        EmbeddedConnectionPoolDataSource ds =
+                new EmbeddedConnectionPoolDataSource();
         if (memory) {
             ds.setDatabaseName("memory:SyncDB");                
         } else {
