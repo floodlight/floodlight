@@ -1,9 +1,43 @@
 package net.floodlightcontroller.statistics;
 
+import java.lang.Thread.State;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
+
+import org.projectfloodlight.openflow.protocol.OFFlowStatsEntry;
+import org.projectfloodlight.openflow.protocol.OFFlowStatsReply;
+import org.projectfloodlight.openflow.protocol.OFPortDesc;
+import org.projectfloodlight.openflow.protocol.OFPortDescProp;
+import org.projectfloodlight.openflow.protocol.OFPortDescPropEthernet;
+import org.projectfloodlight.openflow.protocol.OFPortDescStatsReply;
+import org.projectfloodlight.openflow.protocol.OFPortStatsEntry;
+import org.projectfloodlight.openflow.protocol.OFPortStatsReply;
+import org.projectfloodlight.openflow.protocol.OFStatsReply;
+import org.projectfloodlight.openflow.protocol.OFStatsRequest;
+import org.projectfloodlight.openflow.protocol.OFStatsType;
+import org.projectfloodlight.openflow.protocol.OFVersion;
+import org.projectfloodlight.openflow.protocol.match.Match;
+import org.projectfloodlight.openflow.protocol.ver13.OFMeterSerializerVer13;
+import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.OFGroup;
+import org.projectfloodlight.openflow.types.OFPort;
+import org.projectfloodlight.openflow.types.TableId;
+import org.projectfloodlight.openflow.types.U64;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.google.common.primitives.UnsignedLong;
 import com.google.common.util.concurrent.ListenableFuture;
 
-import javafx.util.Pair;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
@@ -17,22 +51,7 @@ import net.floodlightcontroller.debugcounter.IDebugCounterService.MetaData;
 import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.statistics.web.SwitchStatisticsWebRoutable;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
-import org.projectfloodlight.openflow.protocol.*;
-import org.projectfloodlight.openflow.protocol.match.Match;
-import org.projectfloodlight.openflow.protocol.ver13.OFMeterSerializerVer13;
-import org.projectfloodlight.openflow.types.DatapathId;
-import org.projectfloodlight.openflow.types.OFGroup;
-import org.projectfloodlight.openflow.types.OFPort;
-import org.projectfloodlight.openflow.types.TableId;
-import org.projectfloodlight.openflow.types.U64;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.lang.Thread.State;
-import java.util.*;
-import java.util.Map.Entry;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
+import net.floodlightcontroller.util.Pair;
 
 public class StatisticsCollector implements IFloodlightModule, IStatisticsService {
 	private static final Logger log = LoggerFactory.getLogger(StatisticsCollector.class);
@@ -58,12 +77,12 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
 	private static final String INTERVAL_PORT_STATS_STR = "collectionIntervalPortStatsSeconds";
 	private static final String ENABLED_STR = "enable";
 
-	private static final HashMap<NodePortTuple, SwitchPortBandwidth> portStats = new HashMap<NodePortTuple, SwitchPortBandwidth>();
-	private static final HashMap<NodePortTuple, SwitchPortBandwidth> tentativePortStats = new HashMap<NodePortTuple, SwitchPortBandwidth>();
+	private static final HashMap<NodePortTuple, SwitchPortBandwidth> portStats = new HashMap<>();
+	private static final HashMap<NodePortTuple, SwitchPortBandwidth> tentativePortStats = new HashMap<>();
 
-	private static final HashMap<Pair<Match,DatapathId>, FlowRuleStats> flowStats = new HashMap<Pair<Match,DatapathId>,FlowRuleStats>();
+	private static final HashMap<Pair<Match,DatapathId>, FlowRuleStats> flowStats = new HashMap<>();
 	
-	private static final HashMap<NodePortTuple, PortDesc> portDesc = new HashMap<NodePortTuple, PortDesc>();
+	private static final HashMap<NodePortTuple, PortDesc> portDesc = new HashMap<>();
 
 
 
@@ -198,7 +217,7 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
 							log.warn("Flow Stats not supported in OpenFlow 1.5.");
 
 						} else {
-							Pair<Match, DatapathId> pair = new Pair<Match,DatapathId>(pse.getMatch(),e.getKey());
+							Pair<Match, DatapathId> pair = new Pair<>(pse.getMatch(), e.getKey());
 							flowStats.put(pair,FlowRuleStats.of(
 									e.getKey(),
 									pse.getByteCount(),
@@ -250,8 +269,8 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
 	 */
 	private class GetStatisticsThread extends Thread {
 		private List<OFStatsReply> statsReply;
-		private DatapathId switchId;
-		private OFStatsType statType;
+		private final DatapathId switchId;
+		private final OFStatsType statType;
 
 		public GetStatisticsThread(DatapathId switchId, OFStatsType statType) {
 			this.switchId = switchId;
@@ -280,7 +299,7 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
 	@Override
 	public Collection<Class<? extends IFloodlightService>> getModuleServices() {
 		Collection<Class<? extends IFloodlightService>> l =
-				new ArrayList<Class<? extends IFloodlightService>>();
+				new ArrayList<>();
 		l.add(IStatisticsService.class);
 		return l;
 	}
@@ -288,7 +307,7 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
 	@Override
 	public Map<Class<? extends IFloodlightService>, IFloodlightService> getServiceImpls() {
 		Map<Class<? extends IFloodlightService>, IFloodlightService> m =
-				new HashMap<Class<? extends IFloodlightService>, IFloodlightService>();
+				new HashMap<>();
 		m.put(IStatisticsService.class, this);
 		return m;
 	}
@@ -296,7 +315,7 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
 	@Override
 	public Collection<Class<? extends IFloodlightService>> getModuleDependencies() {
 		Collection<Class<? extends IFloodlightService>> l =
-				new ArrayList<Class<? extends IFloodlightService>>();
+				new ArrayList<>();
 		l.add(IOFSwitchService.class);
 		l.add(IThreadPoolService.class);
 		l.add(IRestApiService.class);
@@ -379,7 +398,7 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
 
 	@Override
 	public Set<FlowRuleStats> getFlowStats(DatapathId dpid){
-		Set<FlowRuleStats> frs = new HashSet<FlowRuleStats>();
+		Set<FlowRuleStats> frs = new HashSet<>();
 		for(Pair<Match,DatapathId> pair: flowStats.keySet()){
 			if(pair.getValue().equals(dpid))
 				frs.add(flowStats.get(pair));
@@ -447,10 +466,10 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
 	 * @return
 	 */
 	private Map<DatapathId, List<OFStatsReply>> getSwitchStatistics(Set<DatapathId> dpids, OFStatsType statsType) {
-		HashMap<DatapathId, List<OFStatsReply>> model = new HashMap<DatapathId, List<OFStatsReply>>();
+		HashMap<DatapathId, List<OFStatsReply>> model = new HashMap<>();
 
-		List<GetStatisticsThread> activeThreads = new ArrayList<GetStatisticsThread>(dpids.size());
-		List<GetStatisticsThread> pendingRemovalThreads = new ArrayList<GetStatisticsThread>();
+		List<GetStatisticsThread> activeThreads = new ArrayList<>(dpids.size());
+		List<GetStatisticsThread> pendingRemovalThreads = new ArrayList<>();
 		GetStatisticsThread t;
 		for (DatapathId d : dpids) {
 			t = new GetStatisticsThread(d, statsType);

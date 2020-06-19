@@ -33,14 +33,14 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
-import org.projectfloodlight.openflow.protocol.match.Match;
-import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.OFPacketOut;
 import org.projectfloodlight.openflow.protocol.OFType;
 import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
+import org.projectfloodlight.openflow.protocol.match.Match;
+import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.EthType;
 import org.projectfloodlight.openflow.types.IPv4Address;
@@ -54,7 +54,6 @@ import org.projectfloodlight.openflow.types.U64;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javafx.util.Pair;
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFMessageListener;
@@ -91,6 +90,7 @@ import net.floodlightcontroller.threadpool.IThreadPoolService;
 import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.util.FlowModUtils;
 import net.floodlightcontroller.util.OFMessageUtils;
+import net.floodlightcontroller.util.Pair;
 
 /**
  * A simple load balancer module for ping, tcp, and udp flows. This module is accessed 
@@ -141,7 +141,7 @@ ILoadBalancerService, IOFMessageListener {
 	private static ScheduledFuture<?> healthMonitoring;
 	private static int healthMonitorsInterval = 10; /* (s) can be changed through NBI */
 
-	private static int ICMP_PAYLOAD_LENGTH = 4;
+	private static final int ICMP_PAYLOAD_LENGTH = 4;
 
 	protected static boolean isMonitoringEnabled = false;
 
@@ -329,8 +329,8 @@ ILoadBalancerService, IOFMessageListener {
 						if(pool == null)
 							return Command.CONTINUE;
 					}
-					HashMap<String, Short> memberWeights = new HashMap<String, Short>();
-					HashMap<String, U64> memberPortBandwidth = new HashMap<String, U64>();
+					HashMap<String, Short> memberWeights = new HashMap<>();
+					HashMap<String, U64> memberPortBandwidth = new HashMap<>();
 
 
 					if(pool.lbMethod == LBPool.WEIGHTED_RR){
@@ -439,7 +439,7 @@ ILoadBalancerService, IOFMessageListener {
 		OFPacketOut.Builder pob = sw.getOFFactory().buildPacketOut();
 
 		// set actions
-		List<OFAction> actions = new ArrayList<OFAction>();
+		List<OFAction> actions = new ArrayList<>();
 		actions.add(sw.getOFFactory().actions().buildOutput().setPort(outPort).setMaxLen(Integer.MAX_VALUE).build());
 
 		pob.setActions(actions);
@@ -622,7 +622,7 @@ ILoadBalancerService, IOFMessageListener {
 				DatapathId sw = path.get(i).getNodeId();
 				String entryName;
 				Match.Builder mb = pinSwitch.getOFFactory().buildMatch();
-				ArrayList<OFAction> actions = new ArrayList<OFAction>();
+				ArrayList<OFAction> actions = new ArrayList<>();
 
 				OFFlowMod.Builder fmb = pinSwitch.getOFFactory().buildFlowAdd();
 
@@ -722,7 +722,7 @@ ILoadBalancerService, IOFMessageListener {
 				fmb.setMatch(mb.build());
 				counterPacketOut.increment();
 				sfpService.addFlow(entryName, fmb.build(), sw);
-				Pair<Match, DatapathId> pair = new Pair<Match,DatapathId>(mb.build(),sw);
+				Pair<Match, DatapathId> pair = new Pair<>(mb.build(), sw);
 				flowToVipId.put(pair, member.vipId); // used to set LBPool statistics
 			}
 		}
@@ -741,7 +741,7 @@ ILoadBalancerService, IOFMessageListener {
 	private class healthMonitorsCheck implements Runnable {
 		@Override
 		public void run() {
-			Map<NodePortTuple, PortDesc> portDesc = new HashMap<NodePortTuple, PortDesc>();
+			Map<NodePortTuple, PortDesc> portDesc = new HashMap<>();
 			if(statisticsService != null){
 				statisticsService.collectStatistics(true);
 				portDesc = statisticsService.getPortDesc();
@@ -832,13 +832,13 @@ ILoadBalancerService, IOFMessageListener {
 					for(LBPool pool: pools.values()){
 						collectSwitchPortBandwidth(pool);
 						FlowRuleStats frs = null;
-						ArrayList<Long> bytesOut = new ArrayList<Long>();
-						ArrayList<Long> bytesIn = new ArrayList<Long>();
+						ArrayList<Long> bytesOut = new ArrayList<>();
+						ArrayList<Long> bytesIn = new ArrayList<>();
 						for(Pair<Match,DatapathId> pair: flowToVipId.keySet()){ // from the flows set from the load balancer
 							if(flowToVipId.get(pair).equals(pool.vipId)){ // determine which vip is responsible for the flow
 								frs = statisticsService.getFlowStats().get(pair); // get the statistics of this flow
 								if(frs != null){
-									Set<DatapathId> membersDPID = new HashSet<DatapathId>();
+									Set<DatapathId> membersDPID = new HashSet<>();
 									for(SwitchPort sp: memberIdToSwitchPort.values()){	
 										membersDPID.add(sp.getNodeId());
 									}
@@ -862,8 +862,8 @@ ILoadBalancerService, IOFMessageListener {
 	 * as some pools might not have monitors associated with.
 	 */
 	public HashMap<String, U64> collectSwitchPortBandwidth(LBPool pool){
-		HashMap<String,U64> memberPortBandwidth = new HashMap<String, U64>();
-		HashMap<Pair<IDevice,String>,String> deviceToMemberId = new HashMap<Pair<IDevice,String>, String>();
+		HashMap<String,U64> memberPortBandwidth = new HashMap<>();
+		HashMap<Pair<IDevice,String>,String> deviceToMemberId = new HashMap<>();
 
 		// retrieve all known devices to know which ones are attached to the members
 		Collection<? extends IDevice> allDevices = deviceManagerService.getAllDevices();
@@ -873,7 +873,7 @@ ILoadBalancerService, IOFMessageListener {
 				if(pool != null){
 					for(String memberId: pool.members){
 						if (members.get(memberId).address == d.getIPv4Addresses()[j].getInt()){
-							Pair<IDevice,String> pair = new Pair<IDevice,String>(d,pool.id);
+							Pair<IDevice,String> pair = new Pair<>(d, pool.id);
 							members.get(memberId).macString = d.getMACAddressString(); // because health monitors have to know members MAC
 							deviceToMemberId.put(pair, memberId);
 						}
@@ -907,7 +907,7 @@ ILoadBalancerService, IOFMessageListener {
 
 	@Override
 	public Collection<LBVip> listVip(String vipId) {
-		Collection<LBVip> result = new HashSet<LBVip>();
+		Collection<LBVip> result = new HashSet<>();
 		result.add(vips.get(vipId));
 		return result;
 	}
@@ -947,7 +947,7 @@ ILoadBalancerService, IOFMessageListener {
 
 	@Override
 	public Collection<LBPool> listPool(String poolId) {
-		Collection<LBPool> result = new HashSet<LBPool>();
+		Collection<LBPool> result = new HashSet<>();
 		result.add(pools.get(poolId));
 		return result;
 	}
@@ -997,14 +997,14 @@ ILoadBalancerService, IOFMessageListener {
 
 	@Override
 	public Collection<LBMember> listMember(String memberId) {
-		Collection<LBMember> result = new HashSet<LBMember>();
+		Collection<LBMember> result = new HashSet<>();
 		result.add(members.get(memberId));
 		return result;
 	}
 
 	@Override
 	public Collection<LBMember> listMembersByPool(String poolId) {
-		Collection<LBMember> result = new HashSet<LBMember>();
+		Collection<LBMember> result = new HashSet<>();
 
 		if(pools.containsKey(poolId)) {
 			ArrayList<String> memberIds = pools.get(poolId).members;
@@ -1075,6 +1075,7 @@ ILoadBalancerService, IOFMessageListener {
 		return -1;
 	}
 
+	@Override
 	public int setPriorityToMember(String poolId ,String memberId){
 		if(pools.containsKey(poolId)) {
 			ArrayList<String> memberIds = pools.get(poolId).members;
@@ -1108,14 +1109,14 @@ ILoadBalancerService, IOFMessageListener {
 
 	@Override
 	public Collection<LBMonitor> listMonitor(String monitorId) {
-		Collection<LBMonitor> result = new HashSet<LBMonitor>();
+		Collection<LBMonitor> result = new HashSet<>();
 		result.add(monitors.get(monitorId));
 		return result;
 	}
 
 	@Override
 	public Collection<LBMonitor> listMonitorsByPool(String poolId){
-		Collection<LBMonitor> result = new HashSet<LBMonitor>();
+		Collection<LBMonitor> result = new HashSet<>();
 
 		if(pools.containsKey(poolId)) {
 			LBPool pool  = pools.get(poolId);
@@ -1159,7 +1160,7 @@ ILoadBalancerService, IOFMessageListener {
 
 	@Override
 	public Collection<LBMonitor> associateMonitorWithPool(String poolId,LBMonitor monitor) {
-		Collection<LBMonitor> result = new HashSet<LBMonitor>();
+		Collection<LBMonitor> result = new HashSet<>();
 
 		// If monitor does not exist, it is created.
 		if (monitor == null){
@@ -1179,7 +1180,7 @@ ILoadBalancerService, IOFMessageListener {
 			monitor.poolId = poolId;
 
 			// in case monitor is associated a second time without dissociating first
-			ArrayList<String> monitorsInWrongPool = new ArrayList<String>();
+			ArrayList<String> monitorsInWrongPool = new ArrayList<>();
 			for(String monitorId: pools.get(poolId).monitors){
 				if(!Objects.equals(monitors.get(monitorId).poolId, poolId)){
 					monitorsInWrongPool.add(monitorId); 	
@@ -1281,8 +1282,8 @@ ILoadBalancerService, IOFMessageListener {
 	@Override
 	public Collection<Class<? extends IFloodlightService>>
 	getModuleServices() {
-		Collection<Class<? extends IFloodlightService>> l = 
-				new ArrayList<Class<? extends IFloodlightService>>();
+		Collection<Class<? extends IFloodlightService>> l =
+				new ArrayList<>();
 		l.add(ILoadBalancerService.class);
 		return l;
 	}
@@ -1290,9 +1291,8 @@ ILoadBalancerService, IOFMessageListener {
 	@Override
 	public Map<Class<? extends IFloodlightService>, IFloodlightService>
 	getServiceImpls() {
-		Map<Class<? extends IFloodlightService>, IFloodlightService> m = 
-				new HashMap<Class<? extends IFloodlightService>,
-				IFloodlightService>();
+		Map<Class<? extends IFloodlightService>, IFloodlightService> m =
+				new HashMap<>();
 		m.put(ILoadBalancerService.class, this);
 		return m;
 	}
@@ -1300,8 +1300,8 @@ ILoadBalancerService, IOFMessageListener {
 	@Override
 	public Collection<Class<? extends IFloodlightService>>
 	getModuleDependencies() {
-		Collection<Class<? extends IFloodlightService>> l = 
-				new ArrayList<Class<? extends IFloodlightService>>();
+		Collection<Class<? extends IFloodlightService>> l =
+				new ArrayList<>();
 		l.add(IFloodlightProviderService.class);
 		l.add(IRestApiService.class);
 		l.add(IOFSwitchService.class);
@@ -1329,16 +1329,16 @@ ILoadBalancerService, IOFMessageListener {
 		statisticsService = context.getServiceImpl(IStatisticsService.class);
 		threadService = context.getServiceImpl(IThreadPoolService.class);
 
-		vips = new HashMap<String, LBVip>();
-		pools = new HashMap<String, LBPool>();
-		members = new HashMap<String, LBMember>();
-		monitors = new HashMap<String,LBMonitor>();
-		vipIpToId = new HashMap<Integer, String>();
-		memberStatus = new HashMap<String, Short>();
-		vipIpToMac = new HashMap<IPv4Address, MacAddress>();
-		memberIdToIp= new HashMap<String, Integer>();
-		flowToVipId = new HashMap<Pair<Match,DatapathId>,String>();
-		memberIdToSwitchPort= new HashMap<String, SwitchPort>();
+		vips = new HashMap<>();
+		pools = new HashMap<>();
+		members = new HashMap<>();
+		monitors = new HashMap<>();
+		vipIpToId = new HashMap<>();
+		memberStatus = new HashMap<>();
+		vipIpToMac = new HashMap<>();
+		memberIdToIp= new HashMap<>();
+		flowToVipId = new HashMap<>();
+		memberIdToSwitchPort= new HashMap<>();
 
 		threadService.getScheduledExecutor().scheduleAtFixedRate(new SetPoolStats(), flowStatsInterval, flowStatsInterval, TimeUnit.SECONDS);
 

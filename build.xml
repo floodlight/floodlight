@@ -159,27 +159,19 @@
     </target>
 
     <target name="gen-thrift" depends="init">
-      <echo message="Running thrift on '${thrift.dir}'"/>
-      <apply executable="./thrift/compiler/cpp/thrift">
-	<fileset dir="${thrift.dir}" casesensitive="yes">
-	  <include name="**/*.thrift"/>
-	</fileset>
-	<arg value="--strict"/>
-	<arg value="-v"/>
-	<arg value="--gen"/>
-	<arg value="java"/>
-	<arg value="-o"/>
-	<arg value="${thrift.out.dir}/.."/>
-      </apply>
-      <echo message="Adding @SuppressWarning annotations"/>
-      <replaceregexp byline="true">
-	<regexp pattern="^public "/>
-	<substitution expression='@SuppressWarnings("all") public '/>
-	<fileset id="thrift.output.files" dir="${thrift.out.dir}/..">
-	  <include name="**/*.java"/>
-	</fileset>
-      </replaceregexp>
-    </target>
+        <echo message="Running thrift on '${thrift.dir}'"/>
+        <apply executable="/usr/local/bin/thrift">
+            <fileset dir="${thrift.dir}" casesensitive="yes">
+                <include name="**/*.thrift"/>
+            </fileset>
+            <arg value="--strict"/>
+            <arg value="-v"/>
+            <arg value="--gen"/>
+            <arg value="java"/>
+            <arg value="-o"/>
+            <arg value="${thrift.out.dir}/.."/>
+        </apply>
+   </target>
 
     <target name="clean">
         <delete dir="${target}"/>
