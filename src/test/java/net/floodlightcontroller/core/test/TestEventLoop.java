@@ -17,7 +17,7 @@ import io.netty.util.concurrent.Future;
 
 public final class TestEventLoop extends AbstractScheduledEventExecutor implements EventLoop {
 
-    private final Queue<Runnable> tasks = new ArrayDeque<Runnable>(2);
+    private final Queue<Runnable> tasks = new ArrayDeque<>(2);
 
     @Override
     public void execute(Runnable command) {
@@ -100,6 +100,11 @@ public final class TestEventLoop extends AbstractScheduledEventExecutor implemen
     @Override
     public ChannelFuture register(Channel channel) {
         return register(channel, new DefaultChannelPromise(channel, this));
+    }
+
+    @Override
+    public ChannelFuture register(ChannelPromise promise) {
+        return null;
     }
 
     @Override
