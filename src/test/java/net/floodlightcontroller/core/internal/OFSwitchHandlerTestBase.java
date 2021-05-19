@@ -525,13 +525,13 @@ public abstract class OFSwitchHandlerTestBase {
 		// again it looks odd. Maybe change
 		expect(sw.getOFFactory()).andReturn(factory).anyTimes();
 		expect(sw.write(anyObject(OFMessage.class))).andReturn(true).anyTimes();
-		expect(sw.write(anyObject(Iterable.class))).andReturn(Collections.EMPTY_LIST).anyTimes();
+		expect(sw.write(anyObject(Iterable.class))).andReturn(Collections.emptyList()).anyTimes();
 		expect(sw.getNumTables()).andStubReturn((short)0);
 		sw.setAttribute(IOFSwitch.SWITCH_SUPPORTS_NX_ROLE, supportsNxRole);
 		expectLastCall().anyTimes();
 		if (SwitchStatus.MASTER == newStatus) {
 			if (factory.getVersion().compareTo(OFVersion.OF_13) >= 0) {
-				expect(sw.getTables()).andReturn(Collections.EMPTY_LIST).once();
+				expect(sw.getTables()).andReturn(Collections.emptyList()).once();
 				expect(sw.getTableFeatures(TableId.ZERO)).andReturn(TableFeatures.of(createTableFeaturesStatsReply().getEntries().get(0))).anyTimes();
 			}
 		}
@@ -596,8 +596,8 @@ public abstract class OFSwitchHandlerTestBase {
 		reset(sw);
 		expect(sw.getOFFactory()).andReturn(factory).anyTimes();
 		expect(sw.write(anyObject(OFMessage.class))).andReturn(true).anyTimes();
-		expect(sw.write(anyObject(Iterable.class))).andReturn(Collections.EMPTY_LIST).anyTimes();
-		expect(sw.getTables()).andStubReturn(Collections.EMPTY_LIST);
+		expect(sw.write(anyObject(Iterable.class))).andReturn(Collections.emptyList()).anyTimes();
+		expect(sw.getTables()).andStubReturn(Collections.emptyList());
 		expect(sw.getNumTables()).andStubReturn((short) 0);
 		sw.setAttribute(IOFSwitch.SWITCH_SUPPORTS_NX_ROLE, true);
 		expectLastCall().once();
@@ -690,7 +690,7 @@ public abstract class OFSwitchHandlerTestBase {
 		reset(sw);
 		expect(sw.getOFFactory()).andReturn(factory).anyTimes();
 		expect(sw.write(anyObject(OFMessage.class))).andReturn(true).anyTimes();
-		expect(sw.write(anyObject(Iterable.class))).andReturn(Collections.EMPTY_LIST).anyTimes();
+		expect(sw.write(anyObject(Iterable.class))).andReturn(Collections.emptyList()).anyTimes();
 		expect(sw.getNumTables()).andStubReturn((short)0);
 		sw.setAttribute(IOFSwitch.SWITCH_SUPPORTS_NX_ROLE, false);
 		expectLastCall().once();
@@ -700,7 +700,7 @@ public abstract class OFSwitchHandlerTestBase {
 		sw.setStatus(SwitchStatus.MASTER);
 		expectLastCall().once();
 		if (factory.getVersion().compareTo(OFVersion.OF_13) >= 0) {
-			expect(sw.getTables()).andReturn(Collections.EMPTY_LIST).once();
+			expect(sw.getTables()).andReturn(Collections.emptyList()).once();
 			expect(sw.getTableFeatures(TableId.ZERO)).andReturn(TableFeatures.of(createTableFeaturesStatsReply().getEntries().get(0))).anyTimes();
 		}
 		replay(sw);
@@ -751,7 +751,7 @@ public abstract class OFSwitchHandlerTestBase {
 		reset(sw);
 		expect(sw.getOFFactory()).andReturn(factory).anyTimes();
 		expect(sw.write(anyObject(OFMessage.class))).andReturn(true).anyTimes();
-		expect(sw.write(anyObject(Iterable.class))).andReturn(Collections.EMPTY_LIST).anyTimes();
+		expect(sw.write(anyObject(Iterable.class))).andReturn(Collections.emptyList()).anyTimes();
 		expect(sw.getNumTables()).andStubReturn((short)0);
 		sw.setAttribute(IOFSwitch.SWITCH_SUPPORTS_NX_ROLE, false);
 		expectLastCall().once();
@@ -761,7 +761,7 @@ public abstract class OFSwitchHandlerTestBase {
 		sw.setStatus(SwitchStatus.MASTER);
 		expectLastCall().once();
 		if (factory.getVersion().compareTo(OFVersion.OF_13) >= 0) {
-			expect(sw.getTables()).andReturn(Collections.EMPTY_LIST).once();
+			expect(sw.getTables()).andReturn(Collections.emptyList()).once();
 			expect(sw.getTableFeatures(TableId.ZERO)).andReturn(TableFeatures.of(createTableFeaturesStatsReply().getEntries().get(0))).anyTimes();
 		}
 		replay(sw);
@@ -913,7 +913,7 @@ public abstract class OFSwitchHandlerTestBase {
 		reset(sw);
 		expect(sw.getOFFactory()).andReturn(factory).anyTimes();
 		expect(sw.write(anyObject(OFMessage.class))).andReturn(true).anyTimes();
-		expect(sw.write(anyObject(Iterable.class))).andReturn(Collections.EMPTY_LIST).anyTimes();
+		expect(sw.write(anyObject(Iterable.class))).andReturn(Collections.emptyList()).anyTimes();
 		expect(sw.getNumTables()).andStubReturn((short)0);
 		sw.setAttribute(IOFSwitch.SWITCH_SUPPORTS_NX_ROLE, true);
 		expectLastCall().once();
@@ -922,7 +922,7 @@ public abstract class OFSwitchHandlerTestBase {
 		expect(sw.getStatus()).andReturn(SwitchStatus.HANDSHAKE).once();
 		sw.setStatus(SwitchStatus.MASTER);
 		expectLastCall().once();
-		expect(sw.getTables()).andReturn(Collections.EMPTY_LIST).once();
+		expect(sw.getTables()).andReturn(Collections.emptyList()).once();
 		replay(sw);
 
 		reset(switchManager);
