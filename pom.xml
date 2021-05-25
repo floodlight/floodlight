@@ -10,7 +10,7 @@
 		<repository>
 			<id>maven-restlet</id>
 			<name>Public online Restlet repository</name>
-			<url>http://maven.restlet.com</url>
+			<url>https://maven.restlet.talend.com</url>
 		</repository>
 		<repository>
 			<id>sonatype-oss-snapshot</id>
@@ -143,7 +143,7 @@
 		<dependency>
 			<groupId>com.google.guava</groupId>
 			<artifactId>guava</artifactId>
-			<version>29.0-jre</version>
+			<version>30.1.1-jre</version>
 		</dependency>
 		<dependency>
 			<groupId>ch.qos.logback</groupId>
@@ -193,7 +193,7 @@
 		<dependency>
 			<groupId>org.apache.thrift</groupId>
 			<artifactId>libthrift</artifactId>
-			<version>0.13.0</version>
+			<version>0.14.1</version>
 		</dependency>
 		<dependency>
 			<groupId>junit</groupId>
