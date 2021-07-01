@@ -89,7 +89,7 @@ public class DHCPServer implements IOFMessageListener, IOFSwitchListener, IFlood
 
         switch (DHCPServerUtils.getOpcodeType(dhcPayload)) {
             case REQUEST:
-                processDhcpRequest(dhcPayload, sw, inPort, instance, srcAddr, dstAddr, srcMac);
+                processDhcpRequest(dhcPayload, sw, inPort, instance, srcAddr, dstAddr, srcMac,eth.getVlanID());
                 return Command.STOP;
             default:
                 break;
@@ -99,18 +99,18 @@ public class DHCPServer implements IOFMessageListener, IOFSwitchListener, IFlood
     }
 
     private void processDhcpRequest(DHCP dhcpPayload, IOFSwitch sw, OFPort inPort, DHCPInstance instance,
-                                    IPv4Address srcAddr, IPv4Address dstAddr, MacAddress srcMac) {
+                                    IPv4Address srcAddr, IPv4Address dstAddr, MacAddress srcMac,short vid) {
         DHCPMessageHandler handler = new DHCPMessageHandler();
         switch (DHCPServerUtils.getMessageType(dhcpPayload)) {
             case DISCOVER:
-                OFPacketOut dhcpOffer = handler.handleDHCPDiscover(sw, inPort, instance, srcAddr, dhcpPayload, enableDHCPDynamicService);
+                OFPacketOut dhcpOffer = handler.handleDHCPDiscover(sw, inPort, instance, srcAddr, dhcpPayload, enableDHCPDynamicService,vid);
                 log.info("DHCP DISCOVER message received from switch {} for client interface {}, handled by dhcp instance {} ... ",
                         new Object[]{sw.getId().toString(), srcMac.toString(), instance.getName()});
                 sw.write(dhcpOffer);
                 break;
 
             case REQUEST:
-                OFPacketOut dhcpReply = handler.handleDHCPRequest(sw, inPort, instance, dstAddr, dhcpPayload);
+                OFPacketOut dhcpReply = handler.handleDHCPRequest(sw, inPort, instance, dstAddr, dhcpPayload,vid);
                 log.info("DHCP REQUEST message received from switch {} for client interface {}, handled by dhcp instance {} ... ",
                         new Object[]{sw.getId().toString(), srcMac.toString(), instance.getName()});
                 sw.write(dhcpReply);    // either ACK or NAK
@@ -128,7 +128,7 @@ public class DHCPServer implements IOFMessageListener, IOFSwitchListener, IFlood
 
             case INFORM:    // client request some information
                 log.debug("DHCP INFORM message received from switch {}, start handling... ", sw.getId().toString());
-                OFPacketOut dhcpAck = handler.handleDHCPInform(sw, inPort, instance, dstAddr, dhcpPayload);
+                OFPacketOut dhcpAck = handler.handleDHCPInform(sw, inPort, instance, dstAddr, dhcpPayload,vid);
                 sw.write(dhcpAck);
                 break;
 
