@@ -28,6 +28,7 @@ import org.projectfloodlight.openflow.types.U64;
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.devicemanager.IDevice;
 import net.floodlightcontroller.devicemanager.SwitchPort;
+import net.floodlightcontroller.multicasting.internal.ParticipantGroupAddress;
 
 
 public class RoutingDecision implements IRoutingDecision {
@@ -40,6 +41,9 @@ public class RoutingDecision implements IRoutingDecision {
     protected List<IDevice> destDevices;
     protected List<SwitchPort> broadcastIntertfaces;
     protected U64 descriptor;
+    
+    // For MULTICAST
+    protected ParticipantGroupAddress pgAddress;
 
     public RoutingDecision(DatapathId swDipd,
                                   OFPort inPort,
@@ -116,15 +120,25 @@ public class RoutingDecision implements IRoutingDecision {
         this.hardTimeout = hardTimeout;
     }
 
-	@Override
-	public U64 getDescriptor() {
-		return descriptor;
-	}
+    @Override
+    public U64 getDescriptor() {
+        return descriptor;
+    }
 
-	@Override
-	public void setDescriptor(U64 descriptor) {
-		this.descriptor = descriptor;
-	}
+    @Override
+    public void setDescriptor(U64 descriptor) {
+        this.descriptor = descriptor;
+    }
+    
+    @Override
+    public ParticipantGroupAddress getParticipantGroupAddress() {
+        return pgAddress;
+    }
+    
+    @Override
+    public void setParticipantGroupAddress(ParticipantGroupAddress pgAddress) {
+        this.pgAddress = pgAddress;
+    }
 
     @Override
     public void addToContext(FloodlightContext cntx) {

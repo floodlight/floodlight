@@ -49,6 +49,8 @@ import net.floodlightcontroller.debugcounter.MockDebugCounterService;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryListener;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryService;
 import net.floodlightcontroller.linkdiscovery.Link;
+import net.floodlightcontroller.multicasting.IMulticastService;
+import net.floodlightcontroller.multicasting.internal.MulticastManager;
 import net.floodlightcontroller.packet.Data;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPacket;
@@ -151,6 +153,7 @@ public class LinkDiscoveryManagerTest extends FloodlightTestCase {
         cntx.addService(IFloodlightProviderService.class, getMockFloodlightProvider());
         cntx.addService(IDebugCounterService.class, debugCounterService);
         cntx.addService(IOFSwitchService.class, getMockSwitchService());
+        cntx.addService(IMulticastService.class, new MulticastManager());
         restApi.init(cntx);
         tp.init(cntx);
         routingEngine.init(cntx);
@@ -230,7 +233,7 @@ public class LinkDiscoveryManagerTest extends FloodlightTestCase {
 
         Link lt = new Link(DatapathId.of(1L), OFPort.of(2), DatapathId.of(2L), OFPort.of(1), U64.ZERO);
         LinkInfo info = new LinkInfo(new Date(),
-        		new Date(), null);
+                new Date(), null);
         linkDiscovery.addOrUpdateLink(lt, info);
         linkDiscovery.deleteLinks(Collections.singletonList(lt), "Test");
 
@@ -251,7 +254,7 @@ public class LinkDiscoveryManagerTest extends FloodlightTestCase {
         NodePortTuple dstNpt = new NodePortTuple(DatapathId.of(2L), OFPort.of(3));
 
         LinkInfo info = new LinkInfo(new Date(),
-        		new Date(), null);
+                new Date(), null);
         linkDiscovery.addOrUpdateLink(lt, info);
 
         // check invariants hold
@@ -273,7 +276,7 @@ public class LinkDiscoveryManagerTest extends FloodlightTestCase {
         NodePortTuple dstNpt = new NodePortTuple(DatapathId.of(2L), OFPort.of(3));
 
         LinkInfo info = new LinkInfo(new Date(),
-        		new Date(), null);
+                new Date(), null);
         linkDiscovery.addOrUpdateLink(lt, info);
         linkDiscovery.deleteLinks(Collections.singletonList(lt), "Test to self");
 
@@ -293,7 +296,7 @@ public class LinkDiscoveryManagerTest extends FloodlightTestCase {
         NodePortTuple srcNpt = new NodePortTuple(DatapathId.of(1L), OFPort.of(2));
         NodePortTuple dstNpt = new NodePortTuple(DatapathId.of(2L), OFPort.of(1));
         LinkInfo info = new LinkInfo(new Date(),
-        		new Date(), null);
+                new Date(), null);
         linkDiscovery.addOrUpdateLink(lt, info);
 
         IOFSwitch sw1 = getMockSwitchService().getSwitch(DatapathId.of(1L));
@@ -442,7 +445,7 @@ public class LinkDiscoveryManagerTest extends FloodlightTestCase {
         NodePortTuple srcNpt = new NodePortTuple(DatapathId.of(1L), OFPort.of(2));
         NodePortTuple dstNpt = new NodePortTuple(DatapathId.of(2L), OFPort.of(1));
         LinkInfo info = new LinkInfo(new Date(),
-        		new Date(), null);
+                new Date(), null);
         linkDiscovery.addOrUpdateLink(lt, info);
 
         // check invariants hold
@@ -477,9 +480,9 @@ public class LinkDiscoveryManagerTest extends FloodlightTestCase {
         expect(pd.getState()).andReturn(Collections.<OFPortState> emptySet()).anyTimes();
         replay(pd);
         /*OFPortDesc pd = OFFactories.getFactory(OFVersion.OF_13).buildPortDesc()
-        		.setHwAddr(MacAddress.of(1))
-        		.setPortNo(OFPort.of(1))
-        		.build();*/
+                .setHwAddr(MacAddress.of(1))
+                .setPortNo(OFPort.of(1))
+                .build();*/
                 
         MockOFConnection c3 = new MockOFConnection(DatapathId.of(3), OFAuxId.MAIN);
         c3.updateLatency(U64.ZERO);
@@ -507,25 +510,25 @@ public class LinkDiscoveryManagerTest extends FloodlightTestCase {
                 
         boolean pass = false;
         try {
-        	linkDiscovery.sendDiscoveryMessage(DatapathId.of(3L), OFPort.of(1), true, false);
+            linkDiscovery.sendDiscoveryMessage(DatapathId.of(3L), OFPort.of(1), true, false);
         } catch (IllegalArgumentException e) { /* expected exception, since we aren't wired to write packets */
-        	log.info("LLDP packet-out sent while in MASTER (pass)");
-        	pass = true;
+            log.info("LLDP packet-out sent while in MASTER (pass)");
+            pass = true;
         }
         assertTrue("LLDP packet-out NOT sent while in MASTER (fail)", pass);
                 
         assertFalse("LLDP packet-out DID occur while in SLAVE (fail)", 
-        		linkDiscovery.sendDiscoveryMessage(DatapathId.of(4L), OFPort.of(1), true, false));
-    	log.info("LLDP packet-out did not occur while in SLAVE (pass)");
-    	
-    	pass = false;
-    	try {
-        	linkDiscovery.sendDiscoveryMessage(DatapathId.of(5L), OFPort.of(1), true, false);
+                linkDiscovery.sendDiscoveryMessage(DatapathId.of(4L), OFPort.of(1), true, false));
+        log.info("LLDP packet-out did not occur while in SLAVE (pass)");
+        
+        pass = false;
+        try {
+            linkDiscovery.sendDiscoveryMessage(DatapathId.of(5L), OFPort.of(1), true, false);
         } catch (IllegalArgumentException e) { /* expected exception, since we aren't wired to write packets */
-        	log.info("LLDP packet-out sent while in EQUAL/OTHER (pass)");
-        	pass = true;
+            log.info("LLDP packet-out sent while in EQUAL/OTHER (pass)");
+            pass = true;
         }
-    	assertTrue("LLDP packet-out NOT sent while in EQUAL/OTHER (fail)", pass);
+        assertTrue("LLDP packet-out NOT sent while in EQUAL/OTHER (fail)", pass);
     }
 
     @Test
