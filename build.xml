@@ -336,14 +336,17 @@
     </target>
 
     <target name="eclipse" depends="init">
-        <pathconvert property="eclipse-lib">
+        <pathconvert pathsep=":" dirsep="/" property="eclipse-lib">
             <map from="${basedir}/" to=""/>
             <fileset dir="${lib}">
                 <patternset refid="lib"/>
                 <patternset refid="lib-test"/>
             </fileset>
         </pathconvert>
-        <exec executable="${basedir}/setup-eclipse.sh">
+        <condition property="setup-eclipse" value="${basedir}/setup-eclipse.bat" else="${basedir}/setup-eclipse.sh">
+            <os family="windows"/>
+        </condition>
+        <exec executable="${setup-eclipse}">
             <arg value="${main-class}"/>
             <arg value="${eclipse-lib}"/>
         </exec>
