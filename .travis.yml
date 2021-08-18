@@ -12,3 +12,7 @@ notifications:
   email:
     recipients:
       - ryan.izard@bigswitch.com
+
+cache:
+  directories:
+  - $HOME/.m2
